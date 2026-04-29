@@ -1,4 +1,4 @@
-requests>=2.28
+requests>=2.33.1
 phonenumbers>=9.0.29
 dnspython>=2.4
 python-whois>=0.9.6
