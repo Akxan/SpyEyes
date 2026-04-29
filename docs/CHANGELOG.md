@@ -17,7 +17,49 @@ This project adheres to [Keep a Changelog](https://keepachangelog.com/en/1.1.0/)
 
 ---
 
-## [1.2.0] — 2026-04-29
+## [1.2.1] — 2026-04-29
+
+经过 5 路独立审计（ruff + mypy + bandit + pytest-cov + superpowers:code-reviewer agent）发现并修复 v1.2.0 的 6 个 P1 真 bug + 借鉴 Sherlock 优化思路，**用户名扫描速度翻倍（45s → 21s, 2.1×）**。
+
+### 🚀 Performance — Sherlock-inspired 2× speed-up
+
+经独立 agent 研究 Sherlock 项目得出 4 项可复用优化：
+
+- **Per-thread `requests.Session` + 连接池复用**（pool_maxsize=64）—— 消除重复 host 的 DNS/TCP/TLS 握手（如 `*.tumblr.com`、`*.shopee.*`、`mercadolibre.*` 等多平台同 host 场景）
+- **HEAD 请求**：仅需 status_code 检测的 856 个平台（41% of 2067）跳过 body 下载，每平台节省 1-50KB 网络传输
+- **`stream=True` + `raw.read(65536)`**：需要 body 检测的平台只读前 64KB，避免下载 1-5MB 的页面
+- **拆分 timeout `(connect=3s, read=N)`**：快速踢死 DNS 慢的死站，让长尾延迟显著降低
+
+**实测对比**：
+| 场景 | v1.2.0 | **v1.2.1** | 加速 |
+|---|---|---|---|
+| 全 2067 平台 (workers=100) | ~45s | **21s** | **2.1×** |
+| `--quick` (727 平台) | ~20s | **9s** | **2.2×** |
+
+### 🐛 Fixed — 独立 audit agent 发现的 6 个 P1 bug
+
+- **P1: PLATFORMS 列表自含重复**（`Cam4` 与 `CAM4` 大小写不同）—— 删除重复 + 加 `_dedup_platforms` 防御未来笔误
+- **P1: `_to_markdown` markdown 注入** —— 之前 `query` 含 `\n## PWNED` 会注入伪标题；dict key 含 `|` 会破坏表格列。新增 `_md_escape()` 统一转义所有 cell（key + value）+ 单行化 query/headers
+- **P1: `_record_history` 在 `data=None` 时 `AttributeError`** —— 改为防御性 `if not isinstance(data, dict): data = {}`
+- **P1: `must_contain=(b'',)` 空 pattern 永远 True** —— `b'' in any_bytes` 为 True，会让所有用户名误报「★★★ 命中」。新增 `_clean_patterns()` 在加载时过滤空字节串
+- **P1: `track_username('')` 返回 all-None 而非 `_error`** —— 与 `track_ip('')` 行为不一致，写历史会记录假成功；统一返回 `{'_error': ...}`
+- **P1: `--category xyz`（未知类别）静默扫 0 平台** —— 新增校验：未知类别返回 `_error` 并提示有效类别名
+
+### 🚀 Changed 改进
+
+- 默认 `--workers` 50 → **100**
+- 默认 `--timeout` 8s → **5s**
+- `track_username` 在 `categories` 中含未知值时立即报错而非静默
+- `--quick` + `--category` 同时传 → stderr 警告 `--quick ignored when --category is set`
+
+### 🧪 Tests
+
+- 63 → **83 测试**（新增 20 个：dedup 校验、空模式过滤、markdown 注入防护、Session 复用、空输入对齐、未知类别校验等）
+- 静态分析全部通过：ruff（lint）、mypy（type）、bandit（security）
+
+---
+
+## [1.2.0] — 2026-04-29 (deprecated, replaced by 1.2.1)
 
 性能 + 用户体验大幅提升。新增 **5 大功能**：扫描进度条、模式筛选、Markdown 报告、查询历史、批量域名查询。新增 `adult` 类别（含 42 个成人/约会平台）。
 
@@ -219,7 +261,8 @@ OSINT 信息检索能力大幅扩展。从 113 个手工 curated 平台跃升至
 
 ---
 
-[Unreleased]: https://github.com/Akxan/GhostTrack-CN/compare/v1.2.0...HEAD
+[Unreleased]: https://github.com/Akxan/GhostTrack-CN/compare/v1.2.1...HEAD
+[1.2.1]: https://github.com/Akxan/GhostTrack-CN/compare/v1.1.1...v1.2.1
 [1.2.0]: https://github.com/Akxan/GhostTrack-CN/compare/v1.1.1...v1.2.0
 [1.1.1]: https://github.com/Akxan/GhostTrack-CN/compare/v1.1.0...v1.1.1
 [1.1.0]: https://github.com/Akxan/GhostTrack-CN/compare/v1.0.0...v1.1.0

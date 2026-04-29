@@ -12,6 +12,7 @@ import json
 import os
 import re
 import sys
+import threading
 import time
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from typing import Any, NamedTuple, Optional
@@ -246,12 +247,13 @@ TRANSLATIONS: dict = {
         'err.email_format':     'Invalid email format',
         'err.query_failed':     'Query failed: {msg}',
         'err.empty_input':      'Input is empty',
+        'err.unknown_category': 'Unknown category: {unknown}. Valid: {valid}',
         'msg.progress':         'Scanning',
         'msg.found':            'found',
         'msg.no_history':       '(no history yet — run a query first)',
         'mode.title':           'Scan mode:',
-        'mode.quick':           'Quick   (~645 platforms, ~20s)  [recommended]',
-        'mode.full':            'Full    (~2020 platforms, ~45s)',
+        'mode.quick':           'Quick   (~720 platforms, ~20s)  [recommended]',
+        'mode.full':            'Full    (~2067 platforms, ~50s)',
         'mode.cn_es':           'Chinese + Spanish only (~98 platforms, ~6s)',
         'mode.code':            'Code platforms only (~54 platforms, ~3s)',
         'mode.prompt':          'Choose [1/2/3/4, default 1]: ',
@@ -386,12 +388,13 @@ TRANSLATIONS: dict = {
         'err.email_format':     '邮箱格式不合法',
         'err.query_failed':     '查询失败：{msg}',
         'err.empty_input':      '输入为空',
+        'err.unknown_category': '未知类别：{unknown}。有效类别：{valid}',
         'msg.progress':         '扫描中',
         'msg.found':            '已命中',
         'msg.no_history':       '（暂无历史 —— 先跑一次查询试试）',
         'mode.title':           '扫描模式:',
-        'mode.quick':           '快速   (约 645 平台, ~20 秒)  [推荐]',
-        'mode.full':            '完整   (全部 2020 平台, ~45 秒)',
+        'mode.quick':           '快速   (约 720 平台, ~20 秒)  [推荐]',
+        'mode.full':            '完整   (全部 2067 平台, ~50 秒)',
         'mode.cn_es':           '仅中文 + 西语圈 (约 98 平台, ~6 秒)',
         'mode.code':            '仅代码平台 (约 54 平台, ~3 秒)',
         'mode.prompt':          '请选择 [1/2/3/4, 默认 1]: ',
@@ -474,6 +477,8 @@ class Color:
 # HTTP
 # ====================================================================
 DEFAULT_TIMEOUT = 10
+# Sherlock 风格的连接超时拆分：(connect=3s, read=超时秒数)
+# 快速踢死 DNS/TCP 慢的 host，让长尾尾延迟显著降低
 DEFAULT_HEADERS = {
     'User-Agent': (
         'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) '
@@ -482,11 +487,39 @@ DEFAULT_HEADERS = {
     )
 }
 
+# 每线程一个 requests.Session，连接池复用 → 大幅减少重复 host
+# 的 DNS/TCP/TLS 握手（如 *.tumblr.com / *.shopee.* / mercadolibre.*）
+_thread_local = threading.local()
 
-def safe_get(url: str, *, timeout: float = DEFAULT_TIMEOUT, **kwargs) -> Optional[requests.Response]:
-    headers = {**DEFAULT_HEADERS, **kwargs.pop('headers', {})}
+
+def _get_session() -> requests.Session:
+    s = getattr(_thread_local, 'session', None)
+    if s is None:
+        s = requests.Session()
+        s.headers.update(DEFAULT_HEADERS)
+        # pool_maxsize=64：100 workers 下不至于 pool 不够触发重建
+        adapter = requests.adapters.HTTPAdapter(
+            pool_connections=64, pool_maxsize=64, max_retries=0
+        )
+        s.mount('http://', adapter)
+        s.mount('https://', adapter)
+        _thread_local.session = s
+    return s
+
+
+def safe_get(url: str, *, timeout: float = DEFAULT_TIMEOUT, method: str = 'GET',
+             stream: bool = False, **kwargs) -> Optional[requests.Response]:
+    """带连接池复用 + 拆分超时的 HTTP 请求。
+    method='HEAD' 时跳过 body 下载 —— 仅看 status_code 的平台用得上。
+    stream=True 时调用方负责读取/关闭（用于早停 body 读）。"""
+    extra_headers = kwargs.pop('headers', None) or {}
     try:
-        return requests.get(url, timeout=timeout, headers=headers, **kwargs)
+        session = _get_session()
+        # 拆分 timeout：连接 3s 上限 + 读取 timeout 秒
+        req_timeout = (min(3.0, timeout), timeout)
+        if method.upper() == 'HEAD':
+            return session.head(url, timeout=req_timeout, headers=extra_headers, **kwargs)
+        return session.get(url, timeout=req_timeout, headers=extra_headers, stream=stream, **kwargs)
     except requests.exceptions.RequestException:
         return None
 
@@ -883,7 +916,7 @@ PLATFORMS = [
     Platform('Cherry.tv',          'https://cherry.tv/{}',                       'adult'),
     Platform('SkyPrivate',         'https://skyprivate.com/{}',                  'adult'),
     Platform('Streamate',          'https://streamate.com/cam/{}/',              'adult'),
-    Platform('CAM4',               'https://www.cam4.com/profile/{}',            'adult'),
+    # CAM4 with /profile/ path removed — duplicates 'Cam4' above (case-insensitive)
     Platform('CamSoda Models',     'https://www.camsoda.com/p/{}',               'adult'),
     Platform('Flirt4Free',         'https://www.flirt4free.com/{}/',             'adult'),
     Platform('xLoveCam',           'https://www.xlovecam.com/en/cam/{}',         'adult'),
@@ -927,8 +960,28 @@ CATEGORY_ORDER = ['code', 'social', 'forum', 'video', 'music', 'writing', 'art',
 _PLATFORMS_JSON = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'data', 'platforms.json')
 
 
+def _clean_patterns(items) -> tuple:
+    """过滤空 / 全空白 字符串模式。空 bytes pattern (`b''`) 在 `if pat in body`
+    永远为 True，会导致每次都报「找到」（伪 ★★★ 命中）—— 必须剔除。"""
+    if not items:
+        return ()
+    cleaned = []
+    for s in items:
+        if not isinstance(s, (str, bytes)):
+            continue
+        if isinstance(s, bytes):
+            if s.strip():
+                cleaned.append(s.lower())
+        else:
+            ss = s.strip()
+            if ss:
+                cleaned.append(ss.lower().encode())
+    return tuple(cleaned)
+
+
 def _load_platforms_json(path: str) -> list:
-    """从 JSON 文件加载平台定义，转换为 Platform NamedTuple。"""
+    """从 JSON 文件加载平台定义，转换为 Platform NamedTuple。
+    过滤掉空 not_found / must_contain 模式，避免假阳性。"""
     if not os.path.exists(path):
         return []
     try:
@@ -943,20 +996,34 @@ def _load_platforms_json(path: str) -> list:
                 name=item['name'],
                 url=item['url'],
                 category=item.get('category', 'other'),
-                not_found=tuple(s.lower().encode() for s in item.get('not_found', [])),
-                must_contain=tuple(s.lower().encode() for s in item.get('must_contain', [])),
+                not_found=_clean_patterns(item.get('not_found')),
+                must_contain=_clean_patterns(item.get('must_contain')),
             ))
         except (KeyError, TypeError):
             continue
     return out
 
 
+def _dedup_platforms(platforms: list) -> list:
+    """去掉名字（不区分大小写）重复的项，保留先出现的。
+    防御 curated 列表中的笔误（例如 Cam4 / CAM4 同时出现）。"""
+    seen = set()
+    out = []
+    for p in platforms:
+        key = p.name.lower().strip()
+        if not key or key in seen:
+            continue
+        seen.add(key)
+        out.append(p)
+    return out
+
+
 def _merge_platforms(curated: list, extended: list) -> list:
     """以 curated 为优先（保留我们的中文/分类），追加 extended 中名字不重复的项。"""
-    seen = {p.name.lower() for p in curated}
+    seen = {p.name.lower().strip() for p in curated}
     merged = list(curated)
     for p in extended:
-        key = p.name.lower()
+        key = p.name.lower().strip()
         if key in seen:
             continue
         seen.add(key)
@@ -965,22 +1032,46 @@ def _merge_platforms(curated: list, extended: list) -> list:
 
 
 # 合并：手工 curated（含中文/西语精选）+ data/platforms.json（Maigret + Sherlock + WhatsMyName）
-# 当前实测合并后总数 ~2020 个平台
-PLATFORMS = _merge_platforms(PLATFORMS, _load_platforms_json(_PLATFORMS_JSON))
+# 1) 先 dedup curated 自身（防笔误重复）
+# 2) 再合并 JSON 数据
+PLATFORMS = _merge_platforms(_dedup_platforms(PLATFORMS), _load_platforms_json(_PLATFORMS_JSON))
 
 
 def _check_username(platform: 'Platform', username: str, timeout: float):
     """检查单个平台是否存在该用户名。返回 (Platform, URL or None)。
-    任何 URL 模板异常（IndexError/KeyError/ValueError）都视为该平台不可用。"""
+    任何 URL 模板异常（IndexError/KeyError/ValueError）都视为该平台不可用。
+
+    优化（Sherlock-inspired）:
+    - 没有 body-级检测模式时（needs_body=False）→ HEAD 请求，跳过 body 下载
+    - 有 body 检测时 → stream=True 只读前 64 KB（绝大多数 not_found/must_contain
+      模式都在页面前半段；省下 1-5 MB 的下载和解析）
+    """
     try:
         full_url = platform.url.format(username)
     except (IndexError, KeyError, ValueError):
         # ValueError 覆盖 str.format 的格式串错误（如 '{:d}'、'{0!q}' 等）
         return platform, None
-    resp = safe_get(full_url, timeout=timeout, allow_redirects=True)
+
+    needs_body = bool(platform.not_found) or bool(platform.must_contain)
+    if not needs_body:
+        # 仅检查 status_code → HEAD 即可
+        resp = safe_get(full_url, timeout=timeout, method='HEAD', allow_redirects=True)
+        if resp is None or resp.status_code != 200:
+            return platform, None
+        return platform, full_url
+
+    # 需要 body：stream=True，只读前 64 KB
+    resp = safe_get(full_url, timeout=timeout, stream=True, allow_redirects=True)
     if resp is None or resp.status_code != 200:
+        if resp is not None:
+            resp.close()
         return platform, None
-    body = resp.content.lower()
+    try:
+        body = resp.raw.read(65536, decode_content=True).lower()
+    except Exception:
+        return platform, None
+    finally:
+        resp.close()
     # 检查「未找到」模式
     for pattern in platform.not_found:
         if pattern in body:
@@ -1038,17 +1129,21 @@ def _ask_scan_mode() -> Optional[list]:
 def track_username(username: str, *, max_workers: int = 100, timeout: float = 5,
                    show_progress: bool = True, categories: Optional[list] = None) -> dict:
     """并发扫描平台，返回 {platform_name: url_or_None}（按 PLATFORMS 顺序）。
-    - 空 username 会被拒绝以避免命中各平台主页造成误报。
+    - 空 username 返回 {'_error': ...}（与 track_ip 行为一致）。
     - 单 worker 抛任何异常不影响其它平台 —— 该平台标记 None 跳过。
     - show_progress=True 且 stderr 是 TTY 时显示进度条。
-    - categories=['code', 'chinese', ...] 只扫指定类别。None 时扫全部。"""
+    - categories=['code', 'chinese', ...] 只扫指定类别；未知类别会触发 _error。"""
     username = (username or '').strip()
     if not username:
-        return {p.name: None for p in PLATFORMS}
+        return {'_error': t('err.empty_input')}
     if max_workers < 1:
         max_workers = 1
-    # 按 category 过滤
+    # 校验 categories：未知类别返回 error 而非静默扫 0 个
     if categories:
+        unknown = [c for c in categories if c not in CATEGORY_ORDER]
+        if unknown:
+            return {'_error': t('err.unknown_category', unknown=', '.join(unknown),
+                                valid=', '.join(CATEGORY_ORDER))}
         platforms_to_scan = [p for p in PLATFORMS if p.category in categories]
     else:
         platforms_to_scan = PLATFORMS
@@ -1222,6 +1317,9 @@ def print_phone_info(data: dict) -> None:
 def print_username_results(results: dict, show_all: bool = False) -> None:
     print(f"\n {Color.Wh}========== {Color.Gr}{t('section.username')} {Color.Wh}==========")
     print()
+    if isinstance(results, dict) and '_error' in results:
+        print(f" {Color.Re}{t('err.query_failed', msg=results['_error'])}{Color.Reset}")
+        return
     found = sum(1 for v in results.values() if v)
     print(f" {Color.Wh}{t('msg.scan_summary', total=len(results), found=found)}{Color.Reset}")
     if not show_all:
@@ -1471,10 +1569,22 @@ def _maybe_save(target: Optional[str], prefix: str, data: Any) -> None:
     print(f"\n {Color.Cy}{t('msg.saved_to', path=path)}{Color.Reset}")
 
 
+def _md_escape(s: Any) -> str:
+    """转义 markdown 表格 cell：替换 `|` 和换行符，避免破坏渲染或注入伪标题。"""
+    if s is None:
+        return ''
+    return str(s).replace('|', '\\|').replace('\r', ' ').replace('\n', ' ').strip()
+
+
 def _to_markdown(prefix: str, data: Any) -> str:
-    """根据 prefix（如 'ip_8.8.8.8' / 'username_torvalds'）生成 Markdown 报告。"""
+    """根据 prefix（如 'ip_8.8.8.8' / 'username_torvalds'）生成 Markdown 报告。
+    所有用户输入字段（cmd / query / dict keys / values）都做 escape，
+    防止换行注入伪标题或 `|` 破坏表格列数。"""
     lines = []
     cmd, _, query = prefix.partition('_')
+    # query/cmd 可能含恶意换行符 → 单行化
+    cmd = _md_escape(cmd) or '?'
+    query = _md_escape(query)
     ts = time.strftime('%Y-%m-%d %H:%M:%S')
     lines.append("# 🔍 GhostTrack Report")
     lines.append("")
@@ -1501,12 +1611,12 @@ def _to_markdown(prefix: str, data: Any) -> str:
             cat_found = [(p, data[p.name]) for p in cat_pl if data[p.name]]
             if not cat_found:
                 continue
-            lines.append(f"### {cat.title()} ({len(cat_found)}/{len(cat_pl)})")
+            lines.append(f"### {_md_escape(cat.title())} ({len(cat_found)}/{len(cat_pl)})")
             lines.append("")
             lines.append("| Platform | Profile URL |")
             lines.append("|---|---|")
             for p, url in cat_found:
-                lines.append(f"| {p.name} | <{url}> |")
+                lines.append(f"| {_md_escape(p.name)} | <{_md_escape(url)}> |")
             lines.append("")
         return '\n'.join(lines)
 
@@ -1520,7 +1630,7 @@ def _to_markdown(prefix: str, data: Any) -> str:
         lines.append("")
         return '\n'.join(lines)
 
-    # 通用：扁平化 dict 为表格
+    # 通用：扁平化 dict 为表格（key 与 value 都转义）
     if isinstance(data, dict):
         lines.append(f"## {cmd.upper()} info: `{query}`")
         lines.append("")
@@ -1535,9 +1645,7 @@ def _to_markdown(prefix: str, data: Any) -> str:
                 v_str = ', '.join(str(x) for x in v)
             else:
                 v_str = str(v)
-            # 转义 markdown 表格里的 |
-            v_str = v_str.replace('|', '\\|')
-            lines.append(f"| {k} | {v_str} |")
+            lines.append(f"| {_md_escape(k)} | {_md_escape(v_str)} |")
         lines.append("")
         return '\n'.join(lines)
 
@@ -1639,7 +1747,7 @@ def build_parser() -> argparse.ArgumentParser:
     sp.add_argument('--all', action='store_true', dest='show_all',
                     help='Show all platforms incl. misses / 显示所有平台（含未命中）')
     sp.add_argument('--quick', action='store_true',
-                    help='Skip "other" long-tail (645 platforms vs 2020, ~3-4x faster) / 跳过 other 长尾，仅扫主流 645 个')
+                    help='Skip "other" long-tail (~720 platforms vs 2068, ~3-4x faster) / 跳过 other 长尾，仅扫主流 ~720 个')
     sp.add_argument('--category', dest='category_filter',
                     help='Comma-separated categories: code,social,chinese,spanish,... / 用逗号分隔的类别')
 
@@ -1690,6 +1798,9 @@ def run_cli(args: argparse.Namespace) -> int:
         cats = None
         if getattr(args, 'category_filter', None):
             cats = [c.strip() for c in args.category_filter.split(',') if c.strip()]
+            # 同时传 --quick + --category 时警告：--category 优先
+            if getattr(args, 'quick', False):
+                sys.stderr.write(f"{Color.Ye}[warn] --quick ignored when --category is set{Color.Reset}\n")
         elif getattr(args, 'quick', False):
             cats = [c for c in CATEGORY_ORDER if c != 'other']
         data = track_username(args.username, max_workers=args.workers,
@@ -1762,7 +1873,10 @@ def _batch_lookup(fn, items: list, max_workers: int = 10) -> dict:
 
 
 def _record_history(cmd: str, args: argparse.Namespace, data: Any) -> None:
-    """记录单次查询到 history.jsonl。仅记摘要不存全量，保护隐私。"""
+    """记录单次查询到 history.jsonl。仅记摘要不存全量，保护隐私。
+    所有 data 访问都防御性地处理 None / 非 dict 情况。"""
+    if not isinstance(data, dict):
+        data = {}
     summary: dict = {}
     if cmd == 'ip':
         summary = {'target': args.target, 'ok': '_error' not in data}
@@ -1771,9 +1885,8 @@ def _record_history(cmd: str, args: argparse.Namespace, data: Any) -> None:
     elif cmd == 'phone':
         summary = {'number': args.number, 'ok': '_error' not in data}
     elif cmd == 'user':
-        if isinstance(data, dict):
-            found = sum(1 for v in data.values() if v)
-            summary = {'username': args.username, 'scanned': len(data), 'found': found}
+        found = sum(1 for v in data.values() if v)
+        summary = {'username': args.username, 'scanned': len(data), 'found': found}
     elif cmd == 'whois':
         summary = {'domains': args.domains}
     elif cmd == 'mx':
