@@ -9,7 +9,7 @@
 [![CI](https://github.com/Akxan/GhostTrack-CN/actions/workflows/ci.yml/badge.svg)](https://github.com/Akxan/GhostTrack-CN/actions/workflows/ci.yml)
 [![codecov](https://codecov.io/gh/Akxan/GhostTrack-CN/branch/main/graph/badge.svg)](https://codecov.io/gh/Akxan/GhostTrack-CN)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
-[![Python](https://img.shields.io/badge/Python-3.9%2B-blue.svg?logo=python&logoColor=white)](https://www.python.org/)
+[![Python](https://img.shields.io/badge/Python-3.10%2B-blue.svg?logo=python&logoColor=white)](https://www.python.org/)
 [![Tests](https://img.shields.io/badge/tests-47%20passed-success.svg)](tests/)
 [![Platform](https://img.shields.io/badge/platform-macOS%20%7C%20Linux%20%7C%20Windows%20%7C%20Termux-lightgrey)](#-installation)
 [![PRs Welcome](https://img.shields.io/badge/PRs-welcome-brightgreen.svg)](CONTRIBUTING.md)
@@ -134,7 +134,7 @@ Designed for **security researchers, penetration testers, SOC analysts, threat h
 
 | Layer | Tech / Library | Purpose |
 |---|---|---|
-| **Language** | Python 3.9+ | Core |
+| **Language** | Python 3.10+ | Core |
 | **HTTP** | `requests` | API calls |
 | **Phone parser** | `phonenumbers` | Google's official phone number library |
 | **DNS** | `dnspython` | MX / A / AAAA queries |
@@ -274,7 +274,7 @@ pytest tests/ --cov=. --cov-report=term-missing
 
 - ✅ 47 tests, ~0.3 seconds
 - ✅ Pure functions + HTTP mocking + edge cases
-- ✅ GitHub Actions runs on macOS/Ubuntu × Python 3.9-3.12 = 8 combinations
+- ✅ GitHub Actions runs on macOS/Ubuntu × Python 3.10-3.13 = 8 combinations
 
 ---
 

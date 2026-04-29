@@ -9,7 +9,7 @@
 [![CI](https://github.com/Akxan/GhostTrack-CN/actions/workflows/ci.yml/badge.svg)](https://github.com/Akxan/GhostTrack-CN/actions/workflows/ci.yml)
 [![codecov](https://codecov.io/gh/Akxan/GhostTrack-CN/branch/main/graph/badge.svg)](https://codecov.io/gh/Akxan/GhostTrack-CN)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
-[![Python](https://img.shields.io/badge/Python-3.9%2B-blue.svg?logo=python&logoColor=white)](https://www.python.org/)
+[![Python](https://img.shields.io/badge/Python-3.10%2B-blue.svg?logo=python&logoColor=white)](https://www.python.org/)
 [![Tests](https://img.shields.io/badge/tests-47%20passed-success.svg)](tests/)
 [![Platform](https://img.shields.io/badge/platform-macOS%20%7C%20Linux%20%7C%20Windows%20%7C%20Termux-lightgrey)](#-安装)
 [![PRs Welcome](https://img.shields.io/badge/PRs-welcome-brightgreen.svg)](CONTRIBUTING.md)
@@ -136,7 +136,7 @@
 
 | 类别 | 技术 / 库 | 用途 |
 |---|---|---|
-| **语言** | Python 3.9+ | 主语言 |
+| **语言** | Python 3.10+ | 主语言 |
 | **HTTP** | `requests` | API 调用 |
 | **电话解析** | `phonenumbers` | Google 官方电话号码库 |
 | **DNS** | `dnspython` | MX / A / AAAA 记录查询 |
@@ -312,7 +312,7 @@ pytest tests/ --cov=. --cov-report=term-missing
 当前测试覆盖：
 - ✅ 47 个测试，0.3 秒跑完
 - ✅ 覆盖纯函数 + HTTP mock + 边界条件
-- ✅ GitHub Actions 在 macOS / Ubuntu × Python 3.9-3.12 共 8 种组合自动测试
+- ✅ GitHub Actions 在 macOS / Ubuntu × Python 3.10-3.13 共 8 种组合自动测试
 
 ---
 

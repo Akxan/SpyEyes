@@ -31,7 +31,7 @@ This project adheres to [Keep a Changelog](https://keepachangelog.com/en/1.1.0/)
 - **JSON 输出**（`--json`）：方便管道处理与脚本集成
 - **结果保存**（`--save DIR`）：自动落盘为 `<功能>_<时间戳>.json`
 - **国家中文映射表**：180+ 国家/地区，IP 显示中文国名
-- **47 个 pytest 单元测试** + GitHub Actions CI（macOS/Ubuntu × Python 3.9-3.12）
+- **47 个 pytest 单元测试** + GitHub Actions CI（macOS/Ubuntu × Python 3.10-3.13）
 - **MIT License、CONTRIBUTING.md、SECURITY.md、CHANGELOG.md**
 - **English README** + 双语切换
 - **Issue / PR 模板**、Dependabot 自动更新
