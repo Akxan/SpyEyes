@@ -1,20 +1,10 @@
 #!/usr/bin/env python3
-# << CODE BY HUNX04 (中文重构版)
+# << CODE BY HUNX04 (中文/英文双语版 · Bilingual Edition)
 # << 原作者 https://github.com/HunxByts/GhostTrack
 
 """
-GhostTrack —— OSINT 信息查询工具（中文版）
-
-功能：
-  * IP 地址归属查询（IPv4 / IPv6，含国家中文名）
-  * 本机出口 IP 查询
-  * 电话号码解析（归属地 / 运营商 / 时区，全中文）
-  * 用户名社交平台扫描（并发，含内容关键词检测）
-  * 域名 WHOIS 查询
-  * 域名 MX 记录查询
-  * 邮箱有效性验证（格式 + MX 检查）
-
-支持交互式菜单 与 命令行参数 两种使用方式，可选 JSON 输出与结果保存。
+GhostTrack-CN —— OSINT 信息查询工具（中英双语）
+GhostTrack-CN —— OSINT Toolkit (Bilingual: Chinese / English)
 """
 
 import argparse
@@ -45,7 +35,322 @@ except ImportError:
 
 
 # ====================================================================
-# 颜色配置：自动检测终端，是否为 TTY 决定是否输出 ANSI 转义
+# CONFIG —— 用户偏好持久化（语言等）
+# ====================================================================
+CONFIG_DIR = os.path.expanduser('~/.ghosttrack')
+CONFIG_FILE = os.path.join(CONFIG_DIR, 'config.json')
+
+
+def load_config() -> dict:
+    try:
+        with open(CONFIG_FILE, 'r', encoding='utf-8') as f:
+            return json.load(f)
+    except (FileNotFoundError, json.JSONDecodeError, OSError):
+        return {}
+
+
+def save_config(cfg: dict) -> None:
+    try:
+        os.makedirs(CONFIG_DIR, exist_ok=True)
+        with open(CONFIG_FILE, 'w', encoding='utf-8') as f:
+            json.dump(cfg, f, ensure_ascii=False, indent=2)
+    except OSError:
+        pass
+
+
+# ====================================================================
+# I18N —— 中英文双语翻译系统
+# ====================================================================
+TRANSLATIONS: dict = {
+    'en': {
+        # Menu
+        'menu.ip_track':        'IP Tracker',
+        'menu.my_ip':           'My Public IP',
+        'menu.phone':           'Phone Number Tracker',
+        'menu.username':        'Username Scanner',
+        'menu.whois':           'Domain WHOIS Lookup',
+        'menu.mx':              'Domain MX Records',
+        'menu.email':           'Email Validator',
+        'menu.lang':            'Language / 语言',
+        'menu.exit':            'Exit',
+        # Prompts
+        'prompt.select_option': 'Select option : ',
+        'prompt.input_ip':      'Enter target IP : ',
+        'prompt.input_phone':   'Enter phone number e.g. [+12025550100] : ',
+        'prompt.input_username':'Enter username : ',
+        'prompt.input_domain':  'Enter domain : ',
+        'prompt.input_email':   'Enter email : ',
+        'prompt.press_enter':   'Press Enter to continue',
+        'prompt.input_number':  'Please enter a number',
+        'prompt.unknown_option':'Unknown option: {n}',
+        'prompt.bye':           'Goodbye!',
+        'prompt.interrupted':   'Interrupted',
+        'prompt.exited':        'Exited',
+        # Language picker
+        'lang.title':           'Please select language / 请选择语言:',
+        'lang.zh':              '中文 (Chinese)',
+        'lang.en':              'English (英文)',
+        'lang.cancel':          'Back / 返回',
+        'lang.changed':         'Language switched to English',
+        # Section headers
+        'section.ip':           'IP Address Info',
+        'section.my_ip':        'My IP Info',
+        'section.phone':        'Phone Number Info',
+        'section.username':     'Username Scan Results',
+        'section.whois':        'WHOIS Lookup',
+        'section.mx':           'MX Records',
+        'section.email':        'Email Validity',
+        # IP fields
+        'field.target_ip':      'Target IP',
+        'field.ip_type':        'IP Type',
+        'field.country':        'Country',
+        'field.country_code':   'Country Code',
+        'field.city':           'City',
+        'field.continent':      'Continent',
+        'field.region':         'Region',
+        'field.latitude':       'Latitude',
+        'field.longitude':      'Longitude',
+        'field.maps':           'Google Maps',
+        'field.is_eu':          'Is EU',
+        'field.postal':         'Postal',
+        'field.calling_code':   'Calling Code',
+        'field.capital':        'Capital',
+        'field.flag':           'Flag',
+        'field.asn':            'ASN',
+        'field.org':            'Organization',
+        'field.isp':            'ISP',
+        'field.domain':         'Domain',
+        'field.timezone_id':    'Timezone ID',
+        'field.timezone_abbr':  'Timezone Abbr',
+        'field.utc_offset':     'UTC Offset',
+        # Phone fields
+        'field.location':       'Location',
+        'field.region':         'Region',
+        'field.region_code':    'Region Code',
+        'field.timezone':       'Timezone',
+        'field.carrier':        'Carrier',
+        'field.is_valid':       'Valid Number',
+        'field.is_possible':    'Possible Number',
+        'field.intl_format':    'International Format',
+        'field.mobile_dial':    'Mobile Dial Format',
+        'field.original_num':   'Original Number',
+        'field.e164_format':    'E.164 Format',
+        'field.local_num':      'Local Number',
+        'field.number_type':    'Number Type',
+        # Phone types
+        'phone.mobile':         'Mobile phone',
+        'phone.fixed':          'Fixed-line phone',
+        'phone.fixed_or_mobile':'Fixed or mobile',
+        'phone.toll_free':      'Toll-free',
+        'phone.premium':        'Premium-rate',
+        'phone.shared_cost':    'Shared-cost',
+        'phone.voip':           'VoIP',
+        'phone.personal':       'Personal number',
+        'phone.pager':          'Pager',
+        'phone.uan':            'Universal Access Number',
+        'phone.voicemail':      'Voicemail',
+        'phone.unknown':        'Unknown',
+        'phone.other':          'Other type',
+        # WHOIS fields
+        'field.whois_domain':   'Domain',
+        'field.registrar':      'Registrar',
+        'field.creation_date':  'Created',
+        'field.expiration_date':'Expires',
+        'field.updated_date':   'Updated',
+        'field.name_servers':   'Name Servers',
+        'field.status':         'Status',
+        'field.emails':         'Emails',
+        'field.whois_org':      'Organization',
+        'field.whois_country':  'Country',
+        # MX / Email
+        'field.mx_domain':      'Domain',
+        'field.priority':       'Priority',
+        'field.email':          'Email',
+        'field.syntax_valid':   'Format valid',
+        'field.mx_valid':       'MX valid',
+        # Misc messages
+        'msg.your_ip':          'Your IP address',
+        'msg.scan_summary':     'Scanned {total} platforms, found {found}:',
+        'msg.not_found':        'Not found',
+        'msg.unknown':          '(unknown)',
+        'msg.none':             '(none)',
+        'msg.saved_to':         '[ Saved to {path} ]',
+        'msg.network_failed':   'Query failed, please check network',
+        'msg.scanning':         'Scanning {n} platforms in parallel...',
+        # Errors
+        'err.network':          'Network request failed (timeout or connection error)',
+        'err.non_json':         'API returned non-JSON response',
+        'err.unknown_api':      'Unknown API error',
+        'err.parse_phone':      'Phone parse failed: {e}',
+        'err.no_dns':           'Requires dnspython: pip install dnspython',
+        'err.no_whois':         'Requires python-whois: pip install python-whois',
+        'err.whois_failed':     'WHOIS lookup failed: {e}',
+        'err.dns_failed':       'DNS lookup failed: {e}',
+        'err.nxdomain':         'Domain does not exist: {domain}',
+        'err.no_mx':            '{domain} has no MX records',
+        'err.email_format':     'Invalid email format',
+        'err.query_failed':     'Query failed: {msg}',
+    },
+    'zh': {
+        'menu.ip_track':        'IP 追踪',
+        'menu.my_ip':           '查看本机 IP',
+        'menu.phone':           '电话号码追踪',
+        'menu.username':        '用户名追踪',
+        'menu.whois':           '域名 WHOIS 查询',
+        'menu.mx':              '域名 MX 记录',
+        'menu.email':           '邮箱有效性检查',
+        'menu.lang':            '切换语言 / Language',
+        'menu.exit':            '退出',
+        'prompt.select_option': '请选择功能 : ',
+        'prompt.input_ip':      '请输入目标 IP : ',
+        'prompt.input_phone':   '请输入电话号码 例如 [+8613800138000] : ',
+        'prompt.input_username':'请输入用户名 : ',
+        'prompt.input_domain':  '请输入域名 : ',
+        'prompt.input_email':   '请输入邮箱 : ',
+        'prompt.press_enter':   '按回车键继续',
+        'prompt.input_number':  '请输入数字',
+        'prompt.unknown_option':'未知选项：{n}',
+        'prompt.bye':           '再见！',
+        'prompt.interrupted':   '已中断',
+        'prompt.exited':        '已退出',
+        'lang.title':           '请选择语言 / Please select language:',
+        'lang.zh':              '中文 (Chinese)',
+        'lang.en':              'English (英文)',
+        'lang.cancel':          '返回 / Back',
+        'lang.changed':         '已切换为中文',
+        'section.ip':           'IP 地址信息',
+        'section.my_ip':        '本机 IP 信息',
+        'section.phone':        '电话号码信息',
+        'section.username':     '用户名扫描结果',
+        'section.whois':        'WHOIS 查询',
+        'section.mx':           'MX 记录',
+        'section.email':        '邮箱有效性',
+        'field.target_ip':      '目标 IP',
+        'field.ip_type':        'IP 类型',
+        'field.country':        '国家',
+        'field.country_code':   '国家代码',
+        'field.city':           '城市',
+        'field.continent':      '大洲',
+        'field.region':         '地区',
+        'field.latitude':       '纬度',
+        'field.longitude':      '经度',
+        'field.maps':           '谷歌地图',
+        'field.is_eu':          '是否欧盟',
+        'field.postal':         '邮编',
+        'field.calling_code':   '国际区号',
+        'field.capital':        '首都',
+        'field.flag':           '国旗',
+        'field.asn':            'ASN',
+        'field.org':            '组织',
+        'field.isp':            'ISP',
+        'field.domain':         '域名',
+        'field.timezone_id':    '时区 ID',
+        'field.timezone_abbr':  '时区缩写',
+        'field.utc_offset':     'UTC 偏移',
+        'field.location':       '归属地',
+        'field.region_code':    '地区代码',
+        'field.timezone':       '时区',
+        'field.carrier':        '运营商',
+        'field.is_valid':       '是否有效号码',
+        'field.is_possible':    '是否可能号码',
+        'field.intl_format':    '国际格式',
+        'field.mobile_dial':    '移动拨号格式',
+        'field.original_num':   '原始号码',
+        'field.e164_format':    'E.164 格式',
+        'field.local_num':      '本地号码',
+        'field.number_type':    '号码类型',
+        'phone.mobile':         '移动电话',
+        'phone.fixed':          '固定电话',
+        'phone.fixed_or_mobile':'固定/移动电话',
+        'phone.toll_free':      '免费电话',
+        'phone.premium':        '付费电话',
+        'phone.shared_cost':    '共享费用电话',
+        'phone.voip':           'VoIP',
+        'phone.personal':       '个人号码',
+        'phone.pager':          '寻呼机',
+        'phone.uan':            '通用接入号',
+        'phone.voicemail':      '语音信箱',
+        'phone.unknown':        '未知',
+        'phone.other':          '其他类型',
+        'field.whois_domain':   '域名',
+        'field.registrar':      '注册商',
+        'field.creation_date':  '创建日期',
+        'field.expiration_date':'到期日期',
+        'field.updated_date':   '更新日期',
+        'field.name_servers':   'DNS 服务器',
+        'field.status':         '状态',
+        'field.emails':         '邮箱',
+        'field.whois_org':      '注册组织',
+        'field.whois_country':  '国家',
+        'field.mx_domain':      '域名',
+        'field.priority':       '优先级',
+        'field.email':          '邮箱',
+        'field.syntax_valid':   '格式合法',
+        'field.mx_valid':       'MX 有效',
+        'msg.your_ip':          '你的 IP 地址',
+        'msg.scan_summary':     '共扫描 {total} 个平台，命中 {found} 个：',
+        'msg.not_found':        '未找到',
+        'msg.unknown':          '(未知)',
+        'msg.none':             '(无)',
+        'msg.saved_to':         '[ 已保存到 {path} ]',
+        'msg.network_failed':   '查询失败，请检查网络',
+        'msg.scanning':         '正在并发扫描 {n} 个平台...',
+        'err.network':          '网络请求失败（超时或连接错误）',
+        'err.non_json':         'API 返回了非 JSON 响应',
+        'err.unknown_api':      '未知 API 错误',
+        'err.parse_phone':      '号码解析失败：{e}',
+        'err.no_dns':           '需要安装 dnspython：pip install dnspython',
+        'err.no_whois':         '需要安装 python-whois：pip install python-whois',
+        'err.whois_failed':     'WHOIS 查询失败：{e}',
+        'err.dns_failed':       'DNS 查询失败：{e}',
+        'err.nxdomain':         '域名不存在：{domain}',
+        'err.no_mx':            '{domain} 没有 MX 记录',
+        'err.email_format':     '邮箱格式不合法',
+        'err.query_failed':     '查询失败：{msg}',
+    },
+}
+
+_lang = 'zh'  # 当前语言，由 set_lang() 修改
+
+
+def detect_lang() -> str:
+    """根据系统环境自动判定默认语言。"""
+    val = (os.environ.get('GHOSTTRACK_LANG')
+           or os.environ.get('LC_ALL')
+           or os.environ.get('LANG')
+           or '').lower()
+    if val.startswith('zh'):
+        return 'zh'
+    return 'en'
+
+
+def set_lang(lang: str) -> None:
+    """切换当前语言。"""
+    global _lang
+    if lang in TRANSLATIONS:
+        _lang = lang
+
+
+def get_lang() -> str:
+    return _lang
+
+
+def t(key: str, **kwargs: Any) -> str:
+    """翻译查找。找不到 key 时回退英文，再回退原 key。"""
+    table = TRANSLATIONS.get(_lang, TRANSLATIONS['en'])
+    s = table.get(key)
+    if s is None:
+        s = TRANSLATIONS['en'].get(key, key)
+    if kwargs:
+        try:
+            s = s.format(**kwargs)
+        except (KeyError, IndexError, ValueError):
+            pass
+    return s
+
+
+# ====================================================================
+# 颜色配置：自动检测 TTY
 # ====================================================================
 def _supports_color() -> bool:
     if not sys.stdout.isatty():
@@ -78,7 +383,7 @@ class Color:
 
 
 # ====================================================================
-# HTTP 配置
+# HTTP
 # ====================================================================
 DEFAULT_TIMEOUT = 10
 DEFAULT_HEADERS = {
@@ -91,7 +396,6 @@ DEFAULT_HEADERS = {
 
 
 def safe_get(url: str, *, timeout: float = DEFAULT_TIMEOUT, **kwargs) -> Optional[requests.Response]:
-    """带超时和默认 User-Agent 的 GET，网络异常时返回 None。"""
     headers = {**DEFAULT_HEADERS, **kwargs.pop('headers', {})}
     try:
         return requests.get(url, timeout=timeout, headers=headers, **kwargs)
@@ -100,7 +404,7 @@ def safe_get(url: str, *, timeout: float = DEFAULT_TIMEOUT, **kwargs) -> Optiona
 
 
 # ====================================================================
-# 国家代码 → 中文名（覆盖 ~180 个常用国家/地区）
+# 国家代码 → 中文名（仅 zh 模式下使用，180+ 国家/地区）
 # ====================================================================
 COUNTRY_ZH = {
     'AD': '安道尔', 'AE': '阿联酋', 'AF': '阿富汗', 'AG': '安提瓜和巴布达', 'AI': '安圭拉',
@@ -147,16 +451,24 @@ COUNTRY_ZH = {
 
 
 def country_zh(code: Optional[str], fallback: str = '') -> str:
+    """中文国家名查表。en 模式下应直接用 API 的英文。"""
     if not code:
         return fallback
     return COUNTRY_ZH.get(code.upper(), fallback)
+
+
+def localized_country(code: Optional[str], en_name: str) -> str:
+    """根据当前语言返回本地化的国家名。"""
+    if _lang == 'zh':
+        zh = country_zh(code, '')
+        return f"{zh} ({en_name})" if zh else en_name
+    return en_name or t('msg.unknown')
 
 
 # ====================================================================
 # 通用打印工具
 # ====================================================================
 def display_width(s: str) -> int:
-    """估算字符串在等宽终端中的视觉宽度，CJK / 全角字符按 2 计。"""
     width = 0
     for ch in s:
         cp = ord(ch)
@@ -170,8 +482,7 @@ def display_width(s: str) -> int:
     return width
 
 
-def print_field(label: str, value: Any, *, width: int = 16, indent: str = ' ') -> None:
-    """对齐打印「字段名 : 值」，根据中文显示宽度自动补齐空格。"""
+def print_field(label: str, value: Any, *, width: int = 20, indent: str = ' ') -> None:
     pad = max(0, width - display_width(label))
     display_value = '' if value is None else value
     print(f"{indent}{Color.Wh}{label}{' ' * pad} :{Color.Gr} {display_value}{Color.Reset}")
@@ -190,13 +501,13 @@ def clear_screen() -> None:
 def track_ip(ip: str) -> dict:
     resp = safe_get(f"https://ipwho.is/{ip}")
     if resp is None:
-        return {'_error': '网络请求失败（超时或连接错误）'}
+        return {'_error': t('err.network')}
     try:
         data = resp.json()
     except ValueError:
-        return {'_error': 'API 返回了非 JSON 响应'}
+        return {'_error': t('err.non_json')}
     if data.get('success') is False:
-        return {'_error': data.get('message', '未知 API 错误')}
+        return {'_error': data.get('message', t('err.unknown_api'))}
     return data
 
 
@@ -210,19 +521,19 @@ def show_my_ip() -> Optional[str]:
 # ====================================================================
 # 核心查询：电话号码
 # ====================================================================
-_PHONE_TYPE_ZH = {
-    phonenumbers.PhoneNumberType.MOBILE:               '移动电话',
-    phonenumbers.PhoneNumberType.FIXED_LINE:           '固定电话',
-    phonenumbers.PhoneNumberType.FIXED_LINE_OR_MOBILE: '固定/移动电话',
-    phonenumbers.PhoneNumberType.TOLL_FREE:            '免费电话',
-    phonenumbers.PhoneNumberType.PREMIUM_RATE:         '付费电话',
-    phonenumbers.PhoneNumberType.SHARED_COST:          '共享费用电话',
-    phonenumbers.PhoneNumberType.VOIP:                 'VoIP',
-    phonenumbers.PhoneNumberType.PERSONAL_NUMBER:      '个人号码',
-    phonenumbers.PhoneNumberType.PAGER:                '寻呼机',
-    phonenumbers.PhoneNumberType.UAN:                  '通用接入号',
-    phonenumbers.PhoneNumberType.VOICEMAIL:            '语音信箱',
-    phonenumbers.PhoneNumberType.UNKNOWN:              '未知',
+_PHONE_TYPE_KEY = {
+    phonenumbers.PhoneNumberType.MOBILE:               'phone.mobile',
+    phonenumbers.PhoneNumberType.FIXED_LINE:           'phone.fixed',
+    phonenumbers.PhoneNumberType.FIXED_LINE_OR_MOBILE: 'phone.fixed_or_mobile',
+    phonenumbers.PhoneNumberType.TOLL_FREE:            'phone.toll_free',
+    phonenumbers.PhoneNumberType.PREMIUM_RATE:         'phone.premium',
+    phonenumbers.PhoneNumberType.SHARED_COST:          'phone.shared_cost',
+    phonenumbers.PhoneNumberType.VOIP:                 'phone.voip',
+    phonenumbers.PhoneNumberType.PERSONAL_NUMBER:      'phone.personal',
+    phonenumbers.PhoneNumberType.PAGER:                'phone.pager',
+    phonenumbers.PhoneNumberType.UAN:                  'phone.uan',
+    phonenumbers.PhoneNumberType.VOICEMAIL:            'phone.voicemail',
+    phonenumbers.PhoneNumberType.UNKNOWN:              'phone.unknown',
 }
 
 
@@ -230,13 +541,14 @@ def track_phone(number: str, default_region: str = 'CN') -> dict:
     try:
         parsed = phonenumbers.parse(number, default_region)
     except NumberParseException as e:
-        return {'_error': f'号码解析失败：{e}'}
+        return {'_error': t('err.parse_phone', e=e)}
 
+    lib_lang = 'zh' if _lang == 'zh' else 'en'
     return {
-        'location':      geocoder.description_for_number(parsed, 'zh') or '(未知)',
-        'region_code':   phonenumbers.region_code_for_number(parsed) or '(未知)',
-        'timezones':     ', '.join(timezone.time_zones_for_number(parsed)) or '(未知)',
-        'carrier':       carrier.name_for_number(parsed, 'zh') or '(未知)',
+        'location':      geocoder.description_for_number(parsed, lib_lang) or t('msg.unknown'),
+        'region_code':   phonenumbers.region_code_for_number(parsed) or t('msg.unknown'),
+        'timezones':     ', '.join(timezone.time_zones_for_number(parsed)) or t('msg.unknown'),
+        'carrier':       carrier.name_for_number(parsed, lib_lang) or t('msg.unknown'),
         'is_valid':      phonenumbers.is_valid_number(parsed),
         'is_possible':   phonenumbers.is_possible_number(parsed),
         'international': phonenumbers.format_number(parsed, phonenumbers.PhoneNumberFormat.INTERNATIONAL),
@@ -244,12 +556,12 @@ def track_phone(number: str, default_region: str = 'CN') -> dict:
         'national':      parsed.national_number,
         'e164':          phonenumbers.format_number(parsed, phonenumbers.PhoneNumberFormat.E164),
         'country_code':  parsed.country_code,
-        'number_type':   _PHONE_TYPE_ZH.get(phonenumbers.number_type(parsed), '其他类型'),
+        'number_type':   t(_PHONE_TYPE_KEY.get(phonenumbers.number_type(parsed), 'phone.other')),
     }
 
 
 # ====================================================================
-# 核心查询：用户名扫描（并发 + 内容关键词检测）
+# 核心查询：用户名扫描
 # ====================================================================
 SOCIAL_PLATFORMS = [
     ('Facebook',     'https://www.facebook.com/{}'),
@@ -288,7 +600,7 @@ NOT_FOUND_PATTERNS = {
 }
 
 
-def _check_username(name: str, url_template: str, username: str, timeout: float) -> tuple:
+def _check_username(name: str, url_template: str, username: str, timeout: float):
     full_url = url_template.format(username)
     resp = safe_get(full_url, timeout=timeout, allow_redirects=True)
     if resp is None or resp.status_code != 200:
@@ -318,11 +630,11 @@ def track_username(username: str, *, max_workers: int = 10, timeout: float = 8) 
 # ====================================================================
 def whois_lookup(domain: str) -> dict:
     if not HAS_WHOIS:
-        return {'_error': '需要安装 python-whois：pip install python-whois'}
+        return {'_error': t('err.no_whois')}
     try:
         w = whois.whois(domain)
     except Exception as e:
-        return {'_error': f'WHOIS 查询失败：{e}'}
+        return {'_error': t('err.whois_failed', e=e)}
     return {
         'domain':          w.domain_name,
         'registrar':       w.registrar,
@@ -339,15 +651,15 @@ def whois_lookup(domain: str) -> dict:
 
 def mx_lookup(domain: str) -> dict:
     if not HAS_DNS:
-        return {'_error': '需要安装 dnspython：pip install dnspython'}
+        return {'_error': t('err.no_dns')}
     try:
         answers = dns.resolver.resolve(domain, 'MX')
     except dns.resolver.NXDOMAIN:
-        return {'_error': f'域名不存在：{domain}'}
+        return {'_error': t('err.nxdomain', domain=domain)}
     except dns.resolver.NoAnswer:
-        return {'_error': f'{domain} 没有 MX 记录'}
+        return {'_error': t('err.no_mx', domain=domain)}
     except Exception as e:
-        return {'_error': f'DNS 查询失败：{e}'}
+        return {'_error': t('err.dns_failed', e=e)}
     records = sorted(
         [{'preference': r.preference, 'exchange': str(r.exchange).rstrip('.')} for r in answers],
         key=lambda r: r['preference'],
@@ -361,7 +673,7 @@ EMAIL_RE = re.compile(r'^[A-Za-z0-9._%+-]+@([A-Za-z0-9.-]+\.[A-Za-z]{2,})$')
 def email_validate(email: str) -> dict:
     m = EMAIL_RE.match(email)
     if not m:
-        return {'email': email, 'syntax_valid': False, '_error': '邮箱格式不合法'}
+        return {'email': email, 'syntax_valid': False, '_error': t('err.email_format')}
     domain = m.group(1)
     result: dict = {'email': email, 'syntax_valid': True, 'domain': domain}
     mx = mx_lookup(domain)
@@ -390,159 +702,211 @@ def print_banner() -> None:
 
 
 def print_ip_info(ip: str, data: dict) -> None:
-    print(f"\n {Color.Wh}============= {Color.Gr}IP 地址信息 {Color.Wh}=============")
+    print(f"\n {Color.Wh}============= {Color.Gr}{t('section.ip')} {Color.Wh}=============")
     print()
     if '_error' in data:
-        print(f" {Color.Re}查询失败：{data['_error']}{Color.Reset}")
+        print(f" {Color.Re}{t('err.query_failed', msg=data['_error'])}{Color.Reset}")
         return
-    cn_name = country_zh(data.get('country_code'), '')
-    country_display = f"{cn_name} ({data.get('country', '')})" if cn_name else data.get('country', '')
-    print_field('目标 IP',  ip)
-    print_field('IP 类型',  data.get('type'))
-    print_field('国家',     country_display)
-    print_field('国家代码', data.get('country_code'))
-    print_field('城市',     data.get('city'))
-    print_field('大洲',     data.get('continent'))
-    print_field('地区',     data.get('region'))
-    print_field('纬度',     data.get('latitude'))
-    print_field('经度',     data.get('longitude'))
+    print_field(t('field.target_ip'),    ip)
+    print_field(t('field.ip_type'),      data.get('type'))
+    print_field(t('field.country'),      localized_country(data.get('country_code'), data.get('country', '')))
+    print_field(t('field.country_code'), data.get('country_code'))
+    print_field(t('field.city'),         data.get('city'))
+    print_field(t('field.continent'),    data.get('continent'))
+    print_field(t('field.region'),       data.get('region'))
+    print_field(t('field.latitude'),     data.get('latitude'))
+    print_field(t('field.longitude'),    data.get('longitude'))
     try:
         lat = float(data['latitude'])
         lon = float(data['longitude'])
-        print_field('谷歌地图', f"https://www.google.com/maps/@{lat},{lon},8z")
+        print_field(t('field.maps'), f"https://www.google.com/maps/@{lat},{lon},8z")
     except (KeyError, TypeError, ValueError):
         pass
-    print_field('是否欧盟', data.get('is_eu'))
-    print_field('邮编',     data.get('postal'))
-    print_field('国际区号', data.get('calling_code'))
-    print_field('首都',     data.get('capital'))
+    print_field(t('field.is_eu'),         data.get('is_eu'))
+    print_field(t('field.postal'),        data.get('postal'))
+    print_field(t('field.calling_code'),  data.get('calling_code'))
+    print_field(t('field.capital'),       data.get('capital'))
     flag = data.get('flag') or {}
-    print_field('国旗',     flag.get('emoji', ''))
+    print_field(t('field.flag'),          flag.get('emoji', ''))
     conn = data.get('connection') or {}
-    print_field('ASN',      conn.get('asn'))
-    print_field('组织',     conn.get('org'))
-    print_field('ISP',      conn.get('isp'))
-    print_field('域名',     conn.get('domain'))
+    print_field(t('field.asn'),           conn.get('asn'))
+    print_field(t('field.org'),           conn.get('org'))
+    print_field(t('field.isp'),           conn.get('isp'))
+    print_field(t('field.domain'),        conn.get('domain'))
     tz = data.get('timezone') or {}
-    print_field('时区 ID',  tz.get('id'))
-    print_field('时区缩写', tz.get('abbr'))
-    print_field('UTC 偏移', tz.get('utc'))
+    print_field(t('field.timezone_id'),   tz.get('id'))
+    print_field(t('field.timezone_abbr'), tz.get('abbr'))
+    print_field(t('field.utc_offset'),    tz.get('utc'))
 
 
 def print_my_ip(ip: Optional[str]) -> None:
-    print(f"\n {Color.Wh}========== {Color.Gr}本机 IP 信息 {Color.Wh}==========")
+    print(f"\n {Color.Wh}========== {Color.Gr}{t('section.my_ip')} {Color.Wh}==========")
     if ip is None:
-        print(f"\n {Color.Re}查询失败，请检查网络{Color.Reset}")
+        print(f"\n {Color.Re}{t('msg.network_failed')}{Color.Reset}")
     else:
-        print(f"\n {Color.Wh}[{Color.Gr} + {Color.Wh}] 你的 IP 地址 : {Color.Gr}{ip}{Color.Reset}")
+        print(f"\n {Color.Wh}[{Color.Gr} + {Color.Wh}] {t('msg.your_ip')} : {Color.Gr}{ip}{Color.Reset}")
     print(f"\n {Color.Wh}=========================================={Color.Reset}")
 
 
 def print_phone_info(data: dict) -> None:
-    print(f"\n {Color.Wh}========== {Color.Gr}电话号码信息 {Color.Wh}==========")
+    print(f"\n {Color.Wh}========== {Color.Gr}{t('section.phone')} {Color.Wh}==========")
     print()
     if '_error' in data:
         print(f" {Color.Re}{data['_error']}{Color.Reset}")
         return
-    print_field('归属地',         data['location'],      width=18)
-    print_field('地区代码',       data['region_code'],   width=18)
-    print_field('时区',           data['timezones'],     width=18)
-    print_field('运营商',         data['carrier'],       width=18)
-    print_field('是否有效号码',   data['is_valid'],      width=18)
-    print_field('是否可能号码',   data['is_possible'],   width=18)
-    print_field('国际格式',       data['international'], width=18)
-    print_field('移动拨号格式',   data['mobile_dial'],   width=18)
-    print_field('原始号码',       data['national'],      width=18)
-    print_field('E.164 格式',     data['e164'],          width=18)
-    print_field('国家代码',       data['country_code'],  width=18)
-    print_field('号码类型',       data['number_type'],   width=18)
+    print_field(t('field.location'),       data['location'],      width=22)
+    print_field(t('field.region_code'),    data['region_code'],   width=22)
+    print_field(t('field.timezone'),       data['timezones'],     width=22)
+    print_field(t('field.carrier'),        data['carrier'],       width=22)
+    print_field(t('field.is_valid'),       data['is_valid'],      width=22)
+    print_field(t('field.is_possible'),    data['is_possible'],   width=22)
+    print_field(t('field.intl_format'),    data['international'], width=22)
+    print_field(t('field.mobile_dial'),    data['mobile_dial'],   width=22)
+    print_field(t('field.original_num'),   data['national'],      width=22)
+    print_field(t('field.e164_format'),    data['e164'],          width=22)
+    print_field(t('field.country_code'),   data['country_code'],  width=22)
+    print_field(t('field.number_type'),    data['number_type'],   width=22)
 
 
 def print_username_results(results: dict) -> None:
-    print(f"\n {Color.Wh}========== {Color.Gr}用户名扫描结果 {Color.Wh}==========")
+    print(f"\n {Color.Wh}========== {Color.Gr}{t('section.username')} {Color.Wh}==========")
     print()
     found = sum(1 for v in results.values() if v)
-    print(f" {Color.Wh}共扫描 {len(results)} 个平台，命中 {Color.Gr}{found}{Color.Wh} 个：{Color.Reset}\n")
+    print(f" {Color.Wh}{t('msg.scan_summary', total=len(results), found=found)}{Color.Reset}\n")
     for site, url in results.items():
         if url:
             print(f" {Color.Wh}[ {Color.Gr}+ {Color.Wh}] {site:14}: {Color.Gr}{url}{Color.Reset}")
         else:
-            print(f" {Color.Wh}[ {Color.Re}- {Color.Wh}] {site:14}: {Color.Ye}未找到{Color.Reset}")
+            print(f" {Color.Wh}[ {Color.Re}- {Color.Wh}] {site:14}: {Color.Ye}{t('msg.not_found')}{Color.Reset}")
 
 
 def print_whois(data: dict) -> None:
-    print(f"\n {Color.Wh}========== {Color.Gr}WHOIS 查询 {Color.Wh}==========")
+    print(f"\n {Color.Wh}========== {Color.Gr}{t('section.whois')} {Color.Wh}==========")
     print()
     if '_error' in data:
         print(f" {Color.Re}{data['_error']}{Color.Reset}")
         return
-    label_zh = {
-        'domain': '域名', 'registrar': '注册商', 'creation_date': '创建日期',
-        'expiration_date': '到期日期', 'updated_date': '更新日期',
-        'name_servers': 'DNS 服务器', 'status': '状态', 'emails': '邮箱',
-        'org': '注册组织', 'country': '国家',
-    }
-    for key, label in label_zh.items():
+    field_keys = [
+        ('domain',          'field.whois_domain'),
+        ('registrar',       'field.registrar'),
+        ('creation_date',   'field.creation_date'),
+        ('expiration_date', 'field.expiration_date'),
+        ('updated_date',    'field.updated_date'),
+        ('name_servers',    'field.name_servers'),
+        ('status',          'field.status'),
+        ('emails',          'field.emails'),
+        ('org',             'field.whois_org'),
+        ('country',         'field.whois_country'),
+    ]
+    for key, label_key in field_keys:
         value = data.get(key)
         if isinstance(value, (list, tuple, set)):
             value = ', '.join(str(v) for v in value)
-        print_field(label, value if value is not None else '(无)', width=14)
+        print_field(t(label_key), value if value is not None else t('msg.none'), width=18)
 
 
 def print_mx(data: dict) -> None:
-    print(f"\n {Color.Wh}========== {Color.Gr}MX 记录 {Color.Wh}==========")
+    print(f"\n {Color.Wh}========== {Color.Gr}{t('section.mx')} {Color.Wh}==========")
     print()
     if '_error' in data:
         print(f" {Color.Re}{data['_error']}{Color.Reset}")
         return
-    print_field('域名', data['domain'], width=10)
+    print_field(t('field.mx_domain'), data['domain'], width=12)
     print()
     for r in data['records']:
-        print(f"  {Color.Wh}优先级 {r['preference']:>4}  →  {Color.Gr}{r['exchange']}{Color.Reset}")
+        print(f"  {Color.Wh}{t('field.priority')} {r['preference']:>4}  →  {Color.Gr}{r['exchange']}{Color.Reset}")
 
 
 def print_email(result: dict) -> None:
-    print(f"\n {Color.Wh}========== {Color.Gr}邮箱有效性 {Color.Wh}==========")
+    print(f"\n {Color.Wh}========== {Color.Gr}{t('section.email')} {Color.Wh}==========")
     print()
-    print_field('邮箱',     result['email'],            width=14)
-    print_field('格式合法', result.get('syntax_valid'), width=14)
+    print_field(t('field.email'),         result['email'],            width=16)
+    print_field(t('field.syntax_valid'),  result.get('syntax_valid'), width=16)
     if not result.get('syntax_valid'):
         print(f" {Color.Re}{result.get('_error', '')}{Color.Reset}")
         return
-    print_field('域名',    result['domain'],            width=14)
-    print_field('MX 有效', result.get('mx_valid'),      width=14)
+    print_field(t('field.domain'),    result['domain'],            width=16)
+    print_field(t('field.mx_valid'),  result.get('mx_valid'),      width=16)
     if result.get('mx_valid'):
         for r in result['mx_records']:
-            print(f"   {Color.Wh}→ 优先级 {r['preference']:>4}  {Color.Gr}{r['exchange']}{Color.Reset}")
+            print(f"   {Color.Wh}→ {t('field.priority')} {r['preference']:>4}  {Color.Gr}{r['exchange']}{Color.Reset}")
     else:
         print(f" {Color.Re}{result.get('mx_error', '')}{Color.Reset}")
 
 
 # ====================================================================
-# 交互式菜单
+# 语言选择器（首次启动 + 菜单切换）
 # ====================================================================
-MENU_OPTIONS = [
-    (1, 'IP 追踪'),
-    (2, '查看本机 IP'),
-    (3, '电话号码追踪'),
-    (4, '用户名追踪'),
-    (5, '域名 WHOIS 查询'),
-    (6, '域名 MX 记录'),
-    (7, '邮箱有效性检查'),
-    (0, '退出'),
+def prompt_language_select() -> str:
+    """交互式选择语言，返回 'zh' 或 'en'。"""
+    clear_screen()
+    print()
+    print(f" {Color.Wh}╔════════════════════════════════════════════╗")
+    print(f" {Color.Wh}║  {Color.Gr}{t('lang.title'):42s}{Color.Wh}║")
+    print(f" {Color.Wh}╚════════════════════════════════════════════╝")
+    print()
+    print(f"  {Color.Wh}[ 1 ] {Color.Gr}{t('lang.zh')}{Color.Reset}")
+    print(f"  {Color.Wh}[ 2 ] {Color.Gr}{t('lang.en')}{Color.Reset}")
+    print()
+    while True:
+        try:
+            choice = input(f" {Color.Wh}>>> {Color.Reset}").strip()
+            if choice == '1':
+                return 'zh'
+            if choice == '2':
+                return 'en'
+        except (EOFError, KeyboardInterrupt):
+            return _lang
+
+
+def switch_language_menu() -> None:
+    """从菜单切换语言。"""
+    print()
+    print(f" {Color.Wh}{t('lang.title')}{Color.Reset}")
+    print(f"  {Color.Wh}[ 1 ] {Color.Gr}{t('lang.zh')}{Color.Reset}")
+    print(f"  {Color.Wh}[ 2 ] {Color.Gr}{t('lang.en')}{Color.Reset}")
+    print(f"  {Color.Wh}[ 0 ] {Color.Ye}{t('lang.cancel')}{Color.Reset}")
+    print()
+    try:
+        choice = input(f" {Color.Wh}>>> {Color.Reset}").strip()
+    except (EOFError, KeyboardInterrupt):
+        return
+    if choice == '1':
+        set_lang('zh')
+        save_config({**load_config(), 'lang': 'zh'})
+        print(f"\n {Color.Gr}{t('lang.changed')}{Color.Reset}")
+    elif choice == '2':
+        set_lang('en')
+        save_config({**load_config(), 'lang': 'en'})
+        print(f"\n {Color.Gr}{t('lang.changed')}{Color.Reset}")
+
+
+# ====================================================================
+# 菜单
+# ====================================================================
+MENU_KEYS = [
+    (1, 'menu.ip_track'),
+    (2, 'menu.my_ip'),
+    (3, 'menu.phone'),
+    (4, 'menu.username'),
+    (5, 'menu.whois'),
+    (6, 'menu.mx'),
+    (7, 'menu.email'),
+    (8, 'menu.lang'),
+    (0, 'menu.exit'),
 ]
 
 
 def show_menu() -> None:
     print_banner()
     print()
-    for num, text in MENU_OPTIONS:
-        print(f"{Color.Wh}[ {num} ] {Color.Gr}{text}{Color.Reset}")
+    for num, key in MENU_KEYS:
+        print(f"{Color.Wh}[ {num} ] {Color.Gr}{t(key)}{Color.Reset}")
 
 
 def handle_choice(choice: int, save_dir: Optional[str] = None) -> None:
     if choice == 1:
-        ip = input(f"{Color.Wh}\n 请输入目标 IP : {Color.Gr}").strip()
+        ip = input(f"{Color.Wh}\n {t('prompt.input_ip')}{Color.Gr}").strip()
         data = track_ip(ip)
         print_ip_info(ip, data)
         _maybe_save(save_dir, f'ip_{ip}', data)
@@ -551,35 +915,37 @@ def handle_choice(choice: int, save_dir: Optional[str] = None) -> None:
         print_my_ip(my)
         _maybe_save(save_dir, 'my_ip', {'ip': my})
     elif choice == 3:
-        num = input(f"\n {Color.Wh}请输入电话号码 {Color.Gr}例如 [+8613800138000]{Color.Wh} : {Color.Gr}").strip()
+        num = input(f"\n {Color.Wh}{t('prompt.input_phone')}{Color.Gr}").strip()
         data = track_phone(num)
         print_phone_info(data)
         _maybe_save(save_dir, f'phone_{num}', data)
     elif choice == 4:
-        name = input(f"\n {Color.Wh}请输入用户名 : {Color.Gr}").strip()
+        name = input(f"\n {Color.Wh}{t('prompt.input_username')}{Color.Gr}").strip()
         results = track_username(name)
         print_username_results(results)
         _maybe_save(save_dir, f'username_{name}', results)
     elif choice == 5:
-        domain = input(f"\n {Color.Wh}请输入域名 : {Color.Gr}").strip()
+        domain = input(f"\n {Color.Wh}{t('prompt.input_domain')}{Color.Gr}").strip()
         data = whois_lookup(domain)
         print_whois(data)
         _maybe_save(save_dir, f'whois_{domain}', data)
     elif choice == 6:
-        domain = input(f"\n {Color.Wh}请输入域名 : {Color.Gr}").strip()
+        domain = input(f"\n {Color.Wh}{t('prompt.input_domain')}{Color.Gr}").strip()
         data = mx_lookup(domain)
         print_mx(data)
         _maybe_save(save_dir, f'mx_{domain}', data)
     elif choice == 7:
-        addr = input(f"\n {Color.Wh}请输入邮箱 : {Color.Gr}").strip()
+        addr = input(f"\n {Color.Wh}{t('prompt.input_email')}{Color.Gr}").strip()
         result = email_validate(addr)
         print_email(result)
         _maybe_save(save_dir, f'email_{addr}', result)
+    elif choice == 8:
+        switch_language_menu()
     elif choice == 0:
-        print(f"\n {Color.Gr}再见！{Color.Reset}")
+        print(f"\n {Color.Gr}{t('prompt.bye')}{Color.Reset}")
         sys.exit(0)
     else:
-        raise ValueError(f"未知选项：{choice}")
+        raise ValueError(t('prompt.unknown_option', n=choice))
 
 
 def _maybe_save(directory: Optional[str], prefix: str, data: Any) -> None:
@@ -591,7 +957,7 @@ def _maybe_save(directory: Optional[str], prefix: str, data: Any) -> None:
     path = os.path.join(directory, f'{safe_prefix}_{ts}.json')
     with open(path, 'w', encoding='utf-8') as f:
         json.dump(data, f, ensure_ascii=False, indent=2, default=str)
-    print(f"\n {Color.Cy}[ 已保存到 {path} ]{Color.Reset}")
+    print(f"\n {Color.Cy}{t('msg.saved_to', path=path)}{Color.Reset}")
 
 
 def menu_loop(save_dir: Optional[str] = None) -> None:
@@ -599,10 +965,10 @@ def menu_loop(save_dir: Optional[str] = None) -> None:
         clear_screen()
         show_menu()
         try:
-            raw = input(f"\n {Color.Wh}[ + ] {Color.Gr}请选择功能 : {Color.Wh}").strip()
+            raw = input(f"\n {Color.Wh}[ + ] {Color.Gr}{t('prompt.select_option')}{Color.Wh}").strip()
             choice = int(raw)
         except ValueError:
-            print(f"\n {Color.Re}请输入数字{Color.Reset}")
+            print(f"\n {Color.Re}{t('prompt.input_number')}{Color.Reset}")
             time.sleep(1)
             continue
         try:
@@ -612,66 +978,68 @@ def menu_loop(save_dir: Optional[str] = None) -> None:
             time.sleep(1)
             continue
         except KeyboardInterrupt:
-            print(f"\n {Color.Re}已中断{Color.Reset}")
+            print(f"\n {Color.Re}{t('prompt.interrupted')}{Color.Reset}")
             continue
         if choice != 0:
-            input(f"\n{Color.Wh}[ {Color.Gr}+ {Color.Wh}] {Color.Gr}按回车键继续{Color.Reset}")
+            input(f"\n{Color.Wh}[ {Color.Gr}+ {Color.Wh}] {Color.Gr}{t('prompt.press_enter')}{Color.Reset}")
 
 
 # ====================================================================
-# CLI 参数模式
+# CLI
 # ====================================================================
 def build_parser() -> argparse.ArgumentParser:
     common = argparse.ArgumentParser(add_help=False)
-    # default=SUPPRESS：未指定时不在 namespace 里产生属性，避免子命令覆盖父级值
     common.add_argument('--json', action='store_const', const=True,
-                        default=argparse.SUPPRESS, help='输出原始 JSON 而非美化文本')
+                        default=argparse.SUPPRESS, help='JSON output / 输出原始 JSON')
     common.add_argument('--save', metavar='DIR',
-                        default=argparse.SUPPRESS, help='把结果以 JSON 保存到指定目录')
+                        default=argparse.SUPPRESS, help='Save results to DIR / 保存到指定目录')
     common.add_argument('--no-color', action='store_const', const=True,
-                        default=argparse.SUPPRESS, help='禁用 ANSI 颜色')
+                        default=argparse.SUPPRESS, help='Disable color / 禁用颜色')
+    common.add_argument('--lang', choices=['zh', 'en'],
+                        default=argparse.SUPPRESS, help='UI language: zh or en / 界面语言')
 
     parser = argparse.ArgumentParser(
         prog='GhostTR',
         parents=[common],
-        description='GhostTrack —— OSINT 信息查询工具（中文版）',
+        description='GhostTrack-CN —— OSINT toolkit (bilingual: zh/en)',
         formatter_class=argparse.RawDescriptionHelpFormatter,
-        epilog="""示例：
-  python3 GhostTR.py                         # 进入交互菜单
-  python3 GhostTR.py ip 8.8.8.8              # 查询 IP
-  python3 GhostTR.py myip                    # 查看本机 IP
-  python3 GhostTR.py phone +8613800138000    # 查询电话号码
-  python3 GhostTR.py user torvalds           # 扫描用户名
-  python3 GhostTR.py whois example.com       # WHOIS 查询
-  python3 GhostTR.py mx gmail.com            # 查询 MX 记录
-  python3 GhostTR.py email a@b.com           # 邮箱验证
-  python3 GhostTR.py ip 8.8.8.8 --json       # JSON 输出
-  python3 GhostTR.py ip 8.8.8.8 --save out/  # 保存到文件
+        epilog="""Examples / 示例:
+  python3 GhostTR.py                          # Interactive menu / 交互菜单
+  python3 GhostTR.py --lang en                # Force English UI / 强制英文界面
+  python3 GhostTR.py ip 8.8.8.8               # IP lookup
+  python3 GhostTR.py myip --lang en           # English JSON
+  python3 GhostTR.py phone +12025550100       # Phone parse
+  python3 GhostTR.py user torvalds            # Username scan
+  python3 GhostTR.py whois example.com        # WHOIS
+  python3 GhostTR.py mx gmail.com             # MX records
+  python3 GhostTR.py email a@b.com            # Email validate
+  python3 GhostTR.py ip 8.8.8.8 --json        # JSON output
+  python3 GhostTR.py ip 8.8.8.8 --save out/   # Save to file
 """,
     )
 
     sub = parser.add_subparsers(dest='command')
 
-    sp = sub.add_parser('ip', parents=[common], help='查询 IP 地址信息')
-    sp.add_argument('target', help='IPv4 或 IPv6 地址')
+    sp = sub.add_parser('ip', parents=[common], help='IP lookup / IP 查询')
+    sp.add_argument('target', help='IPv4 / IPv6 address')
 
-    sub.add_parser('myip', parents=[common], help='显示本机出口 IP')
+    sub.add_parser('myip', parents=[common], help='Show public IP / 本机出口 IP')
 
-    sp = sub.add_parser('phone', parents=[common], help='解析电话号码')
-    sp.add_argument('number', help='电话号码（含国际区号最稳）')
-    sp.add_argument('--region', default='CN', help='默认国家代码，默认 CN')
+    sp = sub.add_parser('phone', parents=[common], help='Parse phone number / 电话号码解析')
+    sp.add_argument('number')
+    sp.add_argument('--region', default='CN', help='Default region (default: CN)')
 
-    sp = sub.add_parser('user', parents=[common], help='扫描用户名在社交平台的存在')
+    sp = sub.add_parser('user', parents=[common], help='Scan username / 用户名扫描')
     sp.add_argument('username')
-    sp.add_argument('--workers', type=int, default=10, help='并发线程数，默认 10')
+    sp.add_argument('--workers', type=int, default=10, help='Concurrency (default: 10)')
 
-    sp = sub.add_parser('whois', parents=[common], help='WHOIS 查询')
+    sp = sub.add_parser('whois', parents=[common], help='WHOIS lookup')
     sp.add_argument('domain')
 
-    sp = sub.add_parser('mx', parents=[common], help='MX 记录查询')
+    sp = sub.add_parser('mx', parents=[common], help='MX records')
     sp.add_argument('domain')
 
-    sp = sub.add_parser('email', parents=[common], help='邮箱有效性验证')
+    sp = sub.add_parser('email', parents=[common], help='Email validation / 邮箱验证')
     sp.add_argument('address')
     return parser
 
@@ -731,17 +1099,45 @@ def run_cli(args: argparse.Namespace) -> int:
     return 1 if isinstance(data, dict) and '_error' in data else 0
 
 
+def resolve_language(args: argparse.Namespace) -> str:
+    """优先级：CLI --lang > 配置文件 > 环境变量 > 默认。"""
+    cli_lang = getattr(args, 'lang', None)
+    if cli_lang:
+        return cli_lang
+    cfg = load_config()
+    if cfg.get('lang') in TRANSLATIONS:
+        return cfg['lang']
+    return detect_lang()
+
+
 def main() -> int:
     parser = build_parser()
     args = parser.parse_args()
+
     if getattr(args, 'no_color', False):
         Color.disable()
+
+    # CLI 模式：直接根据语言优先级选定，不弹首次提示
     if args.command:
+        set_lang(resolve_language(args))
         return run_cli(args)
+
+    # 交互模式：如果配置中没有 lang 且 CLI 没指定，弹出语言选择并保存
+    cfg = load_config()
+    cli_lang = getattr(args, 'lang', None)
+    if cli_lang:
+        set_lang(cli_lang)
+    elif cfg.get('lang') in TRANSLATIONS:
+        set_lang(cfg['lang'])
+    else:
+        chosen = prompt_language_select()
+        set_lang(chosen)
+        save_config({**cfg, 'lang': chosen})
+
     try:
         menu_loop(save_dir=getattr(args, 'save', None))
     except KeyboardInterrupt:
-        print(f"\n{Color.Re}已退出{Color.Reset}")
+        print(f"\n{Color.Re}{t('prompt.exited')}{Color.Reset}")
     return 0
 
 
