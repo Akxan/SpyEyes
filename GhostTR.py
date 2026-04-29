@@ -204,6 +204,12 @@ TRANSLATIONS: dict = {
         'err.empty_input':      'Input is empty',
         'msg.progress':         'Scanning',
         'msg.found':            'found',
+        'mode.title':           'Scan mode:',
+        'mode.quick':           'Quick   (~645 platforms, ~20s)  [recommended]',
+        'mode.full':            'Full    (~2020 platforms, ~45s)',
+        'mode.cn_es':           'Chinese + Spanish only (~98 platforms, ~6s)',
+        'mode.code':            'Code platforms only (~54 platforms, ~3s)',
+        'mode.prompt':          'Choose [1/2/3/4, default 1]: ',
     },
     'zh': {
         'menu.ip_track':        'IP 追踪',
@@ -335,6 +341,12 @@ TRANSLATIONS: dict = {
         'err.empty_input':      '输入为空',
         'msg.progress':         '扫描中',
         'msg.found':            '已命中',
+        'mode.title':           '扫描模式:',
+        'mode.quick':           '快速   (约 645 平台, ~20 秒)  [推荐]',
+        'mode.full':            '完整   (全部 2020 平台, ~45 秒)',
+        'mode.cn_es':           '仅中文 + 西语圈 (约 98 平台, ~6 秒)',
+        'mode.code':            '仅代码平台 (约 54 平台, ~3 秒)',
+        'mode.prompt':          '请选择 [1/2/3/4, 默认 1]: ',
     },
 }
 
@@ -877,6 +889,29 @@ def _clear_progress_line() -> None:
         sys.stderr.flush()
 
 
+def _ask_scan_mode() -> Optional[list]:
+    """交互式选择扫描模式。返回 categories 列表（None 表示全部）。"""
+    print()
+    print(f" {Color.Wh}{t('mode.title')}{Color.Reset}")
+    print(f"  {Color.Wh}[ 1 ] {Color.Gr}{t('mode.quick')}{Color.Reset}")
+    print(f"  {Color.Wh}[ 2 ] {Color.Gr}{t('mode.full')}{Color.Reset}")
+    print(f"  {Color.Wh}[ 3 ] {Color.Gr}{t('mode.cn_es')}{Color.Reset}")
+    print(f"  {Color.Wh}[ 4 ] {Color.Gr}{t('mode.code')}{Color.Reset}")
+    print()
+    try:
+        choice = input(f" {Color.Wh}{t('mode.prompt')}{Color.Gr}").strip() or '1'
+    except (EOFError, KeyboardInterrupt):
+        choice = '1'
+    if choice == '2':
+        return None  # 完整：全扫
+    if choice == '3':
+        return ['chinese', 'spanish']
+    if choice == '4':
+        return ['code']
+    # 默认 1：快速 = 全部 cat 减去 'other'
+    return [c for c in CATEGORY_ORDER if c != 'other']
+
+
 def track_username(username: str, *, max_workers: int = 50, timeout: float = 5,
                    show_progress: bool = True, categories: Optional[list] = None) -> dict:
     """并发扫描平台，返回 {platform_name: url_or_None}（按 PLATFORMS 顺序）。
@@ -1232,7 +1267,12 @@ def handle_choice(choice: int, save_dir: Optional[str] = None) -> None:
         _maybe_save(save_dir, f'phone_{num}', data)
     elif choice == 4:
         name = input(f"\n {Color.Wh}{t('prompt.input_username')}{Color.Gr}").strip()
-        results = track_username(name)
+        if not name:
+            print_username_results({})
+            return
+        # 选扫描模式
+        cats = _ask_scan_mode()
+        results = track_username(name, categories=cats)
         print_username_results(results)
         _maybe_save(save_dir, f'username_{name}', results)
     elif choice == 5:
