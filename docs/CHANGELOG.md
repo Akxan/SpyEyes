@@ -8,29 +8,39 @@ This project adheres to [Keep a Changelog](https://keepachangelog.com/en/1.1.0/)
 
 ## [Unreleased]
 
-### 🐛 Fixed 修复（独立代码审计后发现）
-
-- **P1: `_check_username` 未捕获 `ValueError`** —— `str.format()` 对格式串错误（如 `{:d}`、`{0!q}`）会抛 `ValueError`，原代码只捕获 `IndexError/KeyError`。Maigret 上游某天若引入此类模板会让整个 2020 平台扫描崩溃。
-- **P1: `track_username` 单 worker 异常会传染整个扫描** —— `fut.result()` 未包 try/except。现在任何 worker 内未捕获异常都被吞掉，对应平台标记 `None`，其它继续。
-- **P1: `--workers 0` / 负数 / 超大值直接 crash** —— 新增 `_positive_int` argparse 校验器，强制 1..200 范围。
-- **`field.region` 翻译键在 EN 字典中重复定义**（ruff F601 检测）—— 删除冗余条目。
-- **`tools/build_platforms.py` 含未用 `re` / `sys` import**（ruff F401）—— 删除。
-- **`tools/build_platforms.py` 含语义噪音 f-string**（ruff F541）—— 改普通字符串。
-- **`tools/build_platforms.py` 多语句单行用 `;`**（ruff E702）—— 拆开。
-- **`track_ip('')` 会让 ipwho.is 返回调用方自己的 IP**（误导用户）—— 现在空输入早返回错误。
-- **`track_username('')` 会命中所有平台主页造成误报** —— 现在空输入返回所有 `None`。
-
-### 🧪 Tests
-
-- 51 → **63 测试**（新增空输入、ValueError 处理、worker 异常隔离、`--workers` 边界值校验等 12 个测试）
-- 静态分析全部通过：ruff（lint + format）、mypy（type check）、bandit（security scan）
-
 ### Planned
 - 代理支持 (`--proxy http://...` / SOCKS5)
 - 批量输入模式 (`--batch ips.txt`)
 - HIBP (Have I Been Pwned) 邮箱泄露集成
 - PyPI 发布 (`pip install ghosttrack-cn`)
 - Docker 镜像
+
+---
+
+## [1.1.1] — 2026-04-29
+
+经过 5 路独立审计（ruff + mypy + bandit + pytest-cov + superpowers:code-reviewer agent）发现并修复 v1.1.0 中潜伏的 3 个 P1 真 bug + 6 个 lint / 边界问题。建议所有 v1.1.0 用户立刻升级。
+
+### 🐛 Fixed 修复
+
+- **P1: `_check_username` 未捕获 `ValueError`** —— `str.format()` 对格式串错误（如 `{:d}`、`{0!q}`）会抛 `ValueError`，原代码只捕获 `IndexError/KeyError`。Maigret 上游某天若引入此类模板会让**整个 2020 平台扫描崩溃**。
+- **P1: `track_username` 单 worker 异常会传染整个扫描** —— `fut.result()` 未包 try/except。现在任何 worker 内未捕获异常都被吞掉，对应平台标记 `None`，其它继续扫描。
+- **P1: `--workers 0` / 负数 / 超大值直接 crash** —— 新增 `_positive_int` argparse 校验器，强制 `[1, 200]` 范围。
+- **`field.region` 翻译键在 EN 字典中重复定义**（ruff F601 检测）—— 删除冗余条目。
+- **`tools/build_platforms.py` 含未用 `re` / `sys` import**（ruff F401）—— 删除。
+- **`tools/build_platforms.py` 含无占位符 f-string**（ruff F541）—— 改普通字符串。
+- **`tools/build_platforms.py` 多语句单行用 `;`**（ruff E702）—— 拆开。
+- **`track_ip('')` 会让 ipwho.is 返回调用方自己的 IP**（误导用户以为查的是别人）—— 现在空输入早返回 `err.empty_input`。
+- **`track_username('')` 会命中所有平台主页造成误报** —— 现在空输入直接返回所有 `None`，零网络请求。
+
+### 🧪 Tests
+
+- 51 → **63 测试**（新增空输入、`ValueError` 处理、worker 异常隔离、`--workers` 边界值校验等 12 个测试）
+- 静态分析全部通过：ruff（lint + format）、mypy（type check）、bandit（security scan）
+
+### 📦 Internal
+
+- `.gitignore` 扩展覆盖 `.coverage` / `.mypy_cache` / `.ruff_cache` 等开发产物
 
 ---
 
@@ -157,6 +167,7 @@ OSINT 信息检索能力大幅扩展。从 113 个手工 curated 平台跃升至
 
 ---
 
-[Unreleased]: https://github.com/Akxan/GhostTrack-CN/compare/v1.1.0...HEAD
+[Unreleased]: https://github.com/Akxan/GhostTrack-CN/compare/v1.1.1...HEAD
+[1.1.1]: https://github.com/Akxan/GhostTrack-CN/compare/v1.1.0...v1.1.1
 [1.1.0]: https://github.com/Akxan/GhostTrack-CN/compare/v1.0.0...v1.1.0
 [1.0.0]: https://github.com/Akxan/GhostTrack-CN/releases/tag/v1.0.0

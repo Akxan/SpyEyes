@@ -10,7 +10,7 @@
 [![codecov](https://codecov.io/gh/Akxan/GhostTrack-CN/branch/main/graph/badge.svg)](https://codecov.io/gh/Akxan/GhostTrack-CN)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![Python](https://img.shields.io/badge/Python-3.10%2B-blue.svg?logo=python&logoColor=white)](https://www.python.org/)
-[![Tests](https://img.shields.io/badge/tests-51%20passed-success.svg)](tests/)
+[![Tests](https://img.shields.io/badge/tests-63%20passed-success.svg)](tests/)
 [![Platforms](https://img.shields.io/badge/platforms-2020-orange.svg)](data/platforms.json)
 [![Platform](https://img.shields.io/badge/platform-macOS%20%7C%20Linux%20%7C%20Windows%20%7C%20Termux-lightgrey)](#-installation)
 [![PRs Welcome](https://img.shields.io/badge/PRs-welcome-brightgreen.svg)](docs/CONTRIBUTING.md)
@@ -44,9 +44,9 @@ Designed for **security researchers, penetration testers, SOC analysts, threat h
 | **Performance** | Sequential username scan (30-60s) | **2-3 seconds** (10-thread concurrent, 10-20× speedup) |
 | **Reliability** | No timeouts, API errors crash, recursive stack overflow | All fixed, unified error handling |
 | **Usage modes** | Interactive menu only | Interactive menu + **CLI args mode** + JSON output |
-| **Code quality** | No type hints, no tests | Type-annotated + **47 pytest tests** + CI |
+| **Code quality** | No type hints, no tests | Type-annotated + **63 pytest tests** + CI |
 | **Country display** | English only | Chinese mapping (180+ countries) |
-| **Code size** | 316 lines, single file | 1400 lines + 51 tests + 2020-platform DB |
+| **Code size** | 316 lines, single file | 1400 lines + 63 tests + 2020-platform DB |
 
 ---
 
@@ -275,7 +275,7 @@ pytest tests/ -v
 pytest tests/ --cov=. --cov-report=term-missing
 ```
 
-- ✅ 47 tests, ~0.3 seconds
+- ✅ 63 tests, ~0.3 seconds
 - ✅ Pure functions + HTTP mocking + edge cases
 - ✅ GitHub Actions runs on macOS/Ubuntu × Python 3.10-3.13 = 8 combinations
 
@@ -301,7 +301,7 @@ GhostTrack-CN/
 │   └── build_platforms.py      # Refresh platform DB from upstream sources
 ├── tests/
 │   ├── __init__.py
-│   └── test_ghosttrack.py      # 51 pytest tests
+│   └── test_ghosttrack.py      # 63 pytest tests
 ├── .github/
 │   ├── workflows/ci.yml        # GitHub Actions CI (multi-OS × multi-Python)
 │   ├── ISSUE_TEMPLATE/         # Issue templates
