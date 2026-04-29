@@ -1039,21 +1039,37 @@ def _merge_platforms(curated: list, extended: list) -> list:
 PLATFORMS = _merge_platforms(_dedup_platforms(PLATFORMS), _load_platforms_json(_PLATFORMS_JSON))
 
 
-# WAF / CDN 拦截指纹（Sherlock-inspired）
+# WAF / CDN 拦截指纹（Sherlock-inspired，高精度优先）
 # 命中 = 该平台被反爬墙拦了，结果不可信；标记 'waf' 而非「找到/未找到」
+# 仅使用各 WAF 自有的特定标志（URL/cookie/品牌名），避免 'access denied' / 'cloudflare'
+# 这种太泛的模式触发误报（普通页面提到 cloudflare/access denied 时会被误判）
 WAF_FINGERPRINTS = (
-    b'cloudflare',
-    b'cf-ray',
-    b'just a moment',          # Cloudflare 5s 挑战页面标志
-    b'enable javascript and cookies',
-    b'attention required',
+    # Cloudflare（用唯一标志：challenge page 的特定 URL/HTML）
+    b'cdn-cgi/challenge-platform',
+    b'cf-browser-verification',
+    b'cf-challenge',
+    b'<title>just a moment...</title>',
+    b'<title>attention required! | cloudflare</title>',
+    b'enable javascript and cookies to continue',
+    # AWS WAF
     b'aws-waf-token',
     b'awswafcaptcha',
-    b'perimeterx',
-    b'_pxhd',
-    b'access denied',
-    b'datadome',
-    b'<title>access denied</title>',
+    b'aws_waf',
+    # PerimeterX (HUMAN)
+    b'/_pxhc/',
+    b'_px3',
+    b'px-captcha',
+    # DataDome
+    b'dd-jwt',
+    b'datadome.co',
+    # Imperva / Incapsula
+    b'/_incapsula_resource',
+    b'visid_incap_',
+    # Sucuri
+    b'sucuri/cloudproxy',
+    b'sucuri website firewall',
+    # Akamai Bot Manager
+    b'akam/13/pixel',
 )
 
 
@@ -1069,6 +1085,11 @@ STATUS_NOT_FOUND = 'not_found'
 STATUS_WAF = 'waf'                    # 被 CDN/反爬墙拦了，结果不可信
 STATUS_INVALID_USERNAME = 'invalid'   # 用户名不符合该平台 regex 规则
 STATUS_NETWORK_ERROR = 'network_err'  # 超时/连接失败
+
+# ReDoS 防护：嵌套量词（catastrophic backtracking）启发式检测
+# 命中这类模式时，跳过 regex check 直接发请求；避免数据源里某条恶意/手滑的
+# regex 让单个 worker 线程跑死（re.error 不会捕获 CPU 灾难性回溯）
+_REDOS_RE = re.compile(r'\([^)]*[+*][^)]*\)[+*]')
 
 
 def _check_username(platform: 'Platform', username: str, timeout: float):
@@ -1087,11 +1108,18 @@ def _check_username(platform: 'Platform', username: str, timeout: float):
         return platform, None, STATUS_INVALID_USERNAME
 
     if platform.regex_check:
-        try:
-            if not re.search(platform.regex_check, username):
-                return platform, None, STATUS_INVALID_USERNAME
-        except re.error:
-            pass  # 模式本身坏了，忽略 regex 检查继续
+        # ReDoS 防护：拒绝可能导致灾难性回溯的 nested quantifiers
+        # （如 (a+)+, (a*)*, (.+)+ 等）—— 这些模式即使合法也可能让正则跑几秒
+        if _REDOS_RE.search(platform.regex_check):
+            pass  # 跳过 regex check，进入正常 HTTP
+        else:
+            try:
+                # 用 re.fullmatch 而非 re.search 与 Sherlock 保持一致
+                # （re.search 对未锚定的 regex 会匹配子串，导致注入风险）
+                if not re.fullmatch(platform.regex_check, username):
+                    return platform, None, STATUS_INVALID_USERNAME
+            except re.error:
+                pass  # 模式本身坏了，忽略 regex 检查继续
 
     needs_body = bool(platform.not_found) or bool(platform.must_contain)
 
@@ -1714,13 +1742,13 @@ def _to_markdown(prefix: str, data: Any) -> str:
         lines.append("")
         return '\n'.join(lines)
 
-    # 通用：扁平化 dict 为表格（key 与 value 都转义）
+    # 通用：扁平化 dict 为表格（key 与 value 都转义；跳过 _* 私有 key）
     if isinstance(data, dict):
         lines.append(f"## {cmd.upper()} info: `{query}`")
         lines.append("")
         lines.append("| Field | Value |")
         lines.append("|---|---|")
-        for k, v in data.items():
+        for k, v in _platform_only(data).items():
             if v is None or v == '':
                 continue
             if isinstance(v, dict):
@@ -1891,7 +1919,10 @@ def run_cli(args: argparse.Namespace) -> int:
                               timeout=args.timeout, categories=cats)
         save_prefix = f'username_{args.username}'
         if args.json:
-            print(json.dumps(data, ensure_ascii=False, indent=2))
+            # 剥掉私有 _* key（如 _statuses）—— 这些是 print_* 的内部使用
+            # 用户要这些数据可以加 --include-stats（未来可选）
+            json_data = _platform_only(data) if isinstance(data, dict) and '_error' not in data else data
+            print(json.dumps(json_data, ensure_ascii=False, indent=2))
         else:
             print_username_results(data, show_all=getattr(args, 'show_all', False))
     elif cmd == 'whois':

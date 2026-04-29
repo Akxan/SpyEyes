@@ -408,6 +408,36 @@ class TestRegexCheck:
         # 应不崩，照常出结果
         assert status == gt.STATUS_FOUND
 
+    def test_fullmatch_rejects_substring_injection(self):
+        """audit P1#4: re.fullmatch 拒绝 username 含合法子串但带垃圾的注入。"""
+        # Dealabs 风格未锚定的 regex：原本 re.search 会匹配子串
+        p = gt.Platform('Loose', 'https://x.com/{}', 'code', regex_check=r'[a-z]{4,16}')
+        fake = MagicMock(status_code=200)
+        with patch.object(gt, 'safe_get', return_value=fake):
+            plat, url, status = gt._check_username(p, 'AB; DROP TABLE; abc', 5)
+        # re.search 会过（找到 "abc" 等子串），re.fullmatch 必须拒绝（含大写+空格+符号）
+        assert status == gt.STATUS_INVALID_USERNAME
+
+    def test_redos_pattern_detected_and_skipped(self):
+        """audit P1#3: 含嵌套量词的 regex 被识别，跳过避免 CPU 灾难。"""
+        assert gt._REDOS_RE.search('(a+)+') is not None
+        assert gt._REDOS_RE.search('(.*)*') is not None
+        assert gt._REDOS_RE.search('([abc]+)+') is not None
+        # 正常 regex 不被误判
+        assert gt._REDOS_RE.search('[a-z]+') is None
+        assert gt._REDOS_RE.search('^[a-zA-Z0-9_]{1,15}$') is None
+
+    def test_redos_regex_does_not_hang(self):
+        """恶意 (a+)+ regex 不应导致 CPU 灾难（即使输入触发回溯）。"""
+        import time
+        p = gt.Platform('Evil', 'https://x.com/{}', 'code', regex_check=r'(a+)+$')
+        fake = MagicMock(status_code=200)
+        with patch.object(gt, 'safe_get', return_value=fake):
+            t0 = time.time()
+            plat, url, status = gt._check_username(p, 'a' * 30, 5)
+            dt = time.time() - t0
+        assert dt < 0.5, f"ReDoS 防护失败：{dt*1000:.0f}ms（应 < 500ms）"
+
     def test_no_regex_means_no_filter(self):
         """regex_check 为空字符串时不做过滤。"""
         p = gt.Platform('NoRegex', 'https://x.com/{}', 'code', regex_check='')
@@ -421,7 +451,7 @@ class TestWAFDetection:
     """Sherlock-inspired: WAF 拦截识别。"""
 
     def test_cloudflare_block_detected(self):
-        body = b'<html><title>Just a moment...</title>cf-ray: abc</html>'
+        body = b'<html><title>just a moment...</title>cdn-cgi/challenge-platform</html>'
         assert gt._detect_waf(body) is True
 
     def test_aws_waf_detected(self):
@@ -429,8 +459,24 @@ class TestWAFDetection:
         assert gt._detect_waf(body) is True
 
     def test_perimeterx_detected(self):
-        body = b'<html>blocked by perimeterx</html>'
+        # 用真实 PerimeterX/HUMAN 的特定标志（cookie 名 / URL 路径）
+        body = b'<html>document.cookie = "_px3=abc";</html>'
         assert gt._detect_waf(body) is True
+
+    def test_perimeterx_brand_alone_no_false_positive(self):
+        """正常内容提到 perimeterx 一词不应误报。"""
+        body = b'<html>I read a security blog about perimeterx today</html>'
+        assert gt._detect_waf(body) is False
+
+    def test_normal_content_with_access_denied_no_false_positive(self):
+        """audit fix: 正常论坛贴含 'access denied' 字面量不应误报。"""
+        body = b'<html>Forum thread: how to fix access denied error in Linux</html>'
+        assert gt._detect_waf(body) is False
+
+    def test_cloudflare_brand_alone_no_false_positive(self):
+        """提到 cloudflare 一词的正常文章不应误报。"""
+        body = b'<html>Hosted on Cloudflare since 2020.</html>'
+        assert gt._detect_waf(body) is False
 
     def test_normal_content_not_flagged(self):
         body = b'<html><title>Real Profile</title>Welcome user!</html>'
@@ -438,14 +484,15 @@ class TestWAFDetection:
 
     def test_only_first_8kb_checked(self):
         # WAF 标志藏在 9000 字节后 → 不应被检测
-        body = b'X' * 9000 + b'cloudflare'
+        body = b'X' * 9000 + b'cdn-cgi/challenge-platform'
         assert gt._detect_waf(body) is False
 
     def test_waf_in_check_username_returns_waf_status(self):
         p = gt.Platform('Test', 'https://x.com/{}', 'code',
                          not_found=(b'no such user',))
         fake = MagicMock(status_code=200)
-        fake.raw.read.return_value = b'<title>Just a moment</title>cf-ray: 123'
+        # 用真实 Cloudflare challenge 标志
+        fake.raw.read.return_value = b'<title>just a moment...</title>cdn-cgi/challenge-platform/h/g'
         with patch.object(gt, 'safe_get', return_value=fake):
             plat, url, status = gt._check_username(p, 'alice', 5)
         assert status == gt.STATUS_WAF

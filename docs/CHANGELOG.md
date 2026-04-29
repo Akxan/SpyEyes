@@ -17,7 +17,32 @@ This project adheres to [Keep a Changelog](https://keepachangelog.com/en/1.1.0/)
 
 ---
 
-## [1.2.2] — 2026-04-29
+## [1.2.3] — 2026-04-29
+
+经过第 N 轮 5 路独立审计（ruff + mypy + bandit + pytest + superpowers:code-reviewer agent），修复 v1.2.2 引入的 4 个 P1 真 bug + 加 ReDoS 防护。**强烈建议升级**。
+
+### 🐛 Fixed — 独立 audit agent 发现的 4 个 P1 + 1 doc bug
+
+- **P1: `_to_markdown` 通用 dict 分支泄露 `_statuses` 私有 key** —— `username` 分支已用 `_platform_only` 过滤，但通用 fallback 直接迭代 `data.items()` 把 `_statuses` 当成普通字段渲染进表格。修复：通用分支也用 `_platform_only`
+- **P1: `re.search` 而非 `re.fullmatch` —— 未锚定 regex 匹配子串造成注入风险** —— Sherlock 用 `re.match`/`re.fullmatch`，我们之前用 `re.search`，对未锚定模式（如 Dealabs 的 `[a-z0-9]{4,16}`）会匹配 `'AB; DROP TABLE; abc'` 中的 `'abc'` 子串。修复：改 `re.fullmatch` 强制全匹配
+- **P1: ReDoS（regex 灾难性回溯）防护缺失** —— 数据源若混入恶意/手滑的 `(a+)+` 类嵌套量词模式，单个 worker 线程会跑死几秒。Python `re.error` 不捕获 CPU 灾难。修复：新增 `_REDOS_RE` 启发式检测，命中时跳过 regex check 直接发请求
+- **P1: `--json` 输出泄露 `_statuses` 私有 key** —— Python `_*` 命名约定意为「私有」，但被直接 `json.dumps` 输出给用户。修复：CLI `--json` 模式自动剥掉 `_*` key（保留正常的 `_error`）
+- **doc: README test count stale (93 → 99)** —— 加测试时漏更新徽章
+
+### 🚀 Changed 改进
+
+- WAF_FINGERPRINTS 收紧到只用 WAF 自有的特定 URL/cookie 标志（如 `cdn-cgi/challenge-platform`、`aws-waf-token`、`/_pxhc/`、`datadome.co`、`/_incapsula_resource` 等），**剔除** `b'cloudflare'` / `b'access denied'` 这类宽泛模式 —— 显著降低误报
+- 新增 `_REDOS_RE` 模块级正则用于 ReDoS 启发式检测
+
+### 🧪 Tests
+
+- 93 → **99 测试**（+6 新增：fullmatch 注入测试、ReDoS 检测、ReDoS 不卡死、WAF 误报场景 ×3）
+- 静态分析全部通过：ruff / mypy / bandit
+- 实测验证：恶意 `(a+)+` regex 模式 0 ms 跳过（vs 无防护时几秒 CPU）
+
+---
+
+## [1.2.2] — 2026-04-29 (deprecated, replaced by 1.2.3)
 
 整合剩下的 Sherlock 核心思路：**`regex_check` 预过滤** + **WAF 检测**。结果更准确、对反爬墙透明、对无效 username 不浪费请求。
 
@@ -291,7 +316,8 @@ OSINT 信息检索能力大幅扩展。从 113 个手工 curated 平台跃升至
 
 ---
 
-[Unreleased]: https://github.com/Akxan/GhostTrack-CN/compare/v1.2.2...HEAD
+[Unreleased]: https://github.com/Akxan/GhostTrack-CN/compare/v1.2.3...HEAD
+[1.2.3]: https://github.com/Akxan/GhostTrack-CN/compare/v1.2.2...v1.2.3
 [1.2.2]: https://github.com/Akxan/GhostTrack-CN/compare/v1.2.1...v1.2.2
 [1.2.1]: https://github.com/Akxan/GhostTrack-CN/compare/v1.1.1...v1.2.1
 [1.2.0]: https://github.com/Akxan/GhostTrack-CN/compare/v1.1.1...v1.2.0

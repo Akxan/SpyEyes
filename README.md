@@ -10,7 +10,7 @@
 [![codecov](https://codecov.io/gh/Akxan/GhostTrack-CN/branch/main/graph/badge.svg)](https://codecov.io/gh/Akxan/GhostTrack-CN)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![Python](https://img.shields.io/badge/Python-3.10%2B-blue.svg?logo=python&logoColor=white)](https://www.python.org/)
-[![Tests](https://img.shields.io/badge/tests-93%20passed-success.svg)](tests/)
+[![Tests](https://img.shields.io/badge/tests-99%20passed-success.svg)](tests/)
 [![Platforms](https://img.shields.io/badge/platforms-2067-orange.svg)](data/platforms.json)
 [![Platform](https://img.shields.io/badge/platform-macOS%20%7C%20Linux%20%7C%20Windows%20%7C%20Termux-lightgrey)](#-安装)
 [![PRs Welcome](https://img.shields.io/badge/PRs-welcome-brightgreen.svg)](docs/CONTRIBUTING.md)
@@ -44,9 +44,9 @@
 | **性能** | 用户名扫描 30-60 秒（串行） | **2-3 秒**（10 线程并发，10-20× 提速） |
 | **可靠性** | 无超时、API 错误崩溃、栈溢出 | 全部修复，统一错误处理 |
 | **使用方式** | 仅交互菜单 | 交互菜单 + **CLI 参数模式** + JSON 输出 |
-| **代码质量** | 无类型提示、无测试 | 类型注解 + **93 个 pytest 测试** + CI |
+| **代码质量** | 无类型提示、无测试 | 类型注解 + **99 个 pytest 测试** + CI |
 | **国家显示** | 仅英文 | 中文映射（180+ 国家/地区） |
-| **代码量** | 316 行单文件 | 1400 行 + 93 测试 + 2067 平台数据库 |
+| **代码量** | 316 行单文件 | 1400 行 + 99 测试 + 2067 平台数据库 |
 
 ---
 
@@ -313,7 +313,7 @@ pytest tests/ --cov=. --cov-report=term-missing
 ```
 
 当前测试覆盖：
-- ✅ 93 个测试，0.3 秒跑完
+- ✅ 99 个测试，0.3 秒跑完
 - ✅ 覆盖纯函数 + HTTP mock + 边界条件
 - ✅ GitHub Actions 在 macOS / Ubuntu × Python 3.10-3.13 共 8 种组合自动测试
 
@@ -339,7 +339,7 @@ GhostTrack-CN/
 │   └── build_platforms.py      # 平台数据库重建脚本（拉取上游最新）
 ├── tests/
 │   ├── __init__.py
-│   └── test_ghosttrack.py      # 93 个 pytest 测试
+│   └── test_ghosttrack.py      # 99 个 pytest 测试
 ├── .github/
 │   ├── workflows/ci.yml        # GitHub Actions CI（多 OS × 多 Python 版本）
 │   ├── ISSUE_TEMPLATE/         # bug / 功能 issue 模板
