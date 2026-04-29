@@ -877,28 +877,33 @@ def _clear_progress_line() -> None:
         sys.stderr.flush()
 
 
-def track_username(username: str, *, max_workers: int = 30, timeout: float = 8,
-                   show_progress: bool = True) -> dict:
-    """并发扫描所有平台，返回 {platform_name: url_or_None}（按 PLATFORMS 顺序）。
-    空 username 会被拒绝以避免命中各平台主页造成误报。
-    单个 worker 抛任何异常都不影响其它平台 —— 该平台标记为 None 跳过。
-    show_progress=True 且 stderr 是 TTY 时显示进度条。"""
+def track_username(username: str, *, max_workers: int = 50, timeout: float = 5,
+                   show_progress: bool = True, categories: Optional[list] = None) -> dict:
+    """并发扫描平台，返回 {platform_name: url_or_None}（按 PLATFORMS 顺序）。
+    - 空 username 会被拒绝以避免命中各平台主页造成误报。
+    - 单 worker 抛任何异常不影响其它平台 —— 该平台标记 None 跳过。
+    - show_progress=True 且 stderr 是 TTY 时显示进度条。
+    - categories=['code', 'chinese', ...] 只扫指定类别。None 时扫全部。"""
     username = (username or '').strip()
     if not username:
         return {p.name: None for p in PLATFORMS}
     if max_workers < 1:
         max_workers = 1
+    # 按 category 过滤
+    if categories:
+        platforms_to_scan = [p for p in PLATFORMS if p.category in categories]
+    else:
+        platforms_to_scan = PLATFORMS
     found: dict = {}
-    total = len(PLATFORMS)
+    total = len(platforms_to_scan)
     found_count = 0
     done = 0
     with ThreadPoolExecutor(max_workers=max_workers) as ex:
-        futures = {ex.submit(_check_username, p, username, timeout): p for p in PLATFORMS}
+        futures = {ex.submit(_check_username, p, username, timeout): p for p in platforms_to_scan}
         for fut in as_completed(futures):
             try:
                 platform, url = fut.result()
             except Exception:
-                # 任何 worker 内未捕获的异常都视为该平台失败，不影响其它 2020 个
                 platform = futures[fut]
                 url = None
             found[platform.name] = url
@@ -909,7 +914,8 @@ def track_username(username: str, *, max_workers: int = 30, timeout: float = 8,
                 _print_scan_progress(done, total, found_count)
     if show_progress:
         _clear_progress_line()
-    return {p.name: found[p.name] for p in PLATFORMS}
+    # 保持 PLATFORMS 内部顺序；未扫描的平台不出现在结果里
+    return {p.name: found[p.name] for p in platforms_to_scan if p.name in found}
 
 
 # ====================================================================
@@ -1063,9 +1069,9 @@ def print_username_results(results: dict, show_all: bool = False) -> None:
     if not show_all:
         print(f" {Color.Bl}{Color.Ye}{t('msg.show_all_hint')}{Color.Reset}")
     print()
-    # 按类别分组打印；保持 PLATFORMS 内部顺序
+    # 按类别分组打印；只统计实际被扫描的平台（results 中存在的）
     for cat in CATEGORY_ORDER:
-        cat_platforms = [p for p in PLATFORMS if p.category == cat]
+        cat_platforms = [p for p in PLATFORMS if p.category == cat and p.name in results]
         if not cat_platforms:
             continue
         cat_found_list = [p for p in cat_platforms if results.get(p.name)]
@@ -1349,10 +1355,16 @@ def build_parser() -> argparse.ArgumentParser:
 
     sp = sub.add_parser('user', parents=[common], help='Scan username / 用户名扫描')
     sp.add_argument('username')
-    sp.add_argument('--workers', type=_positive_int, default=30,
-                    help='Concurrent threads / 并发线程数 (default: 30, max 200)')
+    sp.add_argument('--workers', type=_positive_int, default=50,
+                    help='Concurrent threads / 并发线程数 (default: 50, max 200)')
+    sp.add_argument('--timeout', type=float, default=5.0,
+                    help='HTTP timeout per platform in seconds / 单平台超时秒数 (default: 5)')
     sp.add_argument('--all', action='store_true', dest='show_all',
                     help='Show all platforms incl. misses / 显示所有平台（含未命中）')
+    sp.add_argument('--quick', action='store_true',
+                    help='Skip "other" long-tail (645 platforms vs 2020, ~3-4x faster) / 跳过 other 长尾，仅扫主流 645 个')
+    sp.add_argument('--category', dest='category_filter',
+                    help='Comma-separated categories: code,social,chinese,spanish,... / 用逗号分隔的类别')
 
     sp = sub.add_parser('whois', parents=[common], help='WHOIS lookup')
     sp.add_argument('domain')
@@ -1390,7 +1402,14 @@ def run_cli(args: argparse.Namespace) -> int:
         else:
             print_phone_info(data)
     elif cmd == 'user':
-        data = track_username(args.username, max_workers=args.workers)
+        # 解析 category 过滤：--quick 等同于「除 other 外全部」
+        cats = None
+        if getattr(args, 'category_filter', None):
+            cats = [c.strip() for c in args.category_filter.split(',') if c.strip()]
+        elif getattr(args, 'quick', False):
+            cats = [c for c in CATEGORY_ORDER if c != 'other']
+        data = track_username(args.username, max_workers=args.workers,
+                              timeout=args.timeout, categories=cats)
         if args.json:
             print(json.dumps(data, ensure_ascii=False, indent=2))
         else:

@@ -8,6 +8,19 @@ This project adheres to [Keep a Changelog](https://keepachangelog.com/en/1.1.0/)
 
 ## [Unreleased]
 
+### ✨ Added 新增
+
+- **用户名扫描进度条** —— 实时刷新底部一行 `[████░░░░░░░] 1234/2020 (61.0%) 已命中: 42`，仅 TTY 模式下显示，不污染管道/JSON 输出
+- **`--quick` 标志** —— 跳过 1375 个 `other` 长尾平台，仅扫主流 645 个，实测 **45s → 20s**（**3-4× 提速**）
+- **`--category code,chinese,...`** —— 按类别精准过滤，`--category chinese,spanish` 实测 **5.7s** 完成 98 平台
+- **`--timeout N`** —— 自定义单平台 HTTP 超时秒数
+
+### 🚀 Changed 改进
+
+- 默认 `--workers` 30 → **50**
+- 默认 `--timeout` 8s → **5s**（更激进，避免被极慢平台拖累）
+- `print_username_results` 现按「实际扫描数」显示分母（避免 `--quick` 时显示「0/1375」误导）
+
 ### Planned
 - 代理支持 (`--proxy http://...` / SOCKS5)
 - 批量输入模式 (`--batch ips.txt`)
