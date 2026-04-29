@@ -32,8 +32,8 @@ python3 GhostTR.py ip 8.8.8.8 --json | jq -r '.country'
 
 - [README (中文)](https://github.com/Akxan/GhostTrack-CN/blob/main/README.md)
 - [README (English)](https://github.com/Akxan/GhostTrack-CN/blob/main/README.en.md)
-- [详细教程](https://github.com/Akxan/GhostTrack-CN/blob/main/TUTORIAL.md)
-- [完整更新日志](https://github.com/Akxan/GhostTrack-CN/blob/main/CHANGELOG.md)
+- [详细教程](https://github.com/Akxan/GhostTrack-CN/blob/main/docs/TUTORIAL.md)
+- [完整更新日志](https://github.com/Akxan/GhostTrack-CN/blob/main/docs/CHANGELOG.md)
 
 ## 🙏 致谢
 

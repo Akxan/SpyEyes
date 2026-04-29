@@ -13,7 +13,7 @@
 [![Tests](https://img.shields.io/badge/tests-51%20passed-success.svg)](tests/)
 [![Platforms](https://img.shields.io/badge/platforms-2020-orange.svg)](data/platforms.json)
 [![Platform](https://img.shields.io/badge/platform-macOS%20%7C%20Linux%20%7C%20Windows%20%7C%20Termux-lightgrey)](#-installation)
-[![PRs Welcome](https://img.shields.io/badge/PRs-welcome-brightgreen.svg)](CONTRIBUTING.md)
+[![PRs Welcome](https://img.shields.io/badge/PRs-welcome-brightgreen.svg)](docs/CONTRIBUTING.md)
 [![Maintenance](https://img.shields.io/maintenance/yes/2026.svg)](https://github.com/Akxan/GhostTrack-CN/commits/main)
 
 [![Stars](https://img.shields.io/github/stars/Akxan/GhostTrack-CN?style=social)](https://github.com/Akxan/GhostTrack-CN/stargazers)
@@ -23,7 +23,7 @@
 
 **[🇨🇳 中文](README.md) · 🇬🇧 English**
 
-[**📖 Tutorial**](TUTORIAL.md) · [**🐛 Report Bug**](https://github.com/Akxan/GhostTrack-CN/issues) · [**🤝 Contribute**](CONTRIBUTING.md)
+[**📖 Tutorial**](docs/TUTORIAL.md) · [**🐛 Report Bug**](https://github.com/Akxan/GhostTrack-CN/issues) · [**🤝 Contribute**](docs/CONTRIBUTING.md)
 
 </div>
 
@@ -263,7 +263,7 @@ done
 
 ### 3️⃣ Full tutorial (Chinese)
 
-📖 **[TUTORIAL.md](TUTORIAL.md)** — covers every feature in depth (currently Chinese only; English version planned).
+📖 **[TUTORIAL.md](docs/TUTORIAL.md)** — covers every feature in depth (currently Chinese only; English version planned).
 
 ---
 
@@ -286,24 +286,28 @@ pytest tests/ --cov=. --cov-report=term-missing
 ```
 GhostTrack-CN/
 ├── GhostTR.py                  # Main script (1400 lines, includes i18n)
-├── data/platforms.json         # 2020-platform database (Maigret + Sherlock + WhatsMyName)
-├── tools/build_platforms.py    # Refresh platform DB from upstream sources
-├── requirements.txt            # Runtime deps
-├── tests/
-│   ├── __init__.py
-│   └── test_ghosttrack.py      # 47 pytest tests
-├── .github/
-│   ├── workflows/ci.yml        # GitHub Actions CI
-│   ├── ISSUE_TEMPLATE/         # Issue templates
-│   └── dependabot.yml          # Auto dependency updates
 ├── README.md                   # 中文 README
 ├── README.en.md                # English README (you are here)
-├── TUTORIAL.md                 # Detailed tutorial (Chinese)
-├── CONTRIBUTING.md             # Contribution guide
-├── SECURITY.md                 # Security policy
-├── CHANGELOG.md                # Version history
 ├── LICENSE                     # MIT
-└── asset/                      # Demo images
+├── requirements.txt            # Runtime deps
+├── docs/                       # 📚 All documentation
+│   ├── TUTORIAL.md             # Detailed tutorial (Chinese)
+│   ├── CHANGELOG.md            # Version history
+│   ├── CONTRIBUTING.md         # Contribution guide
+│   └── SECURITY.md             # Security policy
+├── data/
+│   └── platforms.json          # 2020-platform database (Maigret + Sherlock + WhatsMyName)
+├── tools/
+│   └── build_platforms.py      # Refresh platform DB from upstream sources
+├── tests/
+│   ├── __init__.py
+│   └── test_ghosttrack.py      # 51 pytest tests
+├── .github/
+│   ├── workflows/ci.yml        # GitHub Actions CI (multi-OS × multi-Python)
+│   ├── ISSUE_TEMPLATE/         # Issue templates
+│   ├── PULL_REQUEST_TEMPLATE.md
+│   └── dependabot.yml          # Auto dependency updates
+└── asset/                      # README screenshots & social preview
 ```
 
 ---
@@ -330,7 +334,7 @@ GhostTrack-CN/
 
 PRs, Issues, and Stars all welcome!
 
-Read [CONTRIBUTING.md](CONTRIBUTING.md) for development workflow and code conventions.
+Read [CONTRIBUTING.md](docs/CONTRIBUTING.md) for development workflow and code conventions.
 
 <a href="https://github.com/Akxan/GhostTrack-CN/graphs/contributors">
   <img src="https://contrib.rocks/image?repo=Akxan/GhostTrack-CN" />
@@ -340,7 +344,7 @@ Read [CONTRIBUTING.md](CONTRIBUTING.md) for development workflow and code conven
 
 ## 🔒 Security
 
-Found a security issue? Please report responsibly via [SECURITY.md](SECURITY.md) — do not open public issues for security bugs.
+Found a security issue? Please report responsibly via [SECURITY.md](docs/SECURITY.md) — do not open public issues for security bugs.
 
 ---
 
@@ -375,7 +379,7 @@ This tool is for **legitimate security research, self-audit, CTF, and educationa
 - Lookup of fully public information
 - Education, research, open-source contribution
 
-Users assume all legal responsibility. See [TUTORIAL.md - Legal Notice](TUTORIAL.md#法律与道德提醒) for details.
+Users assume all legal responsibility. See [TUTORIAL.md - Legal Notice](docs/TUTORIAL.md#法律与道德提醒) for details.
 
 ---
 

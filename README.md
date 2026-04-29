@@ -13,7 +13,7 @@
 [![Tests](https://img.shields.io/badge/tests-51%20passed-success.svg)](tests/)
 [![Platforms](https://img.shields.io/badge/platforms-2020-orange.svg)](data/platforms.json)
 [![Platform](https://img.shields.io/badge/platform-macOS%20%7C%20Linux%20%7C%20Windows%20%7C%20Termux-lightgrey)](#-安装)
-[![PRs Welcome](https://img.shields.io/badge/PRs-welcome-brightgreen.svg)](CONTRIBUTING.md)
+[![PRs Welcome](https://img.shields.io/badge/PRs-welcome-brightgreen.svg)](docs/CONTRIBUTING.md)
 [![Maintenance](https://img.shields.io/maintenance/yes/2026.svg)](https://github.com/Akxan/GhostTrack-CN/commits/main)
 
 [![Stars](https://img.shields.io/github/stars/Akxan/GhostTrack-CN?style=social)](https://github.com/Akxan/GhostTrack-CN/stargazers)
@@ -23,7 +23,7 @@
 
 **🇨🇳 中文 · [🇬🇧 English](README.en.md)**
 
-[**📖 详细教程**](TUTORIAL.md) · [**🐛 报 Bug**](https://github.com/Akxan/GhostTrack-CN/issues) · [**🤝 贡献代码**](CONTRIBUTING.md) · [**📝 更新日志**](CHANGELOG.md)
+[**📖 详细教程**](docs/TUTORIAL.md) · [**🐛 报 Bug**](https://github.com/Akxan/GhostTrack-CN/issues) · [**🤝 贡献代码**](docs/CONTRIBUTING.md) · [**📝 更新日志**](docs/CHANGELOG.md)
 
 </div>
 
@@ -295,7 +295,7 @@ python3 GhostTR.py mx gmail.com --save results
 
 更详细的功能讲解、安装排错、参数说明请见：
 
-📖 **[TUTORIAL.md — 详细使用教程](TUTORIAL.md)**
+📖 **[TUTORIAL.md — 详细使用教程](docs/TUTORIAL.md)**
 
 ---
 
@@ -324,20 +324,28 @@ pytest tests/ --cov=. --cov-report=term-missing
 ```
 GhostTrack-CN/
 ├── GhostTR.py                  # 主脚本（1400 行，含全部功能 + i18n）
-├── data/platforms.json         # 2020 平台数据库（Maigret + Sherlock + WhatsMyName 合并）
-├── tools/build_platforms.py    # 平台数据库重建脚本（拉取上游最新）
+├── README.md                   # 你正在看的这个（中文入口）
+├── README.en.md                # English entry
+├── LICENSE                     # MIT
 ├── requirements.txt            # 运行依赖
+├── docs/                       # 📚 所有文档
+│   ├── TUTORIAL.md             # 详细教程
+│   ├── CHANGELOG.md            # 版本更新日志
+│   ├── CONTRIBUTING.md         # 贡献指南
+│   └── SECURITY.md             # 安全策略
+├── data/
+│   └── platforms.json          # 2020 平台数据库（Maigret + Sherlock + WhatsMyName 合并）
+├── tools/
+│   └── build_platforms.py      # 平台数据库重建脚本（拉取上游最新）
 ├── tests/
 │   ├── __init__.py
-│   └── test_ghosttrack.py      # 47 个 pytest 测试
+│   └── test_ghosttrack.py      # 51 个 pytest 测试
 ├── .github/
-│   └── workflows/
-│       └── ci.yml              # GitHub Actions CI
-├── README.md                   # 你正在看的这个
-├── TUTORIAL.md                 # 详细教程
-├── CONTRIBUTING.md             # 贡献指南
-├── LICENSE                     # MIT
-└── asset/                      # 演示图片
+│   ├── workflows/ci.yml        # GitHub Actions CI（多 OS × 多 Python 版本）
+│   ├── ISSUE_TEMPLATE/         # bug / 功能 issue 模板
+│   ├── PULL_REQUEST_TEMPLATE.md
+│   └── dependabot.yml          # 自动依赖更新
+└── asset/                      # README 截图与社交预览图
 ```
 
 ---
@@ -364,7 +372,7 @@ GhostTrack-CN/
 
 欢迎 PR、Issue、Star！
 
-请先阅读 [CONTRIBUTING.md](CONTRIBUTING.md) 了解开发流程和代码规范。
+请先阅读 [CONTRIBUTING.md](docs/CONTRIBUTING.md) 了解开发流程和代码规范。
 
 <a href="https://github.com/Akxan/GhostTrack-CN/graphs/contributors">
   <img src="https://contrib.rocks/image?repo=Akxan/GhostTrack-CN" />
@@ -405,7 +413,7 @@ GhostTrack-CN/
 - 完全公开信息的合法查询
 - 教学、研究、开源贡献
 
-使用者需自行承担一切法律责任。详见 [TUTORIAL.md - 法律与道德提醒](TUTORIAL.md#法律与道德提醒)。
+使用者需自行承担一切法律责任。详见 [TUTORIAL.md - 法律与道德提醒](docs/TUTORIAL.md#法律与道德提醒)。
 
 ---
 

@@ -1,7 +1,7 @@
 blank_issues_enabled: false
 contact_links:
   - name: 📖 详细教程 / Tutorial
-    url: https://github.com/Akxan/GhostTrack-CN/blob/main/TUTORIAL.md
+    url: https://github.com/Akxan/GhostTrack-CN/blob/main/docs/TUTORIAL.md
     about: 在提 issue 前先看看教程，可能已经有答案 / Check the tutorial first
   - name: 💬 GitHub Discussions
     url: https://github.com/Akxan/GhostTrack-CN/discussions
