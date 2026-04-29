@@ -72,8 +72,9 @@
 - 12 种号码类型识别（移动 / 固话 / VoIP / 寻呼机 ...）
 
 ### 👤 用户名扫描
-- **1458 个平台**（含 19 中文社媒，对标 Maigret）
-- **30-50 线程并发**，全部扫完 ~30-45 秒
+- **2020 个平台**（合并 Maigret + Sherlock + WhatsMyName 三大上游）
+- **46 中文圈**（陆/台/港/星/马）+ **52 西语圈**（西班牙/拉美）
+- **30-50 线程并发**，全部扫完 ~45-60 秒
 - 内容关键词 + `must_contain` 双重检测
 - 默认只显示命中，`--all` 看完整结果
 
@@ -116,7 +117,7 @@
 | [holehe](https://github.com/megadose/holehe) | ❌ | ❌ | ❌ | ❌ | ❌ | ✅ | ❌ |
 | [theHarvester](https://github.com/laramies/theHarvester) | ✅ | ❌ | ❌ | ✅ | ❌ | ✅ | ❌ |
 | [Recon-ng](https://github.com/lanmaster53/recon-ng) | ✅ | ❌ | ✅ | ✅ | ✅ | ✅ | ❌ |
-| **GhostTrack-CN** | ✅ | ✅ | ✅ **(1458)** | ✅ | ✅ | ✅ | ✅ |
+| **GhostTrack-CN** | ✅ | ✅ | ✅ **(2020)** | ✅ | ✅ | ✅ | ✅ |
 
 > 💡 **定位说明**：GhostTrack-CN **不是**为了在用户名扫描深度上跟 Sherlock 卷，而是做**轻量级一站式中文工具**。
 > - 只查用户名 → Sherlock / Maigret 更专业

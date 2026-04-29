@@ -187,7 +187,8 @@ TRANSLATIONS: dict = {
         'cat.art':              'Art & Design',
         'cat.gaming':           'Gaming',
         'cat.funding':          'Creator Economy',
-        'cat.chinese':          'Chinese Platforms',
+        'cat.chinese':          'Chinese Platforms (CN/TW/HK/SG/MY)',
+        'cat.spanish':          'Spanish & Latin America (ES/AR/MX/BR/PE...)',
         'cat.other':            'Other',
         'msg.show_all_hint':    '(showing only matches; use --all to see misses)',
         # Errors
@@ -317,7 +318,8 @@ TRANSLATIONS: dict = {
         'cat.art':              '艺术与设计',
         'cat.gaming':           '游戏平台',
         'cat.funding':          '创作者经济',
-        'cat.chinese':          '中文平台',
+        'cat.chinese':          '中文平台（陆/台/港/星/马）',
+        'cat.spanish':          '西语圈（西班牙/拉美）',
         'cat.other':            '其他平台',
         'msg.show_all_hint':    '（仅显示命中；用 --all 查看未命中）',
         'err.network':          '网络请求失败（超时或连接错误）',
@@ -732,10 +734,54 @@ PLATFORMS = [
     Platform('牛客 Nowcoder',     'https://www.nowcoder.com/users/{}',          'chinese'),
     Platform('博客园 Cnblogs',    'https://www.cnblogs.com/{}/',                'chinese'),
     Platform('IT之家 ITHome',     'https://my.ithome.com/{}',                   'chinese'),
+
+    # ---- 简中（更多 PRC 平台）/ More Simplified Chinese ----
+    Platform('51CTO 博客',         'https://blog.51cto.com/{}',                  'chinese'),
+    Platform('马蜂窝 Mafengwo',    'https://www.mafengwo.cn/u/{}',               'chinese'),
+    Platform('穷游网 Qyer',        'https://www.qyer.com/u/{}',                  'chinese'),
+    Platform('大众点评 Dianping',  'https://www.dianping.com/member/{}',         'chinese'),
+    Platform('果壳 Guokr',         'https://www.guokr.com/i/{}',                 'chinese'),
+    Platform('360doc 图书馆',      'https://www.360doc.com/userhome/{}',         'chinese'),
+    Platform('起点中文网 Qidian',  'https://my.qidian.com/{}',                   'chinese'),
+    Platform('晋江文学城 JJWXC',   'https://my.jjwxc.net/onename.php?keyword={}','chinese'),
+    Platform('AcWing',             'https://www.acwing.com/user/myspace/index/{}/','chinese'),
+    Platform('阿里云开发者社区',   'https://developer.aliyun.com/profile/{}',    'chinese'),
+
+    # ---- 繁中 / Traditional Chinese (Taiwan) ----
+    Platform('Dcard 狄卡',         'https://www.dcard.tw/@{}',                   'chinese'),
+    Platform('Mobile01',           'https://www.mobile01.com/userinfo.php?account={}', 'chinese'),
+    Platform('巴哈姆特 Bahamut',   'https://home.gamer.com.tw/homeindex.php?owner={}', 'chinese'),
+    Platform('PIXNET 痞客邦',      'https://{}.pixnet.net',                      'chinese'),
+    Platform('iCook 愛料理',       'https://icook.tw/users/{}',                  'chinese'),
+    Platform('隨意窩 Xuite',       'https://blog.xuite.net/{}',                  'chinese'),
+
+    # ---- 港澳 / Hong Kong & Macau ----
+    Platform('LIHKG 連登',         'https://lihkg.com/profile/{}',               'chinese'),
+    Platform('HK01',               'https://www.hk01.com/author/{}',             'chinese'),
+
+    # ---- 新加坡 / 马来西亚 / Singapore & Malaysia ----
+    Platform('Carousell',          'https://www.carousell.com/u/{}/',            'chinese'),
+    Platform('蝦皮 Shopee TW',     'https://shopee.tw/{}',                       'chinese'),
+    Platform('蝦皮 Shopee SG',     'https://shopee.sg/{}',                       'chinese'),
+    Platform('蝦皮 Shopee MY',     'https://shopee.com.my/{}',                   'chinese'),
+
+    # ---- 西班牙 + 拉美 / Spanish (Spain + Latin America) ----
+    Platform('Wallapop',           'https://es.wallapop.com/user/{}',            'spanish'),
+    Platform('MercadoLibre AR',    'https://perfil.mercadolibre.com.ar/{}',      'spanish'),
+    Platform('MercadoLibre MX',    'https://perfil.mercadolibre.com.mx/{}',      'spanish'),
+    Platform('MercadoLibre BR',    'https://perfil.mercadolivre.com.br/{}',      'spanish'),
+    Platform('Menéame',            'https://www.meneame.net/user/{}',            'spanish'),
+    Platform('Duolingo',           'https://www.duolingo.com/profile/{}',        'spanish'),
+    Platform('Taringa',            'https://www.taringa.net/{}',                 'spanish'),
+    Platform('Forocoches',         'https://forocoches.com/foro/member.php?username={}', 'spanish'),
+    Platform('Hispachan',          'https://www.hispachan.org/u/{}',             'spanish'),
+    Platform('Forosperu',          'https://www.forosperu.net/members/{}.html',  'spanish'),
+    Platform('Genbeta',            'https://www.genbeta.com/comments-by/{}',     'spanish'),
+    Platform('Xataka',             'https://www.xataka.com/comments-by/{}',      'spanish'),
 ]
 
 # 类别在输出中的显示顺序
-CATEGORY_ORDER = ['code', 'social', 'forum', 'video', 'music', 'writing', 'art', 'gaming', 'funding', 'chinese', 'other']
+CATEGORY_ORDER = ['code', 'social', 'forum', 'video', 'music', 'writing', 'art', 'gaming', 'funding', 'chinese', 'spanish', 'other']
 
 # 加载从 Maigret 拉取的扩展平台库
 _PLATFORMS_JSON = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'data', 'platforms.json')

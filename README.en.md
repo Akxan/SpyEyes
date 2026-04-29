@@ -72,8 +72,9 @@ Designed for **security researchers, penetration testers, SOC analysts, threat h
 - 12 number type categories (mobile / landline / VoIP / pager ...)
 
 ### 👤 Username Scan
-- **1458 platforms** (incl. 19 Chinese, on par with Maigret)
-- **30-50 thread concurrent** scan, ~30-45 sec
+- **2020 platforms** (Maigret + Sherlock + WhatsMyName combined)
+- **46 Chinese-region** (CN/TW/HK/SG/MY) + **52 Spanish-region** (ES/AR/MX/BR/...)
+- **30-50 thread concurrent** scan, ~45-60 sec
 - Dual detection: not-found patterns + must-contain
 - Shows hits only by default, use `--all` for full report
 
@@ -116,7 +117,7 @@ Designed for **security researchers, penetration testers, SOC analysts, threat h
 | [holehe](https://github.com/megadose/holehe) | ❌ | ❌ | ❌ | ❌ | ❌ | ✅ | ❌ |
 | [theHarvester](https://github.com/laramies/theHarvester) | ✅ | ❌ | ❌ | ✅ | ❌ | ✅ | ❌ |
 | [Recon-ng](https://github.com/lanmaster53/recon-ng) | ✅ | ❌ | ✅ | ✅ | ✅ | ✅ | ❌ |
-| **GhostTrack-CN** | ✅ | ✅ | ✅ **(1458)** | ✅ | ✅ | ✅ | ✅ |
+| **GhostTrack-CN** | ✅ | ✅ | ✅ **(2020)** | ✅ | ✅ | ✅ | ✅ |
 
 > 💡 **Positioning**: GhostTrack-CN is **not** trying to outdo Sherlock in username-scan depth. It's a **lightweight all-in-one Chinese-first toolkit**. For pure username OSINT, Sherlock/Maigret are deeper. For one tool covering 6 lookup types with full Chinese localization, GhostTrack-CN is unmatched.
 

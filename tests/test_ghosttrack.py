@@ -191,10 +191,16 @@ class TestCheckUsername:
         assert url is None
 
     def test_platforms_count_meets_target(self):
-        """对标 Maigret 量级，至少 1000 个平台（含 Maigret 数据库）。"""
-        assert len(gt.PLATFORMS) >= 1000, f"got {len(gt.PLATFORMS)}"
+        """对标 Maigret + Sherlock + WhatsMyName 合并，至少 2000 个平台。"""
+        assert len(gt.PLATFORMS) >= 2000, f"got {len(gt.PLATFORMS)}"
+
+    def test_chinese_region_coverage(self):
         chinese = [p for p in gt.PLATFORMS if p.category == 'chinese']
-        assert len(chinese) >= 15
+        assert len(chinese) >= 30, f"got {len(chinese)}"
+
+    def test_spanish_region_coverage(self):
+        spanish = [p for p in gt.PLATFORMS if p.category == 'spanish']
+        assert len(spanish) >= 30, f"got {len(spanish)}"
 
     def test_all_categories_covered(self):
         cats = {p.category for p in gt.PLATFORMS}
