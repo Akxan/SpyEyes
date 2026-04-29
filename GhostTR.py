@@ -39,6 +39,48 @@ except ImportError:
 # ====================================================================
 CONFIG_DIR = os.path.expanduser('~/.ghosttrack')
 CONFIG_FILE = os.path.join(CONFIG_DIR, 'config.json')
+HISTORY_FILE = os.path.join(CONFIG_DIR, 'history.jsonl')
+
+
+def append_history(command: str, query: str, summary: dict) -> None:
+    """追加查询记录到 history.jsonl。仅记录元数据（时间/命令/查询/摘要），
+    不存完整结果，保护隐私 + 控制文件大小。"""
+    try:
+        os.makedirs(CONFIG_DIR, exist_ok=True)
+        entry = {
+            'ts': time.strftime('%Y-%m-%dT%H:%M:%S'),
+            'cmd': command,
+            'query': query,
+            **summary,
+        }
+        with open(HISTORY_FILE, 'a', encoding='utf-8') as f:
+            f.write(json.dumps(entry, ensure_ascii=False) + '\n')
+    except OSError:
+        pass
+
+
+def read_history(limit: int = 50, search: Optional[str] = None) -> list:
+    """读取最近的查询历史。limit=最近 N 条，search=按 query 子串过滤。"""
+    if not os.path.exists(HISTORY_FILE):
+        return []
+    try:
+        with open(HISTORY_FILE, 'r', encoding='utf-8') as f:
+            entries = []
+            for line in f:
+                line = line.strip()
+                if not line:
+                    continue
+                try:
+                    entries.append(json.loads(line))
+                except json.JSONDecodeError:
+                    continue
+    except OSError:
+        return []
+    if search:
+        s = search.lower()
+        entries = [e for e in entries if s in e.get('query', '').lower()
+                   or s in e.get('cmd', '').lower()]
+    return entries[-limit:]
 
 
 def load_config() -> dict:
@@ -100,6 +142,7 @@ TRANSLATIONS: dict = {
         'section.whois':        'WHOIS Lookup',
         'section.mx':           'MX Records',
         'section.email':        'Email Validity',
+        'section.history':      'Recent Queries',
         # IP fields
         'field.target_ip':      'Target IP',
         'field.ip_type':        'IP Type',
@@ -186,6 +229,7 @@ TRANSLATIONS: dict = {
         'cat.funding':          'Creator Economy',
         'cat.chinese':          'Chinese Platforms (CN/TW/HK/SG/MY)',
         'cat.spanish':          'Spanish & Latin America (ES/AR/MX/BR/PE...)',
+        'cat.adult':            'Adult / Dating (18+)',
         'cat.other':            'Other',
         'msg.show_all_hint':    '(showing only matches; use --all to see misses)',
         # Errors
@@ -204,6 +248,7 @@ TRANSLATIONS: dict = {
         'err.empty_input':      'Input is empty',
         'msg.progress':         'Scanning',
         'msg.found':            'found',
+        'msg.no_history':       '(no history yet — run a query first)',
         'mode.title':           'Scan mode:',
         'mode.quick':           'Quick   (~645 platforms, ~20s)  [recommended]',
         'mode.full':            'Full    (~2020 platforms, ~45s)',
@@ -245,6 +290,7 @@ TRANSLATIONS: dict = {
         'section.whois':        'WHOIS 查询',
         'section.mx':           'MX 记录',
         'section.email':        '邮箱有效性',
+        'section.history':      '最近查询',
         'field.target_ip':      '目标 IP',
         'field.ip_type':        'IP 类型',
         'field.country':        '国家',
@@ -324,6 +370,7 @@ TRANSLATIONS: dict = {
         'cat.funding':          '创作者经济',
         'cat.chinese':          '中文平台（陆/台/港/星/马）',
         'cat.spanish':          '西语圈（西班牙/拉美）',
+        'cat.adult':            '成人 / 约会（18+）',
         'cat.other':            '其他平台',
         'msg.show_all_hint':    '（仅显示命中；用 --all 查看未命中）',
         'err.network':          '网络请求失败（超时或连接错误）',
@@ -341,6 +388,7 @@ TRANSLATIONS: dict = {
         'err.empty_input':      '输入为空',
         'msg.progress':         '扫描中',
         'msg.found':            '已命中',
+        'msg.no_history':       '（暂无历史 —— 先跑一次查询试试）',
         'mode.title':           '扫描模式:',
         'mode.quick':           '快速   (约 645 平台, ~20 秒)  [推荐]',
         'mode.full':            '完整   (全部 2020 平台, ~45 秒)',
@@ -795,10 +843,32 @@ PLATFORMS = [
     Platform('Forosperu',          'https://www.forosperu.net/members/{}.html',  'spanish'),
     Platform('Genbeta',            'https://www.genbeta.com/comments-by/{}',     'spanish'),
     Platform('Xataka',             'https://www.xataka.com/comments-by/{}',      'spanish'),
+
+    # ---- 成人 / 约会 / 性内容（18+）/ Adult & Dating ----
+    Platform('OnlyFans',           'https://onlyfans.com/{}',                    'adult'),
+    Platform('Fansly',             'https://fansly.com/{}',                      'adult'),
+    Platform('FetLife',            'https://fetlife.com/users/{}',               'adult'),
+    Platform('Chaturbate',         'https://chaturbate.com/{}/',                 'adult'),
+    Platform('Stripchat',          'https://stripchat.com/{}',                   'adult'),
+    Platform('ManyVids',           'https://www.manyvids.com/Profile/{}',        'adult'),
+    Platform('JustForFans',        'https://justfor.fans/{}',                    'adult'),
+    Platform('AdmireMe',           'https://admireme.vip/{}',                    'adult'),
+    Platform('MyFreeCams',         'https://profiles.myfreecams.com/{}',         'adult'),
+    Platform('LiveJasmin',         'https://www.livejasmin.com/en/chat/{}',      'adult'),
+    Platform('Cam4',               'https://www.cam4.com/{}',                    'adult'),
+    Platform('CamSoda',            'https://www.camsoda.com/{}',                 'adult'),
+    Platform('PornHub Community',  'https://www.pornhub.com/users/{}',           'adult'),
+    Platform('xHamster',           'https://xhamster.com/users/{}',              'adult'),
+    Platform('Literotica',         'https://www.literotica.com/stories/memberpage.php?uid={}', 'adult'),
+    Platform('F95Zone',            'https://f95zone.to/members/{}',              'adult'),
+    Platform('Rule34',             'https://rule34.xxx/index.php?page=account&s=profile&uname={}', 'adult'),
+    Platform('PlentyOfFish',       'https://www.pof.com/viewprofile.aspx?profile_id={}', 'adult'),
+    Platform('Badoo',              'https://badoo.com/profile/{}',               'adult'),
+    Platform('Tagged',             'https://www.tagged.com/{}',                  'adult'),
 ]
 
 # 类别在输出中的显示顺序
-CATEGORY_ORDER = ['code', 'social', 'forum', 'video', 'music', 'writing', 'art', 'gaming', 'funding', 'chinese', 'spanish', 'other']
+CATEGORY_ORDER = ['code', 'social', 'forum', 'video', 'music', 'writing', 'art', 'gaming', 'funding', 'chinese', 'spanish', 'adult', 'other']
 
 # 加载从 Maigret 拉取的扩展平台库
 _PLATFORMS_JSON = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'data', 'platforms.json')
@@ -912,7 +982,7 @@ def _ask_scan_mode() -> Optional[list]:
     return [c for c in CATEGORY_ORDER if c != 'other']
 
 
-def track_username(username: str, *, max_workers: int = 50, timeout: float = 5,
+def track_username(username: str, *, max_workers: int = 100, timeout: float = 5,
                    show_progress: bool = True, categories: Optional[list] = None) -> dict:
     """并发扫描平台，返回 {platform_name: url_or_None}（按 PLATFORMS 顺序）。
     - 空 username 会被拒绝以避免命中各平台主页造成误报。
@@ -1104,25 +1174,38 @@ def print_username_results(results: dict, show_all: bool = False) -> None:
     if not show_all:
         print(f" {Color.Bl}{Color.Ye}{t('msg.show_all_hint')}{Color.Reset}")
     print()
-    # 按类别分组打印；只统计实际被扫描的平台（results 中存在的）
+    # 按类别分组打印；类别内部按命中可信度排序：
+    #   must_contain（最严格 → 高可信）→ not_found → 仅 HTTP 200（低可信）
+    def _confidence(p):
+        return (2 if p.must_contain else 0) + (1 if p.not_found else 0)
     for cat in CATEGORY_ORDER:
         cat_platforms = [p for p in PLATFORMS if p.category == cat and p.name in results]
         if not cat_platforms:
             continue
         cat_found_list = [p for p in cat_platforms if results.get(p.name)]
+        # 命中的按可信度降序排（高可信优先 → 真实用户更可能在这）
+        cat_found_list.sort(key=lambda p: (-_confidence(p), p.name))
         cat_found = len(cat_found_list)
         # 默认只显示有命中的类别；--all 时显示所有
         if not show_all and cat_found == 0:
             continue
         cat_label = t(f'cat.{cat}')
         print(f" {Color.Cy}┌─ {cat_label} ({cat_found}/{len(cat_platforms)}) ─{Color.Reset}")
-        platforms_to_show = cat_platforms if show_all else cat_found_list
+        if show_all:
+            platforms_to_show = sorted(cat_platforms,
+                                       key=lambda p: (0 if results.get(p.name) else 1,
+                                                      -_confidence(p), p.name))
+        else:
+            platforms_to_show = cat_found_list
         for p in platforms_to_show:
             url = results.get(p.name)
+            # 置信度标记：★★★ = must_contain, ★★ = not_found, ★ = 仅 HTTP 200
+            conf = _confidence(p)
+            badge = '★★★' if conf >= 2 else ('★★' if conf == 1 else '★  ')
             if url:
-                print(f" {Color.Wh}[ {Color.Gr}+ {Color.Wh}] {p.name:30} {Color.Gr}{url}{Color.Reset}")
+                print(f" {Color.Wh}[ {Color.Gr}+ {Color.Wh}] {Color.Mage}{badge}{Color.Wh} {p.name:28} {Color.Gr}{url}{Color.Reset}")
             else:
-                print(f" {Color.Wh}[ {Color.Re}- {Color.Wh}] {p.name:30} {Color.Ye}{t('msg.not_found')}{Color.Reset}")
+                print(f" {Color.Wh}[ {Color.Re}- {Color.Wh}] {Color.Bl}{badge}{Color.Wh} {p.name:28} {Color.Ye}{t('msg.not_found')}{Color.Reset}")
         print()
 
 
@@ -1299,16 +1382,117 @@ def handle_choice(choice: int, save_dir: Optional[str] = None) -> None:
         raise ValueError(t('prompt.unknown_option', n=choice))
 
 
-def _maybe_save(directory: Optional[str], prefix: str, data: Any) -> None:
-    if not directory:
+def _maybe_save(target: Optional[str], prefix: str, data: Any) -> None:
+    """保存查询结果。target 可以是：
+       - 目录（如 'out/'）：自动生成 <prefix>_<ts>.json
+       - 单文件 .md  →  Markdown 报告
+       - 单文件 .json → JSON
+       - 单文件无扩展 → JSON
+    """
+    if not target:
         return
-    os.makedirs(directory, exist_ok=True)
-    safe_prefix = re.sub(r'[^\w.+-]', '_', prefix)
-    ts = time.strftime('%Y%m%d-%H%M%S')
-    path = os.path.join(directory, f'{safe_prefix}_{ts}.json')
-    with open(path, 'w', encoding='utf-8') as f:
-        json.dump(data, f, ensure_ascii=False, indent=2, default=str)
+    target_lower = target.lower()
+    is_md_file = target_lower.endswith('.md')
+    is_json_file = target_lower.endswith('.json')
+    is_dir = target.endswith(os.sep) or os.path.isdir(target) or not (is_md_file or is_json_file)
+    if is_dir:
+        os.makedirs(target, exist_ok=True)
+        safe_prefix = re.sub(r'[^\w.+-]', '_', prefix)
+        ts = time.strftime('%Y%m%d-%H%M%S')
+        path = os.path.join(target, f'{safe_prefix}_{ts}.json')
+        with open(path, 'w', encoding='utf-8') as f:
+            json.dump(data, f, ensure_ascii=False, indent=2, default=str)
+    else:
+        # 单文件
+        parent = os.path.dirname(target)
+        if parent:
+            os.makedirs(parent, exist_ok=True)
+        if is_md_file:
+            md = _to_markdown(prefix, data)
+            with open(target, 'w', encoding='utf-8') as f:
+                f.write(md)
+        else:
+            with open(target, 'w', encoding='utf-8') as f:
+                json.dump(data, f, ensure_ascii=False, indent=2, default=str)
+        path = target
     print(f"\n {Color.Cy}{t('msg.saved_to', path=path)}{Color.Reset}")
+
+
+def _to_markdown(prefix: str, data: Any) -> str:
+    """根据 prefix（如 'ip_8.8.8.8' / 'username_torvalds'）生成 Markdown 报告。"""
+    lines = []
+    cmd, _, query = prefix.partition('_')
+    ts = time.strftime('%Y-%m-%d %H:%M:%S')
+    lines.append("# 🔍 GhostTrack Report")
+    lines.append("")
+    lines.append(f"- **Command**: `{cmd}`")
+    lines.append(f"- **Query**: `{query}`")
+    lines.append(f"- **Generated**: {ts}")
+    lines.append("- **Tool**: [GhostTrack-CN](https://github.com/Akxan/GhostTrack-CN)")
+    lines.append("")
+    lines.append("---")
+    lines.append("")
+
+    if isinstance(data, dict) and '_error' in data:
+        lines.append(f"## ❌ Error\n\n> {data['_error']}\n")
+        return '\n'.join(lines)
+
+    if cmd == 'username' and isinstance(data, dict):
+        found = sum(1 for v in data.values() if v)
+        lines.append(f"## Username scan: `{query}`")
+        lines.append("")
+        lines.append(f"**Scanned {len(data)} platforms · Found {found} accounts**")
+        lines.append("")
+        for cat in CATEGORY_ORDER:
+            cat_pl = [p for p in PLATFORMS if p.category == cat and p.name in data]
+            cat_found = [(p, data[p.name]) for p in cat_pl if data[p.name]]
+            if not cat_found:
+                continue
+            lines.append(f"### {cat.title()} ({len(cat_found)}/{len(cat_pl)})")
+            lines.append("")
+            lines.append("| Platform | Profile URL |")
+            lines.append("|---|---|")
+            for p, url in cat_found:
+                lines.append(f"| {p.name} | <{url}> |")
+            lines.append("")
+        return '\n'.join(lines)
+
+    if cmd == 'mx' and isinstance(data, dict) and 'records' in data:
+        lines.append(f"## MX Records for `{data.get('domain', query)}`")
+        lines.append("")
+        lines.append("| Priority | Mail Server |")
+        lines.append("|---:|---|")
+        for r in data['records']:
+            lines.append(f"| {r['preference']} | `{r['exchange']}` |")
+        lines.append("")
+        return '\n'.join(lines)
+
+    # 通用：扁平化 dict 为表格
+    if isinstance(data, dict):
+        lines.append(f"## {cmd.upper()} info: `{query}`")
+        lines.append("")
+        lines.append("| Field | Value |")
+        lines.append("|---|---|")
+        for k, v in data.items():
+            if v is None or v == '':
+                continue
+            if isinstance(v, dict):
+                v_str = ', '.join(f"{kk}={vv}" for kk, vv in v.items() if not isinstance(vv, (dict, list)))
+            elif isinstance(v, (list, tuple)):
+                v_str = ', '.join(str(x) for x in v)
+            else:
+                v_str = str(v)
+            # 转义 markdown 表格里的 |
+            v_str = v_str.replace('|', '\\|')
+            lines.append(f"| {k} | {v_str} |")
+        lines.append("")
+        return '\n'.join(lines)
+
+    # 兜底
+    lines.append("```json")
+    lines.append(json.dumps(data, ensure_ascii=False, indent=2, default=str))
+    lines.append("```")
+    return '\n'.join(lines)
 
 
 def menu_loop(save_dir: Optional[str] = None) -> None:
@@ -1395,8 +1579,8 @@ def build_parser() -> argparse.ArgumentParser:
 
     sp = sub.add_parser('user', parents=[common], help='Scan username / 用户名扫描')
     sp.add_argument('username')
-    sp.add_argument('--workers', type=_positive_int, default=50,
-                    help='Concurrent threads / 并发线程数 (default: 50, max 200)')
+    sp.add_argument('--workers', type=_positive_int, default=100,
+                    help='Concurrent threads / 并发线程数 (default: 100, max 200)')
     sp.add_argument('--timeout', type=float, default=5.0,
                     help='HTTP timeout per platform in seconds / 单平台超时秒数 (default: 5)')
     sp.add_argument('--all', action='store_true', dest='show_all',
@@ -1407,13 +1591,17 @@ def build_parser() -> argparse.ArgumentParser:
                     help='Comma-separated categories: code,social,chinese,spanish,... / 用逗号分隔的类别')
 
     sp = sub.add_parser('whois', parents=[common], help='WHOIS lookup')
-    sp.add_argument('domain')
+    sp.add_argument('domains', nargs='+', help='One or more domains for batch query')
 
     sp = sub.add_parser('mx', parents=[common], help='MX records')
-    sp.add_argument('domain')
+    sp.add_argument('domains', nargs='+', help='One or more domains for batch query')
 
     sp = sub.add_parser('email', parents=[common], help='Email validation / 邮箱验证')
     sp.add_argument('address')
+
+    sp = sub.add_parser('history', parents=[common], help='Show recent queries / 显示历史查询')
+    sp.add_argument('--limit', type=int, default=20, help='Max entries to show (default: 20)')
+    sp.add_argument('--search', help='Filter by query substring')
     return parser
 
 
@@ -1422,8 +1610,10 @@ def run_cli(args: argparse.Namespace) -> int:
     args.json = getattr(args, 'json', False)
     args.save = getattr(args, 'save', None)
     data: Any = None
+    save_prefix = cmd  # 默认；下面各 cmd 会带上 query
     if cmd == 'ip':
         data = track_ip(args.target)
+        save_prefix = f'ip_{args.target}'
         if args.json:
             print(json.dumps(data, ensure_ascii=False, indent=2, default=str))
         else:
@@ -1431,18 +1621,19 @@ def run_cli(args: argparse.Namespace) -> int:
     elif cmd == 'myip':
         ip = show_my_ip()
         data = {'ip': ip}
+        save_prefix = 'my_ip'
         if args.json:
             print(json.dumps(data, ensure_ascii=False, indent=2))
         else:
             print_my_ip(ip)
     elif cmd == 'phone':
         data = track_phone(args.number, default_region=args.region)
+        save_prefix = f'phone_{args.number}'
         if args.json:
             print(json.dumps(data, ensure_ascii=False, indent=2, default=str))
         else:
             print_phone_info(data)
     elif cmd == 'user':
-        # 解析 category 过滤：--quick 等同于「除 other 外全部」
         cats = None
         if getattr(args, 'category_filter', None):
             cats = [c.strip() for c in args.category_filter.split(',') if c.strip()]
@@ -1450,33 +1641,115 @@ def run_cli(args: argparse.Namespace) -> int:
             cats = [c for c in CATEGORY_ORDER if c != 'other']
         data = track_username(args.username, max_workers=args.workers,
                               timeout=args.timeout, categories=cats)
+        save_prefix = f'username_{args.username}'
         if args.json:
             print(json.dumps(data, ensure_ascii=False, indent=2))
         else:
             print_username_results(data, show_all=getattr(args, 'show_all', False))
     elif cmd == 'whois':
-        data = whois_lookup(args.domain)
+        data = _batch_lookup(whois_lookup, args.domains) if len(args.domains) > 1 else whois_lookup(args.domains[0])
+        save_prefix = f'whois_{"_".join(args.domains)[:60]}'
         if args.json:
             print(json.dumps(data, ensure_ascii=False, indent=2, default=str))
         else:
-            print_whois(data)
+            if isinstance(data, dict) and all(isinstance(v, dict) for v in data.values()):
+                # batch
+                for domain, d in data.items():
+                    print(f"\n {Color.Cy}━━━ {domain} ━━━{Color.Reset}")
+                    print_whois(d)
+            else:
+                print_whois(data)
     elif cmd == 'mx':
-        data = mx_lookup(args.domain)
+        data = _batch_lookup(mx_lookup, args.domains) if len(args.domains) > 1 else mx_lookup(args.domains[0])
+        save_prefix = f'mx_{"_".join(args.domains)[:60]}'
         if args.json:
             print(json.dumps(data, ensure_ascii=False, indent=2))
         else:
-            print_mx(data)
+            if isinstance(data, dict) and all(isinstance(v, dict) for v in data.values()):
+                for domain, d in data.items():
+                    print(f"\n {Color.Cy}━━━ {domain} ━━━{Color.Reset}")
+                    print_mx(d)
+            else:
+                print_mx(data)
     elif cmd == 'email':
         data = email_validate(args.address)
+        save_prefix = f'email_{args.address}'
         if args.json:
             print(json.dumps(data, ensure_ascii=False, indent=2))
         else:
             print_email(data)
+    elif cmd == 'history':
+        entries = read_history(limit=args.limit, search=getattr(args, 'search', None))
+        if args.json:
+            print(json.dumps(entries, ensure_ascii=False, indent=2))
+        else:
+            print_history(entries)
+        return 0
     else:
         return 2
+    # 写历史（仅对实际查询的子命令）
+    _record_history(cmd, args, data)
     if args.save:
-        _maybe_save(args.save, cmd, data)
+        _maybe_save(args.save, save_prefix, data)
     return 1 if isinstance(data, dict) and '_error' in data else 0
+
+
+def _batch_lookup(fn, items: list, max_workers: int = 10) -> dict:
+    """对一组输入并发调用 fn，返回 {item: result}。"""
+    results: dict = {}
+    with ThreadPoolExecutor(max_workers=max_workers) as ex:
+        futures = {ex.submit(fn, item): item for item in items}
+        for fut in as_completed(futures):
+            item = futures[fut]
+            try:
+                results[item] = fut.result()
+            except Exception as e:
+                results[item] = {'_error': str(e)}
+    return {item: results[item] for item in items}  # 保持输入顺序
+
+
+def _record_history(cmd: str, args: argparse.Namespace, data: Any) -> None:
+    """记录单次查询到 history.jsonl。仅记摘要不存全量，保护隐私。"""
+    summary: dict = {}
+    if cmd == 'ip':
+        summary = {'target': args.target, 'ok': '_error' not in data}
+    elif cmd == 'myip':
+        summary = {'ok': data.get('ip') is not None}
+    elif cmd == 'phone':
+        summary = {'number': args.number, 'ok': '_error' not in data}
+    elif cmd == 'user':
+        if isinstance(data, dict):
+            found = sum(1 for v in data.values() if v)
+            summary = {'username': args.username, 'scanned': len(data), 'found': found}
+    elif cmd == 'whois':
+        summary = {'domains': args.domains}
+    elif cmd == 'mx':
+        summary = {'domains': args.domains}
+    elif cmd == 'email':
+        summary = {'address': args.address, 'mx_valid': data.get('mx_valid')}
+    query = summary.get('target') or summary.get('username') or summary.get('address') \
+            or (summary.get('domains') and ','.join(summary['domains'])) or summary.get('number') or ''
+    append_history(cmd, str(query), summary)
+
+
+def print_history(entries: list) -> None:
+    print(f"\n {Color.Wh}========== {Color.Gr}{t('section.history')} {Color.Wh}==========\n")
+    if not entries:
+        print(f" {Color.Ye}{t('msg.no_history')}{Color.Reset}")
+        return
+    for e in entries:
+        ts = e.get('ts', '?')
+        cmd = e.get('cmd', '?')
+        query = e.get('query', '')
+        extras = []
+        if 'found' in e:
+            extras.append(f"{e['found']}/{e.get('scanned', '?')}")
+        if 'ok' in e:
+            extras.append('✓' if e['ok'] else '✗')
+        if 'mx_valid' in e:
+            extras.append('mx✓' if e['mx_valid'] else 'mx✗')
+        extra_str = f"  [{Color.Cy}{', '.join(str(x) for x in extras)}{Color.Reset}]" if extras else ''
+        print(f"  {Color.Bl}{ts}{Color.Reset}  {Color.Wh}{cmd:7}{Color.Reset}  {Color.Gr}{query}{Color.Reset}{extra_str}")
 
 
 def resolve_language(args: argparse.Namespace) -> str:

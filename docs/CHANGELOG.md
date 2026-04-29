@@ -8,25 +8,64 @@ This project adheres to [Keep a Changelog](https://keepachangelog.com/en/1.1.0/)
 
 ## [Unreleased]
 
-### ✨ Added 新增
-
-- **用户名扫描进度条** —— 实时刷新底部一行 `[████░░░░░░░] 1234/2020 (61.0%) 已命中: 42`，仅 TTY 模式下显示，不污染管道/JSON 输出
-- **`--quick` 标志** —— 跳过 1375 个 `other` 长尾平台，仅扫主流 645 个，实测 **45s → 20s**（**3-4× 提速**）
-- **`--category code,chinese,...`** —— 按类别精准过滤，`--category chinese,spanish` 实测 **5.7s** 完成 98 平台
-- **`--timeout N`** —— 自定义单平台 HTTP 超时秒数
-
-### 🚀 Changed 改进
-
-- 默认 `--workers` 30 → **50**
-- 默认 `--timeout` 8s → **5s**（更激进，避免被极慢平台拖累）
-- `print_username_results` 现按「实际扫描数」显示分母（避免 `--quick` 时显示「0/1375」误导）
-
 ### Planned
 - 代理支持 (`--proxy http://...` / SOCKS5)
 - 批量输入模式 (`--batch ips.txt`)
 - HIBP (Have I Been Pwned) 邮箱泄露集成
 - PyPI 发布 (`pip install ghosttrack-cn`)
 - Docker 镜像
+
+---
+
+## [1.2.0] — 2026-04-29
+
+性能 + 用户体验大幅提升。新增 **5 大功能**：扫描进度条、模式筛选、Markdown 报告、查询历史、批量域名查询。新增 `adult` 类别（含 42 个成人/约会平台）。
+
+### ✨ Added 新增
+
+- **🚀 扫描速度优化（3-15× 提速）**
+  - `--quick` 标志：跳过 1375 个 `other` 长尾平台，仅扫主流 645 个 → ~20s（vs 默认 ~45s）
+  - `--category code,chinese,spanish,adult,...`：按类别精准过滤，最少 ~3s 完成
+  - `--timeout N`：自定义单平台 HTTP 超时秒数
+  - 默认 `--workers` 30 → **100**（实测线性扩展，2020 平台 mock 测试 12.5s → 6.4s）
+  - 默认 `--timeout` 8s → **5s**
+
+- **🎬 实时进度条**：扫描中底部一行 `[████░░░] 1234/2020 (61%) 已命中: 42` 实时刷新（仅 TTY，不污染管道/JSON）
+
+- **🎯 交互菜单选项 4 新增 4 模式选择**：快速 / 完整 / 仅中文+西语 / 仅代码
+
+- **📝 Markdown 报告导出**：`--save report.md` 直接生成可分享的 Markdown 报告
+  - 自动按平台类别分组
+  - 命中链接 `<url>` 可点击
+  - 通用 dict 自动转表格
+  - `--save out/` 仍是 JSON（按扩展名自动判断）
+
+- **📚 查询历史记录** (`~/.ghosttrack/history.jsonl`)
+  - 每次查询自动追加（仅元数据：时间/命令/查询/摘要，**不存全量结果**保护隐私）
+  - `gt history --limit 50 --search xxx` 列表 / 过滤
+  - 双语 UI
+
+- **🌐 批量域名 MX / WHOIS**
+  - `gt mx gmail.com outlook.com yahoo.com`
+  - `gt whois example.com github.com gitlab.com`
+  - 内部 10 线程并发，输出按域名分组
+
+- **🔞 新增 `adult` 类别（42 个平台）**
+  - **不再过滤 NSFW** —— 用户合法 OSINT 场景需要查这些
+  - 手工 curated 20 个：OnlyFans / Fansly / FetLife / Chaturbate / Stripchat / ManyVids / JustForFans / AdmireMe / MyFreeCams / LiveJasmin / Cam4 / CamSoda / PornHub Community / xHamster / Literotica / F95Zone / Rule34 / PlentyOfFish / Badoo / Tagged
+  - Maigret 数据库自动识别 22 个（通过 `ADULT_KEYWORDS` 关键词分类）
+  - 总平台数 2020 → **2032**
+
+- **🎯 命中可信度排序（★★★ / ★★ / ★）**
+  - 每个类别内按可信度排序：`must_contain` 模式 → `not_found` 模式 → 仅 HTTP 200
+  - 结果行可视化：`★★★ GitHub` 表示高可信，`★ Foo` 表示低可信
+  - 真实用户更可能落在前列
+
+### 🚀 Changed 改进
+
+- `print_username_results` 按实际扫描数显示分母（避免 `--quick` 时显示「0/1375」误导）
+- `_maybe_save` 智能判断：`.md` → Markdown 报告；`.json` 或目录 → JSON
+- CLI 子命令 `mx` / `whois` 改为 `nargs='+'`，向后兼容（单域名仍可）
 
 ---
 
@@ -180,7 +219,8 @@ OSINT 信息检索能力大幅扩展。从 113 个手工 curated 平台跃升至
 
 ---
 
-[Unreleased]: https://github.com/Akxan/GhostTrack-CN/compare/v1.1.1...HEAD
+[Unreleased]: https://github.com/Akxan/GhostTrack-CN/compare/v1.2.0...HEAD
+[1.2.0]: https://github.com/Akxan/GhostTrack-CN/compare/v1.1.1...v1.2.0
 [1.1.1]: https://github.com/Akxan/GhostTrack-CN/compare/v1.1.0...v1.1.1
 [1.1.0]: https://github.com/Akxan/GhostTrack-CN/compare/v1.0.0...v1.1.0
 [1.0.0]: https://github.com/Akxan/GhostTrack-CN/releases/tag/v1.0.0

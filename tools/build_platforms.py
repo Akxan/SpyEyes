@@ -84,6 +84,21 @@ SPANISH_KEYWORDS = [
     "duolingo", "globo.com", "uol.com", "g1.globo",
 ]
 
+# 成人 / 约会 / 性内容平台关键词（优先于其它分类）
+ADULT_KEYWORDS = [
+    "porn", "xxx", "xvideos", "xnxx", "redtube", "youporn", "tube8",
+    "onlyfans", "fansly", "manyvids", "justforfans", "admireme",
+    "fetlife", "kinkly", "alt.com", "fetster",
+    "chaturbate", "stripchat", "myfreecams", "bongacams", "livejasmin",
+    "cam4", "camsoda", "flirt4free",
+    "adult", "nsfw", "hookup", "fling", "naughty",
+    "ashleymadison", "adultfriendfinder", "ohlala", "iamnaughty",
+    "tinder", "bumble", "hinge", "okcupid", "match.com", "pof.com",
+    "plentyoffish", "tagged.com", "badoo", "grindr", "scruff",
+    "her.app", "feeld", "happn", "coffeemeetsbagel",
+    "literotica", "asstr", "f95zone", "rule34",
+]
+
 # 主题分类（仅在区域判定后兜底使用）
 CATEGORY_RULES = [
     ("code", [
@@ -167,7 +182,10 @@ def categorize(name: str, url: str) -> str:
        4. 'other' 兜底
     """
     haystack = (name + " " + url).lower()
-    # 1. 区域关键词优先
+    # 1. 成人 / 约会站点优先（避免被 'social' 等误归）
+    if any(kw in haystack for kw in ADULT_KEYWORDS):
+        return "adult"
+    # 2. 区域关键词
     if any(kw in haystack for kw in CHINESE_KEYWORDS):
         return "chinese"
     if any(kw in haystack for kw in SPANISH_KEYWORDS):
@@ -200,7 +218,8 @@ def parse_maigret(raw: dict) -> list:
     sites = raw.get("sites", raw)
     out = []
     for name, info in sites.items():
-        if info.get("disabled") or info.get("isNSFW"):
+        # 不再过滤 NSFW —— 这些会被 categorize() 归到 'adult' 类别
+        if info.get("disabled"):
             continue
         url = info.get("url", "")
         if "{username}" not in url and "{}" not in url:
