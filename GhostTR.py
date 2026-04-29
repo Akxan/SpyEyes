@@ -188,6 +188,8 @@ TRANSLATIONS: dict = {
         'cat.gaming':           'Gaming',
         'cat.funding':          'Creator Economy',
         'cat.chinese':          'Chinese Platforms',
+        'cat.other':            'Other',
+        'msg.show_all_hint':    '(showing only matches; use --all to see misses)',
         # Errors
         'err.network':          'Network request failed (timeout or connection error)',
         'err.non_json':         'API returned non-JSON response',
@@ -316,6 +318,8 @@ TRANSLATIONS: dict = {
         'cat.gaming':           '游戏平台',
         'cat.funding':          '创作者经济',
         'cat.chinese':          '中文平台',
+        'cat.other':            '其他平台',
+        'msg.show_all_hint':    '（仅显示命中；用 --all 查看未命中）',
         'err.network':          '网络请求失败（超时或连接错误）',
         'err.non_json':         'API 返回了非 JSON 响应',
         'err.unknown_api':      '未知 API 错误',
@@ -588,8 +592,9 @@ class Platform(NamedTuple):
     """单个社交/网站平台定义。"""
     name: str
     url: str
-    category: str          # 用于分组显示：code / social / forum / video / music / writing / art / gaming / funding / chinese
-    not_found: tuple = ()  # 字节模式列表，命中即视为「未找到」
+    category: str             # 用于分组显示，见 CATEGORY_ORDER
+    not_found: tuple = ()     # 字节模式列表，命中其中之一即视为「未找到」
+    must_contain: tuple = ()  # 字节模式列表，至少命中一个才视为「找到」（更严格的检测）
 
 
 PLATFORMS = [
@@ -730,23 +735,75 @@ PLATFORMS = [
 ]
 
 # 类别在输出中的显示顺序
-CATEGORY_ORDER = ['code', 'social', 'forum', 'video', 'music', 'writing', 'art', 'gaming', 'funding', 'chinese']
+CATEGORY_ORDER = ['code', 'social', 'forum', 'video', 'music', 'writing', 'art', 'gaming', 'funding', 'chinese', 'other']
+
+# 加载从 Maigret 拉取的扩展平台库
+_PLATFORMS_JSON = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'data', 'platforms.json')
+
+
+def _load_platforms_json(path: str) -> list:
+    """从 JSON 文件加载平台定义，转换为 Platform NamedTuple。"""
+    if not os.path.exists(path):
+        return []
+    try:
+        with open(path, 'r', encoding='utf-8') as f:
+            data = json.load(f)
+    except (OSError, json.JSONDecodeError):
+        return []
+    out = []
+    for item in data:
+        try:
+            out.append(Platform(
+                name=item['name'],
+                url=item['url'],
+                category=item.get('category', 'other'),
+                not_found=tuple(s.lower().encode() for s in item.get('not_found', [])),
+                must_contain=tuple(s.lower().encode() for s in item.get('must_contain', [])),
+            ))
+        except (KeyError, TypeError):
+            continue
+    return out
+
+
+def _merge_platforms(curated: list, extended: list) -> list:
+    """以 curated 为优先（保留我们的中文/分类），追加 extended 中名字不重复的项。"""
+    seen = {p.name.lower() for p in curated}
+    merged = list(curated)
+    for p in extended:
+        key = p.name.lower()
+        if key in seen:
+            continue
+        seen.add(key)
+        merged.append(p)
+    return merged
+
+
+# 合并：手工 curated 的 113 个 + Maigret 的 1409 个 → 约 1500 个
+PLATFORMS = _merge_platforms(PLATFORMS, _load_platforms_json(_PLATFORMS_JSON))
 
 
 def _check_username(platform: 'Platform', username: str, timeout: float):
     """检查单个平台是否存在该用户名。返回 (Platform, URL or None)。"""
-    full_url = platform.url.format(username)
+    try:
+        full_url = platform.url.format(username)
+    except (IndexError, KeyError):
+        return platform, None
     resp = safe_get(full_url, timeout=timeout, allow_redirects=True)
     if resp is None or resp.status_code != 200:
         return platform, None
     body = resp.content.lower()
+    # 检查「未找到」模式
     for pattern in platform.not_found:
         if pattern in body:
+            return platform, None
+    # 如果定义了「必须包含」模式，至少命中一个才算找到
+    if platform.must_contain:
+        if not any(pat in body for pat in platform.must_contain):
             return platform, None
     return platform, full_url
 
 
-def track_username(username: str, *, max_workers: int = 10, timeout: float = 8) -> dict:
+def track_username(username: str, *, max_workers: int = 30, timeout: float = 8) -> dict:
     """并发扫描所有平台，返回 {platform_name: url_or_None}（按 PLATFORMS 顺序）。"""
     found: dict = {}
     with ThreadPoolExecutor(max_workers=max_workers) as ex:
@@ -900,25 +957,33 @@ def print_phone_info(data: dict) -> None:
     print_field(t('field.number_type'),    data['number_type'],   width=22)
 
 
-def print_username_results(results: dict) -> None:
+def print_username_results(results: dict, show_all: bool = False) -> None:
     print(f"\n {Color.Wh}========== {Color.Gr}{t('section.username')} {Color.Wh}==========")
     print()
     found = sum(1 for v in results.values() if v)
-    print(f" {Color.Wh}{t('msg.scan_summary', total=len(results), found=found)}{Color.Reset}\n")
+    print(f" {Color.Wh}{t('msg.scan_summary', total=len(results), found=found)}{Color.Reset}")
+    if not show_all:
+        print(f" {Color.Bl}{Color.Ye}{t('msg.show_all_hint')}{Color.Reset}")
+    print()
     # 按类别分组打印；保持 PLATFORMS 内部顺序
     for cat in CATEGORY_ORDER:
         cat_platforms = [p for p in PLATFORMS if p.category == cat]
         if not cat_platforms:
             continue
-        cat_found = sum(1 for p in cat_platforms if results.get(p.name))
+        cat_found_list = [p for p in cat_platforms if results.get(p.name)]
+        cat_found = len(cat_found_list)
+        # 默认只显示有命中的类别；--all 时显示所有
+        if not show_all and cat_found == 0:
+            continue
         cat_label = t(f'cat.{cat}')
         print(f" {Color.Cy}┌─ {cat_label} ({cat_found}/{len(cat_platforms)}) ─{Color.Reset}")
-        for p in cat_platforms:
+        platforms_to_show = cat_platforms if show_all else cat_found_list
+        for p in platforms_to_show:
             url = results.get(p.name)
             if url:
-                print(f" {Color.Wh}[ {Color.Gr}+ {Color.Wh}] {p.name:24} {Color.Gr}{url}{Color.Reset}")
+                print(f" {Color.Wh}[ {Color.Gr}+ {Color.Wh}] {p.name:30} {Color.Gr}{url}{Color.Reset}")
             else:
-                print(f" {Color.Wh}[ {Color.Re}- {Color.Wh}] {p.name:24} {Color.Ye}{t('msg.not_found')}{Color.Reset}")
+                print(f" {Color.Wh}[ {Color.Re}- {Color.Wh}] {p.name:30} {Color.Ye}{t('msg.not_found')}{Color.Reset}")
         print()
 
 
@@ -1173,7 +1238,9 @@ def build_parser() -> argparse.ArgumentParser:
 
     sp = sub.add_parser('user', parents=[common], help='Scan username / 用户名扫描')
     sp.add_argument('username')
-    sp.add_argument('--workers', type=int, default=10, help='Concurrency (default: 10)')
+    sp.add_argument('--workers', type=int, default=30, help='Concurrent threads / 并发线程数 (default: 30)')
+    sp.add_argument('--all', action='store_true', dest='show_all',
+                    help='Show all platforms incl. misses / 显示所有平台（含未命中）')
 
     sp = sub.add_parser('whois', parents=[common], help='WHOIS lookup')
     sp.add_argument('domain')
@@ -1215,7 +1282,7 @@ def run_cli(args: argparse.Namespace) -> int:
         if args.json:
             print(json.dumps(data, ensure_ascii=False, indent=2))
         else:
-            print_username_results(data)
+            print_username_results(data, show_all=getattr(args, 'show_all', False))
     elif cmd == 'whois':
         data = whois_lookup(args.domain)
         if args.json:

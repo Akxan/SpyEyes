@@ -191,8 +191,8 @@ class TestCheckUsername:
         assert url is None
 
     def test_platforms_count_meets_target(self):
-        """对标 Maigret 量级，至少 100 个平台，含中文社媒分类。"""
-        assert len(gt.PLATFORMS) >= 100
+        """对标 Maigret 量级，至少 1000 个平台（含 Maigret 数据库）。"""
+        assert len(gt.PLATFORMS) >= 1000, f"got {len(gt.PLATFORMS)}"
         chinese = [p for p in gt.PLATFORMS if p.category == 'chinese']
         assert len(chinese) >= 15
 
