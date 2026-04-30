@@ -37,7 +37,7 @@ This project adheres to [Keep a Changelog](https://keepachangelog.com/en/1.1.0/)
 - **🔍 域名 WHOIS** — 注册商、日期、DNS 服务器、注册组织（含基本格式校验防注入）
 - **📨 域名 MX 记录** — 列出所有 MX 优先级
 - **✉️ 邮箱有效性验证** — 正则 + MX 联合检查（mx_error 收敛为枚举防信息泄漏）
-- **📚 查询历史** — `~/.spyeyes/history.jsonl`（损坏行容错）
+- **📚 查询历史** — `~/.spyeyes/history.jsonl`（损坏行容错）+ `spyeyes history [--limit N] [--search STR] [--json]` 子命令查询
 - **📝 Markdown 报告** — `--save report.md`（含 backtick / pipe / newline 注入转义）
 
 ### 🌍 i18n 国际化
@@ -77,8 +77,8 @@ This project adheres to [Keep a Changelog](https://keepachangelog.com/en/1.1.0/)
 
 ### 🛠 Developer Experience
 
-- **248 个 pytest 测试**，0.4 秒跑完
-  - 主功能测试（199 个）+ 构建工具测试（40 个）
+- **257 个 pytest 测试**，0.4 秒跑完
+  - 主功能测试（217 个）+ 构建工具测试（40 个）
   - 覆盖：纯函数 + HTTP mock + 边界条件 + SSRF / ReDoS / Markdown injection / 信息泄漏 / Platform 不可变性 / 损坏文件容错 / 跨线程隔离
 - **5 路审计全清** — ruff / mypy / bandit / pytest / fresh-eyes agent reviews
 - **GitHub Actions CI** —

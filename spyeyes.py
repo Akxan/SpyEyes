@@ -1236,7 +1236,10 @@ def _is_invalid_username(username: str) -> bool:
     """检查 username 是否有非法字符或形态。
     拒绝条件：
     - 含 _USERNAME_INVALID_CHARS 中任一字符
-    - 含 C0/C1 控制字符或 DEL（ord < 0x20 或 == 0x7f）—— 防日志注入 / 终端误显
+    - 含 C0/C1/DEL 控制字符（U+0000-001F / U+007F-009F）—— 防日志注入 /
+      终端 escape 注入（C1 含 NEL=0x85 / CSI=0x9B 等）
+    - 含 Unicode line/paragraph separator（U+2028/U+2029）—— Markdown 报告
+      str.splitlines() 视其为换行 → 注入伪标题
     - 是 '.' / '..'（拼到任意 URL 模板都触发路径穿越式假命中：
       `https://github.com/.` 返回 GitHub 首页 → 不含 not_found 模式 → 假报「找到」）
     - 包含 '..' 子串（同上）
@@ -1244,9 +1247,14 @@ def _is_invalid_username(username: str) -> bool:
     """
     if not username or any(c in _USERNAME_INVALID_CHARS for c in username):
         return True
-    # 控制字符检测：覆盖 NUL / SOH / DEL 等无法在 URL 安全表达的字符
-    # 攻击场景：'admin\x00garbage' 在某些日志聚合器中被截断显示为 'admin'
-    if any(ord(c) < 0x20 or ord(c) == 0x7f for c in username):
+    # 控制字符检测：覆盖 C0 (0x00-0x1F)、DEL (0x7F)、C1 (0x80-0x9F)
+    # 攻击场景：
+    #   - 'admin\x00garbage' 在日志聚合器中被截断显示为 'admin'
+    #   - C1 CSI (0x9B) 是 ANSI escape 起始字节，xterm 系终端会解释为 escape
+    if any(ord(c) < 0x20 or 0x7f <= ord(c) <= 0x9f for c in username):
+        return True
+    # Unicode line/paragraph separator —— markdown 渲染按换行处理 → 注入伪标题
+    if any(c in '  ' for c in username):
         return True
     if username in ('.', '..') or '..' in username:
         return True
@@ -1295,6 +1303,7 @@ def _check_username(platform: 'Platform', username: str, timeout: float):
             return platform, None, STATUS_NETWORK_ERROR
         # 405/501：平台不支持 HEAD（如 GitHub、Twitter），回退 GET 避免假阴性
         if resp.status_code in (405, 501):
+            resp.close()  # 关闭原 HEAD response 释放连接到 pool
             resp = safe_get(full_url, timeout=timeout, stream=True, allow_redirects=True)
             if resp is None:
                 return platform, None, STATUS_NETWORK_ERROR
@@ -1304,9 +1313,13 @@ def _check_username(platform: 'Platform', username: str, timeout: float):
                 return platform, full_url, STATUS_FOUND
             finally:
                 resp.close()
-        if resp.status_code != 200:
-            return platform, None, STATUS_NOT_FOUND
-        return platform, full_url, STATUS_FOUND
+        # HEAD 成功路径也必须 close，否则 100 线程 × 千平台下连接池被 GC 才回收
+        try:
+            if resp.status_code != 200:
+                return platform, None, STATUS_NOT_FOUND
+            return platform, full_url, STATUS_FOUND
+        finally:
+            resp.close()
 
     # ---- 2b. 需要 body → stream + 只读前 64KB ----
     resp = safe_get(full_url, timeout=timeout, stream=True, allow_redirects=True)
@@ -1955,6 +1968,8 @@ def _maybe_save(target: Optional[str], prefix: str, data: Any) -> None:
     JSON 输出会自动过滤 _* 私有 key（如 _statuses）保持公开 API 干净。
     所有 IO 错误（PermissionError / OSError）友好提示而非抛 traceback 给用户。
     """
+    # 拒绝纯空白 target —— ' '/'\t' 是 truthy，会真创建命名为 ' ' 的文件污染 cwd
+    target = (target or '').strip()
     if not target:
         return
     target_lower = target.lower()
@@ -1997,6 +2012,8 @@ def _md_escape(s: Any) -> str:
     """转义 markdown 表格 cell：
     - `|`：表格列分隔符
     - `\\r` `\\n`：避免注入伪标题
+    - U+0085 NEL / U+2028 LINE SEP / U+2029 PARAGRAPH SEP：
+      str.splitlines() 视其为换行 → markdown 渲染按换行处理 → 注入伪标题
     - `` ` ``：避免破坏 inline code 围栏，让用户输入跳出 code span 注入任意 markdown
       （security: 用户可控字段如 username/ip/domain 会进 markdown 报告）
     """
@@ -2006,6 +2023,9 @@ def _md_escape(s: Any) -> str:
             .replace('|', '\\|')
             .replace('\r', ' ')
             .replace('\n', ' ')
+            .replace('\x85', ' ')
+            .replace(' ', ' ')
+            .replace(' ', ' ')
             .replace('`', '\\`')
             .strip())
 

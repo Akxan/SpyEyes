@@ -988,6 +988,62 @@ class TestPhoneIsValidSemantics:
         assert rec['ok'] is True
 
 
+class TestUsernameC1ControlChars:
+    """Round 9 加固：C1 控制字符 (0x80-0x9F) 也必须拒绝。
+    含 NEL=0x85 / CSI=0x9B —— xterm 系终端解释为 ANSI escape 起始字节，
+    可用于终端 escape injection。"""
+
+    def test_c1_nel_rejected(self):
+        """U+0085 (NEL) 被某些终端解释为换行。"""
+        assert gt._is_invalid_username('foo\x85bar') is True
+
+    def test_c1_csi_rejected(self):
+        """U+009B (CSI) 是 ANSI escape 起始字节。"""
+        assert gt._is_invalid_username('admin\x9b[31m') is True
+
+    def test_c1_range_rejected(self):
+        for c in ('\x80', '\x88', '\x90', '\x9f'):
+            assert gt._is_invalid_username(f'a{c}b') is True
+
+    def test_unicode_line_separator_rejected(self):
+        """U+2028 / U+2029 / U+0085 在 markdown 中被视为换行 → 注入伪标题。"""
+        assert gt._is_invalid_username('foo bar') is True
+        assert gt._is_invalid_username('foo bar') is True
+
+
+class TestMdEscapeUnicodeLineSeparators:
+    """Round 9 加固：_md_escape 需替换 U+2028/U+2029/U+0085 为空格
+    （str.splitlines() 视其为换行 → markdown 渲染注入伪标题）。"""
+
+    def test_u2028_replaced(self):
+        result = gt._md_escape('foo # fake header')
+        assert ' ' not in result
+
+    def test_u2029_replaced(self):
+        assert ' ' not in gt._md_escape('a b')
+
+    def test_nel_replaced(self):
+        assert '\x85' not in gt._md_escape('a\x85b')
+
+
+class TestSaveWhitespaceTarget:
+    """Round 9 加固：_maybe_save 拒绝纯空白 target（' ' 是 truthy，会真创建文件）。"""
+
+    def test_single_space_rejected(self, tmp_path, monkeypatch):
+        # 切到 tmp 避免污染 cwd
+        monkeypatch.chdir(tmp_path)
+        gt._maybe_save(' ', 'ip_x', {'k': 'v'})
+        # 空白 target 不应创建文件
+        files = list(tmp_path.iterdir())
+        assert ' ' not in [f.name for f in files], "纯空格 target 不应创建文件"
+
+    def test_tab_only_rejected(self, tmp_path, monkeypatch):
+        monkeypatch.chdir(tmp_path)
+        gt._maybe_save('\t', 'ip_x', {'k': 'v'})
+        files = list(tmp_path.iterdir())
+        assert '\t' not in [f.name for f in files]
+
+
 class TestUsernameControlChars:
     """Round 8 加固：控制字符（NUL / SOH / DEL 等）也应被拒绝。
     攻击场景：'admin\\x00garbage' 在某些日志聚合器中被截断为 'admin'，

@@ -28,7 +28,6 @@ def reset_global_state(tmp_path, monkeypatch):
     saved_lang = gt._lang
     saved_color = {a: getattr(gt.Color, a) for a in _COLOR_ATTRS}
     saved_color['enabled'] = gt.Color.enabled
-    saved_platforms_cache = gt._PLATFORMS_CACHE
 
     # 把所有用户数据路径重定向到 tmp（每个测试一个独立目录）
     fake_config_dir = str(tmp_path / '.spyeyes')
@@ -42,7 +41,10 @@ def reset_global_state(tmp_path, monkeypatch):
         gt._lang = saved_lang
         for k, v in saved_color.items():
             setattr(gt.Color, k, v)
-        gt._PLATFORMS_CACHE = saved_platforms_cache
+        # 强制 reset 为 None 让下个测试触发干净懒加载（避免依赖测试执行顺序）
+        # 性能影响可忽略：_load_platforms_json ~50ms × 248 测试 = ~12s 可接受
+        # 实际不会每次都触发 —— 大多测试不访问 PLATFORMS
+        gt._PLATFORMS_CACHE = None
         if hasattr(gt._thread_local, 'session'):
             try:
                 gt._thread_local.session.close()
