@@ -131,11 +131,42 @@ class TestTrackIp:
         assert '_error' in data
 
     def test_api_error(self):
+        """合法 IP 但 API 返回错误（用 reserved/loopback 模拟）。"""
         fake_response = MagicMock()
         fake_response.json.return_value = {'success': False, 'message': '无效 IP'}
         with patch.object(gt, 'safe_get', return_value=fake_response):
-            data = gt.track_ip('garbage')
+            data = gt.track_ip('127.0.0.1')
         assert data['_error'] == '无效 IP'
+
+    def test_invalid_ip_rejected_without_api_call(self):
+        """SSRF 防护：非合法 IP 在送进 URL 前被 ipaddress 校验拦截。"""
+        with patch.object(gt, 'safe_get') as mock_get:
+            data = gt.track_ip('garbage')
+        assert mock_get.call_count == 0
+        assert '_error' in data
+        assert 'garbage' in data['_error']
+
+    def test_path_traversal_in_ip_rejected(self):
+        """SSRF：'../admin' 等路径穿越尝试必须被拒绝。"""
+        with patch.object(gt, 'safe_get') as mock_get:
+            data = gt.track_ip('../admin')
+        assert mock_get.call_count == 0
+        assert '_error' in data
+
+    def test_query_string_in_ip_rejected(self):
+        """SSRF：尝试附加 query string 污染必须被拒绝。"""
+        with patch.object(gt, 'safe_get') as mock_get:
+            data = gt.track_ip('8.8.8.8?key=leak')
+        assert mock_get.call_count == 0
+        assert '_error' in data
+
+    def test_ipv6_accepted(self):
+        """合法 IPv6 必须通过校验。"""
+        fake = MagicMock()
+        fake.json.return_value = {'success': True, 'type': 'IPv6', 'country_code': 'US'}
+        with patch.object(gt, 'safe_get', return_value=fake):
+            data = gt.track_ip('2001:4860:4860::8888')
+        assert '_error' not in data
 
     def test_non_json_response(self):
         fake_response = MagicMock()
@@ -339,26 +370,75 @@ class TestMarkdownSafety:
 
 
 class TestRecordHistoryDataNone:
-    """audit P1#3: _record_history 在 data=None 时不应崩溃。"""
+    """_record_history 在 data=None 时不应崩溃，且必须正确写入摘要内容。"""
 
-    def test_ip_data_none(self, tmp_path, monkeypatch):
-        monkeypatch.setattr(gt, 'HISTORY_FILE', str(tmp_path / 'h.jsonl'))
+    def _read_record(self, path):
+        with open(path, encoding='utf-8') as f:
+            line = f.readline().strip()
+        return json.loads(line)
+
+    def test_ip_data_none_records_failure(self, tmp_path, monkeypatch):
+        """data=None → ok=False（之前 '_error' not in {} 误返回 True 等同成功）"""
+        history_file = str(tmp_path / 'h.jsonl')
+        monkeypatch.setattr(gt, 'HISTORY_FILE', history_file)
         import argparse
         gt._record_history('ip', argparse.Namespace(target='1.2.3.4'), None)
+        rec = self._read_record(history_file)
+        assert rec['cmd'] == 'ip'
+        assert rec['query'] == '1.2.3.4'
+        assert rec['ok'] is False, "data=None 必须记为失败"
+
+    def test_ip_data_with_error_records_failure(self, tmp_path, monkeypatch):
+        history_file = str(tmp_path / 'h.jsonl')
+        monkeypatch.setattr(gt, 'HISTORY_FILE', history_file)
+        import argparse
+        gt._record_history('ip', argparse.Namespace(target='1.2.3.4'),
+                            {'_error': 'network'})
+        rec = self._read_record(history_file)
+        assert rec['ok'] is False
+
+    def test_ip_data_success_records_ok(self, tmp_path, monkeypatch):
+        history_file = str(tmp_path / 'h.jsonl')
+        monkeypatch.setattr(gt, 'HISTORY_FILE', history_file)
+        import argparse
+        gt._record_history('ip', argparse.Namespace(target='8.8.8.8'),
+                            {'country': 'US'})
+        rec = self._read_record(history_file)
+        assert rec['ok'] is True
 
     def test_myip_data_none(self, tmp_path, monkeypatch):
-        monkeypatch.setattr(gt, 'HISTORY_FILE', str(tmp_path / 'h.jsonl'))
+        history_file = str(tmp_path / 'h.jsonl')
+        monkeypatch.setattr(gt, 'HISTORY_FILE', history_file)
         import argparse
         gt._record_history('myip', argparse.Namespace(), None)
+        rec = self._read_record(history_file)
+        assert rec['cmd'] == 'myip'
+        assert rec['ok'] is False
 
     def test_email_data_none(self, tmp_path, monkeypatch):
-        monkeypatch.setattr(gt, 'HISTORY_FILE', str(tmp_path / 'h.jsonl'))
+        history_file = str(tmp_path / 'h.jsonl')
+        monkeypatch.setattr(gt, 'HISTORY_FILE', history_file)
         import argparse
         gt._record_history('email', argparse.Namespace(address='a@b.com'), None)
+        rec = self._read_record(history_file)
+        assert rec['cmd'] == 'email'
+        assert rec['query'] == 'a@b.com'
+
+    def test_user_records_found_count(self, tmp_path, monkeypatch):
+        history_file = str(tmp_path / 'h.jsonl')
+        monkeypatch.setattr(gt, 'HISTORY_FILE', history_file)
+        import argparse
+        gt._record_history('user', argparse.Namespace(username='alice'),
+                            {'GitHub': 'https://github.com/alice', 'Twitter': None})
+        rec = self._read_record(history_file)
+        assert rec['cmd'] == 'user'
+        assert rec['query'] == 'alice'
+        assert rec['found'] == 1
+        assert rec['scanned'] == 2
 
 
 class TestSession:
-    """Sherlock-inspired: thread-local Session reuse."""
+    """Sherlock-inspired: thread-local Session reuse + 跨线程隔离。"""
 
     def test_session_returns_session(self):
         s = gt._get_session()
@@ -369,6 +449,21 @@ class TestSession:
         s1 = gt._get_session()
         s2 = gt._get_session()
         assert s1 is s2  # 同线程必须复用
+
+    def test_session_isolated_across_threads(self):
+        """跨线程必须拿到不同 Session（thread-local 语义）。
+        反向断言：如果 _thread_local 被改成全局变量，本测试会失败。"""
+        import threading
+        sessions = []
+
+        def grab():
+            sessions.append(gt._get_session())
+
+        main_session = gt._get_session()
+        t = threading.Thread(target=grab)
+        t.start()
+        t.join()
+        assert sessions[0] is not main_session, "跨线程 Session 必须独立"
 
     def test_session_has_default_headers(self):
         s = gt._get_session()
@@ -572,15 +667,16 @@ class TestEmailValidate:
 # Color disable
 # ------------------------------------------------------------------
 class TestColor:
+    """Color.disable 必须清空所有颜色属性，conftest 的 autouse fixture 负责恢复。"""
+
     def test_disable_blanks_all(self):
-        original = gt.Color.Re
-        try:
-            gt.Color.disable()
-            assert gt.Color.Re == ''
-            assert gt.Color.Wh == ''
-        finally:
-            # 恢复（避免影响其它测试）
-            gt.Color.Re = original
+        gt.Color.disable()
+        assert gt.Color.Re == ''
+        assert gt.Color.Wh == ''
+        assert gt.Color.Gr == ''
+        assert gt.Color.Bl == ''
+        assert gt.Color.Reset == ''
+        assert gt.Color.enabled is False
 
 
 # ------------------------------------------------------------------
@@ -649,3 +745,80 @@ class TestMaybeSave:
         # save_dir=None 时不应该创建任何东西
         gt._maybe_save(None, 'foo', {'x': 1})
         assert list(tmp_path.iterdir()) == []
+
+    def test_writes_md_file(self, tmp_path):
+        out = tmp_path / 'r.md'
+        gt._maybe_save(str(out), 'ip_8.8.8.8', {'country': 'US', 'city': 'MV'})
+        assert out.exists()
+        content = out.read_text(encoding='utf-8')
+        assert content.startswith('# ')
+        assert '8.8.8.8' in content
+        assert 'US' in content
+
+    def test_writes_single_json_file(self, tmp_path):
+        out = tmp_path / 'r.json'
+        gt._maybe_save(str(out), 'ip_x', {'a': 1, 'b': '中'})
+        loaded = json.loads(out.read_text(encoding='utf-8'))
+        assert loaded == {'a': 1, 'b': '中'}
+
+    def test_no_extension_treated_as_json_file(self, tmp_path):
+        """关键 bug 回归：--save somefile（无后缀）必须当文件而非目录。
+        之前会 os.makedirs 把文件名建成空目录。"""
+        out = tmp_path / 'somefile'
+        gt._maybe_save(str(out), 'ip_x', {'k': 'v'})
+        assert out.is_file(), "无后缀路径必须创建为文件而非目录"
+        loaded = json.loads(out.read_text(encoding='utf-8'))
+        assert loaded == {'k': 'v'}
+
+    def test_explicit_dir_with_trailing_slash(self, tmp_path):
+        """显式以 / 结尾才创建目录。"""
+        target = str(tmp_path) + os.sep
+        gt._maybe_save(target, 'ip_x', {'k': 'v'})
+        files = list(tmp_path.glob('*.json'))
+        assert len(files) == 1
+
+    def test_filters_private_keys_from_json(self, tmp_path):
+        """JSON 输出过滤 _* 私有 key（保留 _error）。"""
+        out = tmp_path / 'r.json'
+        gt._maybe_save(str(out), 'user_x', {
+            'GitHub': 'https://github.com/x',
+            '_statuses': {'GitHub': 'found'},  # 必须过滤
+        })
+        loaded = json.loads(out.read_text(encoding='utf-8'))
+        assert '_statuses' not in loaded
+        assert 'GitHub' in loaded
+
+
+class TestEmailValidateInput:
+    """email_validate 输入校验：None / 空字符串 / 空白。"""
+
+    def test_none_input(self):
+        result = gt.email_validate(None)
+        assert result['syntax_valid'] is False
+        assert '_error' in result
+
+    def test_empty_string(self):
+        result = gt.email_validate('')
+        assert result['syntax_valid'] is False
+
+    def test_whitespace_only(self):
+        result = gt.email_validate('   ')
+        assert result['syntax_valid'] is False
+
+
+class TestWhoisLookup:
+    """whois_lookup 防御性输入处理。"""
+
+    def test_none_return_handled(self):
+        """python-whois 在罕见 TLD 上可能返回 None 而非抛异常。"""
+        if not gt.HAS_WHOIS:
+            pytest.skip('whois 依赖未安装')
+        with patch.object(gt.whois, 'whois', return_value=None):
+            result = gt.whois_lookup('weird.tld')
+        assert '_error' in result
+
+    def test_empty_domain(self):
+        if not gt.HAS_WHOIS:
+            pytest.skip('whois 依赖未安装')
+        result = gt.whois_lookup('')
+        assert '_error' in result

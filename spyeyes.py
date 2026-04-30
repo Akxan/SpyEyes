@@ -13,6 +13,7 @@ Licensed under the Apache License, Version 2.0
 """
 
 import argparse
+import ipaddress
 import json
 import os
 import re
@@ -555,7 +556,9 @@ def safe_get(url: str, *, timeout: float = DEFAULT_TIMEOUT, method: str = 'GET',
         if method.upper() == 'HEAD':
             return session.head(url, timeout=req_timeout, headers=extra_headers, **kwargs)
         return session.get(url, timeout=req_timeout, headers=extra_headers, stream=stream, **kwargs)
-    except requests.exceptions.RequestException:
+    except (requests.exceptions.RequestException, ValueError, UnicodeError, OSError):
+        # ValueError: urllib3.LocationParseError 等；UnicodeError: URL 编码失败；
+        # OSError: 罕见网络层错误。统一返回 None 让调用方走 STATUS_NETWORK_ERROR
         return None
 
 
@@ -659,6 +662,12 @@ def track_ip(ip: str) -> dict:
     ip = (ip or '').strip()
     if not ip:
         return {'_error': t('err.empty_input')}
+    # SSRF 防护：拒绝非合法 IPv4/IPv6（防止 "8.8.8.8?key=leak" 污染 query
+    # 或 "../admin" 路径穿越，即便 ipwho.is 自身能拒绝，也避免暴露异常信息）
+    try:
+        ipaddress.ip_address(ip)
+    except ValueError:
+        return {'_error': t('err.invalid_ip', ip=ip)}
     resp = safe_get(f"https://ipwho.is/{ip}")
     if resp is None:
         return {'_error': t('err.network')}
@@ -1193,8 +1202,17 @@ def _check_username(platform: 'Platform', username: str, timeout: float):
         resp.close()
         return platform, None, STATUS_NOT_FOUND
     try:
-        body = resp.raw.read(65536, decode_content=True).lower()
-    except Exception:
+        # 循环读取保证拿满 64KB（chunked encoding 下单次 read 可能短读取）
+        chunks = []
+        remaining = 65536
+        while remaining > 0:
+            chunk = resp.raw.read(remaining, decode_content=True)
+            if not chunk:
+                break
+            chunks.append(chunk)
+            remaining -= len(chunk)
+        body = b''.join(chunks).lower()
+    except (OSError, ValueError, requests.exceptions.RequestException):
         return platform, None, STATUS_NETWORK_ERROR
     finally:
         resp.close()
@@ -1316,10 +1334,16 @@ def track_username(username: str, *, max_workers: int = 100, timeout: float = 5,
 def whois_lookup(domain: str) -> dict:
     if not HAS_WHOIS:
         return {'_error': t('err.no_whois')}
+    domain = (domain or '').strip()
+    if not domain:
+        return {'_error': t('err.empty_input')}
     try:
         w = whois.whois(domain)
     except Exception as e:
         return {'_error': t('err.whois_failed', e=e)}
+    # python-whois 在某些 TLD（如未支持的 TLD）会返回 None 而非抛异常
+    if w is None:
+        return {'_error': t('err.whois_failed', e='no data')}
     return {
         'domain':          w.domain_name,
         'registrar':       w.registrar,
@@ -1356,6 +1380,9 @@ EMAIL_RE = re.compile(r'^[A-Za-z0-9._%+-]+@([A-Za-z0-9.-]+\.[A-Za-z]{2,})$')
 
 
 def email_validate(email: str) -> dict:
+    email = (email or '').strip()
+    if not email:
+        return {'email': '', 'syntax_valid': False, '_error': t('err.empty_input')}
     m = EMAIL_RE.match(email)
     if not m:
         return {'email': email, 'syntax_valid': False, '_error': t('err.email_format')}
@@ -2038,17 +2065,22 @@ def run_cli(args: argparse.Namespace) -> int:
 
 
 def _batch_lookup(fn, items: list, max_workers: int = 10) -> dict:
-    """对一组输入并发调用 fn，返回 {item: result}。"""
+    """对一组输入并发调用 fn，返回 {item: result}。
+    支持 Ctrl+C 中断：cancel_futures=True 立即取消未启动的 worker。"""
     results: dict = {}
     with ThreadPoolExecutor(max_workers=max_workers) as ex:
         futures = {ex.submit(fn, item): item for item in items}
-        for fut in as_completed(futures):
-            item = futures[fut]
-            try:
-                results[item] = fut.result()
-            except Exception as e:
-                results[item] = {'_error': str(e)}
-    return {item: results[item] for item in items}  # 保持输入顺序
+        try:
+            for fut in as_completed(futures):
+                item = futures[fut]
+                try:
+                    results[item] = fut.result()
+                except Exception as e:
+                    results[item] = {'_error': str(e)}
+        except KeyboardInterrupt:
+            ex.shutdown(wait=False, cancel_futures=True)
+            raise
+    return {item: results[item] for item in items if item in results}  # 保持输入顺序
 
 
 def _record_history(cmd: str, args: argparse.Namespace, data: Any) -> None:
