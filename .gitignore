@@ -15,3 +15,9 @@ results/
 .idea/
 .vscode/
 .audit_venv/
+
+# Python build artifacts
+build/
+dist/
+*.egg-info/
+*.egg
