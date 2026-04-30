@@ -1,8 +1,16 @@
-# SpyEyes 包元数据 / 让 `pip install spyeyes` 能 work
-# 主要好处：
-#   - 用户可以 pipx install / pip install --user
-#   - python_requires 在 pip 阶段拦掉不兼容的 Python 版本
-#   - 未来发布 PyPI 的基础
+# SpyEyes 包元数据
+#
+# 注意：当前是 single-module 项目（spyeyes.py 在根目录 + data/ 在根目录），
+# `pip install .` 会装 spyeyes.py 但**不会**装 data/platforms.json
+# → 装完后 _PLATFORMS_JSON 路径找不到文件，只剩 ~30 个 curated 平台。
+#
+# 完整 pip install 支持需要重构为 package（spyeyes/ 子目录 + spyeyes/data/）。
+# 本文件目前主要用途：
+#   - 声明 python_requires 阻止旧版 Python 安装
+#   - 提供 PyPI 发布的元数据基础（在重构为 package 后）
+#   - 让工具（ruff/mypy）找到配置
+#
+# 推荐使用方式：git clone + `python3 spyeyes.py`
 
 [build-system]
 requires = ["setuptools>=68", "wheel"]
@@ -56,8 +64,9 @@ Repository = "https://github.com/Akxan/SpyEyes"
 "Bug Tracker" = "https://github.com/Akxan/SpyEyes/issues"
 Changelog = "https://github.com/Akxan/SpyEyes/blob/main/docs/CHANGELOG.md"
 
-[project.scripts]
-spyeyes = "spyeyes:main"
+# [project.scripts] 暂时禁用 —— pip install 不带 platforms.json，scripts entry
+# 会让用户误以为可用但实际只有 30 平台。等 package 重构后启用：
+# spyeyes = "spyeyes:main"
 
 [tool.setuptools]
 # 单文件项目：只打包根目录的 spyeyes.py + 数据

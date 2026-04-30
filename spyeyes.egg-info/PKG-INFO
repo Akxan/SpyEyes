@@ -1,3 +1,44 @@
+Metadata-Version: 2.4
+Name: spyeyes
+Version: 1.0.0
+Summary: All-in-One OSINT toolkit (bilingual zh/en) — IP / Phone / Username / WHOIS / MX / Email
+Author: Akxan
+License: Apache-2.0
+Project-URL: Homepage, https://github.com/Akxan/SpyEyes
+Project-URL: Repository, https://github.com/Akxan/SpyEyes
+Project-URL: Bug Tracker, https://github.com/Akxan/SpyEyes/issues
+Project-URL: Changelog, https://github.com/Akxan/SpyEyes/blob/main/docs/CHANGELOG.md
+Keywords: osint,ip-tracker,phone-tracker,username-search,whois-lookup,dns-lookup,email-verification,cybersecurity
+Classifier: Development Status :: 5 - Production/Stable
+Classifier: Environment :: Console
+Classifier: Intended Audience :: Information Technology
+Classifier: License :: OSI Approved :: Apache Software License
+Classifier: Operating System :: OS Independent
+Classifier: Programming Language :: Python :: 3
+Classifier: Programming Language :: Python :: 3.10
+Classifier: Programming Language :: Python :: 3.11
+Classifier: Programming Language :: Python :: 3.12
+Classifier: Programming Language :: Python :: 3.13
+Classifier: Topic :: Internet
+Classifier: Topic :: Security
+Requires-Python: >=3.10
+Description-Content-Type: text/markdown
+License-File: LICENSE
+License-File: NOTICE
+Requires-Dist: requests<3,>=2.33.1
+Requires-Dist: phonenumbers<10,>=9.0.29
+Requires-Dist: dnspython<3,>=2.8.0
+Requires-Dist: python-whois<2,>=0.9.6
+Provides-Extra: dev
+Requires-Dist: pytest>=8.0; extra == "dev"
+Requires-Dist: pytest-cov>=5.0; extra == "dev"
+Requires-Dist: pytest-timeout>=2.3; extra == "dev"
+Requires-Dist: ruff>=0.5; extra == "dev"
+Requires-Dist: mypy>=1.10; extra == "dev"
+Requires-Dist: bandit>=1.7; extra == "dev"
+Requires-Dist: types-requests>=2.31; extra == "dev"
+Dynamic: license-file
+
 <div align="center">
 
 # 🔍 SpyEyes
@@ -10,7 +51,7 @@
 [![codecov](https://codecov.io/gh/Akxan/SpyEyes/branch/main/graph/badge.svg)](https://codecov.io/gh/Akxan/SpyEyes)
 [![License: Apache 2.0](https://img.shields.io/badge/License-Apache_2.0-blue.svg)](https://opensource.org/licenses/Apache-2.0)
 [![Python](https://img.shields.io/badge/Python-3.10%2B-blue.svg?logo=python&logoColor=white)](https://www.python.org/)
-[![Tests](https://img.shields.io/badge/tests-209%20passed-success.svg)](tests/)
+[![Tests](https://img.shields.io/badge/tests-183%20passed-success.svg)](tests/)
 [![Platforms](https://img.shields.io/badge/platforms-2067-orange.svg)](data/platforms.json)
 [![Platform](https://img.shields.io/badge/platform-macOS%20%7C%20Linux%20%7C%20Windows%20%7C%20Termux-lightgrey)](#-安装)
 [![PRs Welcome](https://img.shields.io/badge/PRs-welcome-brightgreen.svg)](docs/CONTRIBUTING.md)
@@ -37,13 +78,13 @@
 
 ### 💎 项目亮点
 
-- **2067 个用户名扫描平台**：包含 46 中文圈（陆/台/港/星/马）+ 52 西语圈（西班牙/拉美）+ 83 成人/约会平台
+- **2067 个用户名扫描平台**：包含 46 中文圈（陆/台/港/星/马）+ 52 西语圈（西班牙/拉美）+ 84 成人/约会平台
 - **中英双语 UI**：交互菜单 / CLI 参数 / 错误信息 全部双语
 - **Sherlock 级速度**：21 秒扫完 2067 平台（100 线程并发 + Session 池 + HEAD 优化 + ReDoS 防护）
 - **WAF 检测**：识别 Cloudflare / AWS WAF / PerimeterX 等反爬墙，避免误报
 - **多种查询模式**：`--quick`（~9s）/ `--category`（~3s）/ 默认完整（~21s）
 - **结构化输出**：JSON / Markdown 报告 / 历史记录持久化
-- **209 个 pytest 测试**：5 路审计全清（ruff / mypy / bandit / pytest / agent）
+- **183 个 pytest 测试**：5 路审计全清（ruff / mypy / bandit / pytest / agent）
 
 ---
 
@@ -310,7 +351,7 @@ pytest tests/ --cov=. --cov-report=term-missing
 ```
 
 当前测试覆盖：
-- ✅ **209 个测试**，0.4 秒跑完（v1.0.0 完整覆盖）
+- ✅ **183 个测试**，0.4 秒跑完（v1.0.0 完整覆盖）
 - ✅ 覆盖纯函数 + HTTP mock + 边界条件 + SSRF/ReDoS 防御
 - ✅ GitHub Actions 在 macOS / Ubuntu / **Windows** × Python 3.10-3.13 自动测试
 - ✅ 独立 lint job（ruff + mypy + bandit）
@@ -345,8 +386,8 @@ SpyEyes/
 ├── tests/
 │   ├── __init__.py
 │   ├── conftest.py             # autouse fixture（全局状态隔离）
-│   ├── test_spyeyes.py         # 主功能测试（168 个）
-│   └── test_build_platforms.py # 构建工具测试（41 个）
+│   ├── test_spyeyes.py         # 主功能测试（145 个）
+│   └── test_build_platforms.py # 构建工具测试（38 个）
 ├── .github/
 │   ├── workflows/ci.yml        # GitHub Actions CI（lint job + 多 OS × 多 Python 矩阵）
 │   ├── ISSUE_TEMPLATE/         # bug / 功能 issue 模板
@@ -435,6 +476,6 @@ Apache 2.0 比 MIT 多了**明确的专利授权**和**商标保护**，对二�
 
 **如果这个项目对你有帮助，请给个 ⭐ Star 鼓励一下！**
 
-[⬆ 回到顶部](#-spyeyes)
+[⬆ 回到顶部](#-spyeyes-cn)
 
 </div>

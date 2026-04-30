@@ -183,13 +183,28 @@ class TestMergeDedup:
         assert len(merged) == 1
         assert len(merged[0]['not_found']) == 2
 
-    def test_priority_breaks_tie(self):
-        # 同评分（都是 1 个 pattern）→ maigret 应胜出（priority 3 > sherlock 1）
+    def test_priority_breaks_tie_sherlock_first(self):
+        """同评分时 maigret 胜出（pri=3 > sherlock pri=1），sherlock 先到也一样。"""
         m = [{'name': 'GitHub', 'not_found': ['m'], 'must_contain': []}]
         s = [{'name': 'GitHub', 'not_found': ['s'], 'must_contain': []}]
-        # 顺序无关（maigret 先到）
         merged = bp.merge_dedup(('sherlock', s), ('maigret', m))
         assert merged[0]['not_found'] == ['m']
+
+    def test_priority_breaks_tie_maigret_first(self):
+        """反向顺序：maigret 先到，sherlock 后到也应保留 maigret。
+        语义验证：'顺序无关' 说法必须真无关。"""
+        m = [{'name': 'GitHub', 'not_found': ['m'], 'must_contain': []}]
+        s = [{'name': 'GitHub', 'not_found': ['s'], 'must_contain': []}]
+        merged = bp.merge_dedup(('maigret', m), ('sherlock', s))
+        assert merged[0]['not_found'] == ['m'], \
+            "maigret 先到时也应保留 maigret（pri 3 > sherlock pri 1）"
+
+    def test_priority_whatsmyname_beats_sherlock(self):
+        """whatsmyname (pri=2) 同分时应胜过 sherlock (pri=1)。"""
+        s = [{'name': 'X', 'not_found': ['s'], 'must_contain': []}]
+        w = [{'name': 'X', 'not_found': ['w'], 'must_contain': []}]
+        merged = bp.merge_dedup(('sherlock', s), ('whatsmyname', w))
+        assert merged[0]['not_found'] == ['w']
 
     def test_empty_name_skipped(self):
         m = [{'name': '', 'not_found': []}, {'name': 'X', 'not_found': []}]

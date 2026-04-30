@@ -10,7 +10,7 @@
 [![codecov](https://codecov.io/gh/Akxan/SpyEyes/branch/main/graph/badge.svg)](https://codecov.io/gh/Akxan/SpyEyes)
 [![License: Apache 2.0](https://img.shields.io/badge/License-Apache_2.0-blue.svg)](https://opensource.org/licenses/Apache-2.0)
 [![Python](https://img.shields.io/badge/Python-3.10%2B-blue.svg?logo=python&logoColor=white)](https://www.python.org/)
-[![Tests](https://img.shields.io/badge/tests-183%20passed-success.svg)](tests/)
+[![Tests](https://img.shields.io/badge/tests-209%20passed-success.svg)](tests/)
 [![Platforms](https://img.shields.io/badge/platforms-2067-orange.svg)](data/platforms.json)
 [![Platform](https://img.shields.io/badge/platform-macOS%20%7C%20Linux%20%7C%20Windows%20%7C%20Termux-lightgrey)](#-installation)
 [![PRs Welcome](https://img.shields.io/badge/PRs-welcome-brightgreen.svg)](docs/CONTRIBUTING.md)
@@ -37,13 +37,13 @@ Designed for **security researchers, penetration testers, SOC analysts, threat h
 
 ### 💎 Highlights
 
-- **2067 username-scan platforms**: 46 Chinese-region (CN/TW/HK/SG/MY) + 52 Spanish-region (ES/AR/MX/BR/...) + 84 adult/dating platforms
+- **2067 username-scan platforms**: 46 Chinese-region (CN/TW/HK/SG/MY) + 52 Spanish-region (ES/AR/MX/BR/...) + 83 adult/dating platforms
 - **Bilingual UI**: interactive menu / CLI / errors all in zh+en
 - **Sherlock-class speed**: 21s for full 2067-platform scan (100-thread concurrent + Session pool + HEAD optimization + ReDoS guard)
 - **WAF detection**: identifies Cloudflare / AWS WAF / PerimeterX blocks to avoid false positives
 - **Multiple modes**: `--quick` (~9s) / `--category` (~3s) / default full (~21s)
 - **Structured output**: JSON / Markdown reports / persistent history
-- **183 pytest tests**: 5-pronged audit clean (ruff / mypy / bandit / pytest / agent)
+- **209 pytest tests**: 5-pronged audit clean (ruff / mypy / bandit / pytest / agent)
 
 ---
 
@@ -272,7 +272,7 @@ pytest tests/ -v
 pytest tests/ --cov=. --cov-report=term-missing
 ```
 
-- ✅ **183 tests**, ~0.4 seconds (v1.0.0 comprehensive coverage)
+- ✅ **209 tests**, ~0.4 seconds (v1.0.0 comprehensive coverage)
 - ✅ Pure functions + HTTP mocking + edge cases + SSRF/ReDoS defenses
 - ✅ GitHub Actions runs on macOS / Ubuntu / **Windows** × Python 3.10-3.13
 - ✅ Dedicated lint job (ruff + mypy + bandit)
@@ -306,8 +306,8 @@ SpyEyes/
 ├── tests/
 │   ├── __init__.py
 │   ├── conftest.py             # autouse fixture (global state isolation)
-│   ├── test_spyeyes.py         # Core tests (145)
-│   └── test_build_platforms.py # Build tool tests (38)
+│   ├── test_spyeyes.py         # Core tests (168)
+│   └── test_build_platforms.py # Build tool tests (41)
 ├── .github/
 │   ├── workflows/ci.yml        # CI (lint job + multi-OS × multi-Python matrix)
 │   ├── ISSUE_TEMPLATE/         # Issue templates

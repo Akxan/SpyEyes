@@ -76,5 +76,6 @@ jobs:
         if: matrix.os == 'ubuntu-latest' && matrix.python-version == '3.13'
         uses: codecov/codecov-action@v6
         with:
-          file: ./coverage.xml
+          # v6 用 'files' (复数)，v3 的 'file' 已废弃 → 之前可能被静默忽略
+          files: ./coverage.xml
           fail_ci_if_error: false

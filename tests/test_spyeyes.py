@@ -777,10 +777,11 @@ class TestMaybeSave:
         files = list(tmp_path.glob('*.json'))
         assert len(files) == 1
 
-    def test_filters_private_keys_from_json(self, tmp_path):
-        """JSON 输出过滤 _* 私有 key（保留 _error）。"""
+    def test_filters_private_keys_from_username_json(self, tmp_path):
+        """username 扫描 JSON 输出过滤 _* 私有 key（保留 _error）。
+        注意：仅 prefix='username_' 时过滤；mx/whois 不过滤（合法 _dmarc 子域）。"""
         out = tmp_path / 'r.json'
-        gt._maybe_save(str(out), 'user_x', {
+        gt._maybe_save(str(out), 'username_x', {
             'GitHub': 'https://github.com/x',
             '_statuses': {'GitHub': 'found'},  # 必须过滤
         })
@@ -983,6 +984,86 @@ class TestPhoneIsValidSemantics:
         with open(history_file, encoding='utf-8') as f:
             rec = json.loads(f.readline())
         assert rec['ok'] is True
+
+
+class TestPrivateSubdomainSavedNotStripped:
+    """v1.0.x 加固：批量 mx/whois 保存时不应过滤 _dmarc.x.com 等合法子域。
+    （之前 _maybe_save 无条件套用 _platform_only → 数据丢失）"""
+
+    def test_underscore_subdomain_kept_in_mx_save(self, tmp_path):
+        """模拟批量 mx 结果：含 _dmarc 子域的合法 result。"""
+        save_file = tmp_path / 'r.json'
+        data = {
+            '_dmarc.example.com': {'records': [{'preference': 1, 'exchange': 'mx1'}]},
+            'normal.com': {'records': [{'preference': 5, 'exchange': 'mx2'}]},
+        }
+        # prefix 'mx_xxx' 不是 username_，所以应保留所有 key
+        gt._maybe_save(str(save_file), 'mx_x', data)
+        loaded = json.loads(save_file.read_text(encoding='utf-8'))
+        assert '_dmarc.example.com' in loaded, \
+            "批量 mx/whois 保存时合法 _dmarc 子域不应被过滤"
+        assert 'normal.com' in loaded
+
+    def test_username_save_still_filters_private_keys(self, tmp_path):
+        """验证 username 路径仍过滤 _statuses 等私有 key。"""
+        save_file = tmp_path / 'r.json'
+        data = {
+            'GitHub': 'https://github.com/x',
+            '_statuses': {'GitHub': 'found'},
+        }
+        gt._maybe_save(str(save_file), 'username_x', data)
+        loaded = json.loads(save_file.read_text(encoding='utf-8'))
+        assert 'GitHub' in loaded
+        assert '_statuses' not in loaded
+
+
+class TestWhoisDateList:
+    """python-whois 对某些 TLD 返回 list[datetime]，str() 会得到 repr 字符串。"""
+
+    def test_list_datetime_serialized_as_list_of_strings(self):
+        if not gt.HAS_WHOIS:
+            pytest.skip('whois 依赖未安装')
+        import datetime as dt
+        fake_w = type('FakeWhois', (), {
+            'domain_name': 'test.com',
+            'registrar': 'Test',
+            'creation_date': dt.datetime(2020, 1, 1),
+            'expiration_date': dt.datetime(2030, 1, 1),
+            'updated_date': [dt.datetime(2025, 1, 1), dt.datetime(2025, 6, 1)],
+            'name_servers': ['ns1.test.com'],
+            'status': 'ok',
+            'emails': ['admin@test.com'],
+            'org': 'Test Org',
+            'country': 'US',
+        })()
+        with patch.object(gt.whois, 'whois', return_value=fake_w):
+            result = gt.whois_lookup('test.com')
+        assert isinstance(result['updated_date'], list), \
+            "list[datetime] 应序列化为 list of str，不是 repr 字符串"
+        assert len(result['updated_date']) == 2
+        assert all(isinstance(d, str) for d in result['updated_date'])
+        # 单个 datetime 仍是字符串
+        assert isinstance(result['creation_date'], str)
+        assert isinstance(result['expiration_date'], str)
+
+
+class TestIPv6ScopeIdRejected:
+    """v1.0.x 加固：fe80::1%eth0 等带 scope_id 的 IPv6 会让 URL 包含 % 触发
+    urllib3 解析错误，最终用户只看到「网络错误」误导。直接拒绝。"""
+
+    def test_ipv6_with_scope_id_rejected_without_api_call(self):
+        with patch.object(gt, 'safe_get') as mock_get:
+            data = gt.track_ip('fe80::1%eth0')
+        assert mock_get.call_count == 0, "scope_id 应在送进 URL 前被拦"
+        assert '_error' in data
+        assert 'fe80' in data['_error']
+
+    def test_normal_ipv6_still_accepted(self):
+        fake = MagicMock()
+        fake.json.return_value = {'success': True, 'type': 'IPv6'}
+        with patch.object(gt, 'safe_get', return_value=fake):
+            data = gt.track_ip('2001:4860:4860::8888')
+        assert '_error' not in data
 
 
 class TestRunCli:
@@ -1199,7 +1280,7 @@ class TestSavePermissionError:
                '无法' in (captured.err + captured.out)
 
     def test_makedirs_failure_handled(self, tmp_path, capsys, monkeypatch):
-        """os.makedirs 抛 OSError（如 NotADirectoryError）时应友好处理。"""
+        """os.makedirs 抛 OSError（如 NotADirectoryError）时应友好处理 + 必须有错误提示。"""
         def boom(*args, **kwargs):
             raise OSError(20, 'Not a directory')
 
@@ -1207,6 +1288,11 @@ class TestSavePermissionError:
         target = str(tmp_path / 'sub' / 'r.json')
         # 不应抛
         gt._maybe_save(target, 'ip_x', {'k': 'v'})
+        # 必须有错误提示（不能静默吞）
+        captured = capsys.readouterr()
+        combined = captured.err + captured.out
+        assert 'error' in combined.lower() or '错' in combined or '失败' in combined or '无法' in combined, \
+            f"_maybe_save 静默吞错没提示，拿到：err={captured.err!r} out={captured.out!r}"
 
 
 class TestEmailMxErrorEnum:

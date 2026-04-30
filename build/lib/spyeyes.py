@@ -675,12 +675,8 @@ def track_ip(ip: str) -> dict:
     # SSRF 防护：拒绝非合法 IPv4/IPv6（防止 "8.8.8.8?key=leak" 污染 query
     # 或 "../admin" 路径穿越，即便 ipwho.is 自身能拒绝，也避免暴露异常信息）
     try:
-        parsed_ip = ipaddress.ip_address(ip)
+        ipaddress.ip_address(ip)
     except ValueError:
-        return {'_error': t('err.invalid_ip', ip=ip)}
-    # IPv6 scope_id（如 'fe80::1%eth0'）会让 URL 含 % 触发 urllib3 解析错误
-    # → safe_get 返回 None → 用户得到「网络错误」误导。直接拒绝。
-    if isinstance(parsed_ip, ipaddress.IPv6Address) and parsed_ip.scope_id:
         return {'_error': t('err.invalid_ip', ip=ip)}
     resp = safe_get(f"https://ipwho.is/{ip}")
     if resp is None:
@@ -1401,25 +1397,15 @@ def whois_lookup(domain: str) -> dict:
     return {
         'domain':          w.domain_name,
         'registrar':       w.registrar,
-        'creation_date':   _whois_date(w.creation_date),
-        'expiration_date': _whois_date(w.expiration_date),
-        'updated_date':    _whois_date(w.updated_date),
+        'creation_date':   str(w.creation_date) if w.creation_date else None,
+        'expiration_date': str(w.expiration_date) if w.expiration_date else None,
+        'updated_date':    str(w.updated_date) if w.updated_date else None,
         'name_servers':    w.name_servers,
         'status':          w.status,
         'emails':          w.emails,
         'org':             w.org,
         'country':         w.country,
     }
-
-
-def _whois_date(value):
-    """python-whois 对某些 TLD 返回 list[datetime]（多次记录），不能直接 str()
-    会得到 repr 字符串 "[datetime.datetime(...)]"，必须逐项转换为列表。"""
-    if value is None:
-        return None
-    if isinstance(value, list):
-        return [str(d) for d in value]
-    return str(value)
 
 
 def mx_lookup(domain: str) -> dict:
@@ -1605,9 +1591,7 @@ def print_phone_info(data: dict) -> None:
 
 
 def _platform_only(d: dict) -> dict:
-    """从 track_username 返回的 dict 中只取出平台名→URL 项（跳过 _statuses 等私有 key）。
-    注意：仅供 username 扫描结果使用 —— 批量 mx/whois 的 key 是用户传入的域名
-    （包括合法的 _dmarc.example.com 等以 _ 开头的子域），不能套用此过滤。"""
+    """从 track_username 返回的 dict 中只取出平台名→URL 项（跳过 _statuses 等私有 key）。"""
     return {k: v for k, v in d.items() if not k.startswith('_')}
 
 
@@ -1866,11 +1850,8 @@ def _maybe_save(target: Optional[str], prefix: str, data: Any) -> None:
     target_lower = target.lower()
     is_md_file = target_lower.endswith('.md')
     is_dir = target.endswith(os.sep) or (os.path.exists(target) and os.path.isdir(target))
-    # 仅 username 扫描结果需要剥 _statuses 等私有 key；
-    # 批量 mx/whois 的 key 是用户传入的域名（含合法 _dmarc.example.com 等
-    # 以 _ 开头的子域），不能无脑过滤 —— 之前会导致这些子域结果被静默删掉。
     json_data = data
-    if isinstance(data, dict) and '_error' not in data and prefix.startswith('username_'):
+    if isinstance(data, dict) and '_error' not in data:
         json_data = _platform_only(data)
     try:
         if is_dir:
@@ -2008,10 +1989,6 @@ def menu_loop(save_dir: Optional[str] = None) -> None:
             print(f"\n {Color.Re}{t('prompt.input_number')}{Color.Reset}")
             time.sleep(1)
             continue
-        except (EOFError, KeyboardInterrupt):
-            # stdin 关闭（管道末尾、Ctrl+D）→ 正常退出而非 traceback
-            print()
-            return
         try:
             handle_choice(choice, save_dir=save_dir)
         except ValueError as e:
@@ -2021,14 +1998,8 @@ def menu_loop(save_dir: Optional[str] = None) -> None:
         except KeyboardInterrupt:
             print(f"\n {Color.Re}{t('prompt.interrupted')}{Color.Reset}")
             continue
-        except EOFError:
-            print()
-            return
         if choice != 0:
-            try:
-                input(f"\n{Color.Wh}[ {Color.Gr}+ {Color.Wh}] {Color.Gr}{t('prompt.press_enter')}{Color.Reset}")
-            except (EOFError, KeyboardInterrupt):
-                return
+            input(f"\n{Color.Wh}[ {Color.Gr}+ {Color.Wh}] {Color.Gr}{t('prompt.press_enter')}{Color.Reset}")
 
 
 # ====================================================================

@@ -36,7 +36,7 @@ SpyEyes 是一个用 Python 编写的命令行 OSINT 小工具，整个项目核
 | IP 地址归属查询 | 公开 API：`ipwho.is`（HTTPS，含国家中文名） | 是 |
 | 查看本机出口 IP | 公开 API：`api.ipify.org` | 是 |
 | 电话号码解析 | 本地 `phonenumbers` 库（中文运营商/归属地） | 否 |
-| 用户名社交平台扫描 | 23 个社交平台 HTTP 探测，**并发 + 内容关键词** | 是 |
+| 用户名社交平台扫描 | **2067 个**平台 HTTP 探测（Maigret + Sherlock + WhatsMyName），**100 线程并发 + 内容关键词** | 是 |
 | 域名 WHOIS 查询 | `python-whois` 库（直连 RDAP / WHOIS 服务器） | 是 |
 | 域名 MX 记录查询 | `dnspython`，使用系统 DNS 解析 | 是 |
 | 邮箱有效性验证 | 本地正则 + MX 记录检查 | 是 |
@@ -47,7 +47,7 @@ SpyEyes 是一个用 Python 编写的命令行 OSINT 小工具，整个项目核
 
 ## 系统要求与依赖
 
-- **Python**：3.8 或更高
+- **Python**：3.10 或更高（PEP 562 模块级 `__getattr__` + 类型注解）
 - **Python 库**（已写入 `requirements.txt`）：
   - `requests` —— HTTP 请求
   - `phonenumbers` —— Google 的电话号码解析库
@@ -236,7 +236,7 @@ python3 spyeyes.py --lang zh user torvalds  # 强制中文输出
 **说明**：
 - 谷歌地图链接可以直接复制到浏览器查看大致定位
 - IP 归属定位的精度取决于 ISP 上报，**不能精确到具体街道**
-- 数据值（国家名、城市名）由 `ipwho.is` 返回，目前仅支持英文。如需中文国家名，需要自己加一层翻译表
+- 国家代码（country_code）通过 v1.0.0 起内置的 `COUNTRY_ZH` 映射表（180+ 国家/地区）转中文显示；城市名仍由 `ipwho.is` 返回的英文为准
 
 ---
 
@@ -315,7 +315,7 @@ python3 spyeyes.py --lang zh user torvalds  # 强制中文输出
 
 ### ④ 用户名追踪
 
-**作用**：把你输入的用户名拼到 **2020 个主流社交/技术平台** 的 URL 中并发访问，按区域和主题分组返回命中结果。数据库整合自三大上游：[Maigret](https://github.com/soxoj/maigret) + [Sherlock](https://github.com/sherlock-project/sherlock) + [WhatsMyName](https://github.com/WebBreacher/WhatsMyName)，加上手工 curated 的中文/西语区精选。
+**作用**：把你输入的用户名拼到 **2067 个主流社交/技术平台** 的 URL 中并发访问，按区域和主题分组返回命中结果。数据库整合自三大上游：[Maigret](https://github.com/soxoj/maigret) + [Sherlock](https://github.com/sherlock-project/sherlock) + [WhatsMyName](https://github.com/WebBreacher/WhatsMyName)，加上手工 curated 的中文/西语区精选。
 
 **操作示范**：
 
@@ -329,7 +329,7 @@ python3 spyeyes.py --lang zh user torvalds  # 强制中文输出
 ```
 ========== 用户名扫描结果 ==========
 
- 共扫描 2020 个平台，命中 317 个：
+ 共扫描 2067 个平台，命中 317 个：
  （仅显示命中；用 --all 查看未命中）
 
  ┌─ 代码与开发 (26/54) ─
@@ -350,7 +350,7 @@ python3 spyeyes.py --lang zh user torvalds  # 强制中文输出
  ...
 ```
 
-**平台分类（12 大类，2020 总数）**：
+**平台分类（12 大类，2067 总数）**：
 
 | 类别 | 数量 | 典型平台 |
 |---|---:|---|
@@ -365,18 +365,18 @@ python3 spyeyes.py --lang zh user torvalds  # 强制中文输出
 | `funding` | 14 | Patreon / Ko-fi / OpenCollective ... |
 | **`chinese`** | **46** | 微博 · 知乎 · CSDN · V2EX · 简书 · Dcard · Mobile01 · 巴哈姆特 · PIXNET · LIHKG · Shopee TW/SG/MY · ... |
 | **`spanish`** | **52** | Wallapop · MercadoLibre AR/MX/BR · Menéame · Taringa · Forocoches · Hispachan · Forosperu · Xataka · ... |
-| `other` | 1375 | Maigret 长尾（小众/地区性） |
+| `other` | 1340 | Maigret 长尾（小众/地区性） |
 
 **性能 / 调优**：
 
 - 默认 **100 线程并发**（v1.2 起 Sherlock-inspired 提速），~21 秒完成 2067 平台全扫描；可用 `--workers N` 调节（1-200）
-- 默认**只显示命中**（不然 2020 行太多）—— `--all` / `[ 4 ] 用户名追踪` 后用 `--all` 选项查看完整报告
+- 默认**只显示命中**（不然 2067 行太多）—— `--all` / `[ 4 ] 用户名追踪` 后用 `--all` 选项查看完整报告
 - **三重检测逻辑**：HTTP 200 → 不含 `not_found` 模式（如 "page not found"） → 含 `must_contain` 模式（如平台特征 HTML）
 - 数据库可随时刷新：`python3 tools/build_platforms.py` 自动从三大上游拉最新
 
 **重要说明**：
 
-> ⚠️ **2020 平台中约 1375 个为 Maigret 长尾**，许多是小众/地区性站点。命中率因平台而异：
+> ⚠️ **2067 平台中约 1340 个为 Maigret 长尾**，许多是小众/地区性站点。命中率因平台而异：
 > - 主流平台（GitHub / Twitter / Reddit）：精度 95%+
 > - 中文/西语精选区域：精度 85%+（手工 curate 过）
 > - Maigret 长尾：精度 70-80%（部分有 must_contain 验证）
@@ -581,14 +581,7 @@ python3 spyeyes.py ip -h      # 查看 ip 子命令的所有参数
 
 ---
 
-### Q4: 选项 1 IP 查询返回 `KeyError: 'current_time'`
-
-**原因**：`ipwho.is` 在 2024 年后移除了 `timezone.current_time` 字段，旧代码尚未适配。
-**解决**：本项目的本地版本已经修复（删除了该行）。如果你拉的是上游原版，需要手动删除 `spyeyes.py` 中的最后一行 `print(f"{Wh} 偏移量 ..." ip_data["timezone"]["current_time"])`。
-
----
-
-### Q5: 选项 4 用户名查询大量显示「未找到」
+### Q4: 选项 4 用户名查询大量显示「未找到」
 
 **原因**：现代社交平台普遍有反爬机制。本项目已使用 Chrome User-Agent + `must_contain` 双重检测大幅降低误报，但 LinkedIn / Instagram / TikTok 等强登录墙平台仍可能误判。
 **解决**：
@@ -598,7 +591,7 @@ python3 spyeyes.py ip -h      # 查看 ip 子命令的所有参数
 
 ---
 
-### Q6: 终端中文显示成乱码
+### Q5: 终端中文显示成乱码
 
 **原因**：终端字符编码不是 UTF-8。
 **解决**：
@@ -608,7 +601,7 @@ python3 spyeyes.py ip -h      # 查看 ip 子命令的所有参数
 
 ---
 
-### Q7: 想退出工具但 `0` 之后没反应
+### Q6: 想退出工具但 `0` 之后没反应
 
 **原因**：选项 0 的 `exit` 是 Python 的 `exit` 函数，正常情况下会立即退出。
 **解决**：直接按 `Ctrl + C` 强制退出。
@@ -638,7 +631,7 @@ python3 tools/build_platforms.py
 ## 已知限制
 
 1. **数据语言**：`ipwho.is` 返回的城市/地区名仍为英文（国家名已通过本地映射表译成中文）
-2. **用户名扫描准确率有限**：约 1375 个 Maigret 长尾平台仅做基本检测，有 20-30% 误报
+2. **用户名扫描准确率有限**：约 1340 个 Maigret 长尾平台仅做基本检测，有 20-30% 误报
 3. **登录墙平台**：LinkedIn / Instagram / TikTok 强反爬，命中率较低
 4. **WHOIS 速度**：跨地区查询某些 TLD 时较慢（10-15 秒）
 5. **无代理支持**：默认走系统直连，无内置 HTTP/SOCKS 代理选项

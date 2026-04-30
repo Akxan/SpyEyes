@@ -1,0 +1,13 @@
+LICENSE
+NOTICE
+README.md
+pyproject.toml
+spyeyes.py
+spyeyes.egg-info/PKG-INFO
+spyeyes.egg-info/SOURCES.txt
+spyeyes.egg-info/dependency_links.txt
+spyeyes.egg-info/entry_points.txt
+spyeyes.egg-info/requires.txt
+spyeyes.egg-info/top_level.txt
+tests/test_build_platforms.py
+tests/test_spyeyes.py

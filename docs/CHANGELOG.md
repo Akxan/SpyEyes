@@ -28,7 +28,7 @@ This project adheres to [Keep a Changelog](https://keepachangelog.com/en/1.1.0/)
 - **📡 本机 IP 查询** — 一键显示当前公网出口 IP
 - **📱 电话号码追踪** — 中文归属地 + 中文运营商 + 12 种号码类型 + 国际/E.164 格式
 - **👤 用户名扫描** — **2067 个平台**（合并 Maigret + Sherlock + WhatsMyName 三大上游）
-  - 46 中文圈（陆/台/港/星/马）+ 52 西语圈（西班牙/拉美）+ 84 成人/约会
+  - 46 中文圈（陆/台/港/星/马）+ 52 西语圈（西班牙/拉美）+ 83 成人/约会
   - **100 线程并发**，21 秒扫完
   - WAF 检测（Cloudflare / AWS WAF / PerimeterX / DataDome / Akamai 等）
   - regex 预过滤 + ReDoS 长度限制防护（`MAX_USERNAME_LENGTH=64`）
@@ -77,8 +77,8 @@ This project adheres to [Keep a Changelog](https://keepachangelog.com/en/1.1.0/)
 
 ### 🛠 Developer Experience
 
-- **183 个 pytest 测试**，0.4 秒跑完
-  - 主功能测试（145 个）+ 构建工具测试（38 个）
+- **209 个 pytest 测试**，0.4 秒跑完
+  - 主功能测试（168 个）+ 构建工具测试（41 个）
   - 覆盖：纯函数 + HTTP mock + 边界条件 + SSRF / ReDoS / Markdown injection / 信息泄漏 / Platform 不可变性 / 损坏文件容错 / 跨线程隔离
 - **5 路审计全清** — ruff / mypy / bandit / pytest / fresh-eyes agent reviews
 - **GitHub Actions CI** —
