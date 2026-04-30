@@ -1375,6 +1375,33 @@ class TestHistoryTimestampHasTimezone:
             f"ts '{ts}' 应包含时区偏移，否则无法跨时区追溯"
 
 
+class TestMarkdownSubdomainNotStripped:
+    """Round 15 加固：_to_markdown 通用 dict 分支也不应过滤 _dmarc 等合法子域。
+    （之前 _maybe_save Round 7 修了，但 _to_markdown 内部仍用 _platform_only）"""
+
+    def test_underscore_subdomain_kept_in_md(self):
+        """模拟批量 mx 结果含 _dmarc 子域，写入 markdown 表格应保留。"""
+        data = {
+            '_dmarc.example.com': {'records': '1 mx1'},
+            'normal.com': {'records': '5 mx2'},
+        }
+        # prefix 'mx_xxx' 不是 username_，应保留所有 key
+        md = gt._to_markdown('mx_x', data)
+        assert '_dmarc.example.com' in md, \
+            "批量 mx/whois 写 markdown 时合法 _dmarc 子域不应被过滤"
+        assert 'normal.com' in md
+
+    def test_username_md_still_filters_private(self):
+        """username 扫描结果仍过滤 _statuses 等私有 key。"""
+        data = {
+            'GitHub': 'https://github.com/x',
+            '_statuses': {'GitHub': 'found'},
+        }
+        md = gt._to_markdown('username_x', data)
+        # username 路径走专用分支（不是通用 dict），_statuses 仍不出现
+        assert '_statuses' not in md or '\\_statuses' in md
+
+
 class TestPrivateSubdomainSavedNotStripped:
     """v1.0.x 加固：批量 mx/whois 保存时不应过滤 _dmarc.x.com 等合法子域。
     （之前 _maybe_save 无条件套用 _platform_only → 数据丢失）"""

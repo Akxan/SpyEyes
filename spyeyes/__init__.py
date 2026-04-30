@@ -2110,13 +2110,17 @@ def _to_markdown(prefix: str, data: Any) -> str:
         lines.append("")
         return '\n'.join(lines)
 
-    # 通用：扁平化 dict 为表格（key 与 value 都转义；跳过 _* 私有 key）
+    # 通用：扁平化 dict 为表格（key 与 value 都转义）
+    # 注意：仅对 username 扫描结果调 _platform_only 过滤 _* 私有 key；
+    # 批量 mx/whois 的 key 是用户传入的域名（含 _dmarc.example.com 等合法子域），
+    # 一律过滤 _ 开头的 key 会让这些条目从 MD 报告里被静默删除（数据丢失）
     if isinstance(data, dict):
         lines.append(f"## {cmd.upper()} info: `{query}`")
         lines.append("")
         lines.append("| Field | Value |")
         lines.append("|---|---|")
-        for k, v in _platform_only(data).items():
+        items = _platform_only(data).items() if cmd == 'username' else data.items()
+        for k, v in items:
             if v is None or v == '':
                 continue
             if isinstance(v, dict):
