@@ -988,6 +988,37 @@ class TestPhoneIsValidSemantics:
         assert rec['ok'] is True
 
 
+class TestNoHistoryEnvVar:
+    """v1.0.x 加固：SPYEYES_NO_HISTORY=1 禁用历史记录（隐私选项）。
+    SECURITY.md 承诺的「敏感场景禁用」必须真生效。"""
+
+    def test_env_var_disables_history_write(self, tmp_path, monkeypatch):
+        h = tmp_path / 'h.jsonl'
+        monkeypatch.setattr(gt, 'HISTORY_FILE', str(h))
+        monkeypatch.setattr(gt, 'CONFIG_DIR', str(tmp_path))
+        monkeypatch.setenv('SPYEYES_NO_HISTORY', '1')
+        gt.append_history('ip', '8.8.8.8', {'ok': True})
+        # 文件不应被创建
+        assert not h.exists()
+
+    def test_env_var_disable_with_yes(self, tmp_path, monkeypatch):
+        h = tmp_path / 'h.jsonl'
+        monkeypatch.setattr(gt, 'HISTORY_FILE', str(h))
+        monkeypatch.setattr(gt, 'CONFIG_DIR', str(tmp_path))
+        monkeypatch.setenv('SPYEYES_NO_HISTORY', 'yes')
+        gt.append_history('ip', '8.8.8.8', {'ok': True})
+        assert not h.exists()
+
+    def test_no_env_var_writes_normally(self, tmp_path, monkeypatch):
+        h = tmp_path / 'h.jsonl'
+        monkeypatch.setattr(gt, 'HISTORY_FILE', str(h))
+        monkeypatch.setattr(gt, 'CONFIG_DIR', str(tmp_path))
+        monkeypatch.delenv('SPYEYES_NO_HISTORY', raising=False)
+        gt.append_history('ip', '8.8.8.8', {'ok': True})
+        assert h.exists()
+        assert '8.8.8.8' in h.read_text(encoding='utf-8')
+
+
 class TestUsernameC1ControlChars:
     """Round 9 加固：C1 控制字符 (0x80-0x9F) 也必须拒绝。
     含 NEL=0x85 / CSI=0x9B —— xterm 系终端解释为 ANSI escape 起始字节，

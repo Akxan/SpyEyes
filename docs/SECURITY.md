@@ -34,7 +34,9 @@ If you discover a security vulnerability, **do NOT** open a public issue.
 
 SpyEyes 在设计上遵循以下原则：
 
-1. **不存储用户输入**：查询数据仅在内存中处理（除非用户显式 `--save`）
+1. **本地优先存储**：查询结果仅在内存中处理；唯一的本地落盘是
+   `~/.spyeyes/history.jsonl`（仅记录元数据：时间戳/命令/查询/摘要，**不存全量结果**）。
+   要完全禁用历史，设环境变量 `SPYEYES_NO_HISTORY=1`，或定期 `rm ~/.spyeyes/history.jsonl`
 2. **不发送未授权请求**：所有 API 调用目标域名公开透明（`ipwho.is` / `ipify.org` 等）
 3. **不绕过任何访问控制**：仅查询公开信息
 4. **不内嵌追踪代码**：本工具无任何遥测、统计、第三方 SDK
@@ -42,6 +44,10 @@ SpyEyes 在设计上遵循以下原则：
 ## 用户安全提醒 / User Safety Notice
 
 - 工具查询的电话号码、邮箱、域名等可能涉及隐私，请仅用于**自查或授权场景**
+- **历史记录默认开启** —— `~/.spyeyes/history.jsonl` 会累积所有 CLI 查询的元数据。
+  敏感场景请：
+  - 设 `SPYEYES_NO_HISTORY=1` 完全禁用
+  - 或定期 `rm ~/.spyeyes/history.jsonl` 清理
 - 使用 `--save` 时输出的 JSON 包含查询输入，请妥善保管
 - 在共享/公共终端使用时建议通过 `--no-color` 避免 ANSI 转义符落入截屏
 

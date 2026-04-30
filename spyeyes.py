@@ -80,7 +80,12 @@ def _migrate_legacy_config() -> None:
 def append_history(command: str, query: str, summary: dict) -> None:
     """追加查询记录到 history.jsonl。仅记录元数据（时间/命令/查询/摘要），
     不存完整结果，保护隐私 + 控制文件大小。
-    时间戳含时区（OSINT 跨时区分析需要 TZ 信息才能复现）。"""
+    时间戳含时区（OSINT 跨时区分析需要 TZ 信息才能复现）。
+
+    隐私选项：设 SPYEYES_NO_HISTORY=1 完全禁用历史记录（敏感场景如取证调查）。
+    """
+    if os.environ.get('SPYEYES_NO_HISTORY', '').strip() in ('1', 'true', 'yes'):
+        return
     try:
         os.makedirs(CONFIG_DIR, exist_ok=True)
         entry = {
