@@ -320,7 +320,7 @@ pytest tests/ --cov=. --cov-report=term-missing
 
 ```
 SpyEyes/
-├── spyeyes.py                  # 主脚本（1400 行，含全部功能 + i18n）
+├── spyeyes.py                  # 主脚本（2116 行，含全部功能 + i18n）
 ├── README.md                   # 你正在看的这个（中文入口）
 ├── README.en.md                # English entry
 ├── LICENSE                     # Apache 2.0

@@ -282,7 +282,7 @@ pytest tests/ --cov=. --cov-report=term-missing
 
 ```
 SpyEyes/
-├── spyeyes.py                  # Main script (1400 lines, includes i18n)
+├── spyeyes.py                  # Main script (2116 lines, includes i18n)
 ├── README.md                   # 中文 README
 ├── README.en.md                # English README (you are here)
 ├── LICENSE                     # Apache 2.0

@@ -67,7 +67,7 @@ This project adheres to [Keep a Changelog](https://keepachangelog.com/en/1.1.0/)
 - ANSI Shadow 风格 SPYEYES Banner
 - 实时进度条（仅 TTY 模式）
 - 4 种扫描模式（菜单内选）：快速 / 完整 / 中文+西语 / 仅代码
-- 批量域名 MX/WHOIS（`gt mx domain1 domain2 ...`）
+- 批量域名 MX/WHOIS（`spy mx domain1 domain2 ...`）
 
 ---
 
