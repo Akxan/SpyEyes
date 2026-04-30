@@ -10,7 +10,7 @@
 [![codecov](https://codecov.io/gh/Akxan/SpyEyes/branch/main/graph/badge.svg)](https://codecov.io/gh/Akxan/SpyEyes)
 [![License: Apache 2.0](https://img.shields.io/badge/License-Apache_2.0-blue.svg)](https://opensource.org/licenses/Apache-2.0)
 [![Python](https://img.shields.io/badge/Python-3.10%2B-blue.svg?logo=python&logoColor=white)](https://www.python.org/)
-[![Tests](https://img.shields.io/badge/tests-99%20passed-success.svg)](tests/)
+[![Tests](https://img.shields.io/badge/tests-157%20passed-success.svg)](tests/)
 [![Platforms](https://img.shields.io/badge/platforms-2067-orange.svg)](data/platforms.json)
 [![Platform](https://img.shields.io/badge/platform-macOS%20%7C%20Linux%20%7C%20Windows%20%7C%20Termux-lightgrey)](#-安装)
 [![PRs Welcome](https://img.shields.io/badge/PRs-welcome-brightgreen.svg)](docs/CONTRIBUTING.md)
@@ -43,7 +43,7 @@
 - **WAF 检测**：识别 Cloudflare / AWS WAF / PerimeterX 等反爬墙，避免误报
 - **多种查询模式**：`--quick`（~9s）/ `--category`（~3s）/ 默认完整（~21s）
 - **结构化输出**：JSON / Markdown 报告 / 历史记录持久化
-- **99 个 pytest 测试**：5 路审计全清（ruff / mypy / bandit / pytest / agent）
+- **157 个 pytest 测试**：5 路审计全清（ruff / mypy / bandit / pytest / agent）
 
 ---
 
@@ -310,9 +310,15 @@ pytest tests/ --cov=. --cov-report=term-missing
 ```
 
 当前测试覆盖：
-- ✅ 99 个测试，0.3 秒跑完
-- ✅ 覆盖纯函数 + HTTP mock + 边界条件
-- ✅ GitHub Actions 在 macOS / Ubuntu × Python 3.10-3.13 共 8 种组合自动测试
+- ✅ **157 个测试**，0.3 秒跑完（v1.1.0 新增 58 个）
+- ✅ 覆盖纯函数 + HTTP mock + 边界条件 + SSRF/ReDoS 防御
+- ✅ GitHub Actions 在 macOS / Ubuntu / **Windows** × Python 3.10-3.13 自动测试
+- ✅ 独立 lint job（ruff + mypy + bandit）
+
+```bash
+# 安装运行依赖 + 测试依赖
+pip install -r requirements-dev.txt
+```
 
 ---
 
@@ -320,12 +326,13 @@ pytest tests/ --cov=. --cov-report=term-missing
 
 ```
 SpyEyes/
-├── spyeyes.py                  # 主脚本（2116 行，含全部功能 + i18n）
+├── spyeyes.py                  # 主脚本（含全部功能 + i18n + __version__）
 ├── README.md                   # 你正在看的这个（中文入口）
 ├── README.en.md                # English entry
 ├── LICENSE                     # Apache 2.0
 ├── NOTICE                      # 版权声明
 ├── requirements.txt            # 运行依赖
+├── requirements-dev.txt        # 开发/测试依赖（pytest, ruff, mypy, bandit）
 ├── docs/                       # 📚 所有文档
 │   ├── TUTORIAL.md             # 详细教程
 │   ├── CHANGELOG.md            # 版本更新日志
@@ -334,12 +341,14 @@ SpyEyes/
 ├── data/
 │   └── platforms.json          # 2067 平台数据库（Maigret + Sherlock + WhatsMyName 合并）
 ├── tools/
-│   └── build_platforms.py      # 平台数据库重建脚本（拉取上游最新）
+│   └── build_platforms.py      # 平台数据库重建脚本（拉取上游最新，原子写 + 重试）
 ├── tests/
 │   ├── __init__.py
-│   └── test_spyeyes.py      # 99 个 pytest 测试
+│   ├── conftest.py             # autouse fixture（全局状态隔离）
+│   ├── test_spyeyes.py         # 主功能测试（119 个）
+│   └── test_build_platforms.py # 构建工具测试（38 个）
 ├── .github/
-│   ├── workflows/ci.yml        # GitHub Actions CI（多 OS × 多 Python 版本）
+│   ├── workflows/ci.yml        # GitHub Actions CI（lint job + 多 OS × 多 Python 矩阵）
 │   ├── ISSUE_TEMPLATE/         # bug / 功能 issue 模板
 │   ├── PULL_REQUEST_TEMPLATE.md
 │   └── dependabot.yml          # 自动依赖更新

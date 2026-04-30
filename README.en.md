@@ -10,7 +10,7 @@
 [![codecov](https://codecov.io/gh/Akxan/SpyEyes/branch/main/graph/badge.svg)](https://codecov.io/gh/Akxan/SpyEyes)
 [![License: Apache 2.0](https://img.shields.io/badge/License-Apache_2.0-blue.svg)](https://opensource.org/licenses/Apache-2.0)
 [![Python](https://img.shields.io/badge/Python-3.10%2B-blue.svg?logo=python&logoColor=white)](https://www.python.org/)
-[![Tests](https://img.shields.io/badge/tests-99%20passed-success.svg)](tests/)
+[![Tests](https://img.shields.io/badge/tests-157%20passed-success.svg)](tests/)
 [![Platforms](https://img.shields.io/badge/platforms-2067-orange.svg)](data/platforms.json)
 [![Platform](https://img.shields.io/badge/platform-macOS%20%7C%20Linux%20%7C%20Windows%20%7C%20Termux-lightgrey)](#-installation)
 [![PRs Welcome](https://img.shields.io/badge/PRs-welcome-brightgreen.svg)](docs/CONTRIBUTING.md)
@@ -43,7 +43,7 @@ Designed for **security researchers, penetration testers, SOC analysts, threat h
 - **WAF detection**: identifies Cloudflare / AWS WAF / PerimeterX blocks to avoid false positives
 - **Multiple modes**: `--quick` (~9s) / `--category` (~3s) / default full (~21s)
 - **Structured output**: JSON / Markdown reports / persistent history
-- **99 pytest tests**: 5-pronged audit clean (ruff / mypy / bandit / pytest / agent)
+- **157 pytest tests**: 5-pronged audit clean (ruff / mypy / bandit / pytest / agent)
 
 ---
 
@@ -272,9 +272,14 @@ pytest tests/ -v
 pytest tests/ --cov=. --cov-report=term-missing
 ```
 
-- ✅ 99 tests, ~0.3 seconds
-- ✅ Pure functions + HTTP mocking + edge cases
-- ✅ GitHub Actions runs on macOS/Ubuntu × Python 3.10-3.13 = 8 combinations
+- ✅ **157 tests**, ~0.3 seconds (v1.1.0 added 58)
+- ✅ Pure functions + HTTP mocking + edge cases + SSRF/ReDoS defenses
+- ✅ GitHub Actions runs on macOS / Ubuntu / **Windows** × Python 3.10-3.13
+- ✅ Dedicated lint job (ruff + mypy + bandit)
+
+```bash
+pip install -r requirements-dev.txt
+```
 
 ---
 
@@ -282,12 +287,13 @@ pytest tests/ --cov=. --cov-report=term-missing
 
 ```
 SpyEyes/
-├── spyeyes.py                  # Main script (2116 lines, includes i18n)
+├── spyeyes.py                  # Main script (full features + i18n + __version__)
 ├── README.md                   # 中文 README
 ├── README.en.md                # English README (you are here)
 ├── LICENSE                     # Apache 2.0
 ├── NOTICE                      # 版权声明
 ├── requirements.txt            # Runtime deps
+├── requirements-dev.txt        # Dev/test deps (pytest, ruff, mypy, bandit)
 ├── docs/                       # 📚 All documentation
 │   ├── TUTORIAL.md             # Detailed tutorial (Chinese)
 │   ├── CHANGELOG.md            # Version history
@@ -296,12 +302,14 @@ SpyEyes/
 ├── data/
 │   └── platforms.json          # 2067-platform database (Maigret + Sherlock + WhatsMyName)
 ├── tools/
-│   └── build_platforms.py      # Refresh platform DB from upstream sources
+│   └── build_platforms.py      # Refresh platform DB (atomic write + retries)
 ├── tests/
 │   ├── __init__.py
-│   └── test_spyeyes.py      # 99 pytest tests
+│   ├── conftest.py             # autouse fixture (global state isolation)
+│   ├── test_spyeyes.py         # Core tests (119)
+│   └── test_build_platforms.py # Build tool tests (38)
 ├── .github/
-│   ├── workflows/ci.yml        # GitHub Actions CI (multi-OS × multi-Python)
+│   ├── workflows/ci.yml        # CI (lint job + multi-OS × multi-Python matrix)
 │   ├── ISSUE_TEMPLATE/         # Issue templates
 │   ├── PULL_REQUEST_TEMPLATE.md
 │   └── dependabot.yml          # Auto dependency updates
