@@ -10,7 +10,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "spyeyes"
-version = "1.1.0"  # 同步：spyeyes.py __version__ + docs/CHANGELOG.md + git tag
+version = "1.0.0"  # 同步：spyeyes.py __version__ + docs/CHANGELOG.md + git tag
 description = "All-in-One OSINT toolkit (bilingual zh/en) — IP / Phone / Username / WHOIS / MX / Email"
 readme = "README.md"
 requires-python = ">=3.10"

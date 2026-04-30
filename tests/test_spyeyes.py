@@ -985,21 +985,40 @@ class TestConfigCorruption:
 
 
 class TestSavePermissionError:
-    """v1.1.x 加固：_maybe_save 遇到 PermissionError 友好提示而非抛 traceback。"""
+    """v1.1.x 加固：_maybe_save 遇到 OSError 友好提示而非抛 traceback。
+    用 mock 模拟而非真实 chmod —— Windows chmod(0o555) 是 no-op，跨平台不稳。"""
 
     def test_permission_denied_handled(self, tmp_path, capsys, monkeypatch):
-        """无写权限路径应打印错误而非崩溃。"""
-        readonly = tmp_path / 'readonly'
-        readonly.mkdir(mode=0o555)  # r-x, no write
-        try:
-            target = str(readonly / 'r.json')
-            # 不应抛 PermissionError
-            gt._maybe_save(target, 'ip_x', {'k': 'v'})
-            captured = capsys.readouterr()
-            assert 'error' in (captured.err + captured.out).lower() or \
-                   '错' in captured.err or '错' in captured.out
-        finally:
-            readonly.chmod(0o755)  # 恢复权限以便 tmp_path 清理
+        """open() 抛 PermissionError 时应打印错误而非崩溃。"""
+        target = str(tmp_path / 'r.json')
+
+        real_open = open
+
+        def fake_open(path, *args, **kwargs):
+            # 仅对目标文件抛错，其它（i18n 加载等）正常
+            if str(path) == target:
+                raise PermissionError(13, 'Permission denied')
+            return real_open(path, *args, **kwargs)
+
+        monkeypatch.setattr('builtins.open', fake_open)
+        # 不应抛 PermissionError
+        gt._maybe_save(target, 'ip_x', {'k': 'v'})
+        captured = capsys.readouterr()
+        # 必须有错误提示（中英任意）
+        combined = (captured.err + captured.out).lower()
+        assert 'error' in combined or '错' in (captured.err + captured.out) or \
+               'permission' in combined or '失败' in (captured.err + captured.out) or \
+               '无法' in (captured.err + captured.out)
+
+    def test_makedirs_failure_handled(self, tmp_path, capsys, monkeypatch):
+        """os.makedirs 抛 OSError（如 NotADirectoryError）时应友好处理。"""
+        def boom(*args, **kwargs):
+            raise OSError(20, 'Not a directory')
+
+        monkeypatch.setattr(gt.os, 'makedirs', boom)
+        target = str(tmp_path / 'sub' / 'r.json')
+        # 不应抛
+        gt._maybe_save(target, 'ip_x', {'k': 'v'})
 
 
 class TestEmailMxErrorEnum:
