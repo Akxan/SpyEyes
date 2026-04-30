@@ -68,7 +68,9 @@ jobs:
 
       - name: Run pytest
         # --cov=spyeyes 替代 --cov=. 避免把 .venv/.mypy_cache 纳入覆盖率
-        # --timeout=15 防 ReDoS 测试卡死整个 CI
+        # --timeout=15 防纯 Python 死循环卡死 CI（注意：thread 方法对 C 扩展
+        #   阻塞如 re 模块 catastrophic backtracking 无效；ReDoS 实际靠
+        #   MAX_USERNAME_LENGTH=64 输入限制 + 删除 _REDOS_RE 启发式后简化的设计）
         # --timeout-method=thread: Windows 上 SIGALRM 不可用，必须显式声明
         run: pytest tests/ -v --cov=spyeyes --cov-report=term --cov-report=xml --timeout=15 --timeout-method=thread
 

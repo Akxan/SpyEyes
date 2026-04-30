@@ -10,7 +10,7 @@
 [![codecov](https://codecov.io/gh/Akxan/SpyEyes/branch/main/graph/badge.svg)](https://codecov.io/gh/Akxan/SpyEyes)
 [![License: Apache 2.0](https://img.shields.io/badge/License-Apache_2.0-blue.svg)](https://opensource.org/licenses/Apache-2.0)
 [![Python](https://img.shields.io/badge/Python-3.10%2B-blue.svg?logo=python&logoColor=white)](https://www.python.org/)
-[![Tests](https://img.shields.io/badge/tests-209%20passed-success.svg)](tests/)
+[![Tests](https://img.shields.io/badge/tests-239%20passed-success.svg)](tests/)
 [![Platforms](https://img.shields.io/badge/platforms-2067-orange.svg)](data/platforms.json)
 [![Platform](https://img.shields.io/badge/platform-macOS%20%7C%20Linux%20%7C%20Windows%20%7C%20Termux-lightgrey)](#-安装)
 [![PRs Welcome](https://img.shields.io/badge/PRs-welcome-brightgreen.svg)](docs/CONTRIBUTING.md)
@@ -43,7 +43,7 @@
 - **WAF 检测**：识别 Cloudflare / AWS WAF / PerimeterX 等反爬墙，避免误报
 - **多种查询模式**：`--quick`（~9s）/ `--category`（~3s）/ 默认完整（~21s）
 - **结构化输出**：JSON / Markdown 报告 / 历史记录持久化
-- **209 个 pytest 测试**：5 路审计全清（ruff / mypy / bandit / pytest / agent）
+- **239 个 pytest 测试**：5 路审计全清（ruff / mypy / bandit / pytest / agent）
 
 ---
 
@@ -316,7 +316,7 @@ pytest tests/ --cov=. --cov-report=term-missing
 ```
 
 当前测试覆盖：
-- ✅ **209 个测试**，0.4 秒跑完（v1.0.0 完整覆盖）
+- ✅ **239 个测试**，0.4 秒跑完（v1.0.0 完整覆盖）
 - ✅ 覆盖纯函数 + HTTP mock + 边界条件 + SSRF/ReDoS 防御
 - ✅ GitHub Actions 在 macOS / Ubuntu / **Windows** × Python 3.10-3.13 自动测试
 - ✅ 独立 lint job（ruff + mypy + bandit）
@@ -351,7 +351,7 @@ SpyEyes/
 ├── tests/
 │   ├── __init__.py
 │   ├── conftest.py             # autouse fixture（全局状态隔离）
-│   ├── test_spyeyes.py         # 主功能测试（168 个）
+│   ├── test_spyeyes.py         # 主功能测试（198 个）
 │   └── test_build_platforms.py # 构建工具测试（41 个）
 ├── .github/
 │   ├── workflows/ci.yml        # GitHub Actions CI（lint job + 多 OS × 多 Python 矩阵）

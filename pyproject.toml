@@ -22,7 +22,10 @@ version = "1.0.0"  # 同步：spyeyes.py __version__ + docs/CHANGELOG.md + git t
 description = "All-in-One OSINT toolkit (bilingual zh/en) — IP / Phone / Username / WHOIS / MX / Email"
 readme = "README.md"
 requires-python = ">=3.10"
-license = { text = "Apache-2.0" }
+# PEP 639 SPDX 表达式（替代弃用的 license = { text = ... } 和 license classifier）
+# setuptools 2027-02-18 之后将不再接受旧格式
+license = "Apache-2.0"
+license-files = ["LICENSE", "NOTICE"]
 authors = [{ name = "Akxan" }]
 keywords = ["osint", "ip-tracker", "phone-tracker", "username-search",
             "whois-lookup", "dns-lookup", "email-verification", "cybersecurity"]
@@ -30,7 +33,6 @@ classifiers = [
     "Development Status :: 5 - Production/Stable",
     "Environment :: Console",
     "Intended Audience :: Information Technology",
-    "License :: OSI Approved :: Apache Software License",
     "Operating System :: OS Independent",
     "Programming Language :: Python :: 3",
     "Programming Language :: Python :: 3.10",

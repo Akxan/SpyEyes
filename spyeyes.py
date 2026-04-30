@@ -96,8 +96,10 @@ def append_history(command: str, query: str, summary: dict) -> None:
 
 
 def read_history(limit: int = 50, search: Optional[str] = None) -> list:
-    """读取最近的查询历史。limit=最近 N 条（≤0 视为不限制 / 全部）。
-    search=按 query 子串过滤。"""
+    """读取最近的查询历史。
+    - limit: 最近 N 条（必须 >= 1，否则返回空列表 —— 与 CLI argparse 校验一致）
+    - search: 按 query 子串过滤
+    """
     if not os.path.exists(HISTORY_FILE):
         return []
     entries: list = []
@@ -118,9 +120,9 @@ def read_history(limit: int = 50, search: Optional[str] = None) -> list:
         s = search.lower()
         entries = [e for e in entries if s in e.get('query', '').lower()
                    or s in e.get('cmd', '').lower()]
-    # 之前 entries[-limit:] 在 limit=0 时退化为 entries[0:]（全部），违反直觉
+    # limit <= 0 返回空（与 argparse 校验一致；之前 entries[-0:] 全返回反直觉）
     if limit <= 0:
-        return entries
+        return []
     return entries[-limit:]
 
 
@@ -291,6 +293,7 @@ TRANSLATIONS: dict = {
         'err.empty_input':      'Input is empty',
         'err.unknown_category': 'Unknown category: {unknown}. Valid: {valid}',
         'err.username_too_long': 'Username too long (max {max} chars) — ReDoS protection',
+        'err.username_invalid_chars': 'Username contains invalid characters (URL metachars / dots)',
         'err.invalid_ip':       'Invalid IP address: {ip}',
         'err.invalid_domain':   'Invalid domain: {domain}',
         'err.phone_invalid':    'Phone number is not a possible number',
@@ -437,6 +440,7 @@ TRANSLATIONS: dict = {
         'err.empty_input':      '输入为空',
         'err.unknown_category': '未知类别：{unknown}。有效类别：{valid}',
         'err.username_too_long': '用户名过长（最多 {max} 字符）— ReDoS 防护',
+        'err.username_invalid_chars': '用户名含非法字符（URL 元字符 / 点号）',
         'err.invalid_ip':       'IP 地址不合法：{ip}',
         'err.invalid_domain':   '域名格式不合法：{domain}',
         'err.phone_invalid':    '号码格式不可解析',
@@ -1204,10 +1208,30 @@ STATUS_NETWORK_ERROR = 'network_err'  # 超时/连接失败
 # 误报严重；改用长度限制后既简单又有效。
 MAX_USERNAME_LENGTH = 64
 
-# username 字符白名单 —— 拒绝 URL 元字符（/?#@:）和空白避免 platform.url.format()
-# 拼出非预期 URL（如 'foo?x=1' 拼到 github.com/{} → 实际访问 /foo?x=1 → 假命中；
-# 'a@b' 拼到 'https://{}.tumblr.com' → 'https://a@b.tumblr.com' → 主机变 b.tumblr.com）
-_USERNAME_INVALID_CHARS = frozenset('/?#@:&= \t\n\r\\')
+# username 字符白名单 —— 拒绝 URL 元字符（/?#@:）、空白、% (URL encoding)，
+# 防止 platform.url.format() 拼出非预期 URL：
+# - 'foo?x=1' 拼到 github.com/{} → 实际访问 /foo?x=1 → 假命中
+# - 'a@b' 拼到 'https://{}.tumblr.com' → 主机变 b.tumblr.com
+# - '%2e%2e' URL-encoded 路径穿越
+_USERNAME_INVALID_CHARS = frozenset('/?#@:&= \t\n\r\\%')
+
+
+def _is_invalid_username(username: str) -> bool:
+    """检查 username 是否有非法字符或形态。
+    拒绝条件：
+    - 含 _USERNAME_INVALID_CHARS 中任一字符
+    - 是 '.' / '..'（拼到任意 URL 模板都触发路径穿越式假命中：
+      `https://github.com/.` 返回 GitHub 首页 → 不含 not_found 模式 → 假报「找到」）
+    - 包含 '..' 子串（同上）
+    - 以 '.' 开头或结尾（隐式路径片段）
+    """
+    if not username or any(c in _USERNAME_INVALID_CHARS for c in username):
+        return True
+    if username in ('.', '..') or '..' in username:
+        return True
+    if username.startswith('.') or username.endswith('.'):
+        return True
+    return False
 
 
 def _check_username(platform: 'Platform', username: str, timeout: float):
@@ -1219,12 +1243,11 @@ def _check_username(platform: 'Platform', username: str, timeout: float):
     3. **stream + 64KB 读取**：需 body 检测的只读前 64 KB
     4. **WAF 检测**：识别 Cloudflare/AWS WAF 等拦截，避免误报
     """
-    # 深度防御：track_username 入口已限制长度，但 _check_username 是公开的私有
-    # API（_前缀），测试或未来扩展可能直接调用 → 在这里再做一次防护
-    if len(username) > MAX_USERNAME_LENGTH:
-        return platform, None, STATUS_INVALID_USERNAME
-    # URL 元字符拒绝 —— 防止假阳性 / 主机劫持（见 _USERNAME_INVALID_CHARS 注释）
-    if any(c in _USERNAME_INVALID_CHARS for c in username):
+    # 深度防御：track_username 入口已限制长度 + 已 strip，但 _check_username
+    # 是公开的私有 API（_前缀），测试或未来扩展可能直接调用 → 这里再做一次防护
+    # 包括 strip 让两个入口语义一致（agent feedback）
+    username = (username or '').strip()
+    if len(username) > MAX_USERNAME_LENGTH or _is_invalid_username(username):
         return platform, None, STATUS_INVALID_USERNAME
 
     # ---- 1. URL 模板与 regex 预过滤（不发请求）----
@@ -1357,6 +1380,10 @@ def track_username(username: str, *, max_workers: int = 100, timeout: float = 5,
     # ReDoS 防护：长输入触发 (a+)+ 类指数回溯 → 截断保证 worst case 毫秒级
     if len(username) > MAX_USERNAME_LENGTH:
         return {'_error': t('err.username_too_long', max=MAX_USERNAME_LENGTH)}
+    # URL 注入 / 路径穿越早返：之前会扫 2067 平台都返 STATUS_INVALID_USERNAME
+    # 输出 2067 个 null 看起来像「全没命中」而不是「输入被拒」（误导）
+    if _is_invalid_username(username):
+        return {'_error': t('err.username_invalid_chars')}
     if max_workers < 1:
         max_workers = 1
     # 校验 categories：未知类别返回 error 而非静默扫 0 个
@@ -1438,11 +1465,13 @@ def whois_lookup(domain: str) -> dict:
 
 def _whois_date(value):
     """python-whois 对某些 TLD 返回 list[datetime]（多次记录），不能直接 str()
-    会得到 repr 字符串 "[datetime.datetime(...)]"，必须逐项转换为列表。"""
+    会得到 repr 字符串 "[datetime.datetime(...)]"，必须逐项转换为列表。
+    list 内 None / 异常元素被过滤（避免 'None' 字面字符串污染输出）。"""
     if value is None:
         return None
     if isinstance(value, list):
-        return [str(d) for d in value]
+        cleaned = [str(d) for d in value if d is not None]
+        return cleaned or None
     return str(value)
 
 
@@ -1480,23 +1509,43 @@ def mx_lookup(domain: str) -> dict:
 EMAIL_RE = re.compile(r"^([A-Za-z0-9._%+\-']+)@([\w.\-¡-￿]+\.[\w\-¡-￿]{2,})$")
 
 # 域名 punycode 形式（IDN 转换后）的格式校验
-DOMAIN_RE = re.compile(r'^(?=.{1,253}$)[A-Za-z0-9](?:[A-Za-z0-9-]{0,61}[A-Za-z0-9])?(?:\.[A-Za-z0-9](?:[A-Za-z0-9-]{0,61}[A-Za-z0-9])?)+$')
+# Label 首字符允许下划线：DKIM/DMARC/ACME 用的 _dmarc.example.com / _acme-challenge.x
+# 是 RFC-compliant DNS label（OSINT 工具的合法查询场景）
+DOMAIN_RE = re.compile(
+    r'^(?=.{1,253}$)'
+    r'[_A-Za-z0-9](?:[A-Za-z0-9-]{0,61}[A-Za-z0-9])?'
+    r'(?:\.[_A-Za-z0-9](?:[A-Za-z0-9-]{0,61}[A-Za-z0-9])?)+$'
+)
 
 
 def _normalize_domain(domain: str) -> Optional[str]:
     """规范化并校验 domain。非法返回 None；合法返回 lower-case ASCII 形式。
 
-    支持 IDN（中文/韩文/日文等）：先 encode('idna') 转 punycode (`xn--...`)，
-    再过 DOMAIN_RE 严格校验。防御目标：拒绝换行注入 / URL 形式 / 路径片段。
+    支持:
+    - IDN（中文/韩文/日文等）: 先 encode('idna') 转 punycode (xn--...)
+    - DKIM/DMARC/ACME 子域: 允许下划线开头的 label（_dmarc / _acme-challenge）
+    - Trailing dot FQDN: 'example.com.' 是合法 DNS FQDN，自动 rstrip
+
+    防御目标：拒绝换行注入 / URL 形式 / 路径片段。
     """
-    domain = (domain or '').strip().lower()
+    domain = (domain or '').strip().lower().rstrip('.')
     if not domain:
         return None
     # IDN 转 punycode（如 '中国' → 'xn--fiqs8s'）
     # 失败的非法 Unicode 域名（控制字符、不规范 label 等）走 except → None
     try:
-        # encode('idna') 对每个 label 单独编码，自动处理混合 ASCII/Unicode 域名
-        ascii_form = domain.encode('idna').decode('ascii')
+        # encode('idna') 对纯 ASCII 域名也能 work，对带 _ 的 label 不行
+        # → 先按 . 分 label 逐个 encode（避免 idna 拒绝 _dmarc 这类合法 OSINT 域名）
+        labels = []
+        for label in domain.split('.'):
+            if label.startswith('_'):
+                # _ 开头的 label 不参与 IDN 转换，保持原样
+                if not label.replace('_', '').replace('-', '').isalnum():
+                    return None
+                labels.append(label)
+            else:
+                labels.append(label.encode('idna').decode('ascii'))
+        ascii_form = '.'.join(labels)
     except (UnicodeError, UnicodeDecodeError):
         return None
     if not DOMAIN_RE.match(ascii_form):
@@ -2138,7 +2187,8 @@ def build_parser() -> argparse.ArgumentParser:
     sp.add_argument('address')
 
     sp = sub.add_parser('history', parents=[common], help='Show recent queries / 显示历史查询')
-    sp.add_argument('--limit', type=int, default=20, help='Max entries to show (default: 20)')
+    sp.add_argument('--limit', type=_positive_int, default=20,
+                    help='Max entries to show, must be >= 1 (default: 20, max 200)')
     sp.add_argument('--search', help='Filter by query substring')
     return parser
 
@@ -2158,7 +2208,9 @@ def run_cli(args: argparse.Namespace) -> int:
             print_ip_info(args.target, data)
     elif cmd == 'myip':
         ip = show_my_ip()
-        data = {'ip': ip}
+        # 失败时显式 _error 让 run_cli 末尾返回 exit 1（之前 data={'ip': None}
+        # 让 '_error' not in data 为 True → exit 0 → shell 脚本误判成功）
+        data = {'ip': ip} if ip else {'ip': None, '_error': t('err.network')}
         save_prefix = 'my_ip'
         if args.json:
             _emit_json(data)
@@ -2282,6 +2334,9 @@ def _record_history(cmd: str, args: argparse.Namespace, data: Any) -> None:
         summary = {'domains': args.domains}
     elif cmd == 'email':
         summary = {'address': args.address, 'mx_valid': data.get('mx_valid')}
+    else:
+        # 未知 cmd（未来加新子命令但忘了更新这里）→ 不写空 entry 污染历史
+        return
     query = summary.get('target') or summary.get('username') or summary.get('address') \
             or (summary.get('domains') and ','.join(summary['domains'])) or summary.get('number') or ''
     append_history(cmd, str(query), summary)

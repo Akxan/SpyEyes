@@ -77,8 +77,8 @@ This project adheres to [Keep a Changelog](https://keepachangelog.com/en/1.1.0/)
 
 ### 🛠 Developer Experience
 
-- **209 个 pytest 测试**，0.4 秒跑完
-  - 主功能测试（168 个）+ 构建工具测试（41 个）
+- **239 个 pytest 测试**，0.4 秒跑完
+  - 主功能测试（198 个）+ 构建工具测试（41 个）
   - 覆盖：纯函数 + HTTP mock + 边界条件 + SSRF / ReDoS / Markdown injection / 信息泄漏 / Platform 不可变性 / 损坏文件容错 / 跨线程隔离
 - **5 路审计全清** — ruff / mypy / bandit / pytest / fresh-eyes agent reviews
 - **GitHub Actions CI** —

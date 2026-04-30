@@ -528,14 +528,16 @@ class TestRegexCheck:
         assert '_error' in result
         assert 'too long' in result['_error'].lower() or '过长' in result['_error']
 
-    def test_username_at_length_limit_accepted(self):
-        """正好 MAX_USERNAME_LENGTH 长度应通过（边界 OK）。"""
-        with patch.object(gt, 'PLATFORMS', [
+    def test_username_at_length_limit_accepted(self, monkeypatch):
+        """正好 MAX_USERNAME_LENGTH 长度应通过（边界 OK）。
+        注意：PLATFORMS 通过 PEP 562 __getattr__ 懒加载，patch.object(gt, 'PLATFORMS', ...)
+        无效；要 patch _PLATFORMS_CACHE 才能真正绕过 lazy load。"""
+        monkeypatch.setattr(gt, '_PLATFORMS_CACHE', [
             gt.Platform('T', 'https://x.com/{}', 'code')
-        ]):
-            with patch.object(gt, 'safe_get', return_value=None):
-                result = gt.track_username('a' * gt.MAX_USERNAME_LENGTH,
-                                            max_workers=1, show_progress=False)
+        ])
+        with patch.object(gt, 'safe_get', return_value=None):
+            result = gt.track_username('a' * gt.MAX_USERNAME_LENGTH,
+                                        max_workers=1, show_progress=False)
         assert '_error' not in result
 
     def test_redos_short_input_completes_fast(self):
@@ -986,6 +988,99 @@ class TestPhoneIsValidSemantics:
         assert rec['ok'] is True
 
 
+class TestUsernameDotInjection:
+    """Round 7 加固：username='.' / '..' / '.foo' / 'foo.' 拼到任意 URL 模板会
+    触发假命中（github.com/. 返回首页 200 → 不含 not_found 模式 → 假报「找到」）。
+    211 个 curated 平台无 regex_check，对此类输入完全没保护层。"""
+
+    def test_single_dot_rejected(self):
+        result = gt.track_username('.', max_workers=1, show_progress=False)
+        assert '_error' in result, "'.' 拼到 URL 触发路径穿越，必须早返"
+
+    def test_double_dot_rejected(self):
+        result = gt.track_username('..', max_workers=1, show_progress=False)
+        assert '_error' in result
+
+    def test_dotdot_in_middle_rejected(self):
+        result = gt.track_username('foo..bar', max_workers=1, show_progress=False)
+        assert '_error' in result
+
+    def test_leading_dot_rejected(self):
+        result = gt.track_username('.foo', max_workers=1, show_progress=False)
+        assert '_error' in result
+
+    def test_trailing_dot_rejected(self):
+        result = gt.track_username('foo.', max_workers=1, show_progress=False)
+        assert '_error' in result
+
+    def test_check_username_directly_also_rejects(self):
+        """_check_username 也独立校验（深度防御）。"""
+        p = gt.Platform('GitHub', 'https://github.com/{}', 'code')
+        with patch.object(gt, 'safe_get') as mock_get:
+            _, url, status = gt._check_username(p, '..', 5)
+        assert mock_get.call_count == 0
+        assert status == gt.STATUS_INVALID_USERNAME
+
+    def test_normal_username_with_dot_in_middle_still_works(self):
+        """合法 username 含点（非首尾、非连续）仍接受：bob.smith / a.b.c."""
+        p = gt.Platform('X', 'https://x.com/{}', 'social')
+        fake = MagicMock(status_code=200)
+        with patch.object(gt, 'safe_get', return_value=fake):
+            _, _, status = gt._check_username(p, 'bob.smith', 5)
+        assert status == gt.STATUS_FOUND
+
+
+class TestNormalizeDomainExtras:
+    """Round 7 加固：trailing-dot FQDN + underscore-label OSINT 子域。"""
+
+    def test_trailing_dot_fqdn_accepted(self):
+        """'example.com.' 是合法 DNS FQDN，应被规范化为 'example.com'。"""
+        assert gt._normalize_domain('example.com.') == 'example.com'
+
+    def test_underscore_label_dmarc_accepted(self):
+        """_dmarc.example.com 是合法 DKIM/DMARC 子域（OSINT 常用）。"""
+        result = gt._normalize_domain('_dmarc.example.com')
+        assert result == '_dmarc.example.com'
+
+    def test_underscore_label_acme_accepted(self):
+        """_acme-challenge.example.com 是合法 ACME 验证子域。"""
+        result = gt._normalize_domain('_acme-challenge.example.com')
+        assert result is not None
+        assert '_acme-challenge' in result
+
+    def test_dual_underscore_labels(self):
+        """多个 _ label 都接受。"""
+        assert gt._normalize_domain('_dmarc._domainkey.example.com') is not None
+
+
+class TestWhoisDateFiltersNone:
+    """Round 7 加固：_whois_date 过滤 list 内的 None / 异常元素。"""
+
+    def test_list_with_none_filtered(self):
+        import datetime as dt
+        result = gt._whois_date([dt.datetime(2020, 1, 1), None, dt.datetime(2020, 6, 1)])
+        assert result is not None
+        assert len(result) == 2
+        assert 'None' not in str(result), "不应有 'None' 字面字符串污染输出"
+
+    def test_all_none_returns_none(self):
+        result = gt._whois_date([None, None])
+        assert result is None
+
+
+class TestRecordHistoryUnknownCmd:
+    """Round 7 加固：未知 cmd 不写空 entry 污染历史。"""
+
+    def test_unknown_cmd_no_history_entry(self, tmp_path, monkeypatch):
+        h = tmp_path / 'h.jsonl'
+        monkeypatch.setattr(gt, 'HISTORY_FILE', str(h))
+        monkeypatch.setattr(gt, 'CONFIG_DIR', str(tmp_path))
+        import argparse
+        gt._record_history('not_a_real_cmd', argparse.Namespace(), {})
+        # 文件可能不存在或为空（早 return 不写）
+        assert not h.exists() or h.read_text() == ''
+
+
 class TestUsernameUrlInjection:
     """v1.0.x 加固：username 含 URL 元字符 / 空白时拒绝（防假阳性 + 主机劫持）。
 
@@ -1047,26 +1142,33 @@ class TestSymlinkInstall:
 
 
 class TestReadHistoryEdgeCases:
-    """v1.0.x 加固：limit≤0 应当 unlimited 而非误返回全部空切片；
-    UnicodeDecodeError（外部进程写非 UTF-8 字节）不应让 read 挂掉。"""
+    """v1.0.x 加固：limit≤0 返回空（与 argparse 校验一致）；UnicodeDecodeError 容错。"""
 
-    def test_limit_zero_returns_all(self, tmp_path, monkeypatch):
+    def test_limit_zero_returns_empty(self, tmp_path, monkeypatch):
+        """limit=0 应返回空（之前 entries[-0:] 退化为 entries[0:] 全返回反直觉）。
+        argparse 用 _positive_int 已拒绝 0；这里是函数级深度防御。"""
         h = tmp_path / 'h.jsonl'
         h.write_text('\n'.join([
             json.dumps({'cmd': 'ip', 'query': '1.1.1.1', 'ok': True}),
             json.dumps({'cmd': 'ip', 'query': '8.8.8.8', 'ok': True}),
-            json.dumps({'cmd': 'ip', 'query': '9.9.9.9', 'ok': True}),
         ]) + '\n', encoding='utf-8')
         monkeypatch.setattr(gt, 'HISTORY_FILE', str(h))
-        result = gt.read_history(limit=0)
-        assert len(result) == 3, "limit=0 应返回全部记录（之前 entries[-0:] 等价 entries[0:] 全返回，语义碰巧对但不直观）"
+        assert gt.read_history(limit=0) == []
 
-    def test_limit_negative_returns_all(self, tmp_path, monkeypatch):
+    def test_limit_negative_returns_empty(self, tmp_path, monkeypatch):
         h = tmp_path / 'h.jsonl'
         h.write_text(json.dumps({'cmd': 'ip', 'query': 'x'}) + '\n', encoding='utf-8')
         monkeypatch.setattr(gt, 'HISTORY_FILE', str(h))
-        # 负数也安全降级（之前 entries[-(-1):] = entries[1:] 跳过第一条）
-        assert len(gt.read_history(limit=-5)) == 1
+        assert gt.read_history(limit=-5) == []
+
+    def test_argparse_rejects_zero_limit(self):
+        """CLI 层 --limit 0 被 _positive_int 拒绝。"""
+        with pytest.raises(SystemExit):
+            gt.build_parser().parse_args(['history', '--limit', '0'])
+
+    def test_argparse_rejects_negative_limit(self):
+        with pytest.raises(SystemExit):
+            gt.build_parser().parse_args(['history', '--limit', '-1'])
 
     def test_non_utf8_bytes_handled(self, tmp_path, monkeypatch):
         """外部进程写入 GBK 字节让整个 read_history 不应挂。"""
@@ -1191,7 +1293,15 @@ class TestIPv6ScopeIdRejected:
 
 
 class TestRunCli:
-    """run_cli 端到端覆盖。之前测试都是组件级 mock，这层完全空白。"""
+    """run_cli 端到端覆盖。
+    autouse fixture 隔离 HISTORY_FILE / CONFIG_DIR，防止测试污染用户家目录
+    （v1.0.x 加固：之前每次 pytest 都会在 ~/.spyeyes/history.jsonl 增条目）"""
+
+    @pytest.fixture(autouse=True)
+    def _isolate_history(self, tmp_path, monkeypatch):
+        """每个 TestRunCli 测试都自动重定向 HISTORY_FILE/CONFIG_DIR 到 tmp。"""
+        monkeypatch.setattr(gt, 'HISTORY_FILE', str(tmp_path / 'h.jsonl'))
+        monkeypatch.setattr(gt, 'CONFIG_DIR', str(tmp_path))
 
     def _make_args(self, **kwargs):
         import argparse
@@ -1216,14 +1326,28 @@ class TestRunCli:
         rc = gt.run_cli(args)
         assert rc == 2
 
-    def test_history_subcommand_returns_0(self, tmp_path, monkeypatch, capsys):
-        monkeypatch.setattr(gt, 'HISTORY_FILE', str(tmp_path / 'h.jsonl'))
+    def test_history_subcommand_returns_0(self, tmp_path, capsys):
+        # HISTORY_FILE 已被 fixture 隔离
         args = self._make_args(command='history', limit=10, search=None,
                                 json=True, save=None)
         rc = gt.run_cli(args)
         assert rc == 0
         # 空文件 → []
         assert '[]' in capsys.readouterr().out
+
+    def test_myip_network_failure_returns_1(self, capsys, monkeypatch):
+        """v1.0.x 加固：myip 网络失败时 exit 1（之前 ip=None 仍 exit 0
+        让 shell `spyeyes myip || handle` 误判成功）。"""
+        monkeypatch.setattr(gt, 'show_my_ip', lambda: None)
+        args = self._make_args(command='myip', json=True, save=None)
+        rc = gt.run_cli(args)
+        assert rc == 1
+
+    def test_myip_success_returns_0(self, capsys, monkeypatch):
+        monkeypatch.setattr(gt, 'show_my_ip', lambda: '1.2.3.4')
+        args = self._make_args(command='myip', json=True, save=None)
+        rc = gt.run_cli(args)
+        assert rc == 0
 
     def test_batch_whois_dispatched_to_batch_lookup(self, monkeypatch):
         """多个 domain 时 run_cli 走 _batch_lookup 而非单次 whois_lookup。"""
@@ -1240,10 +1364,8 @@ class TestRunCli:
         monkeypatch.setattr(gt, '_batch_lookup', fake_batch)
         monkeypatch.setattr(gt, 'whois_lookup', fake_single)
 
-        # 1 domain → single
         gt.run_cli(self._make_args(command='whois', domains=['example.com'],
                                     json=True, save=None))
-        # 2 domains → batch
         gt.run_cli(self._make_args(command='whois',
                                     domains=['example.com', 'test.com'],
                                     json=True, save=None))
