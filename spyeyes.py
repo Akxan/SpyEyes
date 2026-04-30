@@ -69,20 +69,22 @@ def _migrate_legacy_config() -> None:
         os.makedirs(CONFIG_DIR, exist_ok=True)
         for legacy, new in legacy_pairs:
             if os.path.exists(legacy) and not os.path.exists(new):
-                with open(legacy, 'r', encoding='utf-8') as src, \
+                # errors='replace' 防 GBK / 半行损坏的旧文件让迁移整个失败
+                with open(legacy, encoding='utf-8', errors='replace') as src, \
                      open(new, 'w', encoding='utf-8') as dst:
                     dst.write(src.read())
-    except OSError:
+    except (OSError, UnicodeDecodeError):
         pass
 
 
 def append_history(command: str, query: str, summary: dict) -> None:
     """追加查询记录到 history.jsonl。仅记录元数据（时间/命令/查询/摘要），
-    不存完整结果，保护隐私 + 控制文件大小。"""
+    不存完整结果，保护隐私 + 控制文件大小。
+    时间戳含时区（OSINT 跨时区分析需要 TZ 信息才能复现）。"""
     try:
         os.makedirs(CONFIG_DIR, exist_ok=True)
         entry = {
-            'ts': time.strftime('%Y-%m-%dT%H:%M:%S'),
+            'ts': time.strftime('%Y-%m-%dT%H:%M:%S%z') or time.strftime('%Y-%m-%dT%H:%M:%S'),
             'cmd': command,
             'query': query,
             **summary,
@@ -94,12 +96,14 @@ def append_history(command: str, query: str, summary: dict) -> None:
 
 
 def read_history(limit: int = 50, search: Optional[str] = None) -> list:
-    """读取最近的查询历史。limit=最近 N 条，search=按 query 子串过滤。"""
+    """读取最近的查询历史。limit=最近 N 条（≤0 视为不限制 / 全部）。
+    search=按 query 子串过滤。"""
     if not os.path.exists(HISTORY_FILE):
         return []
+    entries: list = []
     try:
-        with open(HISTORY_FILE, 'r', encoding='utf-8') as f:
-            entries = []
+        # errors='replace' 防外部进程写入了非 UTF-8 字节让整个 read 挂掉
+        with open(HISTORY_FILE, encoding='utf-8', errors='replace') as f:
             for line in f:
                 line = line.strip()
                 if not line:
@@ -108,12 +112,15 @@ def read_history(limit: int = 50, search: Optional[str] = None) -> list:
                     entries.append(json.loads(line))
                 except json.JSONDecodeError:
                     continue
-    except OSError:
+    except (OSError, UnicodeDecodeError):
         return []
     if search:
         s = search.lower()
         entries = [e for e in entries if s in e.get('query', '').lower()
                    or s in e.get('cmd', '').lower()]
+    # 之前 entries[-limit:] 在 limit=0 时退化为 entries[0:]（全部），违反直觉
+    if limit <= 0:
+        return entries
     return entries[-limit:]
 
 
@@ -121,9 +128,9 @@ def load_config() -> dict:
     # 一次性迁移老路径配置（升级用户无感）
     _migrate_legacy_config()
     try:
-        with open(CONFIG_FILE, 'r', encoding='utf-8') as f:
+        with open(CONFIG_FILE, encoding='utf-8') as f:
             return json.load(f)
-    except (FileNotFoundError, json.JSONDecodeError, OSError):
+    except (FileNotFoundError, json.JSONDecodeError, OSError, UnicodeDecodeError):
         return {}
 
 
@@ -292,8 +299,8 @@ TRANSLATIONS: dict = {
         'msg.found':            'found',
         'msg.no_history':       '(no history yet — run a query first)',
         'mode.title':           'Scan mode:',
-        'mode.quick':           'Quick   (~720 platforms, ~20s)  [recommended]',
-        'mode.full':            'Full    (~2067 platforms, ~50s)',
+        'mode.quick':           'Quick   (~720 platforms, ~9s)  [recommended]',
+        'mode.full':            'Full    (~2067 platforms, ~21s)',
         'mode.cn_es':           'Chinese + Spanish only (~98 platforms, ~6s)',
         'mode.code':            'Code platforms only (~54 platforms, ~3s)',
         'mode.prompt':          'Choose [1/2/3/4, default 1]: ',
@@ -438,8 +445,8 @@ TRANSLATIONS: dict = {
         'msg.found':            '已命中',
         'msg.no_history':       '（暂无历史 —— 先跑一次查询试试）',
         'mode.title':           '扫描模式:',
-        'mode.quick':           '快速   (约 720 平台, ~20 秒)  [推荐]',
-        'mode.full':            '完整   (全部 2067 平台, ~50 秒)',
+        'mode.quick':           '快速   (约 720 平台, ~9 秒)  [推荐]',
+        'mode.full':            '完整   (全部 2067 平台, ~21 秒)',
         'mode.cn_es':           '仅中文 + 西语圈 (约 98 平台, ~6 秒)',
         'mode.code':            '仅代码平台 (约 54 平台, ~3 秒)',
         'mode.prompt':          '请选择 [1/2/3/4, 默认 1]: ',
@@ -1025,7 +1032,9 @@ PLATFORMS = [
 CATEGORY_ORDER = ['code', 'social', 'forum', 'video', 'music', 'writing', 'art', 'gaming', 'funding', 'chinese', 'spanish', 'adult', 'other']
 
 # 加载从 Maigret 拉取的扩展平台库
-_PLATFORMS_JSON = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'data', 'platforms.json')
+# 用 realpath 而非 abspath：通过符号链接安装（brew/pipx）时 abspath 不解析 symlink，
+# 会指向链接目录而非真实目录 → 找不到 data/ → 静默丢失 ~2000 个平台只剩 curated
+_PLATFORMS_JSON = os.path.join(os.path.dirname(os.path.realpath(__file__)), 'data', 'platforms.json')
 
 
 def _clean_patterns(items) -> tuple:
@@ -1195,6 +1204,11 @@ STATUS_NETWORK_ERROR = 'network_err'  # 超时/连接失败
 # 误报严重；改用长度限制后既简单又有效。
 MAX_USERNAME_LENGTH = 64
 
+# username 字符白名单 —— 拒绝 URL 元字符（/?#@:）和空白避免 platform.url.format()
+# 拼出非预期 URL（如 'foo?x=1' 拼到 github.com/{} → 实际访问 /foo?x=1 → 假命中；
+# 'a@b' 拼到 'https://{}.tumblr.com' → 'https://a@b.tumblr.com' → 主机变 b.tumblr.com）
+_USERNAME_INVALID_CHARS = frozenset('/?#@:&= \t\n\r\\')
+
 
 def _check_username(platform: 'Platform', username: str, timeout: float):
     """检查单个平台是否存在该用户名。返回 (Platform, URL or None, status)。
@@ -1208,6 +1222,9 @@ def _check_username(platform: 'Platform', username: str, timeout: float):
     # 深度防御：track_username 入口已限制长度，但 _check_username 是公开的私有
     # API（_前缀），测试或未来扩展可能直接调用 → 在这里再做一次防护
     if len(username) > MAX_USERNAME_LENGTH:
+        return platform, None, STATUS_INVALID_USERNAME
+    # URL 元字符拒绝 —— 防止假阳性 / 主机劫持（见 _USERNAME_INVALID_CHARS 注释）
+    if any(c in _USERNAME_INVALID_CHARS for c in username):
         return platform, None, STATUS_INVALID_USERNAME
 
     # ---- 1. URL 模板与 regex 预过滤（不发请求）----
@@ -1358,20 +1375,27 @@ def track_username(username: str, *, max_workers: int = 100, timeout: float = 5,
     done = 0
     with ThreadPoolExecutor(max_workers=max_workers) as ex:
         futures = {ex.submit(_check_username, p, username, timeout): p for p in platforms_to_scan}
-        for fut in as_completed(futures):
-            try:
-                platform, url, status = fut.result()
-            except Exception:
-                platform = futures[fut]
-                url = None
-                status = STATUS_NETWORK_ERROR
-            found[platform.name] = url
-            statuses[platform.name] = status
-            done += 1
-            if url:
-                found_count += 1
+        try:
+            for fut in as_completed(futures):
+                try:
+                    platform, url, status = fut.result()
+                except Exception:
+                    platform = futures[fut]
+                    url = None
+                    status = STATUS_NETWORK_ERROR
+                found[platform.name] = url
+                statuses[platform.name] = status
+                done += 1
+                if url:
+                    found_count += 1
+                if show_progress:
+                    _print_scan_progress(done, total, found_count)
+        except KeyboardInterrupt:
+            # Ctrl+C: 立即取消未启动 worker，已运行的最多等 timeout 秒
+            ex.shutdown(wait=False, cancel_futures=True)
             if show_progress:
-                _print_scan_progress(done, total, found_count)
+                _clear_progress_line()
+            raise
     if show_progress:
         _clear_progress_line()
     # 保持 PLATFORMS 内部顺序；未扫描的平台不出现在结果里
@@ -2100,7 +2124,7 @@ def build_parser() -> argparse.ArgumentParser:
     sp.add_argument('--all', action='store_true', dest='show_all',
                     help='Show all platforms incl. misses / 显示所有平台（含未命中）')
     sp.add_argument('--quick', action='store_true',
-                    help='Skip "other" long-tail (~720 platforms vs 2068, ~3-4x faster) / 跳过 other 长尾，仅扫主流 ~720 个')
+                    help='Skip "other" long-tail (~720 platforms vs 2067, ~3-4x faster) / 跳过 other 长尾，仅扫主流 ~720 个')
     sp.add_argument('--category', dest='category_filter',
                     help='Comma-separated categories: code,social,chinese,spanish,... / 用逗号分隔的类别')
 
@@ -2296,6 +2320,15 @@ def resolve_language(args: argparse.Namespace) -> str:
 
 
 def main() -> int:
+    # Windows cp936 console 默认编码无法显示 emoji（👁国旗）和部分非 CJK Unicode
+    # → print() 抛 UnicodeEncodeError 让进程崩。Python 3.7+ 用 reconfigure 强制 utf-8。
+    # errors='replace' 保证即使 console 真不支持也不抛异常（用 ? 替代）
+    for stream in (sys.stdout, sys.stderr):
+        try:
+            stream.reconfigure(encoding='utf-8', errors='replace')  # type: ignore[union-attr]
+        except (AttributeError, OSError):
+            pass
+
     parser = build_parser()
     args = parser.parse_args()
 

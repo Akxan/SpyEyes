@@ -986,6 +986,130 @@ class TestPhoneIsValidSemantics:
         assert rec['ok'] is True
 
 
+class TestUsernameUrlInjection:
+    """v1.0.x 加固：username 含 URL 元字符 / 空白时拒绝（防假阳性 + 主机劫持）。
+
+    场景:
+    - 'foo?x=1' 拼到 github.com/{} → 实际访问 /foo?x=1 → 假命中
+    - 'a@b' 拼到 'https://{}.tumblr.com' → 主机变 b.tumblr.com
+    - '../etc' 拼到任意模板 → 路径穿越
+    """
+
+    def test_question_mark_rejected(self):
+        p = gt.Platform('GitHub', 'https://github.com/{}', 'code')
+        with patch.object(gt, 'safe_get') as mock_get:
+            _, url, status = gt._check_username(p, 'foo?bar=1', 5)
+        assert mock_get.call_count == 0, "URL 元字符应在送进 platform.url.format 前被拦"
+        assert status == gt.STATUS_INVALID_USERNAME
+
+    def test_at_sign_rejected(self):
+        p = gt.Platform('Tumblr', 'https://{}.tumblr.com', 'social')
+        with patch.object(gt, 'safe_get') as mock_get:
+            _, url, status = gt._check_username(p, 'a@evil.com', 5)
+        assert mock_get.call_count == 0
+        assert status == gt.STATUS_INVALID_USERNAME
+
+    def test_path_traversal_rejected(self):
+        p = gt.Platform('X', 'https://x.com/{}', 'social')
+        with patch.object(gt, 'safe_get') as mock_get:
+            _, url, status = gt._check_username(p, '../etc', 5)
+        assert mock_get.call_count == 0
+        assert status == gt.STATUS_INVALID_USERNAME
+
+    def test_whitespace_rejected(self):
+        p = gt.Platform('X', 'https://x.com/{}', 'social')
+        with patch.object(gt, 'safe_get') as mock_get:
+            _, url, status = gt._check_username(p, 'a b', 5)
+        assert mock_get.call_count == 0
+        assert status == gt.STATUS_INVALID_USERNAME
+
+    def test_normal_username_still_accepted(self):
+        """合法 username（字母数字 . - _ +）应正常通过。"""
+        p = gt.Platform('X', 'https://x.com/{}', 'social')
+        fake = MagicMock(status_code=200)
+        with patch.object(gt, 'safe_get', return_value=fake):
+            for name in ('alice', 'bob.smith', 'user-1', 'a_b', 'name+1'):
+                _, _, status = gt._check_username(p, name, 5)
+                assert status == gt.STATUS_FOUND, f"应接受合法 username {name!r}"
+
+
+class TestSymlinkInstall:
+    """_PLATFORMS_JSON 用 realpath 而非 abspath：通过 symlink 部署时仍能找到 data。"""
+
+    def test_uses_realpath(self):
+        # realpath 解析符号链接，abspath 不解析
+        # 验证当前 _PLATFORMS_JSON 是 realpath 形式（不含 symlink）
+        path = gt._PLATFORMS_JSON
+        # _PLATFORMS_JSON 的目录应等于 spyeyes.py 真实目录的 realpath
+        spyeyes_real_dir = os.path.dirname(os.path.realpath(gt.__file__))
+        expected = os.path.join(spyeyes_real_dir, 'data', 'platforms.json')
+        assert path == expected
+
+
+class TestReadHistoryEdgeCases:
+    """v1.0.x 加固：limit≤0 应当 unlimited 而非误返回全部空切片；
+    UnicodeDecodeError（外部进程写非 UTF-8 字节）不应让 read 挂掉。"""
+
+    def test_limit_zero_returns_all(self, tmp_path, monkeypatch):
+        h = tmp_path / 'h.jsonl'
+        h.write_text('\n'.join([
+            json.dumps({'cmd': 'ip', 'query': '1.1.1.1', 'ok': True}),
+            json.dumps({'cmd': 'ip', 'query': '8.8.8.8', 'ok': True}),
+            json.dumps({'cmd': 'ip', 'query': '9.9.9.9', 'ok': True}),
+        ]) + '\n', encoding='utf-8')
+        monkeypatch.setattr(gt, 'HISTORY_FILE', str(h))
+        result = gt.read_history(limit=0)
+        assert len(result) == 3, "limit=0 应返回全部记录（之前 entries[-0:] 等价 entries[0:] 全返回，语义碰巧对但不直观）"
+
+    def test_limit_negative_returns_all(self, tmp_path, monkeypatch):
+        h = tmp_path / 'h.jsonl'
+        h.write_text(json.dumps({'cmd': 'ip', 'query': 'x'}) + '\n', encoding='utf-8')
+        monkeypatch.setattr(gt, 'HISTORY_FILE', str(h))
+        # 负数也安全降级（之前 entries[-(-1):] = entries[1:] 跳过第一条）
+        assert len(gt.read_history(limit=-5)) == 1
+
+    def test_non_utf8_bytes_handled(self, tmp_path, monkeypatch):
+        """外部进程写入 GBK 字节让整个 read_history 不应挂。"""
+        h = tmp_path / 'h.jsonl'
+        h.write_bytes(b'{"cmd":"ip","query":"x","ok":true}\n\xff\xfe garbage\n')
+        monkeypatch.setattr(gt, 'HISTORY_FILE', str(h))
+        # 不应抛 UnicodeDecodeError
+        result = gt.read_history(limit=10)
+        # 至少能拿到合法的第一条
+        assert len(result) >= 1
+        assert result[0]['query'] == 'x'
+
+
+class TestLoadConfigUnicodeDecode:
+    """config.json 含非 UTF-8 字节也不应让 load_config 挂。"""
+
+    def test_non_utf8_returns_empty(self, tmp_path, monkeypatch):
+        c = tmp_path / 'config.json'
+        c.write_bytes(b'\xff\xfe garbage')
+        monkeypatch.setattr(gt, 'CONFIG_FILE', str(c))
+        monkeypatch.setattr(gt, 'CONFIG_DIR', str(tmp_path))
+        # 不应抛 UnicodeDecodeError
+        assert gt.load_config() == {}
+
+
+class TestHistoryTimestampHasTimezone:
+    """append_history 写入的 ts 应含时区（OSINT 跨时区分析需要 TZ 信息）。"""
+
+    def test_ts_has_timezone_offset(self, tmp_path, monkeypatch):
+        h = tmp_path / 'h.jsonl'
+        monkeypatch.setattr(gt, 'HISTORY_FILE', str(h))
+        monkeypatch.setattr(gt, 'CONFIG_DIR', str(tmp_path))
+        gt.append_history('ip', '8.8.8.8', {'ok': True})
+        line = h.read_text(encoding='utf-8').strip()
+        rec = json.loads(line)
+        ts = rec['ts']
+        # 应该是 ISO 格式 + 时区（+HHMM 或 -HHMM）或 UTC Z
+        # 至少不是裸的 'YYYY-MM-DDTHH:MM:SS'
+        # 具体检查：长度应大于 19（裸格式只有 19 字符）
+        assert len(ts) > 19 or ts.endswith('Z'), \
+            f"ts '{ts}' 应包含时区偏移，否则无法跨时区追溯"
+
+
 class TestPrivateSubdomainSavedNotStripped:
     """v1.0.x 加固：批量 mx/whois 保存时不应过滤 _dmarc.x.com 等合法子域。
     （之前 _maybe_save 无条件套用 _platform_only → 数据丢失）"""
@@ -1163,21 +1287,33 @@ class TestPhoneInvalid:
 
 
 class TestMarkdownBacktickInjection:
-    """v1.1.x 加固：防 backtick 跳出 inline code 注入 markdown。"""
+    """v1.0.x 加固：防 backtick 跳出 inline code 注入 markdown。
+    （之前测试用 'A or B' 短路逻辑形同虚设，已重写为独立断言）"""
 
-    def test_backtick_escaped(self):
-        """username 含反引号不应在 markdown 报告中跳出 code span。"""
-        md = gt._to_markdown('user_foo`<script>x</script>`',
+    def test_user_input_backtick_is_escaped(self):
+        """username 含 backtick 必须被 \\` 转义，不能原样进 markdown。"""
+        md = gt._to_markdown('username_foo`bar`baz',
                               {'GitHub': 'https://github.com/foo'})
-        # 不应有未转义的反引号（除了 markdown 自身的代码块围栏 ```）
-        # 检查方式：查反引号是否都被前缀 \\
-        # 简单断言：用户输入的 <script> 不应直接出现
-        assert '<script>' not in md or '\\`' in md
+        # 关键断言：原始未转义的 backtick 不应在 query 字段出现（除了 ``` 三反引号代码块）
+        # 用户输入区是 query (foo`bar`baz)，应已被 _md_escape 转义为 foo\`bar\`baz
+        assert 'foo\\`bar\\`baz' in md, \
+            f"username 中的 backtick 必须被 \\\\` 转义，实际 md:\n{md}"
 
-    def test_backtick_in_dict_value_escaped(self):
+    def test_dict_value_backtick_escaped(self):
+        """dict value 含 backtick 也必须转义（不能跳出 inline code 注入 HTML）。"""
         md = gt._to_markdown('ip_8.8.8.8',
-                              {'note': 'normal text `injected`'})
-        assert '\\`' in md or '`' not in md.replace('```', '')
+                              {'note': 'normal `dangerous` more'})
+        # 真正的安全检查：原始 `dangerous` 必须被转义（出现 \\`dangerous\\`）
+        assert '\\`dangerous\\`' in md, \
+            f"dict value 中的 backtick 必须转义，实际 md:\n{md}"
+
+    def test_md_escape_function_directly(self):
+        """直接测 _md_escape 函数：所有 backtick 必须前置 \\\\."""
+        result = gt._md_escape('a`b`c')
+        assert result == 'a\\`b\\`c'
+        # pipe / newline 也必须转义
+        assert gt._md_escape('a|b') == 'a\\|b'
+        assert gt._md_escape('a\nb') == 'a b'
 
 
 class TestDirHasLazyPlatforms:

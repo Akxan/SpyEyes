@@ -69,12 +69,11 @@ Changelog = "https://github.com/Akxan/SpyEyes/blob/main/docs/CHANGELOG.md"
 # spyeyes = "spyeyes:main"
 
 [tool.setuptools]
-# 单文件项目：只打包根目录的 spyeyes.py + 数据
+# 单文件项目：仅打包根目录的 spyeyes.py
+# 注意：data/platforms.json 不在 wheel 里（py-modules 不支持非 package data）
+# → pip install 后只剩 ~30 个 curated 平台。完整 PyPI 支持需重构为 package。
+# [tool.setuptools.package-data] 对 py-modules 不生效，已删除避免误导
 py-modules = ["spyeyes"]
-include-package-data = true
-
-[tool.setuptools.package-data]
-"*" = ["data/platforms.json"]
 
 [tool.ruff]
 line-length = 120

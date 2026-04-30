@@ -187,6 +187,11 @@ python3 spyeyes.py mx gmail.com
 # 邮箱验证
 python3 spyeyes.py email someone@gmail.com
 
+# 查看历史记录（~/.spyeyes/history.jsonl 自动累积）
+python3 spyeyes.py history --limit 20            # 最近 20 条
+python3 spyeyes.py history --search torvalds     # 按 query 子串过滤
+python3 spyeyes.py history --json | jq           # JSON pipeline
+
 # 输出 JSON + 保存到文件
 python3 spyeyes.py ip 8.8.8.8 --json --save results/
 ```
@@ -262,6 +267,7 @@ python3 spyeyes.py
 [ 5 ] 域名 WHOIS 查询
 [ 6 ] 域名 MX 记录
 [ 7 ] 邮箱有效性检查
+[ 8 ] 切换语言 / Language
 [ 0 ] 退出
 
  [ + ] 请选择功能 :

@@ -350,13 +350,13 @@ python3 spyeyes.py --lang zh user torvalds  # 强制中文输出
  ...
 ```
 
-**平台分类（12 大类，2067 总数）**：
+**平台分类（13 大类，2067 总数）**：
 
 | 类别 | 数量 | 典型平台 |
 |---|---:|---|
 | `code` | 54 | GitHub / GitLab / LeetCode / CodePen ... |
 | `social` | 82 | Twitter / Facebook / Mastodon / Bluesky ... |
-| `forum` | 284 | Reddit / Quora / Disqus + 各国论坛 |
+| `forum` | 283 | Reddit / Quora / Disqus + 各国论坛 |
 | `video` | 13 | YouTube / TikTok / Twitch / Vimeo ... |
 | `music` | 8 | SoundCloud / Bandcamp / Last.fm ... |
 | `writing` | 35 | Medium / Substack / 简书 ... |
@@ -365,6 +365,7 @@ python3 spyeyes.py --lang zh user torvalds  # 强制中文输出
 | `funding` | 14 | Patreon / Ko-fi / OpenCollective ... |
 | **`chinese`** | **46** | 微博 · 知乎 · CSDN · V2EX · 简书 · Dcard · Mobile01 · 巴哈姆特 · PIXNET · LIHKG · Shopee TW/SG/MY · ... |
 | **`spanish`** | **52** | Wallapop · MercadoLibre AR/MX/BR · Menéame · Taringa · Forocoches · Hispachan · Forosperu · Xataka · ... |
+| **`adult`** | **83** | OnlyFans · Fansly · Chaturbate · Pornhub · XVideos · 等成人/约会/CAM 平台（OSINT 用途独立分类） |
 | `other` | 1340 | Maigret 长尾（小众/地区性） |
 
 **性能 / 调优**：
