@@ -42,6 +42,10 @@ except ImportError:
     HAS_WHOIS = False
 
 
+# 语义化版本号 —— 同步更新 docs/CHANGELOG.md 与 git tag
+__version__ = '1.1.0'
+
+
 # ====================================================================
 # CONFIG —— 用户偏好持久化（语言等）
 # ====================================================================
@@ -1081,10 +1085,27 @@ def _merge_platforms(curated: list, extended: list) -> list:
     return merged
 
 
-# 合并：手工 curated（含中文/西语精选）+ data/platforms.json（Maigret + Sherlock + WhatsMyName）
-# 1) 先 dedup curated 自身（防笔误重复）
-# 2) 再合并 JSON 数据
-PLATFORMS = _merge_platforms(_dedup_platforms(PLATFORMS), _load_platforms_json(_PLATFORMS_JSON))
+# 懒加载：保留 curated 列表名，但 PLATFORMS 通过 __getattr__ 按需合并 JSON
+# 收益：myip/--help/history 等不扫平台的子命令不再吃 600KB JSON 加载（~100ms）
+_CURATED_PLATFORMS = _dedup_platforms(PLATFORMS)
+del PLATFORMS  # 强制走 __getattr__ —— 防止意外捕获 curated-only 的旧引用
+_PLATFORMS_CACHE: Optional[list] = None
+
+
+def _get_platforms() -> list:
+    """合并 curated + data/platforms.json，结果缓存到模块级。"""
+    global _PLATFORMS_CACHE
+    if _PLATFORMS_CACHE is None:
+        _PLATFORMS_CACHE = _merge_platforms(_CURATED_PLATFORMS, _load_platforms_json(_PLATFORMS_JSON))
+    return _PLATFORMS_CACHE
+
+
+def __getattr__(name: str):
+    """PEP 562 模块级 __getattr__：让 spyeyes.PLATFORMS 触发懒加载。
+    保持向后兼容（测试和外部代码继续 import spyeyes; spyeyes.PLATFORMS）。"""
+    if name == 'PLATFORMS':
+        return _get_platforms()
+    raise AttributeError(f"module 'spyeyes' has no attribute {name!r}")
 
 
 # WAF / CDN 拦截指纹（Sherlock-inspired，高精度优先）
@@ -1295,9 +1316,9 @@ def track_username(username: str, *, max_workers: int = 100, timeout: float = 5,
         if unknown:
             return {'_error': t('err.unknown_category', unknown=', '.join(unknown),
                                 valid=', '.join(CATEGORY_ORDER))}
-        platforms_to_scan = [p for p in PLATFORMS if p.category in categories]
+        platforms_to_scan = [p for p in _get_platforms() if p.category in categories]
     else:
-        platforms_to_scan = PLATFORMS
+        platforms_to_scan = _get_platforms()
     found: dict = {}
     statuses: dict = {}  # name → STATUS_*
     total = len(platforms_to_scan)
@@ -1401,6 +1422,18 @@ def email_validate(email: str) -> dict:
 # ====================================================================
 # 输出格式化
 # ====================================================================
+def _print_section_header(section_key: str, *, equals: int = 10) -> None:
+    """打印 `========== Section ==========` 标题。多处 print_* 函数共用。"""
+    bar = '=' * equals
+    print(f"\n {Color.Wh}{bar} {Color.Gr}{t(section_key)} {Color.Wh}{bar}")
+
+
+def _emit_json(data: Any) -> None:
+    """统一 JSON 输出（中文不转义、缩进 2、datetime 等回退 str）。
+    所有 CLI 子命令 --json 走这里。"""
+    print(json.dumps(data, ensure_ascii=False, indent=2, default=str))
+
+
 def print_banner() -> None:
     sys.stderr.write(f"""{Color.Gr}
 ███████╗██████╗ ██╗   ██╗███████╗██╗   ██╗███████╗███████╗
@@ -1414,7 +1447,7 @@ def print_banner() -> None:
 
 
 def print_ip_info(ip: str, data: dict) -> None:
-    print(f"\n {Color.Wh}============= {Color.Gr}{t('section.ip')} {Color.Wh}=============")
+    _print_section_header('section.ip', equals=13)
     print()
     if '_error' in data:
         print(f" {Color.Re}{t('err.query_failed', msg=data['_error'])}{Color.Reset}")
@@ -1452,7 +1485,7 @@ def print_ip_info(ip: str, data: dict) -> None:
 
 
 def print_my_ip(ip: Optional[str]) -> None:
-    print(f"\n {Color.Wh}========== {Color.Gr}{t('section.my_ip')} {Color.Wh}==========")
+    _print_section_header('section.my_ip')
     if ip is None:
         print(f"\n {Color.Re}{t('msg.network_failed')}{Color.Reset}")
     else:
@@ -1461,7 +1494,7 @@ def print_my_ip(ip: Optional[str]) -> None:
 
 
 def print_phone_info(data: dict) -> None:
-    print(f"\n {Color.Wh}========== {Color.Gr}{t('section.phone')} {Color.Wh}==========")
+    _print_section_header('section.phone')
     print()
     if '_error' in data:
         print(f" {Color.Re}{data['_error']}{Color.Reset}")
@@ -1486,7 +1519,7 @@ def _platform_only(d: dict) -> dict:
 
 
 def print_username_results(results: dict, show_all: bool = False) -> None:
-    print(f"\n {Color.Wh}========== {Color.Gr}{t('section.username')} {Color.Wh}==========")
+    _print_section_header('section.username')
     print()
     if isinstance(results, dict) and '_error' in results:
         print(f" {Color.Re}{t('err.query_failed', msg=results['_error'])}{Color.Reset}")
@@ -1515,7 +1548,7 @@ def print_username_results(results: dict, show_all: bool = False) -> None:
     def _confidence(p):
         return (2 if p.must_contain else 0) + (1 if p.not_found else 0)
     for cat in CATEGORY_ORDER:
-        cat_platforms = [p for p in PLATFORMS if p.category == cat and p.name in plat_results]
+        cat_platforms = [p for p in _get_platforms() if p.category == cat and p.name in plat_results]
         if not cat_platforms:
             continue
         cat_found_list = [p for p in cat_platforms if plat_results.get(p.name)]
@@ -1554,7 +1587,7 @@ def print_username_results(results: dict, show_all: bool = False) -> None:
 
 
 def print_whois(data: dict) -> None:
-    print(f"\n {Color.Wh}========== {Color.Gr}{t('section.whois')} {Color.Wh}==========")
+    _print_section_header('section.whois')
     print()
     if '_error' in data:
         print(f" {Color.Re}{data['_error']}{Color.Reset}")
@@ -1579,7 +1612,7 @@ def print_whois(data: dict) -> None:
 
 
 def print_mx(data: dict) -> None:
-    print(f"\n {Color.Wh}========== {Color.Gr}{t('section.mx')} {Color.Wh}==========")
+    _print_section_header('section.mx')
     print()
     if '_error' in data:
         print(f" {Color.Re}{data['_error']}{Color.Reset}")
@@ -1591,7 +1624,7 @@ def print_mx(data: dict) -> None:
 
 
 def print_email(result: dict) -> None:
-    print(f"\n {Color.Wh}========== {Color.Gr}{t('section.email')} {Color.Wh}==========")
+    _print_section_header('section.email')
     print()
     print_field(t('field.email'),         result['email'],            width=16)
     print_field(t('field.syntax_valid'),  result.get('syntax_valid'), width=16)
@@ -1809,7 +1842,7 @@ def _to_markdown(prefix: str, data: Any) -> str:
         lines.append(f"**Scanned {len(plat)} platforms · Found {found} accounts**")
         lines.append("")
         for cat in CATEGORY_ORDER:
-            cat_pl = [p for p in PLATFORMS if p.category == cat and p.name in plat]
+            cat_pl = [p for p in _get_platforms() if p.category == cat and p.name in plat]
             cat_found = [(p, plat[p.name]) for p in cat_pl if plat[p.name]]
             if not cat_found:
                 continue
@@ -1908,11 +1941,13 @@ def build_parser() -> argparse.ArgumentParser:
                         default=argparse.SUPPRESS, help='Disable color / 禁用颜色')
     common.add_argument('--lang', choices=['zh', 'en'],
                         default=argparse.SUPPRESS, help='UI language: zh or en / 界面语言')
+    common.add_argument('--version', action='version',
+                        version=f'%(prog)s {__version__}')
 
     parser = argparse.ArgumentParser(
         prog='spyeyes',
         parents=[common],
-        description='SpyEyes —— OSINT toolkit (bilingual: zh/en)',
+        description=f'SpyEyes {__version__} —— OSINT toolkit (bilingual: zh/en)',
         formatter_class=argparse.RawDescriptionHelpFormatter,
         epilog="""Examples / 示例:
   python3 spyeyes.py                          # Interactive menu / 交互菜单
@@ -1978,7 +2013,7 @@ def run_cli(args: argparse.Namespace) -> int:
         data = track_ip(args.target)
         save_prefix = f'ip_{args.target}'
         if args.json:
-            print(json.dumps(data, ensure_ascii=False, indent=2, default=str))
+            _emit_json(data)
         else:
             print_ip_info(args.target, data)
     elif cmd == 'myip':
@@ -1986,14 +2021,14 @@ def run_cli(args: argparse.Namespace) -> int:
         data = {'ip': ip}
         save_prefix = 'my_ip'
         if args.json:
-            print(json.dumps(data, ensure_ascii=False, indent=2))
+            _emit_json(data)
         else:
             print_my_ip(ip)
     elif cmd == 'phone':
         data = track_phone(args.number, default_region=args.region)
         save_prefix = f'phone_{args.number}'
         if args.json:
-            print(json.dumps(data, ensure_ascii=False, indent=2, default=str))
+            _emit_json(data)
         else:
             print_phone_info(data)
     elif cmd == 'user':
@@ -2010,16 +2045,15 @@ def run_cli(args: argparse.Namespace) -> int:
         save_prefix = f'username_{args.username}'
         if args.json:
             # 剥掉私有 _* key（如 _statuses）—— 这些是 print_* 的内部使用
-            # 用户要这些数据可以加 --include-stats（未来可选）
             json_data = _platform_only(data) if isinstance(data, dict) and '_error' not in data else data
-            print(json.dumps(json_data, ensure_ascii=False, indent=2))
+            _emit_json(json_data)
         else:
             print_username_results(data, show_all=getattr(args, 'show_all', False))
     elif cmd == 'whois':
         data = _batch_lookup(whois_lookup, args.domains) if len(args.domains) > 1 else whois_lookup(args.domains[0])
         save_prefix = f'whois_{"_".join(args.domains)[:60]}'
         if args.json:
-            print(json.dumps(data, ensure_ascii=False, indent=2, default=str))
+            _emit_json(data)
         else:
             if isinstance(data, dict) and all(isinstance(v, dict) for v in data.values()):
                 # batch
@@ -2032,7 +2066,7 @@ def run_cli(args: argparse.Namespace) -> int:
         data = _batch_lookup(mx_lookup, args.domains) if len(args.domains) > 1 else mx_lookup(args.domains[0])
         save_prefix = f'mx_{"_".join(args.domains)[:60]}'
         if args.json:
-            print(json.dumps(data, ensure_ascii=False, indent=2))
+            _emit_json(data)
         else:
             if isinstance(data, dict) and all(isinstance(v, dict) for v in data.values()):
                 for domain, d in data.items():
@@ -2044,13 +2078,13 @@ def run_cli(args: argparse.Namespace) -> int:
         data = email_validate(args.address)
         save_prefix = f'email_{args.address}'
         if args.json:
-            print(json.dumps(data, ensure_ascii=False, indent=2))
+            _emit_json(data)
         else:
             print_email(data)
     elif cmd == 'history':
         entries = read_history(limit=args.limit, search=getattr(args, 'search', None))
         if args.json:
-            print(json.dumps(entries, ensure_ascii=False, indent=2))
+            _emit_json(entries)
         else:
             print_history(entries)
         return 0
@@ -2111,7 +2145,8 @@ def _record_history(cmd: str, args: argparse.Namespace, data: Any) -> None:
 
 
 def print_history(entries: list) -> None:
-    print(f"\n {Color.Wh}========== {Color.Gr}{t('section.history')} {Color.Wh}==========\n")
+    _print_section_header('section.history')
+    print()
     if not entries:
         print(f" {Color.Ye}{t('msg.no_history')}{Color.Reset}")
         return
