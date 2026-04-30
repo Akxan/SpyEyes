@@ -870,15 +870,136 @@ class TestNormalizeDomain:
 class TestPhoneInvalid:
     """track_phone 拒绝可解析但 not_possible 的号码。"""
 
-    def test_too_short_number_rejected(self):
-        """'+1' 解析成功但 is_possible_number=False。"""
-        result = gt.track_phone('+1')
-        assert '_error' in result, "短号码应被拒绝"
+    def test_parse_failure_rejected(self):
+        """'+1' / '+86' 等极短输入直接 NumberParseException 路径被拒。"""
+        for n in ('+1', '+86', '+861'):
+            result = gt.track_phone(n)
+            assert '_error' in result, f"应拒绝 {n}"
+
+    def test_possible_but_invalid_rejected(self):
+        """'+123' / '+1234' parse 成功但 is_possible_number=False —— 走新加的防御。
+        没有这层防御 _record_history 会把它误记为成功（'_error' not in data）。"""
+        for n in ('+123', '+1234', '+12345', '+8612', '+86123'):
+            result = gt.track_phone(n)
+            assert '_error' in result, f"应拒绝 is_possible=False 的 {n}"
+            # 必须走新加的防御消息，不是 NumberParseException 消息
+            assert ('不可解析' in result['_error']
+                    or 'not a possible' in result['_error'].lower()), \
+                f"{n} 应走 is_possible 防御，实际：{result['_error']}"
 
     def test_normal_number_still_works(self):
         result = gt.track_phone('+8613800138000')
         assert '_error' not in result
         assert result['is_valid'] is True
+
+
+class TestMarkdownBacktickInjection:
+    """v1.1.x 加固：防 backtick 跳出 inline code 注入 markdown。"""
+
+    def test_backtick_escaped(self):
+        """username 含反引号不应在 markdown 报告中跳出 code span。"""
+        md = gt._to_markdown('user_foo`<script>x</script>`',
+                              {'GitHub': 'https://github.com/foo'})
+        # 不应有未转义的反引号（除了 markdown 自身的代码块围栏 ```）
+        # 检查方式：查反引号是否都被前缀 \\
+        # 简单断言：用户输入的 <script> 不应直接出现
+        assert '<script>' not in md or '\\`' in md
+
+    def test_backtick_in_dict_value_escaped(self):
+        md = gt._to_markdown('ip_8.8.8.8',
+                              {'note': 'normal text `injected`'})
+        assert '\\`' in md or '`' not in md.replace('```', '')
+
+
+class TestDirHasLazyPlatforms:
+    """PEP 562 __getattr__ 不应破坏 introspection（IDE 自动补全等）。"""
+
+    def test_platforms_visible_via_dir(self):
+        assert 'PLATFORMS' in dir(gt)
+
+    def test_other_attrs_still_visible(self):
+        d = dir(gt)
+        for attr in ('track_ip', 'track_username', 'whois_lookup',
+                     '__version__', 'MAX_USERNAME_LENGTH'):
+            assert attr in d, f"{attr} 应在 dir() 里"
+
+
+class TestPlatformImmutable:
+    """Platform NamedTuple 不可变性回归测试。"""
+
+    def test_cannot_set_attribute(self):
+        p = gt.Platform('X', 'https://x.com/{}', 'code')
+        with pytest.raises(AttributeError):
+            p.name = 'Y'  # type: ignore[misc]
+
+    def test_default_fields_are_tuples(self):
+        p = gt.Platform('X', 'https://x.com/{}', 'code')
+        assert isinstance(p.not_found, tuple)
+        assert isinstance(p.must_contain, tuple)
+
+
+class TestDetectWafStringInput:
+    """_detect_waf 防御性接受 str 输入（contract 是 bytes）。"""
+
+    def test_str_input_handled(self):
+        # 不应抛 TypeError
+        assert gt._detect_waf('cdn-cgi/challenge-platform') is True
+
+    def test_non_bytes_non_str_returns_false(self):
+        assert gt._detect_waf(None) is False
+        assert gt._detect_waf(123) is False
+
+
+class TestHistoryCorruption:
+    """守护：history.jsonl 单行损坏不应让整个 read_history 挂掉。"""
+
+    def test_corrupted_line_skipped(self, tmp_path, monkeypatch):
+        history_file = tmp_path / 'h.jsonl'
+        history_file.write_text(
+            '{"valid": 1}\n'
+            '{garbage not json\n'
+            '{"valid": 2}\n',
+            encoding='utf-8',
+        )
+        monkeypatch.setattr(gt, 'HISTORY_FILE', str(history_file))
+        result = gt.read_history()
+        # 应跳过损坏行，返回 2 条合法记录
+        assert len(result) == 2
+        assert all('valid' in r for r in result)
+
+    def test_missing_file_returns_empty(self, tmp_path, monkeypatch):
+        monkeypatch.setattr(gt, 'HISTORY_FILE', str(tmp_path / 'nonexistent.jsonl'))
+        assert gt.read_history() == []
+
+
+class TestConfigCorruption:
+    """守护：config.json 损坏不应让 load_config 挂掉。"""
+
+    def test_corrupted_json_returns_empty_dict(self, tmp_path, monkeypatch):
+        config_file = tmp_path / 'config.json'
+        config_file.write_text('{not valid json', encoding='utf-8')
+        monkeypatch.setattr(gt, 'CONFIG_FILE', str(config_file))
+        # 也要重定向 CONFIG_DIR 避免触发 _migrate_legacy_config
+        monkeypatch.setattr(gt, 'CONFIG_DIR', str(tmp_path))
+        assert gt.load_config() == {}
+
+
+class TestSavePermissionError:
+    """v1.1.x 加固：_maybe_save 遇到 PermissionError 友好提示而非抛 traceback。"""
+
+    def test_permission_denied_handled(self, tmp_path, capsys, monkeypatch):
+        """无写权限路径应打印错误而非崩溃。"""
+        readonly = tmp_path / 'readonly'
+        readonly.mkdir(mode=0o555)  # r-x, no write
+        try:
+            target = str(readonly / 'r.json')
+            # 不应抛 PermissionError
+            gt._maybe_save(target, 'ip_x', {'k': 'v'})
+            captured = capsys.readouterr()
+            assert 'error' in (captured.err + captured.out).lower() or \
+                   '错' in captured.err or '错' in captured.out
+        finally:
+            readonly.chmod(0o755)  # 恢复权限以便 tmp_path 清理
 
 
 class TestEmailMxErrorEnum:

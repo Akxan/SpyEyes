@@ -287,6 +287,7 @@ TRANSLATIONS: dict = {
         'err.invalid_ip':       'Invalid IP address: {ip}',
         'err.invalid_domain':   'Invalid domain: {domain}',
         'err.phone_invalid':    'Phone number is not a possible number',
+        'err.save_failed':      'Failed to save to {target}: {err}',
         'msg.progress':         'Scanning',
         'msg.found':            'found',
         'msg.no_history':       '(no history yet — run a query first)',
@@ -432,6 +433,7 @@ TRANSLATIONS: dict = {
         'err.invalid_ip':       'IP 地址不合法：{ip}',
         'err.invalid_domain':   '域名格式不合法：{domain}',
         'err.phone_invalid':    '号码格式不可解析',
+        'err.save_failed':      '无法保存到 {target}：{err}',
         'msg.progress':         '扫描中',
         'msg.found':            '已命中',
         'msg.no_history':       '（暂无历史 —— 先跑一次查询试试）',
@@ -1064,7 +1066,8 @@ def _load_platforms_json(path: str) -> list:
             ))
         except (KeyError, TypeError):
             continue
-    return out
+    # JSON 内部去重（_merge_platforms 只去掉与 curated 重复的，不去 JSON 自身重复）
+    return _dedup_platforms(out)
 
 
 def _dedup_platforms(platforms: list) -> list:
@@ -1117,6 +1120,12 @@ def __getattr__(name: str):
     raise AttributeError(f"module 'spyeyes' has no attribute {name!r}")
 
 
+def __dir__() -> list:
+    """让 dir(spyeyes) / inspect.getmembers() 仍能看到懒加载的 PLATFORMS。
+    没这个会导致 IDE 自动补全、PyInstaller hook、IDE introspection 看不到 PLATFORMS。"""
+    return sorted(set(globals().keys()) | {'PLATFORMS'})
+
+
 # WAF / CDN 拦截指纹（Sherlock-inspired，高精度优先）
 # 命中 = 该平台被反爬墙拦了，结果不可信；标记 'waf' 而非「找到/未找到」
 # 仅使用各 WAF 自有的特定标志（URL/cookie/品牌名），避免 'access denied' / 'cloudflare'
@@ -1156,8 +1165,13 @@ WAF_FINGERPRINTS = (
 )
 
 
-def _detect_waf(body: bytes) -> bool:
-    """检查响应体前 8KB 是否含已知 WAF 指纹。"""
+def _detect_waf(body) -> bool:
+    """检查响应体前 8KB 是否含已知 WAF 指纹。
+    contract: body 应是 bytes（_check_username 总是传 bytes），但防御性接受 str。"""
+    if isinstance(body, str):
+        body = body.encode('utf-8', errors='replace')
+    if not isinstance(body, (bytes, bytearray)):
+        return False
     sample = body[:8192].lower()
     return any(fp in sample for fp in WAF_FINGERPRINTS)
 
@@ -1807,48 +1821,58 @@ def _maybe_save(target: Optional[str], prefix: str, data: Any) -> None:
        - 单文件 .json → JSON
        - 单文件无扩展 → JSON
     JSON 输出会自动过滤 _* 私有 key（如 _statuses）保持公开 API 干净。
+    所有 IO 错误（PermissionError / OSError）友好提示而非抛 traceback 给用户。
     """
     if not target:
         return
     target_lower = target.lower()
     is_md_file = target_lower.endswith('.md')
-    # 目录判定：必须显式（尾随 / 或路径已存在为目录）。
-    # 之前 `not (is_md_file or is_json_file)` 会让 `--save somefile`（无后缀单文件）
-    # 被错判为目录，导致 os.makedirs('somefile') 把用户期望的文件创建成空目录。
-    # docstring 明确「无扩展 → JSON 单文件」，这里与 docstring 保持一致。
     is_dir = target.endswith(os.sep) or (os.path.exists(target) and os.path.isdir(target))
-    # JSON 文件保存时过滤私有 key（保留 _error 用于错误传递）
     json_data = data
     if isinstance(data, dict) and '_error' not in data:
         json_data = _platform_only(data)
-    if is_dir:
-        os.makedirs(target, exist_ok=True)
-        safe_prefix = re.sub(r'[^\w.+-]', '_', prefix)
-        ts = time.strftime('%Y%m%d-%H%M%S')
-        path = os.path.join(target, f'{safe_prefix}_{ts}.json')
-        with open(path, 'w', encoding='utf-8') as f:
-            json.dump(json_data, f, ensure_ascii=False, indent=2, default=str)
-    else:
-        # 单文件
-        parent = os.path.dirname(target)
-        if parent:
-            os.makedirs(parent, exist_ok=True)
-        if is_md_file:
-            md = _to_markdown(prefix, data)  # markdown 内部已过滤
-            with open(target, 'w', encoding='utf-8') as f:
-                f.write(md)
-        else:
-            with open(target, 'w', encoding='utf-8') as f:
+    try:
+        if is_dir:
+            os.makedirs(target, exist_ok=True)
+            safe_prefix = re.sub(r'[^\w.+-]', '_', prefix)
+            ts = time.strftime('%Y%m%d-%H%M%S')
+            path = os.path.join(target, f'{safe_prefix}_{ts}.json')
+            with open(path, 'w', encoding='utf-8') as f:
                 json.dump(json_data, f, ensure_ascii=False, indent=2, default=str)
-        path = target
+        else:
+            parent = os.path.dirname(target)
+            if parent:
+                os.makedirs(parent, exist_ok=True)
+            if is_md_file:
+                md = _to_markdown(prefix, data)
+                with open(target, 'w', encoding='utf-8') as f:
+                    f.write(md)
+            else:
+                with open(target, 'w', encoding='utf-8') as f:
+                    json.dump(json_data, f, ensure_ascii=False, indent=2, default=str)
+            path = target
+    except OSError as e:
+        # 包含 PermissionError / FileNotFoundError / NotADirectoryError 等
+        sys.stderr.write(f"\n {Color.Re}[error] {t('err.save_failed', target=target, err=e)}{Color.Reset}\n")
+        return
     print(f"\n {Color.Cy}{t('msg.saved_to', path=path)}{Color.Reset}")
 
 
 def _md_escape(s: Any) -> str:
-    """转义 markdown 表格 cell：替换 `|` 和换行符，避免破坏渲染或注入伪标题。"""
+    """转义 markdown 表格 cell：
+    - `|`：表格列分隔符
+    - `\\r` `\\n`：避免注入伪标题
+    - `` ` ``：避免破坏 inline code 围栏，让用户输入跳出 code span 注入任意 markdown
+      （security: 用户可控字段如 username/ip/domain 会进 markdown 报告）
+    """
     if s is None:
         return ''
-    return str(s).replace('|', '\\|').replace('\r', ' ').replace('\n', ' ').strip()
+    return (str(s)
+            .replace('|', '\\|')
+            .replace('\r', ' ')
+            .replace('\n', ' ')
+            .replace('`', '\\`')
+            .strip())
 
 
 def _to_markdown(prefix: str, data: Any) -> str:

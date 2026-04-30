@@ -369,7 +369,7 @@ python3 spyeyes.py --lang zh user torvalds  # 强制中文输出
 
 **性能 / 调优**：
 
-- 默认 **30 线程并发**，`--workers 50` 可加速到 ~45 秒完成 2020 平台全扫描
+- 默认 **100 线程并发**（v1.2 起 Sherlock-inspired 提速），~21 秒完成 2067 平台全扫描；可用 `--workers N` 调节（1-200）
 - 默认**只显示命中**（不然 2020 行太多）—— `--all` / `[ 4 ] 用户名追踪` 后用 `--all` 选项查看完整报告
 - **三重检测逻辑**：HTTP 200 → 不含 `not_found` 模式（如 "page not found"） → 含 `must_contain` 模式（如平台特征 HTML）
 - 数据库可随时刷新：`python3 tools/build_platforms.py` 自动从三大上游拉最新
@@ -508,7 +508,7 @@ python3 spyeyes.py email someone@gmail.com
 
 | 选项 | 作用 |
 |---|---|
-| `--workers N` | 并发线程数，默认 30；2020 平台建议 50 |
+| `--workers N` | 并发线程数，默认 **100**（已优化到 Sherlock 级速度），范围 1-200 |
 | `--all` | 显示所有平台（含未命中），默认仅显示命中 |
 
 ```bash

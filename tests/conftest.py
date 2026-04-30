@@ -18,21 +18,22 @@ _COLOR_ATTRS = ('Bl', 'Re', 'Gr', 'Ye', 'Blu', 'Mage', 'Cy', 'Wh', 'Reset')
 
 @pytest.fixture(autouse=True)
 def reset_global_state():
-    """每个测试前后恢复 _lang、Color、thread-local session、PLATFORMS 缓存，
-    确保测试隔离。任何测试 monkey-patch _CURATED_PLATFORMS / _PLATFORMS_JSON
-    后下一个测试都能拿到干净的懒加载结果。"""
+    """每个测试前后恢复 _lang、Color、thread-local session、PLATFORMS 缓存。
+    用 try/finally 保证即使测试体抛异常也能恢复，避免污染下个测试。"""
     saved_lang = gt._lang
     saved_color = {a: getattr(gt.Color, a) for a in _COLOR_ATTRS}
     saved_color['enabled'] = gt.Color.enabled
     saved_platforms_cache = gt._PLATFORMS_CACHE
-    yield
-    gt._lang = saved_lang
-    for k, v in saved_color.items():
-        setattr(gt.Color, k, v)
-    gt._PLATFORMS_CACHE = saved_platforms_cache
-    if hasattr(gt._thread_local, 'session'):
-        try:
-            gt._thread_local.session.close()
-        except Exception:
-            pass
-        del gt._thread_local.session
+    try:
+        yield
+    finally:
+        gt._lang = saved_lang
+        for k, v in saved_color.items():
+            setattr(gt.Color, k, v)
+        gt._PLATFORMS_CACHE = saved_platforms_cache
+        if hasattr(gt._thread_local, 'session'):
+            try:
+                gt._thread_local.session.close()
+            except Exception:
+                pass
+            del gt._thread_local.session
