@@ -31,22 +31,19 @@
 
 ## 📖 项目简介
 
-**SpyEyes** 是一款用 Python 编写的命令行 **OSINT（开源情报）信息收集工具**，专为中文用户深度优化。基于 [HunxByts/GhostTrack](https://github.com/HunxByts/GhostTrack) 二次开发，并在原版基础上做了大量功能增强、性能优化和本地化改进。
+**SpyEyes** 是一款用 Python 编写的命令行 **OSINT（开源情报）信息收集工具**，专为中文用户深度优化。集成 IP 追踪、电话号码解析、用户名扫描（2067 个平台 / 中英双语）、域名 WHOIS / MX 查询、邮箱有效性验证等 7 大功能于一体。
 
 适合 **网络安全研究人员、渗透测试工程师、SOC 分析师、技术调查员、红队蓝队成员、CTF 玩家** 以及任何对开源情报感兴趣的开发者使用。
 
-### 🆚 相比原版的改进
+### 💎 项目亮点
 
-| 维度 | 原版 GhostTrack | SpyEyes |
-|---|---|---|
-| **语言** | 英文 + 印尼文 | 全中文 UI（菜单/标签/错误） |
-| **功能数量** | 4 个 | **7 个**（+WHOIS / MX / 邮箱验证） |
-| **性能** | 用户名扫描 30-60 秒（串行） | **2-3 秒**（10 线程并发，10-20× 提速） |
-| **可靠性** | 无超时、API 错误崩溃、栈溢出 | 全部修复，统一错误处理 |
-| **使用方式** | 仅交互菜单 | 交互菜单 + **CLI 参数模式** + JSON 输出 |
-| **代码质量** | 无类型提示、无测试 | 类型注解 + **99 个 pytest 测试** + CI |
-| **国家显示** | 仅英文 | 中文映射（180+ 国家/地区） |
-| **代码量** | 316 行单文件 | 1400 行 + 99 测试 + 2067 平台数据库 |
+- **2067 个用户名扫描平台**：包含 46 中文圈（陆/台/港/星/马）+ 52 西语圈（西班牙/拉美）+ 84 成人/约会平台
+- **中英双语 UI**：交互菜单 / CLI 参数 / 错误信息 全部双语
+- **Sherlock 级速度**：21 秒扫完 2067 平台（100 线程并发 + Session 池 + HEAD 优化 + ReDoS 防护）
+- **WAF 检测**：识别 Cloudflare / AWS WAF / PerimeterX 等反爬墙，避免误报
+- **多种查询模式**：`--quick`（~9s）/ `--category`（~3s）/ 默认完整（~21s）
+- **结构化输出**：JSON / Markdown 报告 / 历史记录持久化
+- **99 个 pytest 测试**：5 路审计全清（ruff / mypy / bandit / pytest / agent）
 
 ---
 
@@ -390,7 +387,6 @@ SpyEyes/
 
 ## 🙏 致谢
 
-- 🌟 **[HunxByts/GhostTrack](https://github.com/HunxByts/GhostTrack)** —— 原版作者，提供了优秀的项目基础
 - 🌟 **[Google libphonenumber](https://github.com/google/libphonenumber)** —— 业界最权威的电话号码库
 - 🌟 **[ipwho.is](https://ipwho.is/)** —— 免费、稳定、信息丰富的 IP 地理位置 API
 - 🌟 **[ipify.org](https://www.ipify.org/)** —— 简洁的本机 IP 查询服务

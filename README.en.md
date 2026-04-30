@@ -31,22 +31,19 @@
 
 ## 📖 About
 
-**SpyEyes** is a Python-based command-line **OSINT (Open-Source Intelligence) toolkit**, deeply optimized for Chinese-speaking users. It is a heavily refactored derivative of [HunxByts/GhostTrack](https://github.com/HunxByts/GhostTrack), with major additions in functionality, performance, and localization.
+**SpyEyes** is a Python-based command-line **OSINT (Open-Source Intelligence) toolkit**, deeply optimized for Chinese-speaking users. Integrates IP tracking, phone parsing, username scanning across 2067 platforms, domain WHOIS / MX lookups, and email validation — all in one tool.
 
 Designed for **security researchers, penetration testers, SOC analysts, threat hunters, red/blue teamers, CTF players** and anyone curious about open-source intelligence.
 
-### 🆚 What's improved over the original
+### 💎 Highlights
 
-| Aspect | Original GhostTrack | SpyEyes |
-|---|---|---|
-| **Language** | English + Indonesian | Full Chinese UI (menus / labels / errors) |
-| **Features** | 4 | **7** (+WHOIS / MX / Email validation) |
-| **Performance** | Sequential username scan (30-60s) | **2-3 seconds** (10-thread concurrent, 10-20× speedup) |
-| **Reliability** | No timeouts, API errors crash, recursive stack overflow | All fixed, unified error handling |
-| **Usage modes** | Interactive menu only | Interactive menu + **CLI args mode** + JSON output |
-| **Code quality** | No type hints, no tests | Type-annotated + **99 pytest tests** + CI |
-| **Country display** | English only | Chinese mapping (180+ countries) |
-| **Code size** | 316 lines, single file | 1400 lines + 99 tests + 2067-platform DB |
+- **2067 username-scan platforms**: 46 Chinese-region (CN/TW/HK/SG/MY) + 52 Spanish-region (ES/AR/MX/BR/...) + 84 adult/dating platforms
+- **Bilingual UI**: interactive menu / CLI / errors all in zh+en
+- **Sherlock-class speed**: 21s for full 2067-platform scan (100-thread concurrent + Session pool + HEAD optimization + ReDoS guard)
+- **WAF detection**: identifies Cloudflare / AWS WAF / PerimeterX blocks to avoid false positives
+- **Multiple modes**: `--quick` (~9s) / `--category` (~3s) / default full (~21s)
+- **Structured output**: JSON / Markdown reports / persistent history
+- **99 pytest tests**: 5-pronged audit clean (ruff / mypy / bandit / pytest / agent)
 
 ---
 
@@ -356,7 +353,6 @@ Found a security issue? Please report responsibly via [SECURITY.md](docs/SECURIT
 
 ## 🙏 Acknowledgments
 
-- 🌟 **[HunxByts/GhostTrack](https://github.com/HunxByts/GhostTrack)** — original author, foundation of this project
 - 🌟 **[Google libphonenumber](https://github.com/google/libphonenumber)** — industry-standard phone number library
 - 🌟 **[ipwho.is](https://ipwho.is/)** — free, stable, info-rich IP geolocation API
 - 🌟 **[ipify.org](https://www.ipify.org/)** — clean public IP lookup service

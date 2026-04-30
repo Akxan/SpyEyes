@@ -70,7 +70,7 @@ brew install python3 git
 
 # 2. 克隆项目
 cd ~/Documents/Code            # 选择你想放代码的目录
-git clone https://github.com/HunxByts/GhostTrack.git
+git clone https://github.com/Akxan/SpyEyes.git
 cd SpyEyes
 
 # 3. 创建虚拟环境并激活
@@ -96,7 +96,7 @@ python3 spyeyes.py
 ```bash
 sudo apt-get update
 sudo apt-get install git python3 python3-pip
-git clone https://github.com/HunxByts/GhostTrack.git
+git clone https://github.com/Akxan/SpyEyes.git
 cd SpyEyes
 pip3 install -r requirements.txt   # 较新发行版可能也需要 venv，参考上面的 macOS 方案
 python3 spyeyes.py
@@ -107,7 +107,7 @@ python3 spyeyes.py
 ```bash
 pkg update
 pkg install git python
-git clone https://github.com/HunxByts/GhostTrack.git
+git clone https://github.com/Akxan/SpyEyes.git
 cd SpyEyes
 pip install -r requirements.txt
 python spyeyes.py
@@ -117,7 +117,7 @@ python spyeyes.py
 
 ```powershell
 # 在官网 https://www.python.org 安装 Python 3，安装时勾选 "Add to PATH"
-git clone https://github.com/HunxByts/GhostTrack.git
+git clone https://github.com/Akxan/SpyEyes.git
 cd SpyEyes
 python -m venv .venv
 .venv\Scripts\activate
@@ -667,7 +667,7 @@ SpyEyes 收集的均为**公开信息**，但请牢记：
 
 ## 项目地址
 
-- 上游：https://github.com/HunxByts/GhostTrack
-- 作者：[HunxByts](https://github.com/HunxByts)
+- 仓库：https://github.com/Akxan/SpyEyes
+- 作者：[Akxan](https://github.com/Akxan)
 
 如需提交问题或贡献代码，请前往上游 GitHub 仓库。

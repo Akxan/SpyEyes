@@ -1,10 +1,11 @@
 #!/usr/bin/env python3
-# << CODE BY HUNX04 (中文/英文双语版 · Bilingual Edition)
-# << 原作者 https://github.com/HunxByts/GhostTrack
-
 """
-SpyEyes —— OSINT 信息查询工具（中英双语）
-SpyEyes —— OSINT Toolkit (Bilingual: Chinese / English)
+SpyEyes —— All-in-One OSINT Toolkit (Bilingual: zh / en)
+
+  支持: IP / 本机 IP / 电话 / 用户名 (2067 平台) / WHOIS / MX / 邮箱
+  Features: IP / MyIP / Phone / Username (2067 platforms) / WHOIS / MX / Email
+
+  https://github.com/Akxan/SpyEyes
 """
 
 import argparse
