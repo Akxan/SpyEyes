@@ -10,7 +10,7 @@
 [![codecov](https://codecov.io/gh/Akxan/SpyEyes/branch/main/graph/badge.svg)](https://codecov.io/gh/Akxan/SpyEyes)
 [![License: Apache 2.0](https://img.shields.io/badge/License-Apache_2.0-blue.svg)](https://opensource.org/licenses/Apache-2.0)
 [![Python](https://img.shields.io/badge/Python-3.10%2B-blue.svg?logo=python&logoColor=white)](https://www.python.org/)
-[![Tests](https://img.shields.io/badge/tests-262%20passed-success.svg)](tests/)
+[![Tests](https://img.shields.io/badge/tests-264%20passed-success.svg)](tests/)
 [![Platforms](https://img.shields.io/badge/platforms-2067-orange.svg)](#-comparison-with-similar-tools)
 [![Docs](https://img.shields.io/badge/docs-online-blue.svg)](https://akxan.github.io/SpyEyes/)
 [![Platform](https://img.shields.io/badge/platform-macOS%20%7C%20Linux%20%7C%20Windows%20%7C%20Termux-lightgrey)](#-installation)
@@ -44,7 +44,7 @@ Designed for **security researchers, penetration testers, SOC analysts, threat h
 - **WAF detection**: identifies Cloudflare / AWS WAF / PerimeterX blocks to avoid false positives
 - **Multiple modes**: `--quick` (~9s) / `--category` (~3s) / default full (~21s)
 - **Structured output**: JSON / Markdown reports / persistent history
-- **262 pytest tests**: 5-pronged audit clean (ruff / mypy / bandit / pytest / agent)
+- **264 pytest tests**: 5-pronged audit clean (ruff / mypy / bandit / pytest / agent)
 
 ---
 
@@ -273,7 +273,7 @@ pytest tests/ -v
 pytest tests/ --cov=. --cov-report=term-missing
 ```
 
-- ✅ **262 tests**, ~0.4 seconds (v1.0.0 comprehensive coverage)
+- ✅ **264 tests**, ~0.4 seconds (v1.0.0 comprehensive coverage)
 - ✅ Pure functions + HTTP mocking + edge cases + SSRF/ReDoS defenses
 - ✅ GitHub Actions runs on macOS / Ubuntu / **Windows** × Python 3.10-3.13
 - ✅ Dedicated lint job (ruff + mypy + bandit)
@@ -308,7 +308,7 @@ SpyEyes/
 ├── tests/
 │   ├── __init__.py
 │   ├── conftest.py             # autouse fixture (global state isolation)
-│   ├── test_spyeyes.py         # Core tests (220)
+│   ├── test_spyeyes.py         # Core tests (222)
 │   └── test_build_platforms.py # Build tool tests (40)
 ├── .github/
 │   ├── workflows/ci.yml        # CI (lint job + multi-OS × multi-Python matrix)
