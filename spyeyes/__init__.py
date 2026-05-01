@@ -1634,9 +1634,10 @@ def email_validate(email: str) -> dict:
     mx = mx_lookup(domain)
     if '_error' in mx:
         result['mx_valid'] = False
-        # 直接读 mx_lookup 返回的稳定枚举 —— 不再做 substring 嗅探
-        # （之前 'NoNameservers' 含 'no' 会被错归为 no_mx）
+        # mx_error: 稳定枚举供程序判定（'nxdomain' / 'no_mx' / ...）
+        # mx_error_msg: i18n 友好消息供 UI 显示（避免用户看到英文枚举字符串）
         result['mx_error'] = mx.get('_error_kind', MX_ERR_DNS_FAILED)
+        result['mx_error_msg'] = mx.get('_error', '')
     else:
         result['mx_valid'] = True
         result['mx_records'] = mx['records']
@@ -1863,7 +1864,9 @@ def print_email(result: dict) -> None:
         for r in result['mx_records']:
             print(f"   {Color.Wh}→ {t('field.priority')} {r['preference']:>4}  {Color.Gr}{r['exchange']}{Color.Reset}")
     else:
-        print(f" {Color.Re}{result.get('mx_error', '')}{Color.Reset}")
+        # 优先用友好 i18n 消息；fallback 到 enum（向后兼容老 result 结构）
+        msg = result.get('mx_error_msg') or result.get('mx_error', '')
+        print(f" {Color.Re}{msg}{Color.Reset}")
 
 
 # ====================================================================

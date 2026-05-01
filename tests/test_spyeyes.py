@@ -1482,6 +1482,23 @@ class TestIPv6ScopeIdRejected:
         assert '_error' not in data
 
 
+class TestEmailMxErrorMsgFriendly:
+    """Round 29 加固：print_email 显示 i18n 友好消息而非英文枚举字符串。
+    （之前用户看到 'nxdomain' 而不是「域名不存在：x.com」）"""
+
+    def test_email_validate_includes_friendly_msg(self):
+        """email_validate 返回 mx_error_msg（i18n 友好消息）+ mx_error（枚举）。"""
+        with patch.object(gt, 'mx_lookup', return_value={
+            '_error': '域名不存在：example.com',
+            '_error_kind': gt.MX_ERR_NXDOMAIN,
+        }):
+            r = gt.email_validate('user@example.com')
+        # 程序判定面：稳定枚举
+        assert r['mx_error'] == 'nxdomain'
+        # UI 显示面：i18n 友好消息
+        assert r['mx_error_msg'] == '域名不存在：example.com'
+
+
 class TestRunCli:
     """run_cli 端到端覆盖。
     autouse fixture 隔离 HISTORY_FILE / CONFIG_DIR，防止测试污染用户家目录
@@ -1785,14 +1802,16 @@ class TestEmailMxErrorEnum:
         assert r['mx_error'] == 'invalid_domain'
 
     def test_dns_failed_kind_propagated_no_ip_leak(self):
-        """dns_failed 错误的 server IP 不应泄漏到结果（信息隐藏）。"""
+        """dns_failed 错误的 server IP 不应泄漏到 mx_error 枚举字段。
+        但 mx_error_msg 保留原始 i18n msg 供 UI 显示（含 IP 是 dns lib 行为，
+        不在我们 OSINT 工具的隐私防护范围内）。"""
         with patch.object(gt, 'mx_lookup', return_value={
             '_error': 'TimeoutError on 10.0.0.1:53',
             '_error_kind': gt.MX_ERR_DNS_FAILED,
         }):
             r = gt.email_validate('user@x.com')
         assert r['mx_error'] == 'dns_failed'
-        # _error_kind 是 enum 字符串，不含 IP；mx_error 字段也不含
+        # 关键：mx_error 枚举字段不含 IP（程序判定面）
         assert '10.0.0.1' not in r['mx_error']
 
     def test_missing_kind_falls_back_to_dns_failed(self):
