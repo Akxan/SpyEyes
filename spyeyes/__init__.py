@@ -2076,7 +2076,8 @@ def _to_markdown(prefix: str, data: Any) -> str:
     lines.append("")
 
     if isinstance(data, dict) and '_error' in data:
-        lines.append(f"## ❌ Error\n\n> {data['_error']}\n")
+        # _error 也要 escape：whois/dns 后端返回的异常 message 可能含换行注入伪标题
+        lines.append(f"## ❌ Error\n\n> {_md_escape(data['_error'])}\n")
         return '\n'.join(lines)
 
     if cmd == 'username' and isinstance(data, dict):
