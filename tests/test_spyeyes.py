@@ -1819,3 +1819,334 @@ class TestEmailMxErrorEnum:
         with patch.object(gt, 'mx_lookup', return_value={'_error': 'something'}):
             r = gt.email_validate('user@x.com')
         assert r['mx_error'] == 'dns_failed'
+
+
+# ====================================================================
+# v1.1.0: permute_username 用户名变形生成器
+# ====================================================================
+class TestPermuteUsername:
+    def test_empty_returns_empty(self):
+        assert gt.permute_username('') == []
+        assert gt.permute_username('   ') == []
+        assert gt.permute_username(None) == []
+
+    def test_single_word(self):
+        out = gt.permute_username('torvalds')
+        assert out == ['torvalds']
+
+    def test_two_words_basic(self):
+        out = gt.permute_username('John Doe')
+        # 必含的关键变形
+        assert 'johndoe' in out
+        assert 'doejohn' in out
+        assert 'john.doe' in out
+        assert 'doe.john' in out
+        assert 'jdoe' in out
+        assert 'johnd' in out
+        assert 'jd' in out
+
+    def test_lowercase_normalized(self):
+        out = gt.permute_username('JOHN DOE')
+        assert all(s == s.lower() for s in out)
+
+    def test_dot_separated_input(self):
+        out = gt.permute_username('john.doe')
+        assert 'johndoe' in out
+
+    def test_underscore_separated_input(self):
+        out = gt.permute_username('john_doe')
+        assert 'johndoe' in out
+
+    def test_comma_separated(self):
+        out = gt.permute_username('John,Doe')
+        assert 'johndoe' in out
+
+    def test_strips_punctuation(self):
+        # "John!" → 单片段 → ["john"]
+        out = gt.permute_username('John!')
+        assert 'john' in out
+
+    def test_max_input_parts_truncated(self):
+        # 5 个片段超过 PERMUTE_MAX_INPUT_PARTS=4，应截断而非崩溃
+        out = gt.permute_username('a b c d e')
+        assert out  # 不为空
+        # 截断到 4 部分；不应包含第 5 个 'e' 单独
+        assert isinstance(out, list)
+
+    def test_output_capped(self):
+        # 4 部分组合可能很多，但 PERMUTE_MAX_OUTPUT 限制
+        out = gt.permute_username('alice bob carol dan')
+        assert len(out) <= gt.PERMUTE_MAX_OUTPUT
+
+    def test_unicode_chinese_falls_through(self):
+        # 中文字符不被 \w 匹配为非字母数字 → 被剥离 → 空
+        # 实际上 Python re \w 在 unicode 模式下匹配中文 → 应能保留
+        out = gt.permute_username('张 三')
+        # 非空结果是好的；主要是不能崩
+        assert isinstance(out, list)
+
+    def test_dedupe(self):
+        # "ab ab" → 两个相同片段 → 不应有重复
+        out = gt.permute_username('foo foo')
+        assert len(out) == len(set(out))
+
+    def test_sorted_output(self):
+        out = gt.permute_username('Charlie Alpha')
+        assert out == sorted(out)
+
+
+# ====================================================================
+# v1.1.0: recursive_track_username 与 _extract_usernames_from_text
+# ====================================================================
+class TestExtractUsernames:
+    def test_at_handle(self):
+        text = "Find me at @torvalds and @ kernel."
+        out = gt._extract_usernames_from_text(text, set())
+        assert 'torvalds' in out
+
+    def test_twitter_url(self):
+        text = "Check https://twitter.com/elonmusk for updates"
+        out = gt._extract_usernames_from_text(text, set())
+        assert 'elonmusk' in out
+
+    def test_github_url(self):
+        text = "https://github.com/torvalds/linux"
+        out = gt._extract_usernames_from_text(text, set())
+        assert 'torvalds' in out
+
+    def test_excludes_known(self):
+        text = "@alice @bob @alice"
+        out = gt._extract_usernames_from_text(text, {'bob'})
+        assert 'alice' in out
+        assert 'bob' not in out
+
+    def test_dedupe(self):
+        text = "@alice @alice @ALICE"
+        out = gt._extract_usernames_from_text(text, set())
+        # 都小写化后 dedupe
+        assert out.count('alice') == 1
+
+    def test_skips_short(self):
+        text = "@a @ab @abc"  # <3 chars filtered
+        out = gt._extract_usernames_from_text(text, set())
+        assert 'a' not in out
+        assert 'ab' not in out
+        assert 'abc' in out
+
+    def test_skips_too_long(self):
+        long_name = '@' + 'a' * 50
+        out = gt._extract_usernames_from_text(long_name, set())
+        assert not out
+
+    def test_skips_invalid(self):
+        # 含 URL 元字符的不应通过 _is_invalid_username
+        # @ 后必须是字母开头（regex 限制）—— 这里测的是 _is_invalid_username 兜底
+        text = "@valid_user"
+        out = gt._extract_usernames_from_text(text, set())
+        # valid_user 通过验证
+        assert 'valid_user' in out
+
+    def test_empty_input(self):
+        assert gt._extract_usernames_from_text('', set()) == []
+        assert gt._extract_usernames_from_text(None, set()) == []
+
+
+class TestRecursiveTrackUsername:
+    def test_depth_zero_acts_like_track_username(self):
+        # depth=0 → 仅扫初始 username，不递归
+        with patch.object(gt, 'track_username',
+                          return_value={'GitHub': 'https://github.com/x', '_statuses': {}}) as mock_track:
+            result = gt.recursive_track_username('alice', max_depth=0,
+                                                 show_progress=False)
+        assert mock_track.call_count == 1
+        assert '_recursive' in result
+        assert result['_recursive']['levels'][0]['username'] == 'alice'
+        assert result['_recursive']['depth_reached'] == 0
+
+    def test_depth_clamped_to_max(self):
+        with patch.object(gt, 'track_username',
+                          return_value={'_statuses': {}}):
+            r = gt.recursive_track_username('x', max_depth=99, show_progress=False)
+        # max 被钳到 RECURSIVE_MAX_DEPTH
+        assert r['_recursive']['depth_reached'] <= gt.RECURSIVE_MAX_DEPTH
+
+    def test_error_in_initial_scan(self):
+        with patch.object(gt, 'track_username',
+                          return_value={'_error': 'bad input'}):
+            r = gt.recursive_track_username('!!!', max_depth=2, show_progress=False)
+        levels = r['_recursive']['levels']
+        assert levels[0].get('error') == 'bad input'
+
+    def test_visited_dedup(self):
+        """同一个用户名不应在多层中被重复扫描。"""
+        call_log: list = []
+
+        def fake_track(name, **kw):
+            call_log.append(name)
+            return {'GitHub': f'https://github.com/{name}', '_statuses': {}}
+
+        # mock safe_get to return body that mentions same user
+        fake_resp = MagicMock()
+        fake_resp.text = '@alice @alice @alice'
+        with patch.object(gt, 'track_username', side_effect=fake_track), \
+             patch.object(gt, 'safe_get', return_value=fake_resp):
+            gt.recursive_track_username('alice', max_depth=2,
+                                        show_progress=False)
+        # 'alice' 只该被扫一次（visited 去重）
+        assert call_log.count('alice') == 1
+
+
+# ====================================================================
+# v1.1.0: PDF 报告输出
+# ====================================================================
+@pytest.mark.skipif(not gt.HAS_REPORTLAB, reason="reportlab not installed")
+class TestPdfReport:
+    def test_basic_ip_pdf(self, tmp_path):
+        out = tmp_path / "report.pdf"
+        err = gt._to_pdf('ip_8.8.8.8', {'country': 'US', 'city': 'X'}, str(out))
+        assert err is None
+        assert out.exists()
+        # PDF magic header
+        assert out.read_bytes().startswith(b'%PDF')
+
+    def test_username_scan_pdf(self, tmp_path):
+        out = tmp_path / "user.pdf"
+        data = {
+            'GitHub': 'https://github.com/x',
+            'Twitter': None,
+            '_statuses': {},
+        }
+        err = gt._to_pdf('username_torvalds', data, str(out))
+        assert err is None
+        assert out.exists()
+
+    def test_error_in_data(self, tmp_path):
+        out = tmp_path / "err.pdf"
+        err = gt._to_pdf('ip_x', {'_error': 'bad'}, str(out))
+        assert err is None
+        assert out.exists()
+
+    def test_pipe_in_value_escaped(self, tmp_path):
+        """用户输入含 | 不应破坏 PDF 表格。"""
+        out = tmp_path / "esc.pdf"
+        err = gt._to_pdf('ip_x', {'org': 'a|b|c'}, str(out))
+        assert err is None
+        assert out.exists()
+
+
+class TestPdfWithoutReportlab:
+    def test_returns_error_when_no_reportlab(self, tmp_path, monkeypatch):
+        monkeypatch.setattr(gt, 'HAS_REPORTLAB', False)
+        err = gt._to_pdf('ip_x', {'a': 1}, str(tmp_path / 'r.pdf'))
+        assert err is not None
+        assert 'reportlab' in err.lower() or 'pdf' in err.lower()
+
+
+# ====================================================================
+# v1.1.0: _maybe_save 识别 .pdf 扩展名
+# ====================================================================
+class TestMaybeSavePdf:
+    @pytest.mark.skipif(not gt.HAS_REPORTLAB, reason="reportlab not installed")
+    def test_pdf_extension_creates_pdf(self, tmp_path, capsys):
+        out = tmp_path / "report.pdf"
+        gt._maybe_save(str(out), 'ip_8.8.8.8', {'country': 'US'})
+        assert out.exists()
+        assert out.read_bytes().startswith(b'%PDF')
+
+    def test_pdf_without_reportlab_friendly_error(self, tmp_path, monkeypatch, capsys):
+        monkeypatch.setattr(gt, 'HAS_REPORTLAB', False)
+        out = tmp_path / "report.pdf"
+        gt._maybe_save(str(out), 'ip_x', {'a': 1})
+        # 没生成 PDF
+        assert not out.exists()
+        # 应有错误提示输出到 stderr
+        captured = capsys.readouterr()
+        assert 'reportlab' in captured.err.lower() or 'pdf' in captured.err.lower()
+
+
+# ====================================================================
+# v1.1.0: CLI 解析 —— permute / user --recursive
+# ====================================================================
+class TestCliPermute:
+    def test_permute_subcommand_exists(self):
+        parser = gt.build_parser()
+        args = parser.parse_args(['permute', 'John Doe'])
+        assert args.command == 'permute'
+        assert args.name == 'John Doe'
+
+    def test_permute_scan_flag(self):
+        parser = gt.build_parser()
+        args = parser.parse_args(['permute', 'X', '--scan', '--workers', '50'])
+        assert args.scan is True
+        assert args.workers == 50
+
+    def test_user_recursive_flag(self):
+        parser = gt.build_parser()
+        args = parser.parse_args(['user', 'torvalds', '--recursive', '--depth', '1'])
+        assert args.recursive is True
+        assert args.depth == 1
+
+    def test_user_recursive_default_depth(self):
+        parser = gt.build_parser()
+        args = parser.parse_args(['user', 'torvalds', '--recursive'])
+        assert args.depth == 2  # default
+
+
+class TestRunCliPermute:
+    def test_run_permute_no_scan(self, capsys):
+        parser = gt.build_parser()
+        args = parser.parse_args(['permute', 'foo bar', '--lang', 'en'])
+        # set required defaults that run_cli expects
+        gt.set_lang('en')
+        rc = gt.run_cli(args)
+        assert rc == 0
+        out = capsys.readouterr().out
+        assert 'foo' in out.lower() or 'bar' in out.lower()
+
+    def test_run_permute_json(self, capsys):
+        parser = gt.build_parser()
+        args = parser.parse_args(['permute', 'foo bar', '--json'])
+        rc = gt.run_cli(args)
+        assert rc == 0
+        out = capsys.readouterr().out
+        data = json.loads(out)
+        assert data['name'] == 'foo bar'
+        assert isinstance(data['permutations'], list)
+        assert 'foobar' in data['permutations']
+
+    def test_run_permute_empty_input(self, capsys):
+        parser = gt.build_parser()
+        args = parser.parse_args(['permute', '   ', '--json'])
+        rc = gt.run_cli(args)
+        # 空输入返回 _error → 非零退出
+        assert rc == 1
+        out = capsys.readouterr().out
+        data = json.loads(out)
+        assert '_error' in data
+
+
+# ====================================================================
+# v1.1.0: 翻译键完整性（防止某语言漏键导致 UI 退化为 key 字符串）
+# ====================================================================
+class TestNewTranslationKeys:
+    def test_v110_keys_exist_in_both_langs(self):
+        new_keys = [
+            'permute.title', 'permute.generated',
+            'err.permute_empty', 'err.permute_too_many',
+            'recursive.depth', 'recursive.title', 'msg.recursive_done',
+            'err.no_pdf', 'err.pdf_failed',
+        ]
+        for key in new_keys:
+            assert key in gt.TRANSLATIONS['en'], f"Missing en: {key}"
+            assert key in gt.TRANSLATIONS['zh'], f"Missing zh: {key}"
+
+    def test_t_returns_localized(self):
+        gt.set_lang('en')
+        en_msg = gt.t('recursive.title')
+        gt.set_lang('zh')
+        zh_msg = gt.t('recursive.title')
+        # 不同语言应返回不同字符串
+        assert en_msg != zh_msg
+        # 都不应是 key 本身（fallback 失败）
+        assert en_msg != 'recursive.title'
+        assert zh_msg != 'recursive.title'

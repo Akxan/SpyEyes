@@ -10,8 +10,9 @@
 [![codecov](https://codecov.io/gh/Akxan/SpyEyes/branch/main/graph/badge.svg)](https://codecov.io/gh/Akxan/SpyEyes)
 [![License: Apache 2.0](https://img.shields.io/badge/License-Apache_2.0-blue.svg)](https://opensource.org/licenses/Apache-2.0)
 [![Python](https://img.shields.io/badge/Python-3.10%2B-blue.svg?logo=python&logoColor=white)](https://www.python.org/)
-[![Tests](https://img.shields.io/badge/tests-264%20passed-success.svg)](tests/)
-[![Platforms](https://img.shields.io/badge/platforms-2067-orange.svg)](#-comparison-with-similar-tools)
+[![Tests](https://img.shields.io/badge/tests-306%20passed-success.svg)](tests/)
+[![Platforms](https://img.shields.io/badge/platforms-3164-orange.svg)](#-comparison-with-similar-tools)
+[![Version](https://img.shields.io/badge/version-1.1.0-blueviolet.svg)](docs/CHANGELOG.md)
 [![Docs](https://img.shields.io/badge/docs-online-blue.svg)](https://akxan.github.io/SpyEyes/)
 [![Platform](https://img.shields.io/badge/platform-macOS%20%7C%20Linux%20%7C%20Windows%20%7C%20Termux-lightgrey)](#-installation)
 [![PRs Welcome](https://img.shields.io/badge/PRs-welcome-brightgreen.svg)](docs/CONTRIBUTING.md)
@@ -32,19 +33,22 @@
 
 ## 📖 About
 
-**SpyEyes** is a Python-based command-line **OSINT (Open-Source Intelligence) toolkit**, deeply optimized for Chinese-speaking users. Integrates IP tracking, phone parsing, username scanning across 2067 platforms, domain WHOIS / MX lookups, and email validation — all in one tool.
+**SpyEyes** is a Python-based command-line **OSINT (Open-Source Intelligence) toolkit**, deeply optimized for Chinese-speaking users. Integrates IP tracking, phone parsing, username scanning across **3164 platforms**, domain WHOIS / MX lookups, email validation, plus **username permutations / recursive scan / PDF reports** (v1.1.0).
 
 Designed for **security researchers, penetration testers, SOC analysts, threat hunters, red/blue teamers, CTF players** and anyone curious about open-source intelligence.
 
 ### 💎 Highlights
 
-- **2067 username-scan platforms**: 46 Chinese-region (CN/TW/HK/SG/MY) + 52 Spanish-region (ES/AR/MX/BR/...) + 83 adult/dating platforms
+- **3164 username-scan platforms** (v1.1.0 jumped from 2067 → 3164, +57%): 48 Chinese-region + 58 Spanish-region + 91 adult/dating + 733 forums
+- **🆕 Username permutations (`permute`)**: auto-generates 22+ variants from "John Doe" (johndoe / j.doe / jd ...), Unicode-aware
+- **🆕 Recursive scan (`--recursive`)**: extracts secondary usernames from hit profile pages, follow-up scans
+- **🆕 PDF reports (`--save report.pdf`)**: optional `spyeyes[pdf]` dependency for one-click investigation reports
 - **Bilingual UI**: interactive menu / CLI / errors all in zh+en
-- **Sherlock-class speed**: 21s for full 2067-platform scan (100-thread concurrent + Session pool + HEAD optimization + ReDoS guard)
+- **Sherlock-class speed**: 30s for full 3164-platform scan (100-thread concurrent + Session pool + HEAD optimization + ReDoS guard)
 - **WAF detection**: identifies Cloudflare / AWS WAF / PerimeterX blocks to avoid false positives
-- **Multiple modes**: `--quick` (~9s) / `--category` (~3s) / default full (~21s)
-- **Structured output**: JSON / Markdown reports / persistent history
-- **264 pytest tests**: 5-pronged audit clean (ruff / mypy / bandit / pytest / agent)
+- **Multiple modes**: `--quick` (~14s) / `--category` (~3s) / default full (~30s)
+- **Structured output**: JSON / Markdown / **PDF** / persistent history
+- **306 pytest tests**: 5-pronged audit clean (ruff / mypy / bandit / pytest / agent)
 
 ---
 
@@ -71,11 +75,12 @@ Designed for **security researchers, penetration testers, SOC analysts, threat h
 - 12 number type categories (mobile / landline / VoIP / pager ...)
 
 ### 👤 Username Scan
-- **2067 platforms** (Maigret + Sherlock + WhatsMyName combined)
-- **46 Chinese-region** (CN/TW/HK/SG/MY) + **52 Spanish-region** (ES/AR/MX/BR/...)
-- **100-thread concurrent** scan, ~21 sec (matches the top-level claim)
-- Dual detection: not-found patterns + must-contain
+- **3164 platforms** (Maigret + Sherlock + WhatsMyName, with Maigret engine resolution)
+- **48 Chinese-region** + **58 Spanish-region** + **733 forums**
+- **100-thread concurrent**, full ~30s, quick mode ~14s
+- Dual detection: not-found patterns + must-contain + WAF detection
 - Shows hits only by default, use `--all` for full report
+- **🆕 v1.1.0**: `--recursive` for follow-up scans (depth 0-2), `permute` subcommand for username variations
 
 </td>
 <td width="50%">
@@ -116,7 +121,7 @@ Designed for **security researchers, penetration testers, SOC analysts, threat h
 | [holehe](https://github.com/megadose/holehe) | ❌ | ❌ | ❌ | ❌ | ❌ | ✅ | ❌ |
 | [theHarvester](https://github.com/laramies/theHarvester) | ✅ | ❌ | ❌ | ✅ | ❌ | ✅ | ❌ |
 | [Recon-ng](https://github.com/lanmaster53/recon-ng) | ✅ | ❌ | ✅ | ✅ | ✅ | ✅ | ❌ |
-| **SpyEyes** | ✅ | ✅ | ✅ **(2067)** | ✅ | ✅ | ✅ | ✅ |
+| **SpyEyes** | ✅ | ✅ | ✅ **(3164)** | ✅ | ✅ | ✅ | ✅ |
 
 > 💡 **Positioning**: SpyEyes is **not** trying to outdo Sherlock in username-scan depth. It's a **lightweight all-in-one Chinese-first toolkit**. For pure username OSINT, Sherlock/Maigret are deeper. For one tool covering 6 lookup types with full Chinese localization, SpyEyes is unmatched.
 
@@ -188,6 +193,25 @@ python3 -m spyeyes email someone@gmail.com
 
 # JSON + save
 python3 -m spyeyes ip 8.8.8.8 --json --save results/
+```
+
+### 🆕 v1.1.0 New features
+
+```bash
+# 1) Username permutations: 22+ variants from "John Doe"
+python3 -m spyeyes permute "John Doe"
+
+# 2) Permute + scan each variant (great for alias hunting)
+python3 -m spyeyes permute "Linus Torvalds" --scan --quick
+
+# 3) Recursive scan: extract secondary usernames from hit pages
+python3 -m spyeyes user torvalds --recursive --depth 2
+
+# 4) PDF report (requires: pip install "spyeyes[pdf]")
+python3 -m spyeyes user torvalds --save report.pdf
+
+# 5) Unicode-aware (Chinese name)
+python3 -m spyeyes permute "张 三" --lang en
 ```
 
 ---
@@ -273,7 +297,7 @@ pytest tests/ -v
 pytest tests/ --cov=. --cov-report=term-missing
 ```
 
-- ✅ **264 tests**, ~0.4 seconds (v1.0.0 comprehensive coverage)
+- ✅ **306 tests**, ~0.6 seconds (v1.1.0 comprehensive coverage)
 - ✅ Pure functions + HTTP mocking + edge cases + SSRF/ReDoS defenses
 - ✅ GitHub Actions runs on macOS / Ubuntu / **Windows** × Python 3.10-3.13
 - ✅ Dedicated lint job (ruff + mypy + bandit)
@@ -291,7 +315,7 @@ SpyEyes/
 ├── spyeyes/                    # Main package (v1.0.0+)
 │   ├── __init__.py             # Main code (all features + i18n + __version__)
 │   ├── __main__.py             # python -m spyeyes entry point
-│   └── data/platforms.json     # 2067-platform database
+│   └── data/platforms.json     # 3164-platform database (v1.1.0)
 ├── README.md                   # 中文 README
 ├── README.en.md                # English README (you are here)
 ├── LICENSE                     # Apache 2.0

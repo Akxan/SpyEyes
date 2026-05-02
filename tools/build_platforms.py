@@ -265,26 +265,95 @@ def fetch(url: str, retries: int = FETCH_RETRIES) -> dict:
     raise RuntimeError(f"fetch failed after {retries} attempts: {url}") from last_err
 
 
+# Maigret tag → SpyEyes category 映射
+# tags 来自 Maigret data.json 的 'tags' 字段（最权威的 OSINT 分类源）
+MAIGRET_TAG_MAP = {
+    # 中文圈
+    "cn": "chinese", "tw": "chinese", "hk": "chinese", "sg": "chinese",
+    # 西语圈
+    "es": "spanish", "ar": "spanish", "mx": "spanish", "br": "spanish",
+    # 主题
+    "coding": "code", "tech": "code",
+    "social": "social", "messaging": "social",
+    "forum": "forum", "discussion": "forum",
+    "video": "video", "streaming": "video",
+    "music": "music", "audio": "music",
+    "blog": "writing", "writing": "writing", "literature": "writing",
+    "photo": "art", "art": "art", "design": "art",
+    "gaming": "gaming", "games": "gaming",
+    "crowdfunding": "funding", "donation": "funding",
+    "dating": "adult", "porn": "adult", "nsfw": "adult", "adult": "adult",
+    "lgbt": "adult",
+}
+
+
 def parse_maigret(raw: dict) -> list:
-    """Maigret 格式：{name: {url, urlMain, absenceStrs, presenseStrs, disabled, isNSFW, regexCheck, ...}}"""
-    sites = raw.get("sites", raw)
+    """Maigret 格式：{sites: {name: {url, urlMain, urlSubpath, engine, absenceStrs, presenseStrs, ...}},
+                     engines: {name: {site: {url, ...}, presenseStrs}}}
+
+    关键升级 (v1.1.0): 解析 engine 模板。Maigret 用 Discourse/XenForo/phpBB 等 engine 把
+    1097 个论坛站点折叠成共享配置 —— 站点本身的 url 字段为空但 engine 给出 {urlMain}{urlSubpath}/...
+    模板。展开后 Maigret 站点数从 1422 → ~2500+。
+    """
+    sites = raw.get("sites")
+    engines = raw.get("engines", {})
+    # 旧格式回退：raw 没有 'sites' 顶层键 → raw 本身就是 sites dict
+    if not isinstance(sites, dict) or not sites:
+        sites = raw if isinstance(raw, dict) else {}
     out = []
     for name, info in sites.items():
+        if not isinstance(info, dict):
+            continue
         # 不再过滤 NSFW —— 这些会被 categorize() 归到 'adult' 类别
         if info.get("disabled"):
             continue
-        url = info.get("url", "")
+        url = info.get("url", "") or ""
+        engine_name = info.get("engine")
+        engine_extra_must: list = []
+        # 站点自身没 url 模板 → 尝试从 engine 解析
+        if "{username}" not in url and "{}" not in url and engine_name:
+            engine = engines.get(engine_name) if isinstance(engines, dict) else None
+            if isinstance(engine, dict):
+                eng_site = engine.get("site", {}) if isinstance(engine.get("site"), dict) else {}
+                eng_url = eng_site.get("url", "") or ""
+                if "{username}" in eng_url:
+                    url_main = info.get("urlMain", "") or ""
+                    url_subpath = info.get("urlSubpath", "") or ""
+                    # 替换 engine 模板的 {urlMain} / {urlSubpath} placeholders
+                    url = (eng_url
+                           .replace("{urlMain}", url_main.rstrip("/"))
+                           .replace("{urlSubpath}", url_subpath))
+                    # engine 提供的 presenseStrs 也要并入（forum 检测才能工作）
+                    eng_must = engine.get("presenseStrs") or []
+                    if isinstance(eng_must, list):
+                        engine_extra_must = [s for s in eng_must if isinstance(s, str)]
         if "{username}" not in url and "{}" not in url:
             continue
         regex = info.get("regexCheck") or ""
+        site_must = [s for s in (info.get("presenseStrs") or []) if isinstance(s, str)]
+        merged_must = (site_must + engine_extra_must)[:MAX_PATTERNS_PER_PLATFORM]
+        # 收集 Maigret 自带 tags（用于更精确分类）
+        tags = info.get("tags") or []
+        tags = [t for t in tags if isinstance(t, str)] if isinstance(tags, list) else []
         out.append({
             "name": name,
             "url": normalize_url(url),
             "not_found": [s for s in (info.get("absenceStrs") or []) if isinstance(s, str)][:MAX_PATTERNS_PER_PLATFORM],
-            "must_contain": [s for s in (info.get("presenseStrs") or []) if isinstance(s, str)][:MAX_PATTERNS_PER_PLATFORM],
+            "must_contain": merged_must,
             "regex_check": regex if isinstance(regex, str) else "",
+            "_tags": tags,  # 临时字段，categorize 用完后剥离
         })
     return out
+
+
+def categorize_with_tags(name: str, url: str, tags: list) -> str:
+    """优先用 Maigret tags 分类，回退到关键词/TLD 启发式。"""
+    # tags 优先（Maigret 维护者人工标注，最权威）
+    for tag in tags or []:
+        cat = MAIGRET_TAG_MAP.get(tag.lower() if isinstance(tag, str) else "")
+        if cat:
+            return cat
+    return categorize(name, url)
 
 
 def parse_sherlock(raw: dict) -> list:
@@ -428,8 +497,10 @@ def build(cache_dir: str | None = None, no_fetch: bool = False) -> int:
 
     print("\n=== Categorizing ===")
     for item in merged:
-        item["category"] = categorize(item["name"], item["url"])
+        # _tags 来自 Maigret 上游（如 ['cn', 'social']）；其它源没有此字段
+        item["category"] = categorize_with_tags(item["name"], item["url"], item.get("_tags") or [])
         item.pop("_source", None)
+        item.pop("_tags", None)
         item.setdefault("regex_check", "")
 
     by_cat = Counter(p["category"] for p in merged)

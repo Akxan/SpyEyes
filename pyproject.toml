@@ -5,7 +5,7 @@
 #     __init__.py    # 主代码（之前的 spyeyes.py）
 #     __main__.py    # python -m spyeyes 入口
 #     data/
-#       platforms.json   # 2067 平台数据库（自动打进 wheel）
+#       platforms.json   # 3164 平台数据库（v1.1.0，自动打进 wheel）
 #
 # 安装方式:
 #   pip install .                    # 从 source
@@ -23,8 +23,8 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "spyeyes"
-version = "1.0.0"  # 同步：spyeyes/__init__.py __version__ + docs/CHANGELOG.md + git tag
-description = "All-in-One OSINT toolkit (bilingual zh/en) — IP / Phone / Username / WHOIS / MX / Email"
+version = "1.1.0"  # 同步：spyeyes/__init__.py __version__ + docs/CHANGELOG.md + git tag
+description = "All-in-One OSINT toolkit (bilingual zh/en) — IP / Phone / Username (3164 platforms) / WHOIS / MX / Email + Permutations / Recursive / PDF"
 readme = "README.md"
 requires-python = ">=3.10"
 # PEP 639 SPDX 表达式（替代弃用的 license = { text = ... } 和 license classifier）
@@ -54,6 +54,15 @@ dependencies = [
 ]
 
 [project.optional-dependencies]
+# 可选 extras（v1.1.0）：默认安装为最小依赖；按需启用：
+#   pip install "spyeyes[pdf]"   # 需要 PDF 报告
+#   pip install "spyeyes[all]"   # 全部可选功能
+pdf = [
+    "reportlab>=4.0,<5",
+]
+all = [
+    "reportlab>=4.0,<5",
+]
 dev = [
     "pytest>=8.0",
     "pytest-cov>=5.0",
@@ -62,6 +71,7 @@ dev = [
     "mypy>=1.10",
     "bandit>=1.7",
     "types-requests>=2.31",
+    "reportlab>=4.0,<5",
 ]
 
 [project.urls]

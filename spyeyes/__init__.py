@@ -3,8 +3,10 @@
 """
 SpyEyes —— All-in-One OSINT Toolkit (Bilingual: zh / en)
 
-  支持: IP / 本机 IP / 电话 / 用户名 (2067 平台) / WHOIS / MX / 邮箱
-  Features: IP / MyIP / Phone / Username (2067 platforms) / WHOIS / MX / Email
+  支持: IP / 本机 IP / 电话 / 用户名 (3164 平台) / WHOIS / MX / 邮箱
+        + 用户名变形 / 递归扫描 / PDF 报告 (v1.1.0)
+  Features: IP / MyIP / Phone / Username (3164 platforms) / WHOIS / MX / Email
+        + Permutations / Recursive scan / PDF reports (v1.1.0)
 
   https://github.com/Akxan/SpyEyes
 
@@ -41,9 +43,25 @@ try:
 except ImportError:
     HAS_WHOIS = False
 
+# v1.1.0: PDF 输出（可选 extras 依赖 spyeyes[pdf] = reportlab）
+try:
+    from reportlab.lib import colors as _rl_colors  # type: ignore
+    from reportlab.lib.pagesizes import A4 as _rl_a4  # type: ignore
+    from reportlab.lib.styles import getSampleStyleSheet as _rl_styles  # type: ignore
+    from reportlab.platypus import (  # type: ignore
+        Paragraph as _rl_paragraph,
+        SimpleDocTemplate as _rl_doc,
+        Spacer as _rl_spacer,
+        Table as _rl_table,
+        TableStyle as _rl_table_style,
+    )
+    HAS_REPORTLAB = True
+except ImportError:
+    HAS_REPORTLAB = False
+
 
 # 语义化版本号 —— 同步更新 docs/CHANGELOG.md 与 git tag
-__version__ = '1.0.0'
+__version__ = '1.1.0'
 
 
 # ====================================================================
@@ -308,11 +326,21 @@ TRANSLATIONS: dict = {
         'msg.found':            'found',
         'msg.no_history':       '(no history yet — run a query first)',
         'mode.title':           'Scan mode:',
-        'mode.quick':           'Quick   (~720 platforms, ~9s)  [recommended]',
-        'mode.full':            'Full    (~2067 platforms, ~21s)',
-        'mode.cn_es':           'Chinese + Spanish only (~98 platforms, ~6s)',
-        'mode.code':            'Code platforms only (~54 platforms, ~3s)',
+        'mode.quick':           'Quick   (~1411 platforms, ~14s)  [recommended]',
+        'mode.full':            'Full    (~3164 platforms, ~30s)',
+        'mode.cn_es':           'Chinese + Spanish only (~106 platforms, ~6s)',
+        'mode.code':            'Code platforms only (~115 platforms, ~3s)',
         'mode.prompt':          'Choose [1/2/3/4, default 1]: ',
+        # v1.1.0 — Permutation / Recursive / PDF
+        'permute.title':        'Username permutations:',
+        'permute.generated':    'Generated {n} variations from "{name}":',
+        'err.permute_empty':    'Cannot generate permutations: input is empty',
+        'err.permute_too_many': 'Too many permutations ({n}); reduce input parts (max {max})',
+        'recursive.depth':      'Recursive depth {depth}: {n} new candidates discovered',
+        'recursive.title':      'Recursive scan summary',
+        'msg.recursive_done':   'Recursive scan finished. Total: {total} platforms across {depths} levels.',
+        'err.no_pdf':           'PDF requires reportlab: pip install "spyeyes[pdf]"',
+        'err.pdf_failed':       'PDF generation failed: {e}',
     },
     'zh': {
         'menu.ip_track':        'IP 追踪',
@@ -455,11 +483,21 @@ TRANSLATIONS: dict = {
         'msg.found':            '已命中',
         'msg.no_history':       '（暂无历史 —— 先跑一次查询试试）',
         'mode.title':           '扫描模式:',
-        'mode.quick':           '快速   (约 720 平台, ~9 秒)  [推荐]',
-        'mode.full':            '完整   (全部 2067 平台, ~21 秒)',
-        'mode.cn_es':           '仅中文 + 西语圈 (约 98 平台, ~6 秒)',
-        'mode.code':            '仅代码平台 (约 54 平台, ~3 秒)',
+        'mode.quick':           '快速   (约 1411 平台, ~14 秒)  [推荐]',
+        'mode.full':            '完整   (全部 3164 平台, ~30 秒)',
+        'mode.cn_es':           '仅中文 + 西语圈 (约 106 平台, ~6 秒)',
+        'mode.code':            '仅代码平台 (约 115 平台, ~3 秒)',
         'mode.prompt':          '请选择 [1/2/3/4, 默认 1]: ',
+        # v1.1.0 —— 用户名变形 / 递归扫描 / PDF
+        'permute.title':        '用户名变形：',
+        'permute.generated':    '从 "{name}" 生成 {n} 个变形：',
+        'err.permute_empty':    '无法生成变形：输入为空',
+        'err.permute_too_many': '变形太多 ({n})，请减少输入片段（上限 {max}）',
+        'recursive.depth':      '第 {depth} 层递归：发现 {n} 个新候选',
+        'recursive.title':      '递归扫描总结',
+        'msg.recursive_done':   '递归扫描结束。共 {total} 个平台，{depths} 层。',
+        'err.no_pdf':           'PDF 输出需要 reportlab：pip install "spyeyes[pdf]"',
+        'err.pdf_failed':       'PDF 生成失败：{e}',
     },
 }
 
@@ -1493,6 +1531,200 @@ def track_username(username: str, *, max_workers: int = 100, timeout: float = 5,
 
 
 # ====================================================================
+# v1.1.0: 用户名变形生成器 —— 灵感来自 Maigret --permute
+# ====================================================================
+# 防 DoS：限制输入片段数和最终变形数（笛卡尔积可能爆炸）
+PERMUTE_MAX_INPUT_PARTS = 4   # 最多接受 4 个片段（"first middle last extra"）
+PERMUTE_MAX_OUTPUT = 200      # 单次最多生成 200 个变形（避免组合爆炸打爆扫描）
+
+
+def permute_username(name: str) -> list[str]:
+    """从 "John Doe" / "first.last" / "John;Doe;42" 生成用户名变形。
+
+    生成规则：
+      - 单片段：直接返回去空白后的小写形式
+      - 多片段（拆分 by 空白/逗号/分号/点号/下划线/连字符）：
+        * 全拼：firstlast / lastfirst
+        * 点分隔：first.last / last.first
+        * 下划线：first_last / last_first
+        * 连字符：first-last / last-first
+        * 首字母 + 全名：jdoe / johnd / j.doe / john.d
+        * 首字母合并：jd / j_d
+      - 全部小写、去重、按字母序
+
+    安全：限制输入片段数 ≤ PERMUTE_MAX_INPUT_PARTS，避免 4! * variants 爆炸。
+    """
+    name = (name or '').strip()
+    if not name:
+        return []
+    # 同时支持空白 / 标点 作为分隔符（"john doe" / "John,Doe" / "first.last"）
+    parts = re.split(r"[\s,;._\-]+", name)
+    parts = [re.sub(r"[^\w]", "", p).lower() for p in parts if p.strip()]
+    parts = [p for p in parts if p]  # 过滤被清空的片段
+    if not parts:
+        return []
+    if len(parts) > PERMUTE_MAX_INPUT_PARTS:
+        # 截断而非报错：用户友好（"a b c d e f" → 取前 4 个）
+        parts = parts[:PERMUTE_MAX_INPUT_PARTS]
+    if len(parts) == 1:
+        return [parts[0]]
+    out: set[str] = set()
+    # 两两组合（按输入序 + 反序）
+    for i, a in enumerate(parts):
+        for j, b in enumerate(parts):
+            if i == j:
+                continue
+            out.add(f"{a}{b}")
+            out.add(f"{a}.{b}")
+            out.add(f"{a}_{b}")
+            out.add(f"{a}-{b}")
+            out.add(f"{a[0]}{b}")           # jdoe
+            out.add(f"{a}{b[0]}")           # johnd
+            out.add(f"{a[0]}.{b}")          # j.doe
+            out.add(f"{a}.{b[0]}")          # john.d
+            out.add(f"{a[0]}{b[0]}")        # jd
+            out.add(f"{a[0]}_{b[0]}")       # j_d
+            if len(out) >= PERMUTE_MAX_OUTPUT:
+                break
+        if len(out) >= PERMUTE_MAX_OUTPUT:
+            break
+    # 单片段也作为候选（"John Doe" → ["john", "doe"] 也试）
+    out.update(parts)
+    # 截断到上限（防御 unicode 多字节带来的意外膨胀）
+    return sorted(out)[:PERMUTE_MAX_OUTPUT]
+
+
+# ====================================================================
+# v1.1.0: 递归扫描 —— 灵感来自 Maigret 的 recursive search
+# ====================================================================
+# 从命中页面提取的"次级用户名"模式（保守、低误报）
+# 只匹配明显的 @handle 与已知社交平台 URL 中的用户名
+_USERNAME_EXTRACT_RE = re.compile(
+    r"(?:"
+    # @handle 形式（前后必须是非字母数字边界）
+    r"(?<![\w])@([a-zA-Z][\w]{2,30})(?![\w])"
+    r"|"
+    # twitter/instagram/github/youtube 等 URL 中的用户名
+    r"(?:https?://)?(?:www\.)?"
+    r"(?:twitter|x|instagram|facebook|github|gitlab|youtube|t\.me|telegram|"
+    r"linkedin|reddit|tiktok|twitch|medium|patreon|behance|dribbble|"
+    r"deviantart|soundcloud|bandcamp|mastodon\.social|threads\.net)"
+    r"\.com/(?:@)?([\w][\w.\-]{2,30})"
+    r")",
+    re.IGNORECASE,
+)
+RECURSIVE_MAX_DEPTH = 2          # 防止指数爆炸
+RECURSIVE_MAX_NEW_PER_DEPTH = 5  # 每层最多扩展 5 个新用户名（避免被海量误识别坑死）
+RECURSIVE_FETCH_LIMIT = 8        # 每层最多抓取 8 个命中页面提取用户名（速度 + 礼貌）
+
+
+def _extract_usernames_from_text(text: str, exclude: set[str]) -> list[str]:
+    """从一段文本（profile 页面）提取潜在的次级用户名。
+    - exclude: 已知扫过的，避免循环
+    - 长度过滤：3 ≤ len ≤ 30
+    - 全部小写比较，避免 "Foo" 与 "foo" 重复
+    """
+    found: list[str] = []
+    seen: set[str] = set()
+    for m in _USERNAME_EXTRACT_RE.finditer(text or ''):
+        # 两个捕获组择一非空
+        candidate = (m.group(1) or m.group(2) or '').strip().lower()
+        if not candidate or len(candidate) < 3 or len(candidate) > 30:
+            continue
+        if candidate in seen or candidate in exclude:
+            continue
+        # 拒绝纯数字（avoid "support" → "1234567890" 之类）
+        if candidate.isdigit():
+            continue
+        # ReDoS / URL 注入防护
+        if _is_invalid_username(candidate):
+            continue
+        seen.add(candidate)
+        found.append(candidate)
+    return found
+
+
+def recursive_track_username(username: str, *, max_depth: int = 2,
+                             max_workers: int = 100, timeout: float = 5,
+                             show_progress: bool = True,
+                             categories: Optional[list] = None) -> dict:
+    """递归扫描：先扫初始 username → 抓取部分命中页面 → 提取次级用户名 → 再扫。
+
+    返回结构：
+      {
+        '_recursive': {
+          'levels': [
+            {'depth': 0, 'username': 'torvalds', 'found': N, 'platforms': {...}},
+            {'depth': 1, 'username': 'linus', 'found': M, 'platforms': {...}},
+            ...
+          ],
+          'total_found': 总命中数,
+        },
+        // 顶层 platforms 仍是 depth=0 的结果（向后兼容）
+        ...depth0_results...
+      }
+    """
+    max_depth = max(0, min(max_depth, RECURSIVE_MAX_DEPTH))
+    visited: set[str] = set()
+    levels: list[dict] = []
+    queue: list[tuple[int, str]] = [(0, username)]
+
+    while queue:
+        depth, name = queue.pop(0)
+        if depth > max_depth:
+            break
+        key = name.lower().strip()
+        if not key or key in visited:
+            continue
+        visited.add(key)
+        result = track_username(name, max_workers=max_workers, timeout=timeout,
+                                show_progress=show_progress, categories=categories)
+        if '_error' in result:
+            levels.append({'depth': depth, 'username': name, 'error': result['_error'], 'platforms': {}})
+            continue
+        plat = _platform_only(result)
+        found_urls = [u for u in plat.values() if u]
+        levels.append({
+            'depth': depth, 'username': name, 'found': len(found_urls),
+            'platforms': result,
+        })
+        # 仅在还没到最大深度时抓取页面继续展开
+        if depth >= max_depth:
+            continue
+        new_candidates: list[str] = []
+        for url in found_urls[:RECURSIVE_FETCH_LIMIT]:
+            try:
+                resp = safe_get(url, timeout=timeout, method='GET')
+                # 仅抓 first 64KB 防大页面拖慢
+                body = (resp.text or '')[:65536] if resp is not None else ''
+            except Exception:
+                continue
+            extracted = _extract_usernames_from_text(body, visited)
+            for u in extracted:
+                if u not in new_candidates:
+                    new_candidates.append(u)
+                if len(new_candidates) >= RECURSIVE_MAX_NEW_PER_DEPTH:
+                    break
+            if len(new_candidates) >= RECURSIVE_MAX_NEW_PER_DEPTH:
+                break
+        for u in new_candidates:
+            queue.append((depth + 1, u))
+
+    total_found = sum(level.get('found', 0) for level in levels)
+    summary = {
+        '_recursive': {
+            'levels': levels,
+            'total_found': total_found,
+            'depth_reached': max((level['depth'] for level in levels), default=0),
+        }
+    }
+    # 向后兼容：把 depth=0 的扁平结果也合并到顶层（让 _platform_only/print_username 直接可用）
+    if levels and levels[0].get('platforms'):
+        summary.update(levels[0]['platforms'])
+    return summary
+
+
+# ====================================================================
 # 核心查询：WHOIS / MX / 邮箱
 # ====================================================================
 def whois_lookup(domain: str) -> dict:
@@ -1743,6 +1975,27 @@ def _platform_only(d: dict) -> dict:
     注意：仅供 username 扫描结果使用 —— 批量 mx/whois 的 key 是用户传入的域名
     （包括合法的 _dmarc.example.com 等以 _ 开头的子域），不能套用此过滤。"""
     return {k: v for k, v in d.items() if not k.startswith('_')}
+
+
+def _print_recursive_summary(rec: dict) -> None:
+    """打印递归扫描的层级总结（v1.1.0）。"""
+    levels = rec.get('levels') or []
+    if not levels:
+        return
+    print()
+    print(f" {Color.Cy}━━━ {t('recursive.title')} ━━━{Color.Reset}")
+    for level in levels:
+        depth = level.get('depth', 0)
+        name = level.get('username', '')
+        n_found = level.get('found', 0)
+        if 'error' in level:
+            print(f"  {Color.Re}[depth {depth}]{Color.Reset} {name}: {level['error']}")
+        else:
+            print(f"  {Color.Bl}[depth {depth}]{Color.Reset} {Color.Wh}{name}{Color.Reset}  →  "
+                  f"{Color.Gr}{n_found}{Color.Reset} hits")
+    total = rec.get('total_found', 0)
+    depths = max((lvl.get('depth', 0) for lvl in levels), default=0) + 1
+    print(f"\n {Color.Cy}{t('msg.recursive_done', total=total, depths=depths)}{Color.Reset}")
 
 
 def print_username_results(results: dict, show_all: bool = False) -> None:
@@ -2003,6 +2256,7 @@ def _maybe_save(target: Optional[str], prefix: str, data: Any) -> None:
         return
     target_lower = target.lower()
     is_md_file = target_lower.endswith('.md')
+    is_pdf_file = target_lower.endswith('.pdf')  # v1.1.0
     is_dir = target.endswith(os.sep) or (os.path.exists(target) and os.path.isdir(target))
     # 仅 username 扫描结果需要剥 _statuses 等私有 key；
     # 批量 mx/whois 的 key 是用户传入的域名（含合法 _dmarc.example.com 等
@@ -2026,6 +2280,11 @@ def _maybe_save(target: Optional[str], prefix: str, data: Any) -> None:
                 md = _to_markdown(prefix, data)
                 with open(target, 'w', encoding='utf-8') as f:
                     f.write(md)
+            elif is_pdf_file:
+                err = _to_pdf(prefix, data, target)
+                if err:
+                    sys.stderr.write(f"\n {Color.Re}[error] {err}{Color.Reset}\n")
+                    return
             else:
                 with open(target, 'w', encoding='utf-8') as f:
                     json.dump(json_data, f, ensure_ascii=False, indent=2, default=str)
@@ -2145,6 +2404,100 @@ def _to_markdown(prefix: str, data: Any) -> str:
     return '\n'.join(lines)
 
 
+def _to_pdf(prefix: str, data: Any, out_path: str) -> Optional[str]:
+    """生成 PDF 报告（v1.1.0 新增）。需要 reportlab：pip install spyeyes[pdf]
+    返回错误字符串（成功时返回 None）。
+    设计取舍：直接复用 _to_markdown 生成的内容结构 → 转 reportlab Paragraph/Table，
+    避免维护两套报告模板（markdown 已经过充分 escape，PDF 也安全）。
+    """
+    if not HAS_REPORTLAB:
+        return t('err.no_pdf')
+    try:
+        cmd, _, query = prefix.partition('_')
+        cmd = _md_escape(cmd) or '?'
+        query = _md_escape(query)
+        ts = time.strftime('%Y-%m-%d %H:%M:%S')
+        styles = _rl_styles()
+        story: list = []
+        story.append(_rl_paragraph("<b>SpyEyes Report</b>", styles['Title']))
+        story.append(_rl_spacer(1, 12))
+        story.append(_rl_paragraph(f"<b>Command:</b> {cmd}", styles['Normal']))
+        story.append(_rl_paragraph(f"<b>Query:</b> {query}", styles['Normal']))
+        story.append(_rl_paragraph(f"<b>Generated:</b> {ts}", styles['Normal']))
+        story.append(_rl_spacer(1, 18))
+        if isinstance(data, dict) and '_error' in data:
+            story.append(_rl_paragraph(
+                f"<b>Error:</b> {_md_escape(data['_error'])}", styles['Normal']))
+        elif cmd == 'username' and isinstance(data, dict):
+            plat = _platform_only(data)
+            found = sum(1 for v in plat.values() if v)
+            story.append(_rl_paragraph(
+                f"<b>Username scan:</b> {query}", styles['Heading2']))
+            story.append(_rl_paragraph(
+                f"Scanned {len(plat)} platforms · Found {found} accounts",
+                styles['Normal']))
+            story.append(_rl_spacer(1, 12))
+            for cat in CATEGORY_ORDER:
+                cat_pl = [p for p in _get_platforms() if p.category == cat and p.name in plat]
+                cat_found = [(p, plat[p.name]) for p in cat_pl if plat[p.name]]
+                if not cat_found:
+                    continue
+                story.append(_rl_paragraph(
+                    f"<b>{cat.title()}</b> ({len(cat_found)}/{len(cat_pl)})",
+                    styles['Heading3']))
+                table_data = [['Platform', 'URL']]
+                for p, url in cat_found:
+                    # reportlab 支持 inline 标签，但用户输入须 escape 防伪标签注入
+                    safe_name = _md_escape(p.name)
+                    safe_url = _md_escape(url)
+                    table_data.append([safe_name, safe_url])
+                tbl = _rl_table(table_data, colWidths=[150, 350])
+                tbl.setStyle(_rl_table_style([
+                    ('BACKGROUND', (0, 0), (-1, 0), _rl_colors.lightgrey),
+                    ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'),
+                    ('FONTSIZE', (0, 0), (-1, -1), 8),
+                    ('GRID', (0, 0), (-1, -1), 0.25, _rl_colors.grey),
+                    ('VALIGN', (0, 0), (-1, -1), 'TOP'),
+                ]))
+                story.append(tbl)
+                story.append(_rl_spacer(1, 12))
+        elif isinstance(data, dict):
+            story.append(_rl_paragraph(
+                f"<b>{cmd.upper()} info:</b> {query}", styles['Heading2']))
+            story.append(_rl_spacer(1, 8))
+            items = data.items() if cmd != 'username' else _platform_only(data).items()
+            table_data = [['Field', 'Value']]
+            for k, v in items:
+                if v is None or v == '':
+                    continue
+                if isinstance(v, dict):
+                    v_str = ', '.join(f"{kk}={vv}" for kk, vv in v.items()
+                                       if not isinstance(vv, (dict, list)))
+                elif isinstance(v, (list, tuple)):
+                    v_str = ', '.join(str(x) for x in v)
+                else:
+                    v_str = str(v)
+                table_data.append([_md_escape(k), _md_escape(v_str)])
+            tbl = _rl_table(table_data, colWidths=[150, 350])
+            tbl.setStyle(_rl_table_style([
+                ('BACKGROUND', (0, 0), (-1, 0), _rl_colors.lightgrey),
+                ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'),
+                ('FONTSIZE', (0, 0), (-1, -1), 9),
+                ('GRID', (0, 0), (-1, -1), 0.25, _rl_colors.grey),
+                ('VALIGN', (0, 0), (-1, -1), 'TOP'),
+            ]))
+            story.append(tbl)
+        else:
+            story.append(_rl_paragraph(
+                _md_escape(json.dumps(data, ensure_ascii=False, default=str)),
+                styles['Code']))
+        doc = _rl_doc(out_path, pagesize=_rl_a4)
+        doc.build(story)
+        return None
+    except Exception as e:
+        return t('err.pdf_failed', e=e)
+
+
 def menu_loop(save_dir: Optional[str] = None) -> None:
     while True:
         clear_screen()
@@ -2214,17 +2567,22 @@ def build_parser() -> argparse.ArgumentParser:
         description=f'SpyEyes {__version__} —— OSINT toolkit (bilingual: zh/en)',
         formatter_class=argparse.RawDescriptionHelpFormatter,
         epilog="""Examples / 示例 (after `pip install .` use `spyeyes ...` directly):
-  python3 -m spyeyes                          # Interactive menu / 交互菜单
-  python3 -m spyeyes --lang en                # Force English UI / 强制英文界面
-  python3 -m spyeyes ip 8.8.8.8               # IP lookup
-  python3 -m spyeyes myip --lang en           # English JSON
-  python3 -m spyeyes phone +12025550100       # Phone parse
-  python3 -m spyeyes user torvalds            # Username scan
-  python3 -m spyeyes whois example.com        # WHOIS
-  python3 -m spyeyes mx gmail.com             # MX records
-  python3 -m spyeyes email a@b.com            # Email validate
-  python3 -m spyeyes ip 8.8.8.8 --json        # JSON output
-  python3 -m spyeyes ip 8.8.8.8 --save out/   # Save to file
+  python3 -m spyeyes                              # Interactive menu / 交互菜单
+  python3 -m spyeyes --lang en                    # Force English UI / 强制英文界面
+  python3 -m spyeyes ip 8.8.8.8                   # IP lookup
+  python3 -m spyeyes myip --lang en               # English JSON
+  python3 -m spyeyes phone +12025550100           # Phone parse
+  python3 -m spyeyes user torvalds                # Username scan (3164 platforms)
+  python3 -m spyeyes user torvalds --recursive    # v1.1.0: recursive scan
+  python3 -m spyeyes permute "John Doe"           # v1.1.0: generate variations
+  python3 -m spyeyes permute "John Doe" --scan    # v1.1.0: gen + scan all
+  python3 -m spyeyes whois example.com            # WHOIS
+  python3 -m spyeyes mx gmail.com                 # MX records
+  python3 -m spyeyes email a@b.com                # Email validate
+  python3 -m spyeyes ip 8.8.8.8 --json            # JSON output
+  python3 -m spyeyes ip 8.8.8.8 --save out/       # Save to dir (auto JSON)
+  python3 -m spyeyes user torvalds --save r.pdf   # v1.1.0: PDF report (needs spyeyes[pdf])
+  python3 -m spyeyes user torvalds --save r.md    # Markdown report
 """,
     )
 
@@ -2248,9 +2606,24 @@ def build_parser() -> argparse.ArgumentParser:
     sp.add_argument('--all', action='store_true', dest='show_all',
                     help='Show all platforms incl. misses / 显示所有平台（含未命中）')
     sp.add_argument('--quick', action='store_true',
-                    help='Skip "other" long-tail (~727 platforms vs 2067, ~3-4x faster) / 跳过 other 长尾，仅扫主流 ~727 个')
+                    help='Skip "other" long-tail (~1411 vs 3164 platforms, ~2x faster) / 跳过 other 长尾')
     sp.add_argument('--category', dest='category_filter',
                     help='Comma-separated categories: code,social,chinese,spanish,... / 用逗号分隔的类别')
+    # v1.1.0
+    sp.add_argument('--recursive', action='store_true',
+                    help='Recursively scan usernames discovered in profile pages (v1.1.0)')
+    sp.add_argument('--depth', type=int, default=2,
+                    help=f'Max recursive depth, 0-{RECURSIVE_MAX_DEPTH} (default: 2; only with --recursive)')
+
+    sp = sub.add_parser('permute', parents=[common],
+                        help='Generate username permutations / 生成用户名变形 (v1.1.0)')
+    sp.add_argument('name', help='Name or text to permute (e.g. "John Doe")')
+    sp.add_argument('--scan', action='store_true',
+                    help='Also scan each permutation across platforms (slow!)')
+    sp.add_argument('--workers', type=_positive_int, default=100,
+                    help='Concurrent threads if --scan (default: 100)')
+    sp.add_argument('--quick', action='store_true',
+                    help='If --scan: quick mode (skip "other" long-tail)')
 
     sp = sub.add_parser('whois', parents=[common], help='WHOIS lookup')
     sp.add_argument('domains', nargs='+', help='One or more domains for batch query')
@@ -2307,15 +2680,69 @@ def run_cli(args: argparse.Namespace) -> int:
                 sys.stderr.write(f"{Color.Ye}[warn] --quick ignored when --category is set{Color.Reset}\n")
         elif getattr(args, 'quick', False):
             cats = [c for c in CATEGORY_ORDER if c != 'other']
-        data = track_username(args.username, max_workers=args.workers,
-                              timeout=args.timeout, categories=cats)
+        if getattr(args, 'recursive', False):
+            depth = max(0, min(getattr(args, 'depth', 2), RECURSIVE_MAX_DEPTH))
+            data = recursive_track_username(args.username, max_depth=depth,
+                                            max_workers=args.workers,
+                                            timeout=args.timeout, categories=cats)
+        else:
+            data = track_username(args.username, max_workers=args.workers,
+                                  timeout=args.timeout, categories=cats)
         save_prefix = f'username_{args.username}'
         if args.json:
             # 剥掉私有 _* key（如 _statuses）—— 这些是 print_* 的内部使用
-            json_data = _platform_only(data) if isinstance(data, dict) and '_error' not in data else data
+            # 递归结果保留 _recursive，让 JSON 消费者拿到完整层级数据
+            if isinstance(data, dict) and '_error' not in data:
+                json_data = {k: v for k, v in data.items() if k == '_recursive' or not k.startswith('_')}
+                if '_recursive' not in json_data:
+                    json_data = _platform_only(data)
+            else:
+                json_data = data
             _emit_json(json_data)
         else:
+            if isinstance(data, dict) and '_recursive' in data:
+                _print_recursive_summary(data['_recursive'])
             print_username_results(data, show_all=getattr(args, 'show_all', False))
+    elif cmd == 'permute':
+        names = permute_username(args.name)
+        if not names:
+            data = {'_error': t('err.permute_empty')}
+            save_prefix = f'permute_{args.name}'
+            if args.json:
+                _emit_json(data)
+            else:
+                print(f" {Color.Re}{data['_error']}{Color.Reset}")
+        elif getattr(args, 'scan', False):
+            # 扫描每个变形（耗时！但用户明确请求）
+            cats = None
+            if getattr(args, 'quick', False):
+                cats = [c for c in CATEGORY_ORDER if c != 'other']
+            scan_results: dict = {}
+            print(f" {Color.Cy}{t('permute.generated', name=args.name, n=len(names))}{Color.Reset}")
+            for n in names:
+                print(f"\n {Color.Bl}━━━ {n} ━━━{Color.Reset}")
+                r = track_username(n, max_workers=args.workers, categories=cats,
+                                   show_progress=True)
+                scan_results[n] = r
+                if not args.json:
+                    print_username_results(r, show_all=False)
+            data = scan_results
+            save_prefix = f'permute_{args.name}'
+            if args.json:
+                # 剥每个子结果的 _statuses
+                json_data = {n: _platform_only(r) if isinstance(r, dict) and '_error' not in r else r
+                             for n, r in scan_results.items()}
+                _emit_json(json_data)
+        else:
+            data = {'name': args.name, 'permutations': names}
+            save_prefix = f'permute_{args.name}'
+            if args.json:
+                _emit_json(data)
+            else:
+                print(f"\n {Color.Cy}{t('permute.generated', name=args.name, n=len(names))}{Color.Reset}\n")
+                for n in names:
+                    print(f"  {Color.Gr}•{Color.Reset} {n}")
+                print()
     elif cmd == 'whois':
         data = _batch_lookup(whois_lookup, args.domains) if len(args.domains) > 1 else whois_lookup(args.domains[0])
         save_prefix = f'whois_{"_".join(args.domains)[:60]}'
@@ -2408,6 +2835,23 @@ def _record_history(cmd: str, args: argparse.Namespace, data: Any) -> None:
         plat = _platform_only(data)
         found = sum(1 for v in plat.values() if v)
         summary = {'username': args.username, 'scanned': len(plat), 'found': found}
+        # 递归扫描时记录层数（让 history 能区分单次 vs 递归）
+        if isinstance(data.get('_recursive'), dict):
+            summary['recursive'] = data['_recursive'].get('depth_reached', 0) + 1
+            summary['found'] = data['_recursive'].get('total_found', found)
+    elif cmd == 'permute':
+        # data 可能是 {'_error': ...}, {'name': ..., 'permutations': [...]}, 或 {var: results, ...}
+        if 'permutations' in data:
+            summary = {'name': args.name, 'variations': len(data.get('permutations', []))}
+        elif data and '_error' not in data:
+            # --scan 模式：data 是每个变形的结果
+            total_found = sum(
+                sum(1 for v in _platform_only(r).values() if v)
+                for r in data.values() if isinstance(r, dict) and '_error' not in r
+            )
+            summary = {'name': args.name, 'variations': len(data), 'found': total_found}
+        else:
+            summary = {'name': args.name, 'ok': False}
     elif cmd in ('whois', 'mx'):
         summary = {'domains': args.domains}
     elif cmd == 'email':
@@ -2416,7 +2860,8 @@ def _record_history(cmd: str, args: argparse.Namespace, data: Any) -> None:
         # 未知 cmd（未来加新子命令但忘了更新这里）→ 不写空 entry 污染历史
         return
     query = summary.get('target') or summary.get('username') or summary.get('address') \
-            or (summary.get('domains') and ','.join(summary['domains'])) or summary.get('number') or ''
+            or (summary.get('domains') and ','.join(summary['domains'])) or summary.get('number') \
+            or summary.get('name') or ''
     append_history(cmd, str(query), summary)
 
 

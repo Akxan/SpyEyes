@@ -10,8 +10,9 @@
 [![codecov](https://codecov.io/gh/Akxan/SpyEyes/branch/main/graph/badge.svg)](https://codecov.io/gh/Akxan/SpyEyes)
 [![License: Apache 2.0](https://img.shields.io/badge/License-Apache_2.0-blue.svg)](https://opensource.org/licenses/Apache-2.0)
 [![Python](https://img.shields.io/badge/Python-3.10%2B-blue.svg?logo=python&logoColor=white)](https://www.python.org/)
-[![Tests](https://img.shields.io/badge/tests-264%20passed-success.svg)](tests/)
-[![Platforms](https://img.shields.io/badge/platforms-2067-orange.svg)](#-与同类工具对比)
+[![Tests](https://img.shields.io/badge/tests-306%20passed-success.svg)](tests/)
+[![Platforms](https://img.shields.io/badge/platforms-3164-orange.svg)](#-与同类工具对比)
+[![Version](https://img.shields.io/badge/version-1.1.0-blueviolet.svg)](docs/CHANGELOG.md)
 [![Docs](https://img.shields.io/badge/docs-online-blue.svg)](https://akxan.github.io/SpyEyes/)
 [![Platform](https://img.shields.io/badge/platform-macOS%20%7C%20Linux%20%7C%20Windows%20%7C%20Termux-lightgrey)](#-安装)
 [![PRs Welcome](https://img.shields.io/badge/PRs-welcome-brightgreen.svg)](docs/CONTRIBUTING.md)
@@ -32,19 +33,22 @@
 
 ## 📖 项目简介
 
-**SpyEyes** 是一款用 Python 编写的命令行 **OSINT（开源情报）信息收集工具**，专为中文用户深度优化。集成 IP 追踪、电话号码解析、用户名扫描（2067 个平台 / 中英双语）、域名 WHOIS / MX 查询、邮箱有效性验证等 7 大功能于一体。
+**SpyEyes** 是一款用 Python 编写的命令行 **OSINT（开源情报）信息收集工具**，专为中文用户深度优化。集成 IP 追踪、电话号码解析、用户名扫描（**3164 个平台 / 中英双语**）、域名 WHOIS / MX 查询、邮箱有效性验证、**用户名变形 / 递归扫描 / PDF 报告**等功能。
 
 适合 **网络安全研究人员、渗透测试工程师、SOC 分析师、技术调查员、红队蓝队成员、CTF 玩家** 以及任何对开源情报感兴趣的开发者使用。
 
 ### 💎 项目亮点
 
-- **2067 个用户名扫描平台**：包含 46 中文圈（陆/台/港/星/马）+ 52 西语圈（西班牙/拉美）+ 83 成人/约会平台
+- **3164 个用户名扫描平台**（v1.1.0 从 2067 飙到 3164，+57%）：含 48 中文圈 + 58 西语圈 + 91 成人/约会 + 733 论坛
+- **🆕 用户名变形 (`permute`)**：从 "John Doe" 自动生成 22+ 个变形（johndoe / j.doe / jd ...），支持中文姓名
+- **🆕 递归扫描 (`--recursive`)**：在命中页面提取次级用户名继续扫描，挖掘关联账号
+- **🆕 PDF 报告 (`--save report.pdf`)**：可选 `spyeyes[pdf]` 依赖，调查报告一键导出
 - **中英双语 UI**：交互菜单 / CLI 参数 / 错误信息 全部双语
-- **Sherlock 级速度**：21 秒扫完 2067 平台（100 线程并发 + Session 池 + HEAD 优化 + ReDoS 防护）
+- **Sherlock 级速度**：30 秒扫完 3164 平台（100 线程并发 + Session 池 + HEAD 优化 + ReDoS 防护）
 - **WAF 检测**：识别 Cloudflare / AWS WAF / PerimeterX 等反爬墙，避免误报
-- **多种查询模式**：`--quick`（~9s）/ `--category`（~3s）/ 默认完整（~21s）
-- **结构化输出**：JSON / Markdown 报告 / 历史记录持久化
-- **264 个 pytest 测试**：5 路审计全清（ruff / mypy / bandit / pytest / agent）
+- **多种查询模式**：`--quick`（~14s）/ `--category`（~3s）/ 默认完整（~30s）
+- **结构化输出**：JSON / Markdown / **PDF** / 历史记录持久化
+- **306 个 pytest 测试**：5 路审计全清（ruff / mypy / bandit / pytest / agent）
 
 ---
 
@@ -71,11 +75,12 @@
 - 12 种号码类型识别（移动 / 固话 / VoIP / 寻呼机 ...）
 
 ### 👤 用户名扫描
-- **2067 个平台**（合并 Maigret + Sherlock + WhatsMyName 三大上游）
-- **46 中文圈**（陆/台/港/星/马）+ **52 西语圈**（西班牙/拉美）
-- **100 线程并发**，全部扫完 ~21 秒（与 README 顶部一致）
-- 内容关键词 + `must_contain` 双重检测
+- **3164 个平台**（合并 Maigret + Sherlock + WhatsMyName，含 Maigret engine 解析）
+- **48 中文圈**（陆/台/港/星/马）+ **58 西语圈**（西班牙/拉美）+ **733 论坛**
+- **100 线程并发**，全部扫完 ~30 秒（quick 模式 ~14 秒）
+- 内容关键词 + `must_contain` 双重检测 + WAF 识别
 - 默认只显示命中，`--all` 看完整结果
+- **🆕 v1.1.0**：`--recursive` 递归扫描（深度 0-2）+ `permute` 子命令（用户名变形）
 
 </td>
 <td width="50%">
@@ -116,7 +121,7 @@
 | [holehe](https://github.com/megadose/holehe) | ❌ | ❌ | ❌ | ❌ | ❌ | ✅ | ❌ |
 | [theHarvester](https://github.com/laramies/theHarvester) | ✅ | ❌ | ❌ | ✅ | ❌ | ✅ | ❌ |
 | [Recon-ng](https://github.com/lanmaster53/recon-ng) | ✅ | ❌ | ✅ | ✅ | ✅ | ✅ | ❌ |
-| **SpyEyes** | ✅ | ✅ | ✅ **(2067)** | ✅ | ✅ | ✅ | ✅ |
+| **SpyEyes** | ✅ | ✅ | ✅ **(3164)** | ✅ | ✅ | ✅ | ✅ |
 
 > 💡 **定位说明**：SpyEyes **不是**为了在用户名扫描深度上跟 Sherlock 卷，而是做**轻量级一站式中文工具**。
 > - 只查用户名 → Sherlock / Maigret 更专业
@@ -195,6 +200,25 @@ python3 -m spyeyes history --json | jq           # JSON pipeline
 
 # 输出 JSON + 保存到文件
 python3 -m spyeyes ip 8.8.8.8 --json --save results/
+```
+
+### 🆕 v1.1.0 新功能演示
+
+```bash
+# 1) 用户名变形：从 "John Doe" 生成 22+ 变形
+python3 -m spyeyes permute "John Doe"
+
+# 2) 用户名变形 + 自动扫描（找化名/小号利器）
+python3 -m spyeyes permute "Linus Torvalds" --scan --quick
+
+# 3) 递归扫描：在命中页面提取次级用户名继续扫
+python3 -m spyeyes user torvalds --recursive --depth 2
+
+# 4) PDF 报告（需 pip install "spyeyes[pdf]"）
+python3 -m spyeyes user torvalds --save report.pdf
+
+# 5) 中文姓名变形（也支持 Unicode）
+python3 -m spyeyes permute "张 三" --lang zh
 ```
 
 ---
@@ -317,7 +341,7 @@ pytest tests/ --cov=. --cov-report=term-missing
 ```
 
 当前测试覆盖：
-- ✅ **264 个测试**，0.4 秒跑完（v1.0.0 完整覆盖）
+- ✅ **306 个测试**，0.6 秒跑完（v1.1.0 完整覆盖）
 - ✅ 覆盖纯函数 + HTTP mock + 边界条件 + SSRF/ReDoS 防御
 - ✅ GitHub Actions 在 macOS / Ubuntu / **Windows** × Python 3.10-3.13 自动测试
 - ✅ 独立 lint job（ruff + mypy + bandit）
@@ -336,7 +360,7 @@ SpyEyes/
 ├── spyeyes/                    # 主包（v1.0.0 起）
 │   ├── __init__.py             # 主代码（含全部功能 + i18n + __version__）
 │   ├── __main__.py             # python -m spyeyes 入口
-│   └── data/platforms.json     # 2067 平台数据库
+│   └── data/platforms.json     # 3164 平台数据库 (v1.1.0)
 ├── README.md                   # 你正在看的这个（中文入口）
 ├── README.en.md                # English entry
 ├── LICENSE                     # Apache 2.0

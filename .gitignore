@@ -21,3 +21,6 @@ build/
 dist/
 *.egg-info/
 *.egg
+
+# v1.1.0: tools/build_platforms.py 缓存目录
+.cache/

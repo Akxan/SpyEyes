@@ -9,12 +9,66 @@ This project adheres to [Keep a Changelog](https://keepachangelog.com/en/1.1.0/)
 ## [Unreleased]
 
 ### Planned
-- 代理支持 (`--proxy http://...` / SOCKS5)
+- 代理支持 (`--proxy http://...` / SOCKS5 / Tor / I2P，借鉴 Maigret)
 - 批量输入模式 (`--batch ips.txt`)
 - HIBP (Have I Been Pwned) 邮箱泄露集成
 - 首次 upload 到 PyPI（package 重构已完成，`pip install .` 已 work，剩 `twine upload`）
 - Docker 镜像
 - 国旗 emoji 在终端的显示宽度修正（当前 `display_width` 8 段 if 链不准确）
+- curl_cffi 浏览器指纹伪装可选（`spyeyes[stealth]`，绕过 Cloudflare）
+- XMind 思维导图报告输出（中文调查交付场景）
+
+---
+
+## [1.1.0] — 2026-05-02
+
+🚀 **Maigret 融合升级** —— 平台数 +57%，新增三大功能（用户名变形 / 递归扫描 / PDF 报告）。
+
+### ✨ Features 新功能
+
+- **📈 平台库扩容到 3164 个**（从 2067 → 3164，+57%）
+  - 关键升级：解析 Maigret 的 **engine 模板系统**（Discourse / XenForo / phpBB / vBulletin），
+    1097 个共享配置的论坛站点不再丢失。Maigret 单源贡献从 1422 → 2519。
+  - 引入 Maigret 上游 **tags 体系**（cn/jp/ru/photo/dating 等），分类更精确。
+  - 论坛类 285 → 733（+157%），代码类 50 → 115（+130%），游戏类 39 → 95。
+- **🧬 用户名变形 (`spyeyes permute "John Doe"`)** —— 灵感来自 Maigret `--permute`
+  - 自动生成 `johndoe` / `j.doe` / `john.d` / `jdoe` / `jd` 等 22+ 变形
+  - 支持空白/逗号/分号/点/下划线/连字符多种分隔符
+  - 支持 Unicode（中文姓名 "张 三" 也能生成 10 个变形）
+  - 安全限制：最多 4 个输入片段、200 个输出（防 DoS）
+  - `--scan` 选项：批量扫描每个变形（找化名常用）
+- **🔁 递归扫描 (`spyeyes user X --recursive`)** —— 灵感来自 Maigret recursive search
+  - 在命中页面用保守正则提取 `@handle` 与社交平台 URL 中的次级用户名
+  - 自动在 visited 集合内去重（防循环），最多 2 层、每层 5 个新候选、每层抓 8 个页面
+  - `--depth N` 控制递归深度（0-2）
+  - 输出含层级总结：`[depth N] username → M hits`
+- **📄 PDF 报告 (`--save report.pdf`)** —— 通过可选 `reportlab` 依赖
+  - 安装方式：`pip install "spyeyes[pdf]"`
+  - 适用所有子命令（IP/Phone/Username/WHOIS/MX/Email），表格+样式+分类小节
+  - 用户输入字段全部 escape，防止 PDF 注入（继承 Markdown 防御）
+  - 缺失依赖时友好降级提示，不打印 traceback
+- **🌐 双语 i18n 完整支持** —— 9 个新键全部覆盖中英两版
+
+### 🔧 Improvements 改进
+
+- **build_platforms.py 工具升级**
+  - `parse_maigret()` 现在解析 `engines` 字段（支持 `{urlMain}{urlSubpath}` 模板替换）
+  - 引入 `MAIGRET_TAG_MAP` 把 Maigret tags 映射为 SpyEyes 分类
+  - 旧格式回退更稳健：`sites` 顶层键缺失时仍工作
+- **CLI epilog 示例更新** —— 新功能均在 `--help` 例子中列出
+- **扫描模式标签重新校准** —— Quick 14s/Full 30s（因平台数翻倍）
+
+### 🧪 Tests 测试
+
+- **+42 个新测试**（全套 264 → 306）
+- 新增覆盖：permute 边界、Unicode、递归 visited 去重、PDF 安全 escape、CLI 路由
+- 多语言一致性：i18n 键完整性自动检查（防止某语言漏键）
+
+### 📦 Packaging 打包
+
+- `pyproject.toml` 新增 optional extras：`spyeyes[pdf]` / `spyeyes[all]`
+- 主包仍保持 4 个核心依赖（零膨胀）
+- `__version__` 1.0.0 → 1.1.0
 
 ---
 
