@@ -342,12 +342,12 @@ TRANSLATIONS: dict = {
         'msg.recursive_done':   'Recursive scan finished. Total: {total} platforms across {depths} levels.',
         'err.no_pdf':           'PDF requires reportlab: pip install "spyeyes[pdf]"',
         'err.pdf_failed':       'PDF generation failed: {e}',
-        # Interactive menu prompts (v1.1.0)
+        # Interactive menu prompts (v1.1.0; numeric 1/2 style for menu consistency)
         'prompt.permute_input': 'Enter name to permute (e.g. "John Doe") : ',
-        'prompt.permute_scan':  'Also scan each variation across platforms? [y/N] : ',
-        'prompt.recursive':     'Recursive scan (extract sub-usernames from hits)? [y/N] : ',
+        'prompt.permute_scan':  'Also scan each variation across platforms?\n   [ 1 ] Yes  [ 2 ] No (default)\n  Choose [1/2, default 2] : ',
+        'prompt.recursive':     'Recursive scan (extract sub-usernames from hits)?\n   [ 1 ] Yes  [ 2 ] No (default)\n  Choose [1/2, default 2] : ',
         'prompt.recursive_depth':'Recursive depth [1-2, default 2] : ',
-        'prompt.save_confirm':  'Save report? [y/N] : ',
+        'prompt.save_confirm':  'Save report?\n   [ 1 ] Yes  [ 2 ] No (default)\n  Choose [1/2, default 2] : ',
         'prompt.save_filename': 'Filename [default: {default}, supports .pdf/.md/.json/.txt]: ',
         'prompt.save_as':       'Save report to file? (e.g. report.pdf / .md / .json — Enter to skip): ',  # legacy, kept for compat
     },
@@ -508,12 +508,12 @@ TRANSLATIONS: dict = {
         'msg.recursive_done':   '递归扫描结束。共 {total} 个平台，{depths} 层。',
         'err.no_pdf':           'PDF 输出需要 reportlab：pip install "spyeyes[pdf]"',
         'err.pdf_failed':       'PDF 生成失败：{e}',
-        # 交互菜单提示 (v1.1.0)
+        # 交互菜单提示 (v1.1.0；统一用 1/2 数字选项，与主菜单风格一致)
         'prompt.permute_input': '请输入要变形的名字（如 "张 三" / "John Doe"）: ',
-        'prompt.permute_scan':  '是否同时扫描每个变形？[y/N] : ',
-        'prompt.recursive':     '是否递归扫描（从命中页面提取次级用户名）？[y/N] : ',
+        'prompt.permute_scan':  '是否同时扫描每个变形？\n   [ 1 ] 是   [ 2 ] 否（默认）\n  请选择 [1/2，默认 2] : ',
+        'prompt.recursive':     '是否递归扫描（从命中页面提取次级用户名）？\n   [ 1 ] 是   [ 2 ] 否（默认）\n  请选择 [1/2，默认 2] : ',
         'prompt.recursive_depth':'递归深度 [1-2，默认 2] : ',
-        'prompt.save_confirm':  '是否保存报告？[y/N] : ',
+        'prompt.save_confirm':  '是否保存报告？\n   [ 1 ] 是   [ 2 ] 否（默认）\n  请选择 [1/2，默认 2] : ',
         'prompt.save_filename': '文件名 [默认 {default}, 支持 .pdf/.md/.json/.txt]: ',
         'prompt.save_as':       '保存报告到文件？（如 report.pdf / .md / .json，回车跳过）: ',  # 旧键留作兼容
     },
@@ -2211,6 +2211,19 @@ def show_menu() -> None:
         print(f"{Color.Wh}[ {num} ] {Color.Gr}{t(key)}{Color.Reset}")
 
 
+def _is_affirmative(answer: str) -> bool:
+    """统一判定肯定答复（v1.1.0 UX 统一）。
+    主推 1/2 数字风格（与主菜单一致），同时兼容老用户习惯：y/yes/是/保存。
+    任何其它输入（包括空字符串、'2'、'n'、'no'）一律视为否定。
+    """
+    return (answer or '').strip().lower() in (
+        '1',           # 主推
+        'y', 'yes',    # 英文短答（向后兼容）
+        '是', '保存',   # 中文（向后兼容老用户）
+        'true',        # 极端兼容
+    )
+
+
 def _interactive_save_prompt(prefix: str, data: Any, save_dir: Optional[str]) -> None:
     """交互模式下两段式"保存报告"询问（v1.1.0 修复 UX）。
     - 若用户启动时传了 --save DIR，仍用旧逻辑（保存到目录），不再问
@@ -2223,11 +2236,10 @@ def _interactive_save_prompt(prefix: str, data: Any, save_dir: Optional[str]) ->
         _maybe_save(save_dir, prefix, data)
         return
     try:
-        ans = input(f"\n {Color.Wh}{t('prompt.save_confirm')}{Color.Gr}").strip().lower()
+        ans = input(f"\n {Color.Wh}{t('prompt.save_confirm')}{Color.Gr}")
     except (EOFError, KeyboardInterrupt):
         return
-    # 明确的肯定回答；其他一律视为跳过（含老用户敲过的"保存"/"是"，向下兼容）
-    if ans not in ('y', 'yes', '是', 'true', '1', '保存'):
+    if not _is_affirmative(ans):
         return
     # 智能默认文件名：用 prefix 推断，安全清理（去除 url/路径里的非法字符）
     safe_prefix = re.sub(r'[^\w.+-]', '_', prefix)[:60] or 'report'
@@ -2266,12 +2278,12 @@ def handle_choice(choice: int, save_dir: Optional[str] = None) -> None:
             return
         # 选扫描模式
         cats = _ask_scan_mode()
-        # v1.1.0: 询问是否递归扫描
+        # v1.1.0: 询问是否递归扫描（用统一的 1/2 数字选择）
         try:
-            recurse_ans = input(f"\n {Color.Wh}{t('prompt.recursive')}{Color.Gr}").strip().lower()
+            recurse_ans = input(f"\n {Color.Wh}{t('prompt.recursive')}{Color.Gr}")
         except EOFError:
             recurse_ans = ''
-        if recurse_ans in ('y', 'yes'):
+        if _is_affirmative(recurse_ans):
             try:
                 depth_str = input(f" {Color.Wh}{t('prompt.recursive_depth')}{Color.Gr}").strip()
             except EOFError:
@@ -2320,12 +2332,12 @@ def handle_choice(choice: int, save_dir: Optional[str] = None) -> None:
         print(f"\n {Color.Cy}{t('permute.generated', name=name, n=len(variations))}{Color.Reset}\n")
         for v in variations:
             print(f"  {Color.Gr}•{Color.Reset} {v}")
-        # 询问是否扫描
+        # 询问是否扫描（用统一的 1/2 数字选择）
         try:
-            scan_ans = input(f"\n {Color.Wh}{t('prompt.permute_scan')}{Color.Gr}").strip().lower()
+            scan_ans = input(f"\n {Color.Wh}{t('prompt.permute_scan')}{Color.Gr}")
         except EOFError:
             scan_ans = ''
-        if scan_ans in ('y', 'yes'):
+        if _is_affirmative(scan_ans):
             cats = _ask_scan_mode()
             scan_results: dict = {}
             for v in variations:
