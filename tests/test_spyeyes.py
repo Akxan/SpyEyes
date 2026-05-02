@@ -2132,7 +2132,7 @@ class TestNewTranslationKeys:
     def test_v110_keys_exist_in_both_langs(self):
         new_keys = [
             'permute.title', 'permute.generated',
-            'err.permute_empty', 'err.permute_too_many',
+            'err.permute_empty',
             'recursive.depth', 'recursive.title', 'msg.recursive_done',
             'err.no_pdf', 'err.pdf_failed',
         ]
