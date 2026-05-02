@@ -23,8 +23,8 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "spyeyes"
-version = "1.1.0"  # 同步：spyeyes/__init__.py __version__ + docs/CHANGELOG.md + git tag
-description = "All-in-One OSINT toolkit (bilingual zh/en) — IP / Phone / Username (3164 platforms) / WHOIS / MX / Email + Permutations / Recursive / PDF"
+version = "1.2.0"  # 同步：spyeyes/__init__.py __version__ + docs/CHANGELOG.md + git tag
+description = "All-in-One OSINT toolkit (bilingual zh/en) — IP / Phone / Username (3164 platforms) / WHOIS / MX / Email + Permutations / Recursive / 8 report formats (HTML / PDF / XMind / Graph ...)"
 readme = "README.md"
 requires-python = ">=3.10"
 # PEP 639 SPDX 表达式（替代弃用的 license = { text = ... } 和 license classifier）
@@ -43,6 +43,7 @@ classifiers = [
     "Programming Language :: Python :: 3.11",
     "Programming Language :: Python :: 3.12",
     "Programming Language :: Python :: 3.13",
+    "Programming Language :: Python :: 3.14",
     "Topic :: Internet",
     "Topic :: Security",
 ]

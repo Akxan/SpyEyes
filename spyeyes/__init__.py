@@ -4,9 +4,9 @@
 SpyEyes —— All-in-One OSINT Toolkit (Bilingual: zh / en)
 
   支持: IP / 本机 IP / 电话 / 用户名 (3164 平台) / WHOIS / MX / 邮箱
-        + 用户名变形 / 递归扫描 / PDF 报告 (v1.1.0)
+        + 用户名变形 / 递归扫描 / 8 种报告格式（v1.2.0：HTML / PDF / XMind / Graph 等，全部 i18n）
   Features: IP / MyIP / Phone / Username (3164 platforms) / WHOIS / MX / Email
-        + Permutations / Recursive scan / PDF reports (v1.1.0)
+        + Permutations / Recursive scan / 8 report formats (v1.2.0: HTML / PDF / XMind / Graph, all i18n)
 
   https://github.com/Akxan/SpyEyes
 
@@ -15,13 +15,18 @@ Licensed under the Apache License, Version 2.0
 """
 
 import argparse
+import csv as _csv
+import io as _io
 import ipaddress
+import itertools
 import json
 import os
 import re
 import sys
 import threading
 import time
+import uuid as _uuid
+import zipfile as _zipfile
 from collections import Counter
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from typing import Any, NamedTuple, Optional
@@ -61,7 +66,7 @@ except ImportError:
 
 
 # 语义化版本号 —— 同步更新 docs/CHANGELOG.md 与 git tag
-__version__ = '1.1.0'
+__version__ = '1.2.0'
 
 
 # ====================================================================
@@ -182,7 +187,6 @@ TRANSLATIONS: dict = {
         'menu.whois':           'Domain WHOIS Lookup',
         'menu.mx':              'Domain MX Records',
         'menu.email':           'Email Validator',
-        'menu.permute':         'Username Permutations (v1.1.0)',
         'menu.lang':            'Language / 语言',
         'menu.exit':            'Exit',
         # Prompts
@@ -342,14 +346,58 @@ TRANSLATIONS: dict = {
         'msg.recursive_done':   'Recursive scan finished. Total: {total} platforms across {depths} levels.',
         'err.no_pdf':           'PDF requires reportlab: pip install "spyeyes[pdf]"',
         'err.pdf_failed':       'PDF generation failed: {e}',
-        # Interactive menu prompts (v1.1.0; numeric 1/2 style for menu consistency)
-        'prompt.permute_input': 'Enter name to permute (e.g. "John Doe") : ',
-        'prompt.permute_scan':  'Also scan each variation across platforms?\n   [ 1 ] Yes  [ 2 ] No (default)\n  Choose [1/2, default 2] : ',
+        # Interactive menu prompts (v1.1.0+; numeric 1/2 style for menu consistency)
         'prompt.recursive':     'Recursive scan (extract sub-usernames from hits)?\n   [ 1 ] Yes  [ 2 ] No (default)\n  Choose [1/2, default 2] : ',
         'prompt.recursive_depth':'Recursive depth [1-2, default 2] : ',
         'prompt.save_confirm':  'Save report?\n   [ 1 ] Yes  [ 2 ] No (default)\n  Choose [1/2, default 2] : ',
-        'prompt.save_filename': 'Filename [default: {default}, supports .pdf/.md/.json/.txt]: ',
-        'prompt.save_as':       'Save report to file? (e.g. report.pdf / .md / .json — Enter to skip): ',  # legacy, kept for compat
+        'prompt.save_filename': 'Filename [default: {default}]: ',
+        # v1.2.0 — 8 种报告格式 + ~/Downloads 默认目录
+        'prompt.format_title':  'Choose report format / 选择报告格式:',
+        'prompt.format_select': 'Choose [1-8, default 1]: ',
+        'fmt.json':             'JSON               (.json)',
+        'fmt.md':               'Markdown           (.md)',
+        'fmt.html':             'HTML               (.html)',
+        'fmt.pdf':              'PDF                (.pdf, needs spyeyes[pdf])',
+        'fmt.txt':              'Plain text         (.txt)',
+        'fmt.csv':              'CSV                (.csv)',
+        'fmt.xmind':            'XMind 8 mind-map   (.xmind)',
+        'fmt.graph':            'Force-directed graph (.graph.html, D3.js — username scan only)',
+        'prompt.save_another':  'Save another format?\n   [ 1 ] Yes  [ 2 ] No (default)\n  Choose [1/2, default 2] : ',
+        # v1.2.0 — 用户名菜单合并 permute（菜单从 9 项缩到 8 项）
+        'prompt.scan_strategy':       'Scan strategy:',
+        'strategy.direct':            'Scan the username as-is',
+        'strategy.permute_scan':      'Generate permutations and scan each (good for real names)',
+        'strategy.permute_only':      'Generate permutations only (no scan)',
+        'prompt.scan_strategy_select':'Choose [1/2/3, default 1] : ',
+        'prompt.permute_method':      'Permutation method:',
+        'method.strict':              "strict (multi-part perms × ['', '_', '-', '.'], default)",
+        'method.all':                 'all    (strict + _prefix / suffix_ variants)',
+        'prompt.permute_method_select':'Choose [1/2, default 1] : ',
+        # v1.2.1 — Report localization (HTML / PDF / MD / TXT / CSV / XMind / Graph)
+        'report.title':           'SpyEyes Report',
+        'report.command':         'Command',
+        'report.query':           'Query',
+        'report.generated':       'Generated',
+        'report.error':           'Error',
+        'report.tool':            'Tool',
+        'report.username_scan':   'Username scan',
+        'report.scan_summary':    'Scanned {total} platforms · Found {found} accounts',
+        'report.field':           'Field',
+        'report.value':           'Value',
+        'report.platform':        'Platform',
+        'report.url':             'Profile URL',
+        'report.info_for':        'info',
+        'report.mx_records':      'MX Records for',
+        'report.priority':        'Priority',
+        'report.mail_server':     'Mail Server',
+        'report.status':          'Status',
+        'report.category':        'Category',
+        'report.graph_title':     'SpyEyes Graph',
+        'report.graph_help':      'Scroll to zoom · drag to pan · click hit to open · F to fit',
+        'report.graph_found':     'Found {n} platforms',
+        'report.legend_query':    'Query username',
+        'report.legend_hit':      'Hit platform',
+        'report.legend_other':    'Error / Other',
     },
     'zh': {
         'menu.ip_track':        'IP 追踪',
@@ -359,7 +407,6 @@ TRANSLATIONS: dict = {
         'menu.whois':           '域名 WHOIS 查询',
         'menu.mx':              '域名 MX 记录',
         'menu.email':           '邮箱有效性检查',
-        'menu.permute':         '用户名变形 (v1.1.0)',
         'menu.lang':            '切换语言 / Language',
         'menu.exit':            '退出',
         'prompt.select_option': '请选择功能 : ',
@@ -508,14 +555,58 @@ TRANSLATIONS: dict = {
         'msg.recursive_done':   '递归扫描结束。共 {total} 个平台，{depths} 层。',
         'err.no_pdf':           'PDF 输出需要 reportlab：pip install "spyeyes[pdf]"',
         'err.pdf_failed':       'PDF 生成失败：{e}',
-        # 交互菜单提示 (v1.1.0；统一用 1/2 数字选项，与主菜单风格一致)
-        'prompt.permute_input': '请输入要变形的名字（如 "张 三" / "John Doe"）: ',
-        'prompt.permute_scan':  '是否同时扫描每个变形？\n   [ 1 ] 是   [ 2 ] 否（默认）\n  请选择 [1/2，默认 2] : ',
+        # 交互菜单提示 (v1.1.0+；统一用 1/2 数字选项，与主菜单风格一致)
         'prompt.recursive':     '是否递归扫描（从命中页面提取次级用户名）？\n   [ 1 ] 是   [ 2 ] 否（默认）\n  请选择 [1/2，默认 2] : ',
         'prompt.recursive_depth':'递归深度 [1-2，默认 2] : ',
         'prompt.save_confirm':  '是否保存报告？\n   [ 1 ] 是   [ 2 ] 否（默认）\n  请选择 [1/2，默认 2] : ',
-        'prompt.save_filename': '文件名 [默认 {default}, 支持 .pdf/.md/.json/.txt]: ',
-        'prompt.save_as':       '保存报告到文件？（如 report.pdf / .md / .json，回车跳过）: ',  # 旧键留作兼容
+        'prompt.save_filename': '文件名 [默认 {default}]: ',
+        # v1.2.0 —— 8 种报告格式 + ~/下载 默认目录
+        'prompt.format_title':  '请选择报告格式 / Choose report format:',
+        'prompt.format_select': '请选择 [1-8，默认 1]: ',
+        'fmt.json':             'JSON               (.json)',
+        'fmt.md':               'Markdown           (.md)',
+        'fmt.html':             'HTML               (.html)',
+        'fmt.pdf':              'PDF                (.pdf, 需 spyeyes[pdf])',
+        'fmt.txt':              '纯文本             (.txt)',
+        'fmt.csv':              'CSV                (.csv)',
+        'fmt.xmind':            'XMind 8 思维导图   (.xmind)',
+        'fmt.graph':            '力导向图           (.graph.html, D3.js — 仅用户名扫描)',
+        'prompt.save_another':  '继续保存其它格式？\n   [ 1 ] 是   [ 2 ] 否（默认）\n  请选择 [1/2，默认 2] : ',
+        # v1.2.0 —— 用户名菜单合并 permute（菜单从 9 项缩到 8 项）
+        'prompt.scan_strategy':       '扫描方式：',
+        'strategy.direct':            '直接扫描该用户名',
+        'strategy.permute_scan':      '先生成变形再批量扫描（适合 "John Doe" / "张 三" 找化名）',
+        'strategy.permute_only':      '仅生成变形列表（不扫描）',
+        'prompt.scan_strategy_select':'请选择 [1/2/3，默认 1] : ',
+        'prompt.permute_method':      '变形方式：',
+        'method.strict':              "strict（多片段全排列 × ['', '_', '-', '.']，默认）",
+        'method.all':                 'all   （strict 基础上加 _前缀 / 后缀_）',
+        'prompt.permute_method_select':'请选择 [1/2，默认 1] : ',
+        # v1.2.1 —— 报告本地化（HTML / PDF / MD / TXT / CSV / XMind / Graph）
+        'report.title':           'SpyEyes 报告',
+        'report.command':         '命令',
+        'report.query':           '查询',
+        'report.generated':       '生成时间',
+        'report.error':           '错误',
+        'report.tool':            '工具',
+        'report.username_scan':   '用户名扫描',
+        'report.scan_summary':    '共扫描 {total} 个平台 · 命中 {found} 个账号',
+        'report.field':           '字段',
+        'report.value':           '值',
+        'report.platform':        '平台',
+        'report.url':             '主页地址',
+        'report.info_for':        '信息',
+        'report.mx_records':      'MX 记录',
+        'report.priority':        '优先级',
+        'report.mail_server':     '邮件服务器',
+        'report.status':          '状态',
+        'report.category':        '分类',
+        'report.graph_title':     'SpyEyes 关系图',
+        'report.graph_help':      '滚轮缩放 · 拖拽平移 · 点击命中节点跳转 · F 自适应',
+        'report.graph_found':     '命中 {n} 个平台',
+        'report.legend_query':    '查询用户名',
+        'report.legend_hit':      '命中平台',
+        'report.legend_other':    '错误 / 其它',
     },
 }
 
@@ -616,9 +707,11 @@ def _get_session() -> requests.Session:
     if s is None:
         s = requests.Session()
         s.headers.update(DEFAULT_HEADERS)
-        # pool_maxsize=64：100 workers 下不至于 pool 不够触发重建
+        # pool_maxsize=200：v1.2.0 默认 worker 升到 150，pool 也跟着升到 200
+        # 留 buffer 让 _check_username GET 回退路径（HEAD→405→GET）不出现 pool 满。
+        # 之前 64 在 150 workers 下会让 urllib3 频繁重建连接，部分抵消并发提升。
         adapter = requests.adapters.HTTPAdapter(
-            pool_connections=64, pool_maxsize=64, max_retries=0
+            pool_connections=200, pool_maxsize=200, max_retries=0
         )
         s.mount('http://', adapter)
         s.mount('https://', adapter)
@@ -1301,7 +1394,7 @@ STATUS_NETWORK_ERROR = 'network_err'  # 超时/连接失败
 # username 长度上限（ReDoS 实际防护）：
 # data/platforms.json 是 contributor-controlled，无法静态识别所有恶意 regex
 # (a+)+ 类灾难性回溯在长输入上指数爆炸 → 把输入限制在 64 字符内可保证
-# worst case 落在毫秒级，足以保护 100 线程池不被消耗。
+# worst case 落在毫秒级，足以保护 150 线程池（v1.2.0 默认）不被消耗。
 # 之前用 _REDOS_RE 启发式检测嵌套量词，在合法 regex（如 [a-z]+(-[a-z]+)*）上
 # 误报严重；改用长度限制后既简单又有效。
 MAX_USERNAME_LENGTH = 64
@@ -1395,7 +1488,7 @@ def _check_username(platform: 'Platform', username: str, timeout: float):
                 return platform, full_url, STATUS_FOUND
             finally:
                 resp.close()
-        # HEAD 成功路径也必须 close，否则 100 线程 × 千平台下连接池被 GC 才回收
+        # HEAD 成功路径也必须 close，否则 150 线程 × 千平台下连接池被 GC 才回收
         try:
             if resp.status_code != 200:
                 return platform, None, STATUS_NOT_FOUND
@@ -1483,7 +1576,7 @@ def _ask_scan_mode() -> Optional[list]:
     return [c for c in CATEGORY_ORDER if c != 'other']
 
 
-def track_username(username: str, *, max_workers: int = 100, timeout: float = 5,
+def track_username(username: str, *, max_workers: int = 150, timeout: float = 5,
                    show_progress: bool = True, categories: Optional[list] = None) -> dict:
     """并发扫描平台，返回 {platform_name: url_or_None}（按 PLATFORMS 顺序）。
     - 空 username 返回 {'_error': ...}（与 track_ip 行为一致）。
@@ -1556,21 +1649,34 @@ PERMUTE_MAX_INPUT_PARTS = 4   # 最多接受 4 个片段（"first middle last ex
 PERMUTE_MAX_OUTPUT = 200      # 单次最多生成 200 个变形（避免组合爆炸打爆扫描）
 
 
-def permute_username(name: str) -> list[str]:
-    """从 "John Doe" / "first.last" / "John;Doe;42" 生成用户名变形。
+PERMUTE_SEPARATORS = ('', '_', '-', '.')  # Maigret 风格四种分隔符
+
+
+def _permute_sort_key(s: str) -> tuple:
+    """排序键：method='all' 模式下，把"装饰过的"变体（_前缀 / 后缀_）排到后面。
+    避免 200 输出上限被 `_a-...`, `_b-...` 这类填满，让用户看不到 johndoe 等核心变体。
+    （v1.2.1 P1-1 修复 —— `_` ASCII 95 < 字母 97，纯字母序排序会让 `_xxx` 在前。）"""
+    decorated = s.startswith('_') or s.endswith('_')
+    return (1 if decorated else 0, s)
+
+
+def permute_username(name: str, method: str = 'strict') -> list[str]:
+    """从 "John Doe" / "first.last" / "John;Doe;42" 生成用户名变形（Maigret 风格）。
+
+    method:
+      - 'strict' (默认): 多片段全排列 + 4 种分隔符 + 首字母变形
+      - 'all':           在 strict 基础上额外加入 `_前缀` / `后缀_` 变种
 
     生成规则：
-      - 单片段：直接返回去空白后的小写形式
-      - 多片段（拆分 by 空白/逗号/分号/点号/下划线/连字符）：
-        * 全拼：firstlast / lastfirst
-        * 点分隔：first.last / last.first
-        * 下划线：first_last / last_first
-        * 连字符：first-last / last-first
-        * 首字母 + 全名：jdoe / johnd / j.doe / john.d
-        * 首字母合并：jd / j_d
-      - 全部小写、去重、按字母序
+      - 单片段：直接返回小写形式（'all' 模式额外加 `_x` / `x_`）
+      - 多片段（按空白/逗号/分号/点号/下划线/连字符切分）：
+        * `itertools.permutations(parts, r)` 对 r ∈ [2..N] 全排列
+        * 每个排列与 4 种分隔符 ['', '_', '-', '.'] 拼接
+        * size-2 排列额外生成首字母变形：jdoe / johnd / j.doe / john.d / jd / j_d / ...
+      - 全部小写、去重、按字母序、截断到 PERMUTE_MAX_OUTPUT
 
-    安全：限制输入片段数 ≤ PERMUTE_MAX_INPUT_PARTS，避免 4! * variants 爆炸。
+    安全：限制输入片段数 ≤ PERMUTE_MAX_INPUT_PARTS，避免 4! * variants 爆炸；
+    set + 早停 + sorted 保证确定性输出。
     """
     name = (name or '').strip()
     if not name:
@@ -1584,32 +1690,45 @@ def permute_username(name: str) -> list[str]:
     if len(parts) > PERMUTE_MAX_INPUT_PARTS:
         # 截断而非报错：用户友好（"a b c d e f" → 取前 4 个）
         parts = parts[:PERMUTE_MAX_INPUT_PARTS]
-    if len(parts) == 1:
-        return [parts[0]]
+
     out: set[str] = set()
-    # 两两组合（按输入序 + 反序）
-    for i, a in enumerate(parts):
-        for j, b in enumerate(parts):
-            if i == j:
-                continue
-            out.add(f"{a}{b}")
-            out.add(f"{a}.{b}")
-            out.add(f"{a}_{b}")
-            out.add(f"{a}-{b}")
-            out.add(f"{a[0]}{b}")           # jdoe
-            out.add(f"{a}{b[0]}")           # johnd
-            out.add(f"{a[0]}.{b}")          # j.doe
-            out.add(f"{a}.{b[0]}")          # john.d
-            out.add(f"{a[0]}{b[0]}")        # jd
-            out.add(f"{a[0]}_{b[0]}")       # j_d
-            if len(out) >= PERMUTE_MAX_OUTPUT:
-                break
-        if len(out) >= PERMUTE_MAX_OUTPUT:
+
+    def _add(s: str) -> bool:
+        """加入候选；method='all' 时额外加 _前缀 / 后缀_。返回是否已达上限。"""
+        out.add(s)
+        if method == 'all':
+            out.add(f'_{s}')
+            out.add(f'{s}_')
+        return len(out) >= PERMUTE_MAX_OUTPUT
+
+    # 单片段：直接返回（method='all' 通过 _add 加 _x / x_）
+    if len(parts) == 1:
+        _add(parts[0])
+        return sorted(out, key=_permute_sort_key)[:PERMUTE_MAX_OUTPUT]
+
+    # 多片段：所有子集大小 2..N 的全排列 × 4 种分隔符
+    for r in range(2, len(parts) + 1):
+        for perm in itertools.permutations(parts, r):
+            for sep in PERMUTE_SEPARATORS:
+                if _add(sep.join(perm)):
+                    return sorted(out, key=_permute_sort_key)[:PERMUTE_MAX_OUTPUT]
+            # 首字母变形仅对 size-2 排列生成（防 r=4 时组合爆炸）
+            if r == 2:
+                a, b = perm
+                for sep in PERMUTE_SEPARATORS:
+                    if _add(f'{a[0]}{sep}{b}'):       # jdoe / j.doe / j_doe / j-doe
+                        return sorted(out, key=_permute_sort_key)[:PERMUTE_MAX_OUTPUT]
+                    if _add(f'{a}{sep}{b[0]}'):       # johnd / john.d / john_d / john-d
+                        return sorted(out, key=_permute_sort_key)[:PERMUTE_MAX_OUTPUT]
+                    if _add(f'{a[0]}{sep}{b[0]}'):    # jd / j.d / j_d / j-d
+                        return sorted(out, key=_permute_sort_key)[:PERMUTE_MAX_OUTPUT]
+
+    # 单片段也作为候选（"John Doe" → ["john", "doe"] 单字也试）
+    for p in parts:
+        if _add(p):
             break
-    # 单片段也作为候选（"John Doe" → ["john", "doe"] 也试）
-    out.update(parts)
     # 截断到上限（防御 unicode 多字节带来的意外膨胀）
-    return sorted(out)[:PERMUTE_MAX_OUTPUT]
+    return sorted(out, key=_permute_sort_key)[:PERMUTE_MAX_OUTPUT]
 
 
 # ====================================================================
@@ -1663,7 +1782,7 @@ def _extract_usernames_from_text(text: str, exclude: set[str]) -> list[str]:
 
 
 def recursive_track_username(username: str, *, max_depth: int = 2,
-                             max_workers: int = 100, timeout: float = 5,
+                             max_workers: int = 150, timeout: float = 5,
                              show_progress: bool = True,
                              categories: Optional[list] = None) -> dict:
     """递归扫描：先扫初始 username → 抓取部分命中页面 → 提取次级用户名 → 再扫。
@@ -2194,12 +2313,11 @@ MENU_KEYS = [
     (1, 'menu.ip_track'),
     (2, 'menu.my_ip'),
     (3, 'menu.phone'),
-    (4, 'menu.username'),
+    (4, 'menu.username'),  # v1.2.0: 含变形子流程（permute 不再独立菜单项）
     (5, 'menu.whois'),
     (6, 'menu.mx'),
     (7, 'menu.email'),
-    (8, 'menu.permute'),  # v1.1.0
-    (9, 'menu.lang'),
+    (8, 'menu.lang'),
     (0, 'menu.exit'),
 ]
 
@@ -2225,11 +2343,13 @@ def _is_affirmative(answer: str) -> bool:
 
 
 def _interactive_save_prompt(prefix: str, data: Any, save_dir: Optional[str]) -> None:
-    """交互模式下两段式"保存报告"询问（v1.1.0 修复 UX）。
-    - 若用户启动时传了 --save DIR，仍用旧逻辑（保存到目录），不再问
-    - 否则：第一步问 y/N（明确的二元选择，避免误把"保存"当作答案），
-            第二步问文件名（带智能默认值 prefix.json，回车即用默认）
-    安全：EOF / KeyboardInterrupt 友好处理；输入文件名做 strip 防尾空格。
+    """交互模式下"保存报告"询问，v1.2.0 改为多格式循环：
+      1. 是否保存？(1=是 / 2=否)
+      2. 进入循环：选格式（1-8）→ 选文件名 → 保存 → 是否保存其他格式？
+         任意时刻 EOF / Ctrl+C / 否 都安全退出。
+      3. 默认路径 ~/Downloads/<prefix>_<ts>.<ext>，回车即用。
+
+    若用户启动时传了 --save DIR/path，沿用旧逻辑（保存一次到该路径）。
     """
     if save_dir:
         # CLI 已指定 --save DIR：沿用原有目录归档逻辑，不再问
@@ -2241,19 +2361,89 @@ def _interactive_save_prompt(prefix: str, data: Any, save_dir: Optional[str]) ->
         return
     if not _is_affirmative(ans):
         return
-    # 智能默认文件名：用 prefix 推断，安全清理（去除 url/路径里的非法字符）
+
+    formats = [
+        ('json',       'fmt.json'),
+        ('md',         'fmt.md'),
+        ('html',       'fmt.html'),
+        ('pdf',        'fmt.pdf'),
+        ('txt',        'fmt.txt'),
+        ('csv',        'fmt.csv'),
+        ('xmind',      'fmt.xmind'),
+        ('graph.html', 'fmt.graph'),
+    ]
     safe_prefix = re.sub(r'[^\w.+-]', '_', prefix)[:60] or 'report'
-    default_name = f"{safe_prefix}.json"
+
+    # 循环：选格式 → 保存 → 是否再保存一种
+    while True:
+        print()
+        print(f" {Color.Wh}{t('prompt.format_title')}{Color.Reset}")
+        for i, (_, key) in enumerate(formats, 1):
+            print(f"  {Color.Wh}[ {i} ] {Color.Gr}{t(key)}{Color.Reset}")
+        print()
+        try:
+            choice = input(f" {Color.Wh}{t('prompt.format_select')}{Color.Gr}").strip() or '1'
+        except (EOFError, KeyboardInterrupt):
+            return
+        try:
+            idx = int(choice) - 1
+        except ValueError:
+            idx = 0
+        if not (0 <= idx < len(formats)):
+            idx = 0
+        ext = formats[idx][0]
+
+        # 智能默认文件名 → ~/Downloads/<prefix>_<ts>.<ext>
+        # 在循环内重新计算 ts 让多次保存得到不同文件名
+        ts_str = time.strftime('%Y%m%d-%H%M%S')
+        default_name = os.path.join(_default_report_dir(), f'{safe_prefix}_{ts_str}.{ext}')
+        try:
+            target = input(
+                f" {Color.Wh}{t('prompt.save_filename', default=default_name)}{Color.Gr}"
+            ).strip()
+        except (EOFError, KeyboardInterrupt):
+            return
+        if not target:
+            target = default_name
+        _maybe_save(target, prefix, data)
+
+        # 是否继续保存其他格式
+        try:
+            again = input(f"\n {Color.Wh}{t('prompt.save_another')}{Color.Gr}")
+        except (EOFError, KeyboardInterrupt):
+            return
+        if not _is_affirmative(again):
+            return
+
+
+def _ask_permute_method() -> str:
+    """v1.2.0：交互式选择 permute 方式（与主菜单 1/2 风格一致）。"""
+    print()
+    print(f" {Color.Wh}{t('prompt.permute_method')}{Color.Reset}")
+    print(f"  {Color.Wh}[ 1 ] {Color.Gr}{t('method.strict')}{Color.Reset}")
+    print(f"  {Color.Wh}[ 2 ] {Color.Gr}{t('method.all')}{Color.Reset}")
+    print()
     try:
-        target = input(
-            f" {Color.Wh}{t('prompt.save_filename', default=default_name)}{Color.Gr}"
-        ).strip()
+        choice = input(f" {Color.Wh}{t('prompt.permute_method_select')}{Color.Gr}").strip() or '1'
     except (EOFError, KeyboardInterrupt):
-        return
-    # 回车 → 用默认；非空 → 用用户输入
-    if not target:
-        target = default_name
-    _maybe_save(target, prefix, data)
+        choice = '1'
+    return 'all' if choice == '2' else 'strict'
+
+
+def _ask_username_strategy() -> str:
+    """v1.2.0：选择用户名扫描策略（直接 / 变形扫 / 仅变形）。
+    返回 'direct' | 'permute_scan' | 'permute_only'。"""
+    print()
+    print(f" {Color.Wh}{t('prompt.scan_strategy')}{Color.Reset}")
+    print(f"  {Color.Wh}[ 1 ] {Color.Gr}{t('strategy.direct')}{Color.Reset}")
+    print(f"  {Color.Wh}[ 2 ] {Color.Gr}{t('strategy.permute_scan')}{Color.Reset}")
+    print(f"  {Color.Wh}[ 3 ] {Color.Gr}{t('strategy.permute_only')}{Color.Reset}")
+    print()
+    try:
+        choice = input(f" {Color.Wh}{t('prompt.scan_strategy_select')}{Color.Gr}").strip() or '1'
+    except (EOFError, KeyboardInterrupt):
+        choice = '1'
+    return {'2': 'permute_scan', '3': 'permute_only'}.get(choice, 'direct')
 
 
 def handle_choice(choice: int, save_dir: Optional[str] = None) -> None:
@@ -2265,7 +2455,7 @@ def handle_choice(choice: int, save_dir: Optional[str] = None) -> None:
     elif choice == 2:
         my = show_my_ip()
         print_my_ip(my)
-        _interactive_save_prompt('my_ip', {'ip': my}, save_dir)
+        _interactive_save_prompt('myip', {'ip': my}, save_dir)
     elif choice == 3:
         num = input(f"\n {Color.Wh}{t('prompt.input_phone')}{Color.Gr}").strip()
         data = track_phone(num)
@@ -2276,9 +2466,44 @@ def handle_choice(choice: int, save_dir: Optional[str] = None) -> None:
         if not name:
             print_username_results({})
             return
-        # 选扫描模式
+        # v1.2.0：先选策略 — 直接 / 变形扫描 / 仅变形（替代旧 [8] permute 菜单项）
+        strategy = _ask_username_strategy()
+
+        # 分支 1：仅生成变形（不扫描）
+        if strategy == 'permute_only':
+            method = _ask_permute_method()
+            variations = permute_username(name, method=method)
+            if not variations:
+                print(f" {Color.Re}{t('err.permute_empty')}{Color.Reset}")
+                return
+            print(f"\n {Color.Cy}{t('permute.generated', name=name, n=len(variations))}{Color.Reset}\n")
+            for v in variations:
+                print(f"  {Color.Gr}•{Color.Reset} {v}")
+            _interactive_save_prompt(f'permute_{name}',
+                                     {'name': name, 'permutations': variations},
+                                     save_dir)
+            return
+
+        # 分支 2：生成变形 + 批量扫描
+        if strategy == 'permute_scan':
+            method = _ask_permute_method()
+            variations = permute_username(name, method=method)
+            if not variations:
+                print(f" {Color.Re}{t('err.permute_empty')}{Color.Reset}")
+                return
+            cats = _ask_scan_mode()
+            print(f"\n {Color.Cy}{t('permute.generated', name=name, n=len(variations))}{Color.Reset}")
+            scan_results: dict = {}
+            for v in variations:
+                print(f"\n {Color.Bl}━━━ {v} ━━━{Color.Reset}")
+                r = track_username(v, categories=cats)
+                scan_results[v] = r
+                print_username_results(r, show_all=False)
+            _interactive_save_prompt(f'permute_{name}', scan_results, save_dir)
+            return
+
+        # 分支 3（默认）：直接扫描原始用户名
         cats = _ask_scan_mode()
-        # v1.1.0: 询问是否递归扫描（用统一的 1/2 数字选择）
         try:
             recurse_ans = input(f"\n {Color.Wh}{t('prompt.recursive')}{Color.Gr}")
         except EOFError:
@@ -2317,40 +2542,7 @@ def handle_choice(choice: int, save_dir: Optional[str] = None) -> None:
         print_email(result)
         _interactive_save_prompt(f'email_{addr}', result, save_dir)
     elif choice == 8:
-        # v1.1.0: 用户名变形（permute）
-        try:
-            name = input(f"\n {Color.Wh}{t('prompt.permute_input')}{Color.Gr}").strip()
-        except EOFError:
-            return
-        if not name:
-            print(f" {Color.Re}{t('err.permute_empty')}{Color.Reset}")
-            return
-        variations = permute_username(name)
-        if not variations:
-            print(f" {Color.Re}{t('err.permute_empty')}{Color.Reset}")
-            return
-        print(f"\n {Color.Cy}{t('permute.generated', name=name, n=len(variations))}{Color.Reset}\n")
-        for v in variations:
-            print(f"  {Color.Gr}•{Color.Reset} {v}")
-        # 询问是否扫描（用统一的 1/2 数字选择）
-        try:
-            scan_ans = input(f"\n {Color.Wh}{t('prompt.permute_scan')}{Color.Gr}")
-        except EOFError:
-            scan_ans = ''
-        if _is_affirmative(scan_ans):
-            cats = _ask_scan_mode()
-            scan_results: dict = {}
-            for v in variations:
-                print(f"\n {Color.Bl}━━━ {v} ━━━{Color.Reset}")
-                r = track_username(v, categories=cats)
-                scan_results[v] = r
-                print_username_results(r, show_all=False)
-            _interactive_save_prompt(f'permute_{name}', scan_results, save_dir)
-        else:
-            _interactive_save_prompt(f'permute_{name}',
-                                     {'name': name, 'permutations': variations},
-                                     save_dir)
-    elif choice == 9:
+        # v1.2.0: 切换语言（之前是 [9]，permute 子菜单合并到 [4] 后腾出位置）
         switch_language_menu()
     elif choice == 0:
         print(f"\n {Color.Gr}{t('prompt.bye')}{Color.Reset}")
@@ -2362,8 +2554,8 @@ def handle_choice(choice: int, save_dir: Optional[str] = None) -> None:
 def _maybe_save(target: Optional[str], prefix: str, data: Any) -> None:
     """保存查询结果。target 可以是：
        - 目录（如 'out/'）：自动生成 <prefix>_<ts>.json
-       - 单文件 .md  →  Markdown 报告
-       - 单文件 .json → JSON
+       - 单文件按后缀分发（v1.2.0 起 8 种格式）：
+         .json / .md / .html / .pdf / .txt / .csv / .xmind / .graph.html
        - 单文件无扩展 → JSON
     JSON 输出会自动过滤 _* 私有 key（如 _statuses）保持公开 API 干净。
     所有 IO 错误（PermissionError / OSError）友好提示而非抛 traceback 给用户。
@@ -2375,6 +2567,12 @@ def _maybe_save(target: Optional[str], prefix: str, data: Any) -> None:
     target_lower = target.lower()
     is_md_file = target_lower.endswith('.md')
     is_pdf_file = target_lower.endswith('.pdf')  # v1.1.0
+    # v1.2.0：注意 .graph.html 必须先于 .html 判定（else 被泛 .html 抢走）
+    is_graph_file = target_lower.endswith('.graph.html')
+    is_html_file = target_lower.endswith('.html') and not is_graph_file
+    is_txt_file = target_lower.endswith('.txt')
+    is_csv_file = target_lower.endswith('.csv')
+    is_xmind_file = target_lower.endswith('.xmind')
     is_dir = target.endswith(os.sep) or (os.path.exists(target) and os.path.isdir(target))
     # 仅 username 扫描结果需要剥 _statuses 等私有 key；
     # 批量 mx/whois 的 key 是用户传入的域名（含合法 _dmarc.example.com 等
@@ -2395,11 +2593,28 @@ def _maybe_save(target: Optional[str], prefix: str, data: Any) -> None:
             if parent:
                 os.makedirs(parent, exist_ok=True)
             if is_md_file:
-                md = _to_markdown(prefix, data)
                 with open(target, 'w', encoding='utf-8') as f:
-                    f.write(md)
+                    f.write(_to_markdown(prefix, data))
             elif is_pdf_file:
                 err = _to_pdf(prefix, data, target)
+                if err:
+                    sys.stderr.write(f"\n {Color.Re}[error] {err}{Color.Reset}\n")
+                    return
+            elif is_graph_file:
+                with open(target, 'w', encoding='utf-8') as f:
+                    f.write(_to_graph_html(prefix, data))
+            elif is_html_file:
+                with open(target, 'w', encoding='utf-8') as f:
+                    f.write(_to_html(prefix, data))
+            elif is_txt_file:
+                with open(target, 'w', encoding='utf-8') as f:
+                    f.write(_to_txt(prefix, data))
+            elif is_csv_file:
+                # newline='' 让 csv 模块自己控行尾，避免 Windows 多余 \r
+                with open(target, 'w', encoding='utf-8', newline='') as f:
+                    f.write(_to_csv(prefix, data))
+            elif is_xmind_file:
+                err = _to_xmind(prefix, data, target)
                 if err:
                     sys.stderr.write(f"\n {Color.Re}[error] {err}{Color.Reset}\n")
                     return
@@ -2441,43 +2656,45 @@ def _md_escape(s: Any) -> str:
 def _to_markdown(prefix: str, data: Any) -> str:
     """根据 prefix（如 'ip_8.8.8.8' / 'username_torvalds'）生成 Markdown 报告。
     所有用户输入字段（cmd / query / dict keys / values）都做 escape，
-    防止换行注入伪标题或 `|` 破坏表格列数。"""
+    防止换行注入伪标题或 `|` 破坏表格列数。
+    v1.2.1: 标题/标签跟随当前 UI 语言（_lang）。"""
     lines = []
     cmd, _, query = prefix.partition('_')
     # query/cmd 可能含恶意换行符 → 单行化
     cmd = _md_escape(cmd) or '?'
     query = _md_escape(query)
     ts = time.strftime('%Y-%m-%d %H:%M:%S')
-    lines.append("# 🔍 SpyEyes Report")
+    lines.append(f"# 🔍 {t('report.title')}")
     lines.append("")
-    lines.append(f"- **Command**: `{cmd}`")
-    lines.append(f"- **Query**: `{query}`")
-    lines.append(f"- **Generated**: {ts}")
-    lines.append("- **Tool**: [SpyEyes](https://github.com/Akxan/SpyEyes)")
+    lines.append(f"- **{t('report.command')}**: `{cmd}`")
+    lines.append(f"- **{t('report.query')}**: `{query}`")
+    lines.append(f"- **{t('report.generated')}**: {ts}")
+    lines.append(f"- **{t('report.tool')}**: [SpyEyes](https://github.com/Akxan/SpyEyes)")
     lines.append("")
     lines.append("---")
     lines.append("")
 
     if isinstance(data, dict) and '_error' in data:
         # _error 也要 escape：whois/dns 后端返回的异常 message 可能含换行注入伪标题
-        lines.append(f"## ❌ Error\n\n> {_md_escape(data['_error'])}\n")
+        lines.append(f"## ❌ {t('report.error')}\n\n> {_md_escape(data['_error'])}\n")
         return '\n'.join(lines)
 
     if cmd == 'username' and isinstance(data, dict):
         plat = _platform_only(data)
         found = sum(1 for v in plat.values() if v)
-        lines.append(f"## Username scan: `{query}`")
+        lines.append(f"## {t('report.username_scan')}: `{query}`")
         lines.append("")
-        lines.append(f"**Scanned {len(plat)} platforms · Found {found} accounts**")
+        lines.append(f"**{t('report.scan_summary', total=len(plat), found=found)}**")
         lines.append("")
         for cat in CATEGORY_ORDER:
             cat_pl = [p for p in _get_platforms() if p.category == cat and p.name in plat]
             cat_found = [(p, plat[p.name]) for p in cat_pl if plat[p.name]]
             if not cat_found:
                 continue
-            lines.append(f"### {_md_escape(cat.title())} ({len(cat_found)}/{len(cat_pl)})")
+            cat_label = _md_escape(t(f'cat.{cat}'))
+            lines.append(f"### {cat_label} ({len(cat_found)}/{len(cat_pl)})")
             lines.append("")
-            lines.append("| Platform | Profile URL |")
+            lines.append(f"| {t('report.platform')} | {t('report.url')} |")
             lines.append("|---|---|")
             for p, url in cat_found:
                 lines.append(f"| {_md_escape(p.name)} | <{_md_escape(url)}> |")
@@ -2485,13 +2702,50 @@ def _to_markdown(prefix: str, data: Any) -> str:
         return '\n'.join(lines)
 
     if cmd == 'mx' and isinstance(data, dict) and 'records' in data:
-        lines.append(f"## MX Records for `{data.get('domain', query)}`")
+        lines.append(f"## {t('report.mx_records')} `{data.get('domain', query)}`")
         lines.append("")
-        lines.append("| Priority | Mail Server |")
+        lines.append(f"| {t('report.priority')} | {t('report.mail_server')} |")
         lines.append("|---:|---|")
         for r in data['records']:
             lines.append(f"| {r['preference']} | `{r['exchange']}` |")
         lines.append("")
+        return '\n'.join(lines)
+
+    # v1.2.1 P1-2: permute 仅生成变形（不扫描）—— 列出变形清单
+    if cmd == 'permute' and _is_permute_only(data):
+        lines.append(f"## {t('permute.title')} `{_md_escape(data.get('name', query))}`")
+        lines.append("")
+        for v in data.get('permutations', []):
+            lines.append(f"- `{_md_escape(v)}`")
+        lines.append("")
+        return '\n'.join(lines)
+
+    # v1.2.1 P1-2: permute + 批量扫描 —— 每个变形一个子节
+    if cmd == 'permute' and _is_permute_scan(data):
+        lines.append(f"## {t('permute.title')} `{query}`")
+        lines.append("")
+        lines.append(f"**{len(data)} variations scanned**")
+        lines.append("")
+        for var, scan in data.items():
+            if not isinstance(scan, dict):
+                continue
+            lines.append(f"### `{_md_escape(var)}`")
+            if '_error' in scan:
+                lines.append(f"> ❌ {_md_escape(scan['_error'])}")
+                lines.append("")
+                continue
+            plat = _platform_only(scan)
+            found = sum(1 for v in plat.values() if v)
+            lines.append(f"**{t('report.scan_summary', total=len(plat), found=found)}**")
+            lines.append("")
+            if found == 0:
+                continue
+            lines.append(f"| {t('report.platform')} | {t('report.url')} |")
+            lines.append("|---|---|")
+            for p_name, url in plat.items():
+                if url:
+                    lines.append(f"| {_md_escape(p_name)} | <{_md_escape(url)}> |")
+            lines.append("")
         return '\n'.join(lines)
 
     # 通用：扁平化 dict 为表格（key 与 value 都转义）
@@ -2499,9 +2753,9 @@ def _to_markdown(prefix: str, data: Any) -> str:
     # 批量 mx/whois 的 key 是用户传入的域名（含 _dmarc.example.com 等合法子域），
     # 一律过滤 _ 开头的 key 会让这些条目从 MD 报告里被静默删除（数据丢失）
     if isinstance(data, dict):
-        lines.append(f"## {cmd.upper()} info: `{query}`")
+        lines.append(f"## {cmd.upper()} {t('report.info_for')}: `{query}`")
         lines.append("")
-        lines.append("| Field | Value |")
+        lines.append(f"| {t('report.field')} | {t('report.value')} |")
         lines.append("|---|---|")
         items = _platform_only(data).items() if cmd == 'username' else data.items()
         for k, v in items:
@@ -2539,22 +2793,22 @@ def _to_pdf(prefix: str, data: Any, out_path: str) -> Optional[str]:
         ts = time.strftime('%Y-%m-%d %H:%M:%S')
         styles = _rl_styles()
         story: list = []
-        story.append(_rl_paragraph("<b>SpyEyes Report</b>", styles['Title']))
+        story.append(_rl_paragraph(f"<b>{_md_escape(t('report.title'))}</b>", styles['Title']))
         story.append(_rl_spacer(1, 12))
-        story.append(_rl_paragraph(f"<b>Command:</b> {cmd}", styles['Normal']))
-        story.append(_rl_paragraph(f"<b>Query:</b> {query}", styles['Normal']))
-        story.append(_rl_paragraph(f"<b>Generated:</b> {ts}", styles['Normal']))
+        story.append(_rl_paragraph(f"<b>{_md_escape(t('report.command'))}:</b> {cmd}", styles['Normal']))
+        story.append(_rl_paragraph(f"<b>{_md_escape(t('report.query'))}:</b> {query}", styles['Normal']))
+        story.append(_rl_paragraph(f"<b>{_md_escape(t('report.generated'))}:</b> {ts}", styles['Normal']))
         story.append(_rl_spacer(1, 18))
         if isinstance(data, dict) and '_error' in data:
             story.append(_rl_paragraph(
-                f"<b>Error:</b> {_md_escape(data['_error'])}", styles['Normal']))
+                f"<b>{_md_escape(t('report.error'))}:</b> {_md_escape(data['_error'])}", styles['Normal']))
         elif cmd == 'username' and isinstance(data, dict):
             plat = _platform_only(data)
             found = sum(1 for v in plat.values() if v)
             story.append(_rl_paragraph(
-                f"<b>Username scan:</b> {query}", styles['Heading2']))
+                f"<b>{_md_escape(t('report.username_scan'))}:</b> {query}", styles['Heading2']))
             story.append(_rl_paragraph(
-                f"Scanned {len(plat)} platforms · Found {found} accounts",
+                _md_escape(t('report.scan_summary', total=len(plat), found=found)),
                 styles['Normal']))
             story.append(_rl_spacer(1, 12))
             for cat in CATEGORY_ORDER:
@@ -2562,10 +2816,11 @@ def _to_pdf(prefix: str, data: Any, out_path: str) -> Optional[str]:
                 cat_found = [(p, plat[p.name]) for p in cat_pl if plat[p.name]]
                 if not cat_found:
                     continue
+                cat_label = _md_escape(t(f'cat.{cat}'))
                 story.append(_rl_paragraph(
-                    f"<b>{cat.title()}</b> ({len(cat_found)}/{len(cat_pl)})",
+                    f"<b>{cat_label}</b> ({len(cat_found)}/{len(cat_pl)})",
                     styles['Heading3']))
-                table_data = [['Platform', 'URL']]
+                table_data = [[_md_escape(t('report.platform')), _md_escape(t('report.url'))]]
                 for p, url in cat_found:
                     # reportlab 支持 inline 标签，但用户输入须 escape 防伪标签注入
                     safe_name = _md_escape(p.name)
@@ -2581,12 +2836,79 @@ def _to_pdf(prefix: str, data: Any, out_path: str) -> Optional[str]:
                 ]))
                 story.append(tbl)
                 story.append(_rl_spacer(1, 12))
+        elif cmd == 'permute' and _is_permute_only(data):
+            # v1.2.1 P1-2：仅生成变形（不扫描）
+            story.append(_rl_paragraph(
+                f"<b>{_md_escape(t('permute.title'))}:</b> {_md_escape(data.get('name', query))}",
+                styles['Heading2']))
+            story.append(_rl_spacer(1, 8))
+            for v in data.get('permutations', []):
+                story.append(_rl_paragraph(f"• {_md_escape(v)}", styles['Normal']))
+        elif cmd == 'permute' and _is_permute_scan(data):
+            # v1.2.1 P1-2：变形 + 批量扫描，每个变形一节
+            story.append(_rl_paragraph(
+                f"<b>{_md_escape(t('permute.title'))}:</b> {query}", styles['Heading2']))
+            story.append(_rl_paragraph(
+                f"{len(data)} variations scanned", styles['Normal']))
+            story.append(_rl_spacer(1, 12))
+            for var, scan in data.items():
+                if not isinstance(scan, dict):
+                    continue
+                story.append(_rl_paragraph(f"<b>{_md_escape(var)}</b>", styles['Heading3']))
+                if '_error' in scan:
+                    story.append(_rl_paragraph(
+                        f"{_md_escape(t('report.error'))}: {_md_escape(scan['_error'])}",
+                        styles['Normal']))
+                    story.append(_rl_spacer(1, 6))
+                    continue
+                plat = _platform_only(scan)
+                found = sum(1 for v in plat.values() if v)
+                story.append(_rl_paragraph(
+                    _md_escape(t('report.scan_summary', total=len(plat), found=found)),
+                    styles['Normal']))
+                if found > 0:
+                    p_table = [[_md_escape(t('report.platform')),
+                                _md_escape(t('report.url'))]]
+                    for p_name, url in plat.items():
+                        if url:
+                            p_table.append([_md_escape(p_name), _md_escape(url)])
+                    tbl = _rl_table(p_table, colWidths=[150, 350])
+                    tbl.setStyle(_rl_table_style([
+                        ('BACKGROUND', (0, 0), (-1, 0), _rl_colors.lightgrey),
+                        ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'),
+                        ('FONTSIZE', (0, 0), (-1, -1), 8),
+                        ('GRID', (0, 0), (-1, -1), 0.25, _rl_colors.grey),
+                        ('VALIGN', (0, 0), (-1, -1), 'TOP'),
+                    ]))
+                    story.append(tbl)
+                story.append(_rl_spacer(1, 10))
+        elif cmd == 'mx' and isinstance(data, dict) and 'records' in data:
+            # MX 专用（v1.2.1 P0-3 修复，之前落到通用 dict 把 records list 压成 repr）
+            domain_lbl = _md_escape(data.get('domain', query))
+            story.append(_rl_paragraph(
+                f"<b>{_md_escape(t('report.mx_records'))}:</b> {domain_lbl}",
+                styles['Heading2']))
+            story.append(_rl_spacer(1, 8))
+            mx_table = [[_md_escape(t('report.priority')), _md_escape(t('report.mail_server'))]]
+            for r in data['records']:
+                mx_table.append([str(r.get('preference', '')),
+                                 _md_escape(r.get('exchange', ''))])
+            tbl = _rl_table(mx_table, colWidths=[80, 420])
+            tbl.setStyle(_rl_table_style([
+                ('BACKGROUND', (0, 0), (-1, 0), _rl_colors.lightgrey),
+                ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'),
+                ('FONTSIZE', (0, 0), (-1, -1), 9),
+                ('GRID', (0, 0), (-1, -1), 0.25, _rl_colors.grey),
+                ('VALIGN', (0, 0), (-1, -1), 'TOP'),
+                ('ALIGN', (0, 0), (0, -1), 'CENTER'),
+            ]))
+            story.append(tbl)
         elif isinstance(data, dict):
             story.append(_rl_paragraph(
-                f"<b>{cmd.upper()} info:</b> {query}", styles['Heading2']))
+                f"<b>{cmd.upper()} {_md_escape(t('report.info_for'))}:</b> {query}", styles['Heading2']))
             story.append(_rl_spacer(1, 8))
             items = data.items() if cmd != 'username' else _platform_only(data).items()
-            table_data = [['Field', 'Value']]
+            table_data = [[_md_escape(t('report.field')), _md_escape(t('report.value'))]]
             for k, v in items:
                 if v is None or v == '':
                     continue
@@ -2616,6 +2938,763 @@ def _to_pdf(prefix: str, data: Any, out_path: str) -> Optional[str]:
         return None
     except Exception as e:
         return t('err.pdf_failed', e=e)
+
+
+# ====================================================================
+# v1.2.0: 报告格式扩充 —— HTML / TXT / CSV / XMind / Graph (D3.js)
+# ====================================================================
+def _html_escape(s: Any) -> str:
+    """HTML/XML escape：防 `<script>` 注入、`"` 跳出属性值。
+    用于 _to_html / _to_graph_html / _to_xmind。"""
+    if s is None:
+        return ''
+    return (str(s)
+            .replace('&', '&amp;')
+            .replace('<', '&lt;')
+            .replace('>', '&gt;')
+            .replace('"', '&quot;')
+            .replace("'", '&#39;'))
+
+
+def _is_permute_scan(data: Any) -> bool:
+    """v1.2.1 P1-2：检测 permute_scan 数据形态 `{variation: track_result_dict, ...}`。
+    permute_scan 来自 handle_choice(4) 的"变形+批量扫描"分支。
+    与 permute_only 区分（后者是 `{'name': ..., 'permutations': [...]}`）。"""
+    if not isinstance(data, dict) or '_error' in data or not data:
+        return False
+    # permute_only 标志键（明确排除）
+    if 'permutations' in data or 'name' in data:
+        return False
+    # 所有 value 必须是 dict（track_username 结果），且至少一个含真实数据
+    return (all(isinstance(v, dict) for v in data.values())
+            and any(_platform_only(v) for v in data.values() if isinstance(v, dict)))
+
+
+def _is_permute_only(data: Any) -> bool:
+    """检测 permute_only 形态 `{'name': ..., 'permutations': [...]}`。"""
+    return (isinstance(data, dict) and 'permutations' in data
+            and isinstance(data.get('permutations'), list))
+
+
+def _csv_safe(v: Any) -> str:
+    """CSV injection 防护：单元格首字符为 = + - @ \\t \\r 时前置 ' 防 Excel/Sheets 执行公式。
+    `csv` 模块已处理 | / , / \\n 转义，但对公式注入不防御。"""
+    s = '' if v is None else str(v)
+    if s and s[0] in ('=', '+', '-', '@', '\t', '\r'):
+        return "'" + s
+    return s
+
+
+def _to_html(prefix: str, data: Any) -> str:
+    """生成 HTML 报告（独立文件，含基本 CSS 样式）。
+    所有用户输入字段 _html_escape 防 XSS。
+    v1.2.1：标题/标签跟随当前 UI 语言。"""
+    cmd, _, query = prefix.partition('_')
+    cmd_safe = _html_escape(cmd) or '?'
+    query_safe = _html_escape(query)
+    ts = time.strftime('%Y-%m-%d %H:%M:%S')
+    html_lang = 'zh' if get_lang() == 'zh' else 'en'
+    title_safe = _html_escape(t('report.title'))
+
+    parts = [
+        '<!DOCTYPE html>',
+        f'<html lang="{html_lang}">',
+        '<head>',
+        '<meta charset="utf-8">',
+        f'<title>{title_safe} — {query_safe}</title>',
+        '<style>',
+        'body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Helvetica,Arial,sans-serif;'
+        'max-width:960px;margin:2em auto;padding:1em;color:#222;background:#fafafa}',
+        'h1{border-bottom:3px solid #0066cc;padding-bottom:.3em}',
+        'h2{color:#0066cc;margin-top:1.5em}',
+        'h3.cat{color:#0a8c4a;margin-top:1.2em;padding-left:.5em;border-left:4px solid #0a8c4a}',
+        'table{border-collapse:collapse;width:100%;margin:.7em 0;background:#fff}',
+        'th,td{border:1px solid #ddd;padding:8px 12px;text-align:left;vertical-align:top}',
+        'th{background:#f4f4f4;font-weight:600}',
+        'tr:nth-child(even){background:#fafafa}',
+        '.error{color:#c00;background:#fee;padding:1em;border-radius:4px;border:1px solid #fcc}',
+        'a{color:#0066cc;text-decoration:none}',
+        'a:hover{text-decoration:underline}',
+        'code{background:#f4f4f4;padding:1px 5px;border-radius:3px;font-family:SFMono-Regular,Menlo,monospace}',
+        '.meta{color:#666;font-size:0.9em}',
+        '</style>',
+        '</head><body>',
+        f'<h1>🔍 {title_safe}</h1>',
+        f'<p class="meta"><b>{_html_escape(t("report.command"))}:</b> <code>{cmd_safe}</code> · '
+        f'<b>{_html_escape(t("report.query"))}:</b> <code>{query_safe}</code> · '
+        f'<b>{_html_escape(t("report.generated"))}:</b> {ts}</p>',
+        '<hr>',
+    ]
+
+    if isinstance(data, dict) and '_error' in data:
+        parts.append(
+            f'<div class="error">❌ <b>{_html_escape(t("report.error"))}:</b> '
+            f'{_html_escape(data["_error"])}</div>'
+        )
+        parts.extend(['</body>', '</html>'])
+        return '\n'.join(parts)
+
+    if cmd == 'username' and isinstance(data, dict):
+        plat = _platform_only(data)
+        found = sum(1 for v in plat.values() if v)
+        parts.append(
+            f'<h2>{_html_escape(t("report.username_scan"))}: '
+            f'<code>{query_safe}</code></h2>'
+        )
+        parts.append(
+            f'<p><b>{_html_escape(t("report.scan_summary", total=len(plat), found=found))}</b></p>'
+        )
+        for cat in CATEGORY_ORDER:
+            cat_pl = [p for p in _get_platforms() if p.category == cat and p.name in plat]
+            cat_found = [(p, plat[p.name]) for p in cat_pl if plat[p.name]]
+            if not cat_found:
+                continue
+            cat_label = _html_escape(t(f'cat.{cat}'))
+            parts.append(
+                f'<h3 class="cat">{cat_label} ({len(cat_found)}/{len(cat_pl)})</h3>'
+            )
+            parts.append(
+                '<table><thead><tr>'
+                f'<th>{_html_escape(t("report.platform"))}</th>'
+                f'<th>{_html_escape(t("report.url"))}</th>'
+                '</tr></thead><tbody>'
+            )
+            for p, url in cat_found:
+                url_safe = _html_escape(url)
+                parts.append(
+                    f'<tr><td>{_html_escape(p.name)}</td>'
+                    f'<td><a href="{url_safe}" target="_blank" rel="noopener noreferrer">{url_safe}</a></td></tr>'
+                )
+            parts.append('</tbody></table>')
+        parts.extend(['</body>', '</html>'])
+        return '\n'.join(parts)
+
+    # v1.2.1 P1-2: permute 仅生成变形 —— 列表
+    if cmd == 'permute' and _is_permute_only(data):
+        name_safe = _html_escape(data.get('name', query))
+        parts.append(f'<h2>{_html_escape(t("permute.title"))} <code>{name_safe}</code></h2>')
+        parts.append('<ul>')
+        for v in data.get('permutations', []):
+            parts.append(f'<li><code>{_html_escape(v)}</code></li>')
+        parts.append('</ul>')
+        parts.extend(['</body>', '</html>'])
+        return '\n'.join(parts)
+
+    # v1.2.1 P1-2: permute + 批量扫描 —— 每个变形一个子节
+    if cmd == 'permute' and _is_permute_scan(data):
+        parts.append(f'<h2>{_html_escape(t("permute.title"))} <code>{query_safe}</code></h2>')
+        parts.append(f'<p><b>{len(data)} variations scanned</b></p>')
+        for var, scan in data.items():
+            if not isinstance(scan, dict):
+                continue
+            parts.append(f'<h3 class="cat"><code>{_html_escape(var)}</code></h3>')
+            if '_error' in scan:
+                parts.append(f'<div class="error">❌ {_html_escape(scan["_error"])}</div>')
+                continue
+            plat = _platform_only(scan)
+            found = sum(1 for v in plat.values() if v)
+            parts.append(
+                f'<p>{_html_escape(t("report.scan_summary", total=len(plat), found=found))}</p>'
+            )
+            if found == 0:
+                continue
+            parts.append(
+                '<table><thead><tr>'
+                f'<th>{_html_escape(t("report.platform"))}</th>'
+                f'<th>{_html_escape(t("report.url"))}</th>'
+                '</tr></thead><tbody>'
+            )
+            for p_name, url in plat.items():
+                if url:
+                    url_safe = _html_escape(url)
+                    parts.append(
+                        f'<tr><td>{_html_escape(p_name)}</td>'
+                        f'<td><a href="{url_safe}" target="_blank" rel="noopener noreferrer">{url_safe}</a></td></tr>'
+                    )
+            parts.append('</tbody></table>')
+        parts.extend(['</body>', '</html>'])
+        return '\n'.join(parts)
+
+    # MX 专用：渲染优先级表（v1.2.1 P0-3 修复，之前会落到通用 dict 把 records list 压成 repr）
+    if cmd == 'mx' and isinstance(data, dict) and 'records' in data:
+        domain_safe = _html_escape(data.get('domain', query))
+        parts.append(
+            f'<h2>{_html_escape(t("report.mx_records"))} '
+            f'<code>{domain_safe}</code></h2>'
+        )
+        parts.append(
+            '<table><thead><tr>'
+            f'<th>{_html_escape(t("report.priority"))}</th>'
+            f'<th>{_html_escape(t("report.mail_server"))}</th>'
+            '</tr></thead><tbody>'
+        )
+        for r in data['records']:
+            parts.append(
+                f'<tr><td>{_html_escape(r.get("preference", ""))}</td>'
+                f'<td><code>{_html_escape(r.get("exchange", ""))}</code></td></tr>'
+            )
+        parts.append('</tbody></table>')
+        parts.extend(['</body>', '</html>'])
+        return '\n'.join(parts)
+
+    if isinstance(data, dict):
+        parts.append(
+            f'<h2>{cmd_safe.upper()} {_html_escape(t("report.info_for"))}: '
+            f'<code>{query_safe}</code></h2>'
+        )
+        parts.append(
+            '<table><thead><tr>'
+            f'<th>{_html_escape(t("report.field"))}</th>'
+            f'<th>{_html_escape(t("report.value"))}</th>'
+            '</tr></thead><tbody>'
+        )
+        items = data.items() if cmd != 'username' else _platform_only(data).items()
+        for k, v in items:
+            if v is None or v == '':
+                continue
+            if isinstance(v, dict):
+                v_str = ', '.join(f'{kk}={vv}' for kk, vv in v.items()
+                                  if not isinstance(vv, (dict, list)))
+            elif isinstance(v, (list, tuple)):
+                v_str = ', '.join(str(x) for x in v)
+            else:
+                v_str = str(v)
+            parts.append(
+                f'<tr><td>{_html_escape(k)}</td><td>{_html_escape(v_str)}</td></tr>'
+            )
+        parts.append('</tbody></table>')
+        parts.extend(['</body>', '</html>'])
+        return '\n'.join(parts)
+
+    parts.append(
+        f'<pre>{_html_escape(json.dumps(data, ensure_ascii=False, indent=2, default=str))}</pre>'
+    )
+    parts.extend(['</body>', '</html>'])
+    return '\n'.join(parts)
+
+
+def _to_txt(prefix: str, data: Any) -> str:
+    """纯文本报告（无 ANSI 颜色 / 无 markdown / 无表格）。
+    适合复制粘贴到 ticket / issue / 邮件。
+    v1.2.1：标题/标签跟随当前 UI 语言。"""
+    cmd, _, query = prefix.partition('_')
+    ts = time.strftime('%Y-%m-%d %H:%M:%S')
+    lines = [
+        '═══════════════════════════════════════════════',
+        f'  🔍 {t("report.title")}',
+        '═══════════════════════════════════════════════',
+        f'{t("report.command"):11} {cmd}',
+        f'{t("report.query"):11} {query}',
+        f'{t("report.generated"):11} {ts}',
+        '',
+    ]
+    if isinstance(data, dict) and '_error' in data:
+        lines.append(f'{t("report.error").upper()}: {data["_error"]}')
+        return '\n'.join(lines) + '\n'
+
+    if cmd == 'username' and isinstance(data, dict):
+        plat = _platform_only(data)
+        found = sum(1 for v in plat.values() if v)
+        lines.append(f'{t("report.username_scan")}: {query}')
+        lines.append(t('report.scan_summary', total=len(plat), found=found))
+        lines.append('')
+        for cat in CATEGORY_ORDER:
+            cat_pl = [p for p in _get_platforms() if p.category == cat and p.name in plat]
+            cat_found = [(p, plat[p.name]) for p in cat_pl if plat[p.name]]
+            if not cat_found:
+                continue
+            lines.append(f'── {t(f"cat.{cat}")} ({len(cat_found)}/{len(cat_pl)}) ──')
+            for p, url in cat_found:
+                lines.append(f'  {p.name:30} {url}')
+            lines.append('')
+        return '\n'.join(lines) + '\n'
+
+    # v1.2.1 P1-2: permute 仅生成变形 —— 列表
+    if cmd == 'permute' and _is_permute_only(data):
+        lines.append(f'{t("permute.title")} {data.get("name", query)}')
+        lines.append('')
+        for v in data.get('permutations', []):
+            lines.append(f'  • {v}')
+        return '\n'.join(lines) + '\n'
+
+    # v1.2.1 P1-2: permute + 批量扫描 —— 每个变形一个段
+    if cmd == 'permute' and _is_permute_scan(data):
+        lines.append(f'{t("permute.title")} {query}')
+        lines.append(f'{len(data)} variations scanned')
+        lines.append('')
+        for var, scan in data.items():
+            if not isinstance(scan, dict):
+                continue
+            lines.append(f'━━━ {var} ━━━')
+            if '_error' in scan:
+                lines.append(f'  {t("report.error")}: {scan["_error"]}')
+                lines.append('')
+                continue
+            plat = _platform_only(scan)
+            found = sum(1 for v in plat.values() if v)
+            lines.append(f'  {t("report.scan_summary", total=len(plat), found=found)}')
+            for p_name, url in plat.items():
+                if url:
+                    lines.append(f'    {p_name:28} {url}')
+            lines.append('')
+        return '\n'.join(lines) + '\n'
+
+    # MX 专用（v1.2.1 P0-3 修复）
+    if cmd == 'mx' and isinstance(data, dict) and 'records' in data:
+        lines.append(f'{t("report.mx_records")} {data.get("domain", query)}')
+        lines.append('')
+        for r in data['records']:
+            lines.append(f'  {t("report.priority")} {r.get("preference", ""):>4}  →  '
+                         f'{r.get("exchange", "")}')
+        return '\n'.join(lines) + '\n'
+
+    if isinstance(data, dict):
+        lines.append(f'{cmd.upper()} {t("report.info_for")}: {query}')
+        lines.append('')
+        items = data.items() if cmd != 'username' else _platform_only(data).items()
+        for k, v in items:
+            if v is None or v == '':
+                continue
+            if isinstance(v, dict):
+                v_str = ', '.join(f'{kk}={vv}' for kk, vv in v.items()
+                                  if not isinstance(vv, (dict, list)))
+            elif isinstance(v, (list, tuple)):
+                v_str = ', '.join(str(x) for x in v)
+            else:
+                v_str = str(v)
+            lines.append(f'  {k:22}: {v_str}')
+        return '\n'.join(lines) + '\n'
+
+    lines.append(json.dumps(data, ensure_ascii=False, indent=2, default=str))
+    return '\n'.join(lines) + '\n'
+
+
+def _to_csv(prefix: str, data: Any) -> str:
+    """CSV 报告。
+    - username 扫描：rows = (category, platform, url, status) 仅命中
+    - 其它：rows = (field, value)
+    含 CSV injection 防护（_csv_safe 给 = + - @ 前缀加 '）。
+    v1.2.1：列头跟随当前 UI 语言（zh: 分类/平台/主页地址/状态）。
+    注意：CSV 列头的本地化在脚本消费时可能影响 `df['platform']` 类访问，
+    需要稳定列名的用户请用 `--lang en` 或直接读 JSON。"""
+    cmd, _, query = prefix.partition('_')
+    buf = _io.StringIO()
+    writer = _csv.writer(buf, lineterminator='\n', quoting=_csv.QUOTE_MINIMAL)
+
+    if isinstance(data, dict) and '_error' in data:
+        writer.writerow([t('report.error').lower()])
+        writer.writerow([_csv_safe(data['_error'])])
+        return buf.getvalue()
+
+    if cmd == 'username' and isinstance(data, dict):
+        writer.writerow([
+            t('report.category'), t('report.platform'),
+            t('report.url'), t('report.status'),
+        ])
+        plat = _platform_only(data)
+        statuses = data.get('_statuses', {}) if isinstance(data, dict) else {}
+        for cat in CATEGORY_ORDER:
+            cat_pl = [p for p in _get_platforms() if p.category == cat and p.name in plat]
+            for p in cat_pl:
+                url = plat.get(p.name) or ''
+                if not url:
+                    continue
+                status = statuses.get(p.name, 'found')
+                # cat 仍用英文 enum 值（机器可读），p.name 保留原名
+                writer.writerow([_csv_safe(cat), _csv_safe(p.name),
+                                 _csv_safe(url), _csv_safe(status)])
+        return buf.getvalue()
+
+    # v1.2.1 P1-2: permute 仅生成变形 —— 单列变形清单
+    if cmd == 'permute' and _is_permute_only(data):
+        writer.writerow([t('permute.title')])
+        for v in data.get('permutations', []):
+            writer.writerow([_csv_safe(v)])
+        return buf.getvalue()
+
+    # v1.2.1 P1-2: permute + 批量扫描 —— 每行 (variation, category, platform, url)
+    if cmd == 'permute' and _is_permute_scan(data):
+        writer.writerow([
+            t('report.username_scan'), t('report.category'),
+            t('report.platform'), t('report.url'),
+        ])
+        for var, scan in data.items():
+            if not isinstance(scan, dict) or '_error' in scan:
+                continue
+            plat = _platform_only(scan)
+            cat_lookup = {p.name: p.category for p in _get_platforms()}
+            for p_name, url in plat.items():
+                if url:
+                    writer.writerow([_csv_safe(var),
+                                     _csv_safe(cat_lookup.get(p_name, 'other')),
+                                     _csv_safe(p_name), _csv_safe(url)])
+        return buf.getvalue()
+
+    # MX 专用（v1.2.1 P0-3 修复）
+    if cmd == 'mx' and isinstance(data, dict) and 'records' in data:
+        writer.writerow([t('report.priority'), t('report.mail_server')])
+        for r in data['records']:
+            writer.writerow([_csv_safe(r.get('preference', '')),
+                             _csv_safe(r.get('exchange', ''))])
+        return buf.getvalue()
+
+    if isinstance(data, dict):
+        writer.writerow([t('report.field'), t('report.value')])
+        items = data.items() if cmd != 'username' else _platform_only(data).items()
+        for k, v in items:
+            if v is None or v == '':
+                continue
+            if isinstance(v, dict):
+                v_str = ', '.join(f'{kk}={vv}' for kk, vv in v.items()
+                                  if not isinstance(vv, (dict, list)))
+            elif isinstance(v, (list, tuple)):
+                v_str = ', '.join(str(x) for x in v)
+            else:
+                v_str = str(v)
+            writer.writerow([_csv_safe(k), _csv_safe(v_str)])
+        return buf.getvalue()
+
+    writer.writerow(['data'])
+    writer.writerow([_csv_safe(json.dumps(data, ensure_ascii=False, default=str))])
+    return buf.getvalue()
+
+
+def _to_xmind(prefix: str, data: Any, out_path: str) -> Optional[str]:
+    """XMind 8 文件（zip 含 content.xml + meta.xml + manifest.xml），纯标准库实现。
+    无新依赖；XMind 8 可直接打开。返回错误字符串（成功时返回 None）。"""
+    try:
+        cmd, _, query = prefix.partition('_')
+        ts = time.strftime('%Y-%m-%d %H:%M:%S')
+
+        def _topic(title: str, children: Optional[list] = None,
+                   href: Optional[str] = None) -> str:
+            tid = _uuid.uuid4().hex
+            href_attr = f' xlink:href="{_html_escape(href)}"' if href else ''
+            inner = f'<title>{_html_escape(title)}</title>'
+            if children:
+                kids = ''.join(children)
+                inner += f'<children><topics type="attached">{kids}</topics></children>'
+            return f'<topic id="{tid}"{href_attr}>{inner}</topic>'
+
+        if isinstance(data, dict) and '_error' in data:
+            sub_topics = [_topic(f'{t("report.error")}: {data["_error"]}')]
+        elif cmd == 'username' and isinstance(data, dict):
+            sub_topics = []
+            plat = _platform_only(data)
+            for cat in CATEGORY_ORDER:
+                cat_pl = [p for p in _get_platforms() if p.category == cat and p.name in plat]
+                cat_found = [(p, plat[p.name]) for p in cat_pl if plat[p.name]]
+                if not cat_found:
+                    continue
+                cat_kids = [_topic(p.name, href=url) for p, url in cat_found]
+                sub_topics.append(_topic(
+                    f'{t(f"cat.{cat}")} ({len(cat_found)}/{len(cat_pl)})', cat_kids
+                ))
+        elif cmd == 'permute' and _is_permute_only(data):
+            # v1.2.1 P1-2：仅变形列表
+            sub_topics = [
+                _topic(v) for v in data.get('permutations', [])
+            ]
+        elif cmd == 'permute' and _is_permute_scan(data):
+            # v1.2.1 P1-2：每个变形一棵子树
+            sub_topics = []
+            for var, scan in data.items():
+                if not isinstance(scan, dict):
+                    continue
+                if '_error' in scan:
+                    sub_topics.append(_topic(f'{var}: {t("report.error")} {scan["_error"]}'))
+                    continue
+                plat = _platform_only(scan)
+                p_kids = [_topic(p_name, href=url) for p_name, url in plat.items() if url]
+                found = len(p_kids)
+                sub_topics.append(_topic(f'{var} ({found} hits)', p_kids))
+        elif cmd == 'mx' and isinstance(data, dict) and 'records' in data:
+            # MX 专用（v1.2.1 P0-3 修复）
+            domain_lbl = data.get('domain', query)
+            mx_kids = [
+                _topic(f'{t("report.priority")} {r.get("preference", "")} → {r.get("exchange", "")}')
+                for r in data['records']
+            ]
+            sub_topics = [_topic(f'{t("report.mx_records")} {domain_lbl}', mx_kids)]
+        elif isinstance(data, dict):
+            sub_topics = []
+            items = data.items() if cmd != 'username' else _platform_only(data).items()
+            for k, v in items:
+                if v is None or v == '':
+                    continue
+                if isinstance(v, dict):
+                    v_str = ', '.join(f'{kk}={vv}' for kk, vv in v.items()
+                                      if not isinstance(vv, (dict, list)))
+                elif isinstance(v, (list, tuple)):
+                    v_str = ', '.join(str(x) for x in v)
+                else:
+                    v_str = str(v)
+                sub_topics.append(_topic(f'{k}: {v_str}'))
+        else:
+            sub_topics = [_topic(json.dumps(data, ensure_ascii=False, default=str))]
+
+        root_id = _uuid.uuid4().hex
+        kids_xml = ''.join(sub_topics)
+        children_xml = (f'<children><topics type="attached">{kids_xml}</topics></children>'
+                       if sub_topics else '')
+
+        content_xml = (
+            '<?xml version="1.0" encoding="UTF-8" standalone="no"?>\n'
+            '<xmap-content xmlns="urn:xmind:xmap:xmlns:content:2.0" '
+            'xmlns:xlink="http://www.w3.org/1999/xlink" '
+            f'version="2.0" timestamp="{int(time.time() * 1000)}">'
+            '<sheet id="sheet1">'
+            f'<title>{_html_escape(t("report.title"))}</title>'
+            f'<topic id="{root_id}">'
+            f'<title>{_html_escape(cmd)}: {_html_escape(query)} ({_html_escape(ts)})</title>'
+            f'{children_xml}'
+            '</topic>'
+            '</sheet>'
+            '</xmap-content>'
+        )
+        manifest_xml = (
+            '<?xml version="1.0" encoding="UTF-8" standalone="no"?>\n'
+            '<manifest xmlns="urn:xmind:xmap:xmlns:manifest:1.0">'
+            '<file-entry full-path="content.xml" media-type="text/xml"/>'
+            '<file-entry full-path="META-INF/manifest.xml" media-type="text/xml"/>'
+            '</manifest>'
+        )
+        meta_xml = (
+            '<?xml version="1.0" encoding="UTF-8" standalone="no"?>\n'
+            '<meta xmlns="urn:xmind:xmap:xmlns:meta:2.0">'
+            '<Creator><Name>SpyEyes</Name></Creator>'
+            '</meta>'
+        )
+
+        with _zipfile.ZipFile(out_path, 'w', _zipfile.ZIP_DEFLATED) as zf:
+            # v1.2.1 P2-11：XMind 8 spec 推荐 mimetype 作为第一个 zip 条目（uncompressed），
+            # 类似 EPUB；提升与不同 XMind 版本的兼容性
+            mimetype_info = _zipfile.ZipInfo('mimetype')
+            mimetype_info.compress_type = _zipfile.ZIP_STORED
+            zf.writestr(mimetype_info, 'application/vnd.xmind.workbook')
+            zf.writestr('content.xml', content_xml)
+            zf.writestr('meta.xml', meta_xml)
+            zf.writestr('META-INF/manifest.xml', manifest_xml)
+        return None
+    except Exception as e:
+        return f'XMind generation failed: {e}'
+
+
+def _to_graph_html(prefix: str, data: Any) -> str:
+    """D3.js force-directed 图（独立 HTML，D3 from CDN）。
+    仅用户名扫描有意义；其它命令 fallback 为简单 HTML。
+
+    安全：
+    - 用户输入字段 _html_escape 防 XSS
+    - JSON 嵌入 <script> 时把 `</` 转义为 `<\\/` 防 </script> 注入
+    """
+    cmd, _, query = prefix.partition('_')
+    query_safe = _html_escape(query)
+    ts = time.strftime('%Y-%m-%d %H:%M:%S')
+
+    # username 扫描：构建节点 / 链接
+    nodes: list = [{'id': query, 'group': 1, 'name': query, 'url': ''}]
+    links: list = []
+    cat_lookup = {p.name: p.category for p in _get_platforms()}
+    if cmd == 'username' and isinstance(data, dict) and '_error' not in data:
+        plat = _platform_only(data)
+        for p_name, url in plat.items():
+            if not url:
+                continue
+            nodes.append({
+                'id': f'p_{p_name}',
+                'group': 2,
+                'name': p_name,
+                'url': url,
+                'category': cat_lookup.get(p_name, 'other'),
+            })
+            links.append({'source': query, 'target': f'p_{p_name}', 'value': 1})
+    elif cmd == 'permute' and _is_permute_scan(data):
+        # v1.2.1 P1-2: 多中心图 —— 每个变形一个 group=1 节点，命中平台为 group=2 子节点
+        # 重置 nodes：原始 query 不参与（用户通常想看每个 variation 的命中分布）
+        nodes = []
+        for var, scan in data.items():
+            if not isinstance(scan, dict) or '_error' in scan:
+                continue
+            nodes.append({'id': var, 'group': 1, 'name': var, 'url': ''})
+            plat = _platform_only(scan)
+            for p_name, url in plat.items():
+                if not url:
+                    continue
+                node_id = f'{var}__p_{p_name}'  # 防 var 之间平台重名冲突
+                nodes.append({
+                    'id': node_id, 'group': 2, 'name': p_name, 'url': url,
+                    'category': cat_lookup.get(p_name, 'other'),
+                })
+                links.append({'source': var, 'target': node_id, 'value': 1})
+    elif isinstance(data, dict) and '_error' in data:
+        # 非 username 命令也允许导出 graph，仅展示 query 单节点 + 错误提示
+        nodes.append({'id': 'err', 'group': 3, 'name': data['_error'], 'url': ''})
+        links.append({'source': query, 'target': 'err', 'value': 1})
+
+    # </script> 注入防护：把 </ 转义
+    nodes_json = json.dumps(nodes, ensure_ascii=False).replace('</', '<\\/')
+    links_json = json.dumps(links, ensure_ascii=False).replace('</', '<\\/')
+
+    # 节点数越多需要越大的力 + 越大的画布；自适应避免被 viewport 裁剪
+    node_count = len(nodes)
+    initial_radius = max(400, int(20 * (node_count ** 0.5)))
+    html_lang = 'zh' if get_lang() == 'zh' else 'en'
+    graph_title = _html_escape(t('report.graph_title'))
+    graph_help_safe = _html_escape(t('report.graph_help'))
+    found_n_safe = _html_escape(t('report.graph_found', n=len(nodes) - 1))
+    legend_q = _html_escape(t('report.legend_query'))
+    legend_h = _html_escape(t('report.legend_hit'))
+    legend_o = _html_escape(t('report.legend_other'))
+    gen_label = _html_escape(t('report.generated'))
+    return f'''<!DOCTYPE html>
+<html lang="{html_lang}">
+<head>
+<meta charset="utf-8">
+<title>{graph_title} — {query_safe}</title>
+<script src="https://d3js.org/d3.v7.min.js"></script>
+<style>
+html, body {{ height: 100%; margin: 0; }}
+body {{ background: #fafafa; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif;
+  display: flex; flex-direction: column; overflow: hidden; }}
+.header {{ padding: 1em 2em; background: #fff; border-bottom: 1px solid #ddd; flex-shrink: 0; }}
+.header h2 {{ margin: 0; color: #0066cc; }}
+.header p {{ color: #666; margin: .3em 0 0; }}
+.legend {{ display: flex; gap: 1em; margin-top: .5em; font-size: .85em; color: #666; flex-wrap: wrap; }}
+.legend span {{ display: flex; align-items: center; gap: .3em; }}
+.legend i {{ display: inline-block; width: 12px; height: 12px; border-radius: 50%; }}
+.legend kbd {{ background: #f0f0f0; border: 1px solid #ccc; border-radius: 3px; padding: 1px 5px; font-size: .85em; }}
+.node circle {{ stroke: #fff; stroke-width: 1.5px; }}
+.node text {{ font-size: 11px; pointer-events: none; fill: #333;
+  paint-order: stroke; stroke: rgba(255,255,255,0.85); stroke-width: 3px; }}
+.link {{ stroke: #999; stroke-opacity: 0.35; }}
+svg {{ flex: 1 1 auto; width: 100%; cursor: grab; display: block; background: #fafafa; }}
+svg:active {{ cursor: grabbing; }}
+</style>
+</head>
+<body>
+<div class="header">
+  <h2>🔍 {graph_title}: {query_safe}</h2>
+  <p>{gen_label}: {ts} · {found_n_safe} · {graph_help_safe}</p>
+  <div class="legend">
+    <span><i style="background:#e74c3c"></i> {legend_q}</span>
+    <span><i style="background:#3498db"></i> {legend_h}</span>
+    <span><i style="background:#95a5a6"></i> {legend_o}</span>
+  </div>
+</div>
+<svg></svg>
+<script>
+const nodes = {nodes_json};
+const links = {links_json};
+const colors = {{1:'#e74c3c', 2:'#3498db', 3:'#95a5a6'}};
+const initialRadius = {initial_radius};
+
+const svg = d3.select('svg');
+const container = svg.node();
+
+// Pan/zoom 容器
+const root = svg.append('g').attr('class', 'root');
+
+// 力模拟：节点越多 charge 越强，避免堆在中心被边缘节点遮挡
+const simulation = d3.forceSimulation(nodes)
+  .force('link', d3.forceLink(links).id(d => d.id).distance(d => d.target.group === 1 ? 100 : 90))
+  .force('charge', d3.forceManyBody().strength(-300 - Math.min(nodes.length, 800)))
+  .force('center', d3.forceCenter(0, 0))
+  .force('collide', d3.forceCollide().radius(d => d.group === 1 ? 30 : 18))
+  .force('radial', d3.forceRadial(d => d.group === 1 ? 0 : initialRadius, 0, 0).strength(0.05));
+
+const link = root.append('g').attr('class', 'links').selectAll('line').data(links).join('line').attr('class', 'link');
+const node = root.append('g').attr('class', 'nodes').selectAll('g').data(nodes).join('g').attr('class', 'node')
+  .call(d3.drag()
+    .on('start', e => {{ if (!e.active) simulation.alphaTarget(0.3).restart(); e.subject.fx = e.subject.x; e.subject.fy = e.subject.y; }})
+    .on('drag', e => {{ e.subject.fx = e.x; e.subject.fy = e.y; }})
+    .on('end', e => {{ if (!e.active) simulation.alphaTarget(0); e.subject.fx = null; e.subject.fy = null; }}));
+node.append('circle').attr('r', d => d.group === 1 ? 13 : 7).attr('fill', d => colors[d.group] || '#bbb');
+node.append('text').attr('dx', 11).attr('dy', 4).text(d => d.name);
+node.filter(d => d.url).append('title').text(d => d.url);
+node.filter(d => d.url).style('cursor', 'pointer').on('click', (e, d) => {{
+  if (e.defaultPrevented) return;  // 拖拽时不触发点击
+  window.open(d.url, '_blank', 'noopener');
+}});
+
+simulation.on('tick', () => {{
+  link.attr('x1', d => d.source.x).attr('y1', d => d.source.y).attr('x2', d => d.target.x).attr('y2', d => d.target.y);
+  node.attr('transform', d => `translate(${{d.x}},${{d.y}})`);
+}});
+
+// d3.zoom：滚轮缩放 + 拖拽空白处平移；scale 0.1-8 防过度缩放
+const zoom = d3.zoom()
+  .scaleExtent([0.05, 8])
+  .on('zoom', e => root.attr('transform', e.transform));
+svg.call(zoom);
+
+// 自适应：模拟稳定后或按 F 键，把整个图缩放/平移到完全可见
+function fitToView() {{
+  const bbox = root.node().getBBox();
+  if (!bbox.width || !bbox.height) return;
+  const padding = 60;
+  const w = container.clientWidth || window.innerWidth;
+  const h = container.clientHeight || (window.innerHeight - 140);
+  const scale = Math.min(
+    (w - padding * 2) / bbox.width,
+    (h - padding * 2) / bbox.height,
+    1.5
+  );
+  const tx = w / 2 - (bbox.x + bbox.width / 2) * scale;
+  const ty = h / 2 - (bbox.y + bbox.height / 2) * scale;
+  svg.transition().duration(700).call(
+    zoom.transform,
+    d3.zoomIdentity.translate(tx, ty).scale(scale)
+  );
+}}
+
+// 第一次稳定后自动 fit
+let fitted = false;
+simulation.on('end', () => {{ if (!fitted) {{ fitted = true; fitToView(); }} }});
+// 兜底：3 秒后无论稳定与否都 fit 一次（节点多时模拟可能跑很久）
+setTimeout(() => {{ if (!fitted) {{ fitted = true; fitToView(); }} }}, 3000);
+
+// F 键随时重新 fit；R 键重置缩放
+window.addEventListener('keydown', e => {{
+  if (e.key === 'f' || e.key === 'F') fitToView();
+  if (e.key === 'r' || e.key === 'R') svg.transition().duration(500).call(zoom.transform, d3.zoomIdentity);
+}});
+
+// 窗口 resize 自适应
+window.addEventListener('resize', () => fitToView());
+</script>
+</body>
+</html>
+'''
+
+
+_DEFAULT_REPORT_DIR_CACHE: Optional[str] = None
+
+
+def _default_report_dir() -> str:
+    """v1.2.0：默认报告保存目录（~/Downloads，跨平台）。
+    fallback 顺序：~/Downloads → ~/Download → ~/spyeyes-reports（自动创建） → cwd
+    v1.2.1 P2-3：模块级缓存，多格式连续保存循环里不重复 stat。"""
+    global _DEFAULT_REPORT_DIR_CACHE
+    if _DEFAULT_REPORT_DIR_CACHE is not None:
+        return _DEFAULT_REPORT_DIR_CACHE
+    candidates = [
+        os.path.expanduser('~/Downloads'),  # macOS / Linux / Windows 标准
+        os.path.expanduser('~/Download'),   # 部分 Linux 发行版
+    ]
+    for d in candidates:
+        if os.path.isdir(d):
+            _DEFAULT_REPORT_DIR_CACHE = d
+            return d
+    fallback = os.path.expanduser('~/spyeyes-reports')
+    try:
+        os.makedirs(fallback, exist_ok=True)
+        _DEFAULT_REPORT_DIR_CACHE = fallback
+        return fallback
+    except OSError:
+        cwd = os.getcwd()
+        _DEFAULT_REPORT_DIR_CACHE = cwd
+        return cwd
 
 
 def menu_loop(save_dir: Optional[str] = None) -> None:
@@ -2692,9 +3771,10 @@ def build_parser() -> argparse.ArgumentParser:
   python3 -m spyeyes ip 8.8.8.8                   # IP lookup
   python3 -m spyeyes myip --lang en               # English JSON
   python3 -m spyeyes phone +12025550100           # Phone parse
-  python3 -m spyeyes user torvalds                # Username scan (3164 platforms)
+  python3 -m spyeyes user torvalds                # Username scan (3164 platforms, 150 workers)
   python3 -m spyeyes user torvalds --recursive    # v1.1.0: recursive scan
-  python3 -m spyeyes permute "John Doe"           # v1.1.0: generate variations
+  python3 -m spyeyes permute "John Doe"           # v1.1.0: generate variations (strict)
+  python3 -m spyeyes permute "John Doe" --method all  # v1.2.0: Maigret-style with _prefix/suffix_
   python3 -m spyeyes permute "John Doe" --scan    # v1.1.0: gen + scan all
   python3 -m spyeyes whois example.com            # WHOIS
   python3 -m spyeyes mx gmail.com                 # MX records
@@ -2703,6 +3783,11 @@ def build_parser() -> argparse.ArgumentParser:
   python3 -m spyeyes ip 8.8.8.8 --save out/       # Save to dir (auto JSON)
   python3 -m spyeyes user torvalds --save r.pdf   # v1.1.0: PDF report (needs spyeyes[pdf])
   python3 -m spyeyes user torvalds --save r.md    # Markdown report
+  python3 -m spyeyes user torvalds --save r.html  # v1.2.0: HTML report (styled tables)
+  python3 -m spyeyes user torvalds --save r.txt   # v1.2.0: plain text report
+  python3 -m spyeyes user torvalds --save r.csv   # v1.2.0: CSV (excel-safe, injection-protected)
+  python3 -m spyeyes user torvalds --save r.xmind # v1.2.0: XMind 8 mind-map (no extra deps)
+  python3 -m spyeyes user torvalds --save r.graph.html  # v1.2.0: D3.js force-directed graph
 """,
     )
 
@@ -2719,8 +3804,8 @@ def build_parser() -> argparse.ArgumentParser:
 
     sp = sub.add_parser('user', parents=[common], help='Scan username / 用户名扫描')
     sp.add_argument('username')
-    sp.add_argument('--workers', type=_positive_int, default=100,
-                    help='Concurrent threads / 并发线程数 (default: 100, max 200)')
+    sp.add_argument('--workers', type=_positive_int, default=150,
+                    help='Concurrent threads / 并发线程数 (default: 150, max 200)')
     sp.add_argument('--timeout', type=float, default=5.0,
                     help='HTTP timeout per platform in seconds / 单平台超时秒数 (default: 5)')
     sp.add_argument('--all', action='store_true', dest='show_all',
@@ -2738,10 +3823,13 @@ def build_parser() -> argparse.ArgumentParser:
     sp = sub.add_parser('permute', parents=[common],
                         help='Generate username permutations / 生成用户名变形 (v1.1.0)')
     sp.add_argument('name', help='Name or text to permute (e.g. "John Doe")')
+    sp.add_argument('--method', choices=['strict', 'all'], default='strict',
+                    help='Permutation method: strict (default, multi-part perms) '
+                         "or 'all' (also adds _prefix / suffix_ variants) — Maigret-style")
     sp.add_argument('--scan', action='store_true',
                     help='Also scan each permutation across platforms (slow!)')
-    sp.add_argument('--workers', type=_positive_int, default=100,
-                    help='Concurrent threads if --scan (default: 100)')
+    sp.add_argument('--workers', type=_positive_int, default=150,
+                    help='Concurrent threads if --scan (default: 150)')
     sp.add_argument('--quick', action='store_true',
                     help='If --scan: quick mode (skip "other" long-tail)')
 
@@ -2779,7 +3867,9 @@ def run_cli(args: argparse.Namespace) -> int:
         # 失败时显式 _error 让 run_cli 末尾返回 exit 1（之前 data={'ip': None}
         # 让 '_error' not in data 为 True → exit 0 → shell 脚本误判成功）
         data = {'ip': ip} if ip else {'ip': None, '_error': t('err.network')}
-        save_prefix = 'my_ip'
+        # 'myip' (无下划线) 而非 'my_ip' —— 避免报告生成器 partition('_') 误切成
+        # cmd='my', query='ip' 输出 "MY 信息: ip"（v1.2.1 P0-4 修复）
+        save_prefix = 'myip'
         if args.json:
             _emit_json(data)
         else:
@@ -2824,7 +3914,8 @@ def run_cli(args: argparse.Namespace) -> int:
                 _print_recursive_summary(data['_recursive'])
             print_username_results(data, show_all=getattr(args, 'show_all', False))
     elif cmd == 'permute':
-        names = permute_username(args.name)
+        method = getattr(args, 'method', 'strict')
+        names = permute_username(args.name, method=method)
         if not names:
             data = {'_error': t('err.permute_empty')}
             save_prefix = f'permute_{args.name}'
