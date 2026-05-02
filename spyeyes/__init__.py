@@ -182,6 +182,7 @@ TRANSLATIONS: dict = {
         'menu.whois':           'Domain WHOIS Lookup',
         'menu.mx':              'Domain MX Records',
         'menu.email':           'Email Validator',
+        'menu.permute':         'Username Permutations (v1.1.0)',
         'menu.lang':            'Language / 语言',
         'menu.exit':            'Exit',
         # Prompts
@@ -341,6 +342,12 @@ TRANSLATIONS: dict = {
         'msg.recursive_done':   'Recursive scan finished. Total: {total} platforms across {depths} levels.',
         'err.no_pdf':           'PDF requires reportlab: pip install "spyeyes[pdf]"',
         'err.pdf_failed':       'PDF generation failed: {e}',
+        # Interactive menu prompts (v1.1.0)
+        'prompt.permute_input': 'Enter name to permute (e.g. "John Doe") : ',
+        'prompt.permute_scan':  'Also scan each variation across platforms? [y/N] : ',
+        'prompt.recursive':     'Recursive scan (extract sub-usernames from hits)? [y/N] : ',
+        'prompt.recursive_depth':'Recursive depth [1-2, default 2] : ',
+        'prompt.save_as':       'Save report to file? (e.g. report.pdf / .md / .json — Enter to skip): ',
     },
     'zh': {
         'menu.ip_track':        'IP 追踪',
@@ -350,6 +357,7 @@ TRANSLATIONS: dict = {
         'menu.whois':           '域名 WHOIS 查询',
         'menu.mx':              '域名 MX 记录',
         'menu.email':           '邮箱有效性检查',
+        'menu.permute':         '用户名变形 (v1.1.0)',
         'menu.lang':            '切换语言 / Language',
         'menu.exit':            '退出',
         'prompt.select_option': '请选择功能 : ',
@@ -498,6 +506,12 @@ TRANSLATIONS: dict = {
         'msg.recursive_done':   '递归扫描结束。共 {total} 个平台，{depths} 层。',
         'err.no_pdf':           'PDF 输出需要 reportlab：pip install "spyeyes[pdf]"',
         'err.pdf_failed':       'PDF 生成失败：{e}',
+        # 交互菜单提示 (v1.1.0)
+        'prompt.permute_input': '请输入要变形的名字（如 "张 三" / "John Doe"）: ',
+        'prompt.permute_scan':  '是否同时扫描每个变形？[y/N] : ',
+        'prompt.recursive':     '是否递归扫描（从命中页面提取次级用户名）？[y/N] : ',
+        'prompt.recursive_depth':'递归深度 [1-2，默认 2] : ',
+        'prompt.save_as':       '保存报告到文件？（如 report.pdf / .md / .json，回车跳过）: ',
     },
 }
 
@@ -2180,7 +2194,8 @@ MENU_KEYS = [
     (5, 'menu.whois'),
     (6, 'menu.mx'),
     (7, 'menu.email'),
-    (8, 'menu.lang'),
+    (8, 'menu.permute'),  # v1.1.0
+    (9, 'menu.lang'),
     (0, 'menu.exit'),
 ]
 
@@ -2192,21 +2207,40 @@ def show_menu() -> None:
         print(f"{Color.Wh}[ {num} ] {Color.Gr}{t(key)}{Color.Reset}")
 
 
+def _interactive_save_prompt(prefix: str, data: Any, save_dir: Optional[str]) -> None:
+    """交互模式下统一的"保存报告"询问（v1.1.0）。
+    - 若用户启动时传了 --save DIR，仍用旧逻辑（保存到目录），不打扰交互
+    - 否则问一次："保存到 ... ？"，回车跳过；接受 .pdf / .md / .json
+    安全：拒绝 path traversal（'..' / 绝对路径以外的奇怪输入），过滤 stdin EOF。
+    """
+    if save_dir:
+        # CLI 已指定 --save DIR：沿用原有目录归档逻辑，不再问
+        _maybe_save(save_dir, prefix, data)
+        return
+    try:
+        target = input(f"\n {Color.Wh}{t('prompt.save_as')}{Color.Gr}").strip()
+    except EOFError:
+        return
+    if not target:
+        return
+    _maybe_save(target, prefix, data)
+
+
 def handle_choice(choice: int, save_dir: Optional[str] = None) -> None:
     if choice == 1:
         ip = input(f"{Color.Wh}\n {t('prompt.input_ip')}{Color.Gr}").strip()
         data = track_ip(ip)
         print_ip_info(ip, data)
-        _maybe_save(save_dir, f'ip_{ip}', data)
+        _interactive_save_prompt(f'ip_{ip}', data, save_dir)
     elif choice == 2:
         my = show_my_ip()
         print_my_ip(my)
-        _maybe_save(save_dir, 'my_ip', {'ip': my})
+        _interactive_save_prompt('my_ip', {'ip': my}, save_dir)
     elif choice == 3:
         num = input(f"\n {Color.Wh}{t('prompt.input_phone')}{Color.Gr}").strip()
         data = track_phone(num)
         print_phone_info(data)
-        _maybe_save(save_dir, f'phone_{num}', data)
+        _interactive_save_prompt(f'phone_{num}', data, save_dir)
     elif choice == 4:
         name = input(f"\n {Color.Wh}{t('prompt.input_username')}{Color.Gr}").strip()
         if not name:
@@ -2214,25 +2248,79 @@ def handle_choice(choice: int, save_dir: Optional[str] = None) -> None:
             return
         # 选扫描模式
         cats = _ask_scan_mode()
-        results = track_username(name, categories=cats)
-        print_username_results(results)
-        _maybe_save(save_dir, f'username_{name}', results)
+        # v1.1.0: 询问是否递归扫描
+        try:
+            recurse_ans = input(f"\n {Color.Wh}{t('prompt.recursive')}{Color.Gr}").strip().lower()
+        except EOFError:
+            recurse_ans = ''
+        if recurse_ans in ('y', 'yes'):
+            try:
+                depth_str = input(f" {Color.Wh}{t('prompt.recursive_depth')}{Color.Gr}").strip()
+            except EOFError:
+                depth_str = ''
+            try:
+                depth = int(depth_str) if depth_str else 2
+            except ValueError:
+                depth = 2
+            depth = max(0, min(depth, RECURSIVE_MAX_DEPTH))
+            results = recursive_track_username(name, max_depth=depth, categories=cats)
+            if isinstance(results, dict) and '_recursive' in results:
+                _print_recursive_summary(results['_recursive'])
+            print_username_results(results)
+        else:
+            results = track_username(name, categories=cats)
+            print_username_results(results)
+        _interactive_save_prompt(f'username_{name}', results, save_dir)
     elif choice == 5:
         domain = input(f"\n {Color.Wh}{t('prompt.input_domain')}{Color.Gr}").strip()
         data = whois_lookup(domain)
         print_whois(data)
-        _maybe_save(save_dir, f'whois_{domain}', data)
+        _interactive_save_prompt(f'whois_{domain}', data, save_dir)
     elif choice == 6:
         domain = input(f"\n {Color.Wh}{t('prompt.input_domain')}{Color.Gr}").strip()
         data = mx_lookup(domain)
         print_mx(data)
-        _maybe_save(save_dir, f'mx_{domain}', data)
+        _interactive_save_prompt(f'mx_{domain}', data, save_dir)
     elif choice == 7:
         addr = input(f"\n {Color.Wh}{t('prompt.input_email')}{Color.Gr}").strip()
         result = email_validate(addr)
         print_email(result)
-        _maybe_save(save_dir, f'email_{addr}', result)
+        _interactive_save_prompt(f'email_{addr}', result, save_dir)
     elif choice == 8:
+        # v1.1.0: 用户名变形（permute）
+        try:
+            name = input(f"\n {Color.Wh}{t('prompt.permute_input')}{Color.Gr}").strip()
+        except EOFError:
+            return
+        if not name:
+            print(f" {Color.Re}{t('err.permute_empty')}{Color.Reset}")
+            return
+        variations = permute_username(name)
+        if not variations:
+            print(f" {Color.Re}{t('err.permute_empty')}{Color.Reset}")
+            return
+        print(f"\n {Color.Cy}{t('permute.generated', name=name, n=len(variations))}{Color.Reset}\n")
+        for v in variations:
+            print(f"  {Color.Gr}•{Color.Reset} {v}")
+        # 询问是否扫描
+        try:
+            scan_ans = input(f"\n {Color.Wh}{t('prompt.permute_scan')}{Color.Gr}").strip().lower()
+        except EOFError:
+            scan_ans = ''
+        if scan_ans in ('y', 'yes'):
+            cats = _ask_scan_mode()
+            scan_results: dict = {}
+            for v in variations:
+                print(f"\n {Color.Bl}━━━ {v} ━━━{Color.Reset}")
+                r = track_username(v, categories=cats)
+                scan_results[v] = r
+                print_username_results(r, show_all=False)
+            _interactive_save_prompt(f'permute_{name}', scan_results, save_dir)
+        else:
+            _interactive_save_prompt(f'permute_{name}',
+                                     {'name': name, 'permutations': variations},
+                                     save_dir)
+    elif choice == 9:
         switch_language_menu()
     elif choice == 0:
         print(f"\n {Color.Gr}{t('prompt.bye')}{Color.Reset}")
