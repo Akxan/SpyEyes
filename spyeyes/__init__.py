@@ -66,7 +66,7 @@ except ImportError:
 
 
 # 语义化版本号 —— 同步更新 docs/CHANGELOG.md 与 git tag
-__version__ = '1.4.0'
+__version__ = '1.4.1'
 
 
 # ====================================================================
@@ -4042,15 +4042,25 @@ def _to_markdown(prefix: str, data: Any) -> str:
     cmd = _md_escape(cmd) or '?'
     query = _md_escape(query)
     ts = time.strftime('%Y-%m-%d %H:%M:%S')
-    lines.append(f"# 🔍 {t('report.title')}")
-    lines.append("")
-    lines.append(f"- **{t('report.command')}**: `{cmd}`")
-    lines.append(f"- **{t('report.query')}**: `{query}`")
-    lines.append(f"- **{t('report.generated')}**: {ts}")
-    lines.append(f"- **{t('report.tool')}**: [SpyEyes](https://github.com/Akxan/SpyEyes)")
-    lines.append("")
-    lines.append("---")
-    lines.append("")
+    classification = '机密 · OSINT 简报' if get_lang() == 'zh' else 'Confidential · OSINT Brief'
+    # v1.4.1:YAML frontmatter(支持 Jekyll/Hugo/Obsidian 元数据)+ 引文式 quote 头
+    lines.append('---')
+    lines.append(f'title: "{t("report.title")} — {query}"')
+    lines.append(f'command: {cmd}')
+    lines.append(f'query: "{query}"')
+    lines.append(f'generated: {ts}')
+    lines.append('tool: SpyEyes')
+    lines.append('classification: confidential')
+    lines.append('---')
+    lines.append('')
+    lines.append(f"# {t('report.title')}")
+    lines.append('')
+    lines.append(f"> _{classification}_")
+    lines.append('')
+    lines.append(f"| {t('report.command')} | {t('report.query')} | {t('report.generated')} |")
+    lines.append("|---|---|---|")
+    lines.append(f"| `{cmd}` | `{query}` | {ts} |")
+    lines.append('')
 
     if isinstance(data, dict) and '_error' in data:
         # _error 也要 escape：whois/dns 后端返回的异常 message 可能含换行注入伪标题
@@ -4655,34 +4665,123 @@ def _to_html(prefix: str, data: Any) -> str:
     html_lang = 'zh' if get_lang() == 'zh' else 'en'
     title_safe = _html_escape(t('report.title'))
 
+    # v1.4.1:Editorial Investigation Brief 风格 — 调查档案/报刊调性
+    # 字体三件套:Cormorant Garamond (display) + Crimson Pro (body) + JetBrains Mono (data)
+    # CJK fallback:Noto Serif SC + Sarasa Mono SC
+    # 配色:cream + ink + 印章红 + 古典蓝 — 不用 purple gradient / 卡片阴影 / 圆角
     parts = [
         '<!DOCTYPE html>',
         f'<html lang="{html_lang}">',
         '<head>',
         '<meta charset="utf-8">',
+        '<meta name="viewport" content="width=device-width, initial-scale=1">',
         f'<title>{title_safe} — {query_safe}</title>',
+        '<link rel="preconnect" href="https://fonts.googleapis.com">',
+        '<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>',
+        '<link href="https://fonts.googleapis.com/css2?'
+        'family=Cormorant+Garamond:wght@400;500;600;700&'
+        'family=Crimson+Pro:ital,wght@0,400;0,500;0,600;1,400&'
+        'family=JetBrains+Mono:wght@400;500;700&'
+        'family=Noto+Serif+SC:wght@400;500;700&display=swap" rel="stylesheet">',
         '<style>',
-        'body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Helvetica,Arial,sans-serif;'
-        'max-width:960px;margin:2em auto;padding:1em;color:#222;background:#fafafa}',
-        'h1{border-bottom:3px solid #0066cc;padding-bottom:.3em}',
-        'h2{color:#0066cc;margin-top:1.5em}',
-        'h3.cat{color:#0a8c4a;margin-top:1.2em;padding-left:.5em;border-left:4px solid #0a8c4a}',
-        'table{border-collapse:collapse;width:100%;margin:.7em 0;background:#fff}',
-        'th,td{border:1px solid #ddd;padding:8px 12px;text-align:left;vertical-align:top}',
-        'th{background:#f4f4f4;font-weight:600}',
-        'tr:nth-child(even){background:#fafafa}',
-        '.error{color:#c00;background:#fee;padding:1em;border-radius:4px;border:1px solid #fcc}',
-        'a{color:#0066cc;text-decoration:none}',
-        'a:hover{text-decoration:underline}',
-        'code{background:#f4f4f4;padding:1px 5px;border-radius:3px;font-family:SFMono-Regular,Menlo,monospace}',
-        '.meta{color:#666;font-size:0.9em}',
+        ':root{',
+        '--bg:#fafaf5;--surface:#fff;--ink:#0a0a0c;--rule:#0a0a0c;',
+        '--muted:#6b6657;--soft:#e8e3d6;--row-alt:#f4f0e6;',
+        '--accent:#c8102e;--link:#1d4ed8;--success:#1f5837;--warn:#a06800;',
+        '--serif:"Cormorant Garamond","Noto Serif SC",Georgia,"Songti SC",serif;',
+        '--body:"Crimson Pro","Noto Serif SC",Georgia,"Songti SC",serif;',
+        '--mono:"JetBrains Mono","Sarasa Mono SC",ui-monospace,Menlo,monospace;',
+        '}',
+        '*{box-sizing:border-box}',
+        'html,body{margin:0;padding:0}',
+        'body{background:var(--bg);color:var(--ink);font-family:var(--body);'
+        'font-size:17px;line-height:1.7;max-width:920px;margin:3em auto;'
+        'padding:0 3em 4em;letter-spacing:0.005em;'
+        '-webkit-font-smoothing:antialiased;text-rendering:optimizeLegibility}',
+        '@media(max-width:720px){body{padding:0 1.5em 3em;font-size:15px}}',
+        # Masthead 报刊头
+        '.masthead{border-top:5px double var(--ink);border-bottom:5px double var(--ink);'
+        'padding:1.6em 0 1.4em;margin-bottom:2.5em;text-align:center;position:relative}',
+        '.stamp{display:inline-block;border:1.5px solid var(--accent);color:var(--accent);'
+        'font-family:var(--mono);font-size:0.65em;letter-spacing:0.28em;'
+        'text-transform:uppercase;padding:0.3em 0.9em;margin-bottom:0.8em;'
+        'font-weight:700;transform:rotate(-1.5deg)}',
+        '.masthead h1{font-family:var(--serif);font-weight:500;font-size:3.2em;'
+        'line-height:1.05;letter-spacing:-0.03em;margin:0.1em 0;color:var(--ink)}',
+        '.masthead .subtitle{font-family:var(--mono);font-size:0.7em;letter-spacing:0.35em;'
+        'text-transform:uppercase;color:var(--muted);margin-top:0.4em}',
+        # Meta strip
+        '.meta{font-family:var(--mono);font-size:0.78em;display:grid;'
+        'grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:1.5em;'
+        'padding:1em 0;border-bottom:1px solid var(--rule);margin-bottom:2em}',
+        '.meta-item{display:flex;flex-direction:column;gap:0.3em}',
+        '.meta-label{text-transform:uppercase;letter-spacing:0.18em;font-size:0.85em;'
+        'color:var(--muted);font-weight:500}',
+        '.meta-value{color:var(--ink);font-weight:700;word-break:break-all}',
+        # Section headings
+        'body{counter-reset:section}',
+        'h2{font-family:var(--serif);font-weight:500;font-size:2em;line-height:1.2;'
+        'margin:2.5em 0 0.8em;padding-bottom:0.4em;border-bottom:1px solid var(--rule);'
+        'display:flex;align-items:baseline;gap:0.6em;letter-spacing:-0.01em}',
+        'h2::before{content:counter(section,upper-roman);counter-increment:section;'
+        'font-family:var(--mono);font-size:0.45em;color:var(--muted);'
+        'letter-spacing:0.15em;font-weight:500;flex-shrink:0}',
+        'h2 code{background:transparent;padding:0;font-size:0.8em;color:var(--accent)}',
+        'h3,h3.cat{font-family:var(--serif);font-weight:600;font-size:1.3em;'
+        'margin:1.8em 0 0.7em;padding-left:0.7em;border-left:3px solid var(--accent);'
+        'color:var(--ink);letter-spacing:-0.005em}',
+        # Tables
+        'table{border-collapse:collapse;width:100%;margin:1em 0 1.5em;'
+        'font-family:var(--mono);font-size:0.85em;background:var(--surface);'
+        'border-top:1.5px solid var(--ink);border-bottom:1.5px solid var(--ink)}',
+        'thead tr{border-bottom:1px solid var(--ink)}',
+        'th{text-align:left;padding:0.85em 1em;font-family:var(--serif);'
+        'font-weight:700;font-size:0.95em;letter-spacing:0.02em;color:var(--ink);'
+        'background:var(--soft);border-bottom:1px solid var(--ink)}',
+        'td{padding:0.7em 1em;border-bottom:1px solid #e8e3d6;vertical-align:top;'
+        'word-break:break-word}',
+        'tr:nth-child(even) td{background:var(--row-alt)}',
+        'tr:hover td{background:var(--soft);transition:background 0.15s ease}',
+        # Links + code
+        'a{color:var(--link);text-decoration:underline;'
+        'text-decoration-thickness:0.5px;text-underline-offset:0.22em;'
+        'transition:text-decoration-thickness 0.15s ease}',
+        'a:hover{text-decoration-thickness:1.5px}',
+        'code{font-family:var(--mono);background:var(--soft);'
+        'padding:0.05em 0.45em;border-radius:1px;font-size:0.95em;'
+        'color:var(--ink)}',
+        # Status indicators
+        '.error{color:#7a0a0a;background:#fdf3f3;border-left:4px solid var(--accent);'
+        'padding:1em 1.4em;margin:1em 0;font-family:var(--body);font-style:italic}',
+        '.error b{font-style:normal;text-transform:uppercase;'
+        'letter-spacing:0.1em;font-size:0.85em;font-family:var(--mono)}',
+        '.summary{font-family:var(--serif);font-size:1.15em;font-style:italic;'
+        'color:var(--muted);margin:0.5em 0 1.5em;padding-left:1em;'
+        'border-left:2px solid var(--soft)}',
+        # Colophon footer
+        '.colophon{margin-top:5em;padding-top:1.5em;border-top:1px solid var(--rule);'
+        'font-family:var(--mono);font-size:0.7em;color:var(--muted);'
+        'letter-spacing:0.18em;text-transform:uppercase;text-align:center}',
+        '.colophon a{color:var(--muted);text-decoration:none}',
+        '.colophon a:hover{color:var(--ink)}',
+        # Print refinement
+        '@media print{body{max-width:none;margin:0;padding:1em;font-size:11pt}'
+        '.masthead,h2,h3{break-after:avoid}table{break-inside:avoid}}',
         '</style>',
         '</head><body>',
-        f'<h1>🔍 {title_safe}</h1>',
-        f'<p class="meta"><b>{_html_escape(t("report.command"))}:</b> <code>{cmd_safe}</code> · '
-        f'<b>{_html_escape(t("report.query"))}:</b> <code>{query_safe}</code> · '
-        f'<b>{_html_escape(t("report.generated"))}:</b> {ts}</p>',
-        '<hr>',
+        '<header class="masthead">',
+        f'<div class="stamp">{("机密 · OSINT 简报" if get_lang() == "zh" else "Confidential · OSINT Brief")}</div>',
+        f'<h1>{title_safe}</h1>',
+        f'<div class="subtitle">{("开源情报调查档案" if get_lang() == "zh" else "Open-Source Intelligence Dossier")}</div>',
+        '</header>',
+        '<div class="meta">',
+        f'<div class="meta-item"><span class="meta-label">{_html_escape(t("report.command"))}</span>'
+        f'<span class="meta-value">{cmd_safe}</span></div>',
+        f'<div class="meta-item"><span class="meta-label">{_html_escape(t("report.query"))}</span>'
+        f'<span class="meta-value">{query_safe}</span></div>',
+        f'<div class="meta-item"><span class="meta-label">{_html_escape(t("report.generated"))}</span>'
+        f'<span class="meta-value">{ts}</span></div>',
+        '</div>',
     ]
 
     if isinstance(data, dict) and '_error' in data:
@@ -4690,7 +4789,13 @@ def _to_html(prefix: str, data: Any) -> str:
             f'<div class="error">❌ <b>{_html_escape(t("report.error"))}:</b> '
             f'{_html_escape(data["_error"])}</div>'
         )
-        parts.extend(['</body>', '</html>'])
+        parts.extend([
+            '<footer class="colophon">',
+            'Generated by <a href="https://github.com/Akxan/SpyEyes" target="_blank" rel="noopener noreferrer">SpyEyes</a>',
+            ' · OSINT Toolkit',
+            '</footer>',
+            '</body>', '</html>'
+        ])
         return '\n'.join(parts)
 
     if cmd == 'username' and isinstance(data, dict):
@@ -4725,7 +4830,13 @@ def _to_html(prefix: str, data: Any) -> str:
                     f'<td><a href="{url_safe}" target="_blank" rel="noopener noreferrer">{url_safe}</a></td></tr>'
                 )
             parts.append('</tbody></table>')
-        parts.extend(['</body>', '</html>'])
+        parts.extend([
+            '<footer class="colophon">',
+            'Generated by <a href="https://github.com/Akxan/SpyEyes" target="_blank" rel="noopener noreferrer">SpyEyes</a>',
+            ' · OSINT Toolkit',
+            '</footer>',
+            '</body>', '</html>'
+        ])
         return '\n'.join(parts)
 
     # v1.2.1 P1-2: permute 仅生成变形 —— 列表
@@ -4736,7 +4847,13 @@ def _to_html(prefix: str, data: Any) -> str:
         for v in data.get('permutations', []):
             parts.append(f'<li><code>{_html_escape(v)}</code></li>')
         parts.append('</ul>')
-        parts.extend(['</body>', '</html>'])
+        parts.extend([
+            '<footer class="colophon">',
+            'Generated by <a href="https://github.com/Akxan/SpyEyes" target="_blank" rel="noopener noreferrer">SpyEyes</a>',
+            ' · OSINT Toolkit',
+            '</footer>',
+            '</body>', '</html>'
+        ])
         return '\n'.join(parts)
 
     # v1.2.1 P1-2: permute + 批量扫描 —— 每个变形一个子节
@@ -4771,7 +4888,13 @@ def _to_html(prefix: str, data: Any) -> str:
                         f'<td><a href="{url_safe}" target="_blank" rel="noopener noreferrer">{url_safe}</a></td></tr>'
                     )
             parts.append('</tbody></table>')
-        parts.extend(['</body>', '</html>'])
+        parts.extend([
+            '<footer class="colophon">',
+            'Generated by <a href="https://github.com/Akxan/SpyEyes" target="_blank" rel="noopener noreferrer">SpyEyes</a>',
+            ' · OSINT Toolkit',
+            '</footer>',
+            '</body>', '</html>'
+        ])
         return '\n'.join(parts)
 
     # v1.4.0: domain-emails HTML 报告
@@ -4811,7 +4934,13 @@ def _to_html(prefix: str, data: Any) -> str:
                     f'<td>{_html_escape(ver)}</td></tr>'
                 )
             parts.append('</tbody></table>')
-        parts.extend(['</body>', '</html>'])
+        parts.extend([
+            '<footer class="colophon">',
+            'Generated by <a href="https://github.com/Akxan/SpyEyes" target="_blank" rel="noopener noreferrer">SpyEyes</a>',
+            ' · OSINT Toolkit',
+            '</footer>',
+            '</body>', '</html>'
+        ])
         return '\n'.join(parts)
 
     # v1.3.0: subdomain 枚举 — 表格 host / IP / CNAME / status / title
@@ -4861,7 +4990,13 @@ def _to_html(prefix: str, data: Any) -> str:
                     f'<td>{_html_escape(title)}</td></tr>'
                 )
             parts.append('</tbody></table>')
-        parts.extend(['</body>', '</html>'])
+        parts.extend([
+            '<footer class="colophon">',
+            'Generated by <a href="https://github.com/Akxan/SpyEyes" target="_blank" rel="noopener noreferrer">SpyEyes</a>',
+            ' · OSINT Toolkit',
+            '</footer>',
+            '</body>', '</html>'
+        ])
         return '\n'.join(parts)
 
     # MX 专用：渲染优先级表（v1.2.1 P0-3 修复，之前会落到通用 dict 把 records list 压成 repr）
@@ -4883,7 +5018,13 @@ def _to_html(prefix: str, data: Any) -> str:
                 f'<td><code>{_html_escape(r.get("exchange", ""))}</code></td></tr>'
             )
         parts.append('</tbody></table>')
-        parts.extend(['</body>', '</html>'])
+        parts.extend([
+            '<footer class="colophon">',
+            'Generated by <a href="https://github.com/Akxan/SpyEyes" target="_blank" rel="noopener noreferrer">SpyEyes</a>',
+            ' · OSINT Toolkit',
+            '</footer>',
+            '</body>', '</html>'
+        ])
         return '\n'.join(parts)
 
     if isinstance(data, dict):
@@ -4912,7 +5053,13 @@ def _to_html(prefix: str, data: Any) -> str:
                 f'<tr><td>{_html_escape(k)}</td><td>{_html_escape(v_str)}</td></tr>'
             )
         parts.append('</tbody></table>')
-        parts.extend(['</body>', '</html>'])
+        parts.extend([
+            '<footer class="colophon">',
+            'Generated by <a href="https://github.com/Akxan/SpyEyes" target="_blank" rel="noopener noreferrer">SpyEyes</a>',
+            ' · OSINT Toolkit',
+            '</footer>',
+            '</body>', '</html>'
+        ])
         return '\n'.join(parts)
 
     parts.append(
@@ -4928,17 +5075,28 @@ def _to_txt(prefix: str, data: Any) -> str:
     v1.2.1：标题/标签跟随当前 UI 语言。"""
     cmd, _, query = prefix.partition('_')
     ts = time.strftime('%Y-%m-%d %H:%M:%S')
+    # v1.4.1:像调查档案打字机/电传报告 — 双线 + 装饰角 + 整齐 ALIGN COLUMN
+    title = t('report.title').upper()
+    classification = '机密 · OSINT 简报' if get_lang() == 'zh' else 'CONFIDENTIAL · OSINT BRIEF'
+    width = 70
+    title_padded = title.center(width - 4)
+    classification_padded = classification.center(width - 4)
     lines = [
-        '═══════════════════════════════════════════════',
-        f'  🔍 {t("report.title")}',
-        '═══════════════════════════════════════════════',
-        f'{t("report.command"):11} {cmd}',
-        f'{t("report.query"):11} {query}',
-        f'{t("report.generated"):11} {ts}',
+        '╔' + '═' * (width - 2) + '╗',
+        '║ ' + title_padded + ' ║',
+        '║ ' + classification_padded + ' ║',
+        '╚' + '═' * (width - 2) + '╝',
+        '',
+        f'  {t("report.command").upper():>10}  │  {cmd}',
+        f'  {t("report.query").upper():>10}  │  {query}',
+        f'  {t("report.generated").upper():>10}  │  {ts}',
+        '',
+        '  ' + '─' * (width - 4),
         '',
     ]
     if isinstance(data, dict) and '_error' in data:
-        lines.append(f'{t("report.error").upper()}: {data["_error"]}')
+        lines.append(f'  ✗ {t("report.error").upper()}: {data["_error"]}')
+        lines.append('')
         return '\n'.join(lines) + '\n'
 
     if cmd == 'username' and isinstance(data, dict):
@@ -5493,42 +5651,129 @@ def _to_graph_html(prefix: str, data: Any) -> str:
 <html lang="{html_lang}">
 <head>
 <meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
 <title>{graph_title} — {query_safe}</title>
 <script src="https://d3js.org/d3.v7.min.js"></script>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@500;600&family=JetBrains+Mono:wght@400;500;700&family=Noto+Serif+SC:wght@500;700&display=swap" rel="stylesheet">
 <style>
-html, body {{ height: 100%; margin: 0; }}
-body {{ background: #fafafa; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif;
-  display: flex; flex-direction: column; overflow: hidden; }}
-.header {{ padding: 1em 2em; background: #fff; border-bottom: 1px solid #ddd; flex-shrink: 0; }}
-.header h2 {{ margin: 0; color: #0066cc; }}
-.header p {{ color: #666; margin: .3em 0 0; }}
-.legend {{ display: flex; gap: 1em; margin-top: .5em; font-size: .85em; color: #666; flex-wrap: wrap; }}
-.legend span {{ display: flex; align-items: center; gap: .3em; }}
-.legend i {{ display: inline-block; width: 12px; height: 12px; border-radius: 50%; }}
-.legend kbd {{ background: #f0f0f0; border: 1px solid #ccc; border-radius: 3px; padding: 1px 5px; font-size: .85em; }}
-.node circle {{ stroke: #fff; stroke-width: 1.5px; }}
-.node text {{ font-size: 11px; pointer-events: none; fill: #333;
-  paint-order: stroke; stroke: rgba(255,255,255,0.85); stroke-width: 3px; }}
-.link {{ stroke: #999; stroke-opacity: 0.35; }}
-svg {{ flex: 1 1 auto; width: 100%; cursor: grab; display: block; background: #fafafa; }}
+:root {{
+  --bg: #0e0e12;
+  --bg-grad: radial-gradient(ellipse at 30% 0%, #181822 0%, #0e0e12 60%, #08080c 100%);
+  --surface: #15151c;
+  --ink: #e8e6df;
+  --muted: #8b8676;
+  --rule: #2a2a35;
+  --accent: #d4af37;        /* 金色 — 主节点 */
+  --hit: #4a9eff;           /* 蓝 — 命中 */
+  --other: #6b6657;         /* 暗灰 — 其它 */
+  --link-color: rgba(212,175,55,0.18);
+  --link-hover: rgba(212,175,55,0.55);
+  --serif: "Cormorant Garamond","Noto Serif SC",Georgia,serif;
+  --mono: "JetBrains Mono",ui-monospace,Menlo,monospace;
+}}
+* {{ box-sizing: border-box; }}
+html, body {{ height: 100%; margin: 0; overflow: hidden; }}
+body {{
+  background: var(--bg-grad);
+  color: var(--ink);
+  font-family: var(--mono);
+  display: flex;
+  flex-direction: column;
+}}
+.header {{
+  padding: 1.2em 2em 1em;
+  background: linear-gradient(180deg,rgba(15,15,20,0.96),rgba(15,15,20,0.85) 70%,transparent);
+  border-bottom: 1px solid var(--rule);
+  flex-shrink: 0;
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  z-index: 10;
+}}
+.eyebrow {{
+  font-family: var(--mono); font-size: 0.65em; letter-spacing: 0.4em;
+  text-transform: uppercase; color: var(--accent); margin-bottom: 0.35em;
+}}
+.header h2 {{
+  font-family: var(--serif); font-weight: 500; font-size: 1.85em;
+  margin: 0; color: var(--ink); letter-spacing: -0.02em; line-height: 1.1;
+}}
+.header h2 em {{
+  font-style: italic; color: var(--accent); font-weight: 600;
+  text-decoration: underline; text-decoration-color: rgba(212,175,55,0.35);
+  text-underline-offset: 0.18em; text-decoration-thickness: 1px;
+}}
+.meta-row {{
+  font-family: var(--mono); color: var(--muted); margin: 0.6em 0 0;
+  font-size: 0.78em; letter-spacing: 0.04em;
+}}
+.meta-row span {{ color: var(--ink); }}
+.legend {{
+  display: flex; gap: 1.5em; margin-top: 0.7em;
+  font-family: var(--mono); font-size: 0.72em; color: var(--muted);
+  flex-wrap: wrap; letter-spacing: 0.05em;
+}}
+.legend span {{ display: flex; align-items: center; gap: 0.4em; }}
+.legend i {{
+  display: inline-block; width: 10px; height: 10px; border-radius: 50%;
+  box-shadow: 0 0 8px currentColor;
+}}
+.legend kbd {{
+  background: var(--surface); border: 1px solid var(--rule);
+  padding: 1px 6px; font-size: 0.95em; border-radius: 2px;
+  color: var(--accent); font-family: var(--mono);
+}}
+.node circle {{
+  stroke: var(--surface); stroke-width: 1.5px;
+  filter: drop-shadow(0 0 6px currentColor);
+  transition: filter 0.2s ease;
+}}
+.node:hover circle {{ filter: drop-shadow(0 0 14px currentColor); }}
+.node text {{
+  font-family: var(--mono); font-size: 11px; font-weight: 500;
+  pointer-events: none; fill: var(--ink);
+  paint-order: stroke; stroke: rgba(15,15,20,0.95); stroke-width: 3px;
+  letter-spacing: 0.02em;
+}}
+.node[data-group="1"] text {{
+  font-family: var(--serif); font-size: 14px; font-weight: 600;
+  fill: var(--accent); letter-spacing: 0.01em;
+}}
+.link {{ stroke: var(--link-color); stroke-width: 1px; }}
+svg {{
+  flex: 1 1 auto; width: 100%; cursor: grab; display: block;
+  background: transparent;
+}}
 svg:active {{ cursor: grabbing; }}
+.colophon {{
+  position: fixed; bottom: 0.6em; right: 1em;
+  font-family: var(--mono); font-size: 0.65em;
+  color: var(--muted); letter-spacing: 0.15em;
+  text-transform: uppercase; pointer-events: none;
+  text-shadow: 0 0 10px var(--bg);
+}}
 </style>
 </head>
 <body>
 <div class="header">
-  <h2>🔍 {graph_title}: {query_safe}</h2>
-  <p>{gen_label}: {ts} · {found_n_safe} · {graph_help_safe}</p>
+  <div class="eyebrow">{("情报关系图谱" if html_lang == "zh" else "Intelligence Graph")}</div>
+  <h2>{graph_title}: <em>{query_safe}</em></h2>
+  <div class="meta-row">
+    <span>{gen_label}</span> {ts} &nbsp;&nbsp;·&nbsp;&nbsp; {found_n_safe} &nbsp;&nbsp;·&nbsp;&nbsp; {graph_help_safe}
+  </div>
   <div class="legend">
-    <span><i style="background:#e74c3c"></i> {legend_q}</span>
-    <span><i style="background:#3498db"></i> {legend_h}</span>
-    <span><i style="background:#95a5a6"></i> {legend_o}</span>
+    <span style="color:var(--accent)"><i></i> {legend_q}</span>
+    <span style="color:var(--hit)"><i></i> {legend_h}</span>
+    <span style="color:var(--other)"><i></i> {legend_o}</span>
   </div>
 </div>
 <svg></svg>
+<div class="colophon">SpyEyes</div>
 <script>
 const nodes = {nodes_json};
 const links = {links_json};
-const colors = {{1:'#e74c3c', 2:'#3498db', 3:'#95a5a6'}};
+const colors = {{1:'#d4af37', 2:'#4a9eff', 3:'#6b6657'}};
 const initialRadius = {initial_radius};
 
 const svg = d3.select('svg');
@@ -5556,7 +5801,7 @@ const simulation = d3.forceSimulation(nodes)
   .force('radial', d3.forceRadial(d => d.group === 1 ? 0 : initialRadius, 0, 0).strength(0.05));
 
 const link = root.append('g').attr('class', 'links').selectAll('line').data(links).join('line').attr('class', 'link');
-const node = root.append('g').attr('class', 'nodes').selectAll('g').data(nodes).join('g').attr('class', 'node')
+const node = root.append('g').attr('class', 'nodes').selectAll('g').data(nodes).join('g').attr('class', 'node').attr('data-group', d => d.group)
   .call(d3.drag()
     .on('start', e => {{ if (!e.active) simulation.alphaTarget(0.3).restart(); e.subject.fx = e.subject.x; e.subject.fy = e.subject.y; }})
     .on('drag', e => {{ e.subject.fx = e.x; e.subject.fy = e.y; }})

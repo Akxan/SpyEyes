@@ -753,7 +753,9 @@ class TestMaybeSave:
         gt._maybe_save(str(out), 'ip_8.8.8.8', {'country': 'US', 'city': 'MV'})
         assert out.exists()
         content = out.read_text(encoding='utf-8')
-        assert content.startswith('# ')
+        # v1.4.1: Markdown 以 YAML frontmatter 开头
+        assert content.startswith('---\n'), 'Markdown should start with YAML frontmatter'
+        assert '\n# ' in content, 'Markdown should contain a top-level heading'
         assert '8.8.8.8' in content
         assert 'US' in content
 

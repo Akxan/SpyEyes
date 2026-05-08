@@ -18,6 +18,73 @@ This project adheres to [Keep a Changelog](https://keepachangelog.com/en/1.1.0/)
 
 ---
 
+## [1.4.1] — 2026-05-09
+
+🎨 **报告美化 — Editorial Investigation Brief 风格**(调查档案/报刊调性)。
+设计哲学:**专业 + 沉稳 + 技术感**,让客户/老板看到觉得"是真做调查"。
+
+### 🎨 Visual Redesign
+
+- **HTML 报告全面重写** — 从默认 Helvetica/sans-serif 升级到 editorial 印刷品风格:
+  - **字体三件套**:Cormorant Garamond(衬线 display)+ Crimson Pro(衬线 body)
+    + JetBrains Mono(等宽 data),CJK fallback 用 Noto Serif SC + Sarasa Mono SC
+  - **配色**:cream `#fafaf5` 背景 + ink `#0a0a0c` 印墨 + 印章红 `#c8102e` + 古典蓝 `#1d4ed8`
+    (避免 AI 千篇一律的 purple gradient / 圆角阴影 / 卡片层叠)
+  - **Masthead 报刊头**:5px 双线分隔 + CONFIDENTIAL · OSINT BRIEF 印章徽章(`-1.5deg` 倾斜)
+    + 大号衬线标题 + tracking-spaced subtitle
+  - **Meta strip**:CSS Grid `auto-fit minmax(180px,1fr)`,3 列元数据(命令/查询/生成时间)
+    自适应布局
+  - **Section h2**:罗马数字章节编号(I/II/III)用 `counter-reset` 自动累加
+  - **Tables**:1.5px 双线 frame + zebra row + 衬线表头 + 等宽 mono 数据 + hover 过渡
+  - **Colophon footer**:小号 mono 大写字距,谦虚得体
+  - **响应式**:`@media(max-width:720px)` 移动端字号缩小 + padding 减少
+  - **Print stylesheet**:`@media print` 让打印输出保留排版骨架
+- **D3.js Graph 报告深色专业 theme**:
+  - 暗色背景 radial gradient `#0e0e12 → #08080c`(替代之前 `#fafafa`)
+  - 节点配色金/蓝/灰:主节点金色 `#d4af37` 配 drop-shadow 光晕,命中蓝 `#4a9eff`,其它暗灰
+  - 节点 hover 时光晕加强(filter: drop-shadow 14px),增加交互反馈
+  - 主节点用衬线字体显示(`<g[data-group="1"]> text` 选择器)+ 金色下划线
+  - Header 加 backdrop-filter blur + radial gradient 半透明,不阻挡画布
+  - Legend 圆点用 `box-shadow: 0 0 8px currentColor` 发光效果
+  - "情报关系图谱" / "Intelligence Graph" eyebrow + Cormorant 衬线大标题
+  - 右下角 SpyEyes 隐式签名(pointer-events: none)
+- **TXT 报告 ASCII 装饰边框**(像电传报告):
+  - 双线 box-drawing characters(`╔═╗║╚═╝`)框出 70 字符宽标题块
+  - 标题 + classification 两行居中
+  - 元数据用 `│` 竖线分隔,`>10` 右对齐字段名
+  - 装饰横线 `─` × 66 划开 header / body
+- **Markdown 报告 frontmatter + 紧凑元数据表**:
+  - YAML frontmatter(Jekyll/Hugo/Obsidian 兼容):`title / command / query / generated / tool / classification`
+  - `# 标题` + `> _机密 · OSINT 简报_` 引文式 classification
+  - 元数据从竖列改为单行 3 列 markdown 表(更紧凑)
+
+### 📐 Design Principles
+
+- **不用** AI 设计常见 cliche:无 purple/pink gradient、无圆角卡片阴影、
+  无 emoji 滥用、无 system font(Inter/Roboto/Helvetica/Arial)
+- **用**:衬线字体(Cormorant/Crimson)+ 等宽字体(JetBrains Mono)+ CJK 衬线(Noto Serif SC)
+- **章节装饰**:罗马数字编号(I/II/III)+ 印章式徽章 + 5px 双线 horizontal rule
+- **Mono 用于数据**(IP / hostname / 邮箱 / status code 列对齐)
+- **Serif 用于标题**(elegant 调查报告调性)
+
+### 🌍 Bilingual
+
+- 中英两版都美观:中文 UI 用"机密 · OSINT 简报"+ "开源情报调查档案" subtitle,
+  英文用 "CONFIDENTIAL · OSINT BRIEF" + "Open-Source Intelligence Dossier"
+- 字体 fallback chain:Cormorant Garamond → Noto Serif SC(中文)→ 系统字体兜底
+- 所有装饰文案双语
+
+### 🧪 Tests
+
+- 417 测试全绿(更新 1 个 markdown 测试断言适配新 frontmatter 结构)
+- ruff / mypy / bandit 全清
+
+### 📦 Packaging
+
+- `__version__` 1.4.0 → 1.4.1
+
+---
+
 ## [1.4.0] — 2026-05-09
 
 📧 **新增域名邮箱枚举(OSINT email harvest)** —— 第 9 个核心 OSINT 能力。设计哲学"全 + 准":多源被动 + 深度爬取 + 含 alive 子域,默认开;高调动作(SMTP 验证)opt-in。
