@@ -68,7 +68,7 @@ except ImportError:
 
 
 # 语义化版本号 —— 同步更新 docs/CHANGELOG.md 与 git tag
-__version__ = '1.4.2'
+__version__ = '1.4.3'
 
 
 # ====================================================================
@@ -834,15 +834,23 @@ def _get_session() -> requests.Session:
 
 
 def safe_get(url: str, *, timeout: float = DEFAULT_TIMEOUT, method: str = 'GET',
-             stream: bool = False, **kwargs) -> Optional[requests.Response]:
+             stream: bool = False,
+             connect_timeout: Optional[float] = None,
+             **kwargs) -> Optional[requests.Response]:
     """带连接池复用 + 拆分超时的 HTTP 请求。
     method='HEAD' 时跳过 body 下载 —— 仅看 status_code 的平台用得上。
-    stream=True 时调用方负责读取/关闭（用于早停 body 读）。"""
+    stream=True 时调用方负责读取/关闭（用于早停 body 读）。
+
+    connect_timeout: 建立 TCP/TLS 连接的上限。
+      None(默认)= min(3s, timeout) — username 扫描场景需要快速踢死慢 host
+      显式传值 — 给慢 OSINT 源(如 crt.sh 首次握手 5+s)足够时间(v1.4.3)"""
     extra_headers = kwargs.pop('headers', None) or {}
     try:
         session = _get_session()
-        # 拆分 timeout：连接 3s 上限 + 读取 timeout 秒
-        req_timeout = (min(3.0, timeout), timeout)
+        # 拆分 timeout:connect 上限可被显式覆盖
+        if connect_timeout is None:
+            connect_timeout = min(3.0, timeout)
+        req_timeout = (connect_timeout, timeout)
         if method.upper() == 'HEAD':
             return session.head(url, timeout=req_timeout, headers=extra_headers, **kwargs)
         return session.get(url, timeout=req_timeout, headers=extra_headers, stream=stream, **kwargs)
@@ -2262,7 +2270,8 @@ def _src_crtsh(domain: str) -> set[str]:
     """https://crt.sh/?q=%25.{domain}&output=json — Certificate Transparency 日志。
     返回 [{name_value: "a.example.com\\nb.example.com", ...}, ...]"""
     url = f'https://crt.sh/?q=%25.{domain}&output=json'
-    resp = safe_get(url, timeout=SUBDOMAIN_SOURCE_TIMEOUT)
+    # v1.4.3:OSINT 源首次连接握手可能很慢(crt.sh ~5s),不能让 connect 卡 3s
+    resp = safe_get(url, timeout=SUBDOMAIN_SOURCE_TIMEOUT, connect_timeout=10.0)
     if resp is None or resp.status_code != 200:
         return set()
     try:
@@ -2289,7 +2298,8 @@ def _src_crtsh(domain: str) -> set[str]:
 def _src_hackertarget(domain: str) -> set[str]:
     """https://api.hackertarget.com/hostsearch/?q={domain} — text/CSV `host,ip`(每日 ~50 quota)。"""
     url = f'https://api.hackertarget.com/hostsearch/?q={domain}'
-    resp = safe_get(url, timeout=SUBDOMAIN_SOURCE_TIMEOUT)
+    # v1.4.3:OSINT 源首次连接握手可能很慢(crt.sh ~5s),不能让 connect 卡 3s
+    resp = safe_get(url, timeout=SUBDOMAIN_SOURCE_TIMEOUT, connect_timeout=10.0)
     if resp is None or resp.status_code != 200:
         return set()
     text = (resp.text or '').strip()
@@ -2304,7 +2314,8 @@ def _src_otx(domain: str) -> set[str]:
     """https://otx.alienvault.com/api/v1/indicators/domain/{domain}/passive_dns
     返回 {passive_dns: [{hostname: "a.example.com", ...}, ...]}"""
     url = f'https://otx.alienvault.com/api/v1/indicators/domain/{domain}/passive_dns'
-    resp = safe_get(url, timeout=SUBDOMAIN_SOURCE_TIMEOUT)
+    # v1.4.3:OSINT 源首次连接握手可能很慢(crt.sh ~5s),不能让 connect 卡 3s
+    resp = safe_get(url, timeout=SUBDOMAIN_SOURCE_TIMEOUT, connect_timeout=10.0)
     if resp is None or resp.status_code != 200:
         return set()
     try:
@@ -2324,7 +2335,8 @@ def _src_threatcrowd(domain: str) -> set[str]:
     """https://www.threatcrowd.org/searchApi/v2/domain/report/?domain={domain}
     返回 {subdomains: [...], response_code: "1"}"""
     url = f'https://www.threatcrowd.org/searchApi/v2/domain/report/?domain={domain}'
-    resp = safe_get(url, timeout=SUBDOMAIN_SOURCE_TIMEOUT)
+    # v1.4.3:OSINT 源首次连接握手可能很慢(crt.sh ~5s),不能让 connect 卡 3s
+    resp = safe_get(url, timeout=SUBDOMAIN_SOURCE_TIMEOUT, connect_timeout=10.0)
     if resp is None or resp.status_code != 200:
         return set()
     try:
@@ -2684,7 +2696,8 @@ def _emails_from_crtsh(domain: str) -> set[str]:
     管理员邮箱放到 SAN 里(`email:admin@example.com`)。同时挖 'name_value' 字段
     所有 substring 匹配的邮箱(部分 CA 在 OU 字段写 contact email)。"""
     url = f'https://crt.sh/?q=%25.{domain}&output=json'
-    resp = safe_get(url, timeout=SUBDOMAIN_SOURCE_TIMEOUT)
+    # v1.4.3:OSINT 源首次连接握手可能很慢(crt.sh ~5s),不能让 connect 卡 3s
+    resp = safe_get(url, timeout=SUBDOMAIN_SOURCE_TIMEOUT, connect_timeout=10.0)
     if resp is None or resp.status_code != 200:
         return set()
     try:
@@ -4413,18 +4426,26 @@ def _to_pdf(prefix: str, data: Any, out_path: str) -> Optional[str]:
         story.append(_rl_spacer(1, 80))
         # CONFIDENTIAL stamp
         story.append(stamp_table)
-        story.append(_rl_spacer(1, 30))
-        # 大标题
+        story.append(_rl_spacer(1, 36))
+        # 大标题 — 用 Title style(leading=38)避免高字号溢出 box 与 subtitle 重叠
+        # 通过 ParagraphStyle alignment 而非 inline <para> 让 leading 生效
+        from reportlab.lib.styles import ParagraphStyle as _RlPS  # type: ignore
+        title_style = _RlPS(
+            'CoverTitle', parent=styles['Title'],
+            fontName=font_name, fontSize=32, leading=42,
+            alignment=1,  # 1 = TA_CENTER
+            spaceAfter=18,
+        )
+        subtitle_style = _RlPS(
+            'CoverSubtitle', parent=styles['Normal'],
+            fontName=font_name, fontSize=9, leading=14,
+            alignment=1, textColor=_rl_colors.HexColor('#6b6657'),
+            spaceBefore=0, spaceAfter=24,
+        )
         story.append(_pdf_story(
-            f'<para alignment="center"><font size="32"><b>'
-            f'{_md_escape(t("report.title"))}</b></font></para>',
-            styles['Normal']))
-        story.append(_rl_spacer(1, 8))
+            f'<b>{_md_escape(t("report.title"))}</b>', title_style))
         story.append(_pdf_story(
-            f'<para alignment="center"><font size="9" color="#6b6657">'
-            f'{_md_escape(cover_subtitle).upper()}</font></para>',
-            styles['Normal']))
-        story.append(_rl_spacer(1, 24))
+            _md_escape(cover_subtitle).upper(), subtitle_style))
         # 双线分隔
         story.append(_rl_hr(width='80%', thickness=2, color=_rl_colors.HexColor('#0a0a0c'),
                             hAlign='CENTER', spaceBefore=0, spaceAfter=4))

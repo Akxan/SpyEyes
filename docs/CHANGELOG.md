@@ -18,6 +18,33 @@ This project adheres to [Keep a Changelog](https://keepachangelog.com/en/1.1.0/)
 
 ---
 
+## [1.4.3] — 2026-05-09
+
+🐛 **两个用户报告问题修复** —— 子域名 cold start 返 0 + PDF 标题与 subtitle 重叠。
+
+### 🐛 Bug Fixes
+
+- **子域名查询 cold start 返 0(P0)** — 用户每次新进程跑 `spyeyes subdomain X` 都返 0
+  - **根因**:`safe_get` 把 connect timeout 强制 cap 到 `min(3.0, timeout)`(为 username 扫描场景设计的"快踢死慢 host")。但 crt.sh 等 OSINT 源**首次 TLS 握手就要 5+s** → 3s connect 必超时 → silent 返 None → 4 个被动源全 0
+  - **诊断证据**:`_src_crtsh('anthropic.com')` 单调返 119 host(6.6s);`enumerate_subdomains` 第一次调返 0;同一进程内紧接着第二次调返 117(connection pool 复用绕过 cold start)
+  - **修复**:`safe_get` 加 `connect_timeout: Optional[float] = None` 参数,显式覆盖 connect 上限。OSINT 慢源(5 处 `_src_*` + 1 处 `_emails_from_crtsh`)传 `connect_timeout=10.0`
+  - 验证:fresh process 跑 `subdomain anthropic.com` 现在返 119 个候选(包含 `cdn.anthropic.com`/`api.anthropic.com` 等)
+- **PDF 大标题与 subtitle 重叠(P1)** — 用户截图显示 "SpyEyes 报告" 大字号下方 subtitle 重叠不可读
+  - **根因**:大标题用 `<font size="32">` inline tag 但 wrapping `ParagraphStyle` 是 `styles['Normal']`(`leading=13`)。32pt 字符高度溢出 13pt box → 下个 element 紧贴原位置渲染 → 视觉重叠
+  - **修复**:专门定义 `CoverTitle` ParagraphStyle(`leading=42`,与 32pt fontSize 配套)+ `CoverSubtitle` ParagraphStyle(`leading=14`),用 `spaceAfter` 控间距,不再依赖 spacer
+  - 验证:pypdf 文本提取确认大标题与 subtitle 各自独立成行,中英两版双语正常
+
+### 🧪 Tests
+
+- 417 测试全绿(无新测试,通过现有 PDF 报告生成测试覆盖回归)
+- ruff / mypy 全清
+
+### 📦 Packaging
+
+- `__version__` 1.4.2 → 1.4.3
+
+---
+
 ## [1.4.2] — 2026-05-09
 
 🎨 **PDF + XMind 美化补完** —— v1.4.1 漏的两种格式同款 Editorial Investigation Brief 调性。
