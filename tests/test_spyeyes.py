@@ -2259,13 +2259,17 @@ class TestSubdomainParsers:
         with patch.object(gt, 'safe_get', return_value=fake):
             assert gt._src_otx('example.com') == set()
 
-    def test_threatcrowd_parses_subdomains(self):
+    def test_certspotter_parses_dns_names(self):
+        """v1.4.4: CertSpotter 替代 ThreatCrowd 死站。"""
         fake = MagicMock(status_code=200)
-        fake.json.return_value = {'subdomains': ['api.example.com', 'mail.example.com'],
-                                   'response_code': '1'}
+        fake.json.return_value = [
+            {'dns_names': ['api.example.com', 'mail.example.com']},
+            {'dns_names': ['admin.example.com', 'evil.com']},  # evil.com 跨域应过滤
+        ]
         with patch.object(gt, 'safe_get', return_value=fake):
-            out = gt._src_threatcrowd('example.com')
-        assert out == {'api.example.com', 'mail.example.com'}
+            out = gt._src_certspotter('example.com')
+        assert {'api.example.com', 'mail.example.com', 'admin.example.com'} <= out
+        assert 'evil.com' not in out
 
 
 class TestPassiveCollectSubdomains:
@@ -2277,7 +2281,7 @@ class TestPassiveCollectSubdomains:
         monkeypatch.setitem(gt.SUBDOMAIN_SOURCES, 'hackertarget',
                             lambda d: {'api.example.com', 'blog.example.com'})
         monkeypatch.setitem(gt.SUBDOMAIN_SOURCES, 'otx', lambda d: set())
-        monkeypatch.setitem(gt.SUBDOMAIN_SOURCES, 'threatcrowd',
+        monkeypatch.setitem(gt.SUBDOMAIN_SOURCES, 'certspotter',
                             lambda d: {'cdn.example.com'})
         result = gt.passive_collect_subdomains('example.com')
         assert result['candidates'] == {'api.example.com', 'mail.example.com',
@@ -2292,7 +2296,7 @@ class TestPassiveCollectSubdomains:
         monkeypatch.setitem(gt.SUBDOMAIN_SOURCES, 'hackertarget',
                             lambda d: {'good.example.com'})
         monkeypatch.setitem(gt.SUBDOMAIN_SOURCES, 'otx', lambda d: set())
-        monkeypatch.setitem(gt.SUBDOMAIN_SOURCES, 'threatcrowd', lambda d: set())
+        monkeypatch.setitem(gt.SUBDOMAIN_SOURCES, 'certspotter', lambda d: set())
         result = gt.passive_collect_subdomains('example.com')
         assert 'good.example.com' in result['candidates']
         assert result['errors'].get('crtsh') is True
@@ -2312,7 +2316,7 @@ class TestEnumerateSubdomains:
             pytest.skip('dns 依赖未安装')
         monkeypatch.setattr(gt, 'passive_collect_subdomains', lambda d, **kw: {
             'candidates': {'api.example.com', 'mail.example.com'},
-            'sources': {'crtsh': 2, 'hackertarget': 0, 'otx': 0, 'threatcrowd': 0},
+            'sources': {'crtsh': 2, 'hackertarget': 0, 'otx': 0, 'certspotter': 0},
             'errors': {},
         })
         monkeypatch.setattr(gt, '_detect_wildcard_dns', lambda d, dns_timeout=3.0: False)
@@ -2770,14 +2774,14 @@ class TestSubdomainStageProgress:
                             lambda d: {'a.example.com', 'b.example.com'})
         monkeypatch.setitem(gt.SUBDOMAIN_SOURCES, 'hackertarget', lambda d: set())
         monkeypatch.setitem(gt.SUBDOMAIN_SOURCES, 'otx', lambda d: set())
-        monkeypatch.setitem(gt.SUBDOMAIN_SOURCES, 'threatcrowd', lambda d: set())
+        monkeypatch.setitem(gt.SUBDOMAIN_SOURCES, 'certspotter', lambda d: set())
         gt.passive_collect_subdomains('example.com', show_progress=True)
         err = capsys.readouterr().err
         # 每个源都应该有一行(成功的显示候选数,空的显示 0)
         assert 'crtsh' in err
         assert 'hackertarget' in err
         assert 'otx' in err
-        assert 'threatcrowd' in err
+        assert 'certspotter' in err  # v1.4.4: 替代 threatcrowd 死站
         # crtsh 应显示 2 个候选(数字)
         assert '2' in err
 
@@ -2787,7 +2791,7 @@ class TestSubdomainStageProgress:
         monkeypatch.setitem(gt.SUBDOMAIN_SOURCES, 'crtsh', lambda d: {'a.example.com'})
         monkeypatch.setitem(gt.SUBDOMAIN_SOURCES, 'hackertarget', lambda d: set())
         monkeypatch.setitem(gt.SUBDOMAIN_SOURCES, 'otx', lambda d: set())
-        monkeypatch.setitem(gt.SUBDOMAIN_SOURCES, 'threatcrowd', lambda d: set())
+        monkeypatch.setitem(gt.SUBDOMAIN_SOURCES, 'certspotter', lambda d: set())
         gt.passive_collect_subdomains('example.com', show_progress=False)
         err = capsys.readouterr().err
         assert 'crtsh' not in err
@@ -2802,7 +2806,7 @@ class TestSubdomainStageProgress:
         monkeypatch.setitem(gt.SUBDOMAIN_SOURCES, 'hackertarget',
                             lambda d: {'good.example.com'})
         monkeypatch.setitem(gt.SUBDOMAIN_SOURCES, 'otx', lambda d: set())
-        monkeypatch.setitem(gt.SUBDOMAIN_SOURCES, 'threatcrowd', lambda d: set())
+        monkeypatch.setitem(gt.SUBDOMAIN_SOURCES, 'certspotter', lambda d: set())
         result = gt.passive_collect_subdomains('example.com', show_progress=True)
         err = capsys.readouterr().err
         assert 'crtsh' in err

@@ -18,6 +18,57 @@ This project adheres to [Keep a Changelog](https://keepachangelog.com/en/1.1.0/)
 
 ---
 
+## [1.4.4] — 2026-05-09
+
+🚨 **紧急修复 — 子域名查询大面积失效 + PDF 字符间距 + 封面冗余信息**
+
+### 🐛 Bug Fixes — 子域名查询(P0,**功能性故障**)
+
+用户报告"子域名查询都是 0",systematic-debugging 实测 4 个被动源真实状态:
+
+| 源 | 现状 | 处理 |
+|---|---|---|
+| **ThreatCrowd** | 域名 `www.threatcrowd.org` 已**无 DNS 记录**(网站死了) | **移除** |
+| **AlienVault OTX** | 匿名访问被限速 `429 Anonymous limited`(API 政策变了) | 加 `SPYEYES_OTX_API_KEY` env var 支持 |
+| **HackerTarget** | 匿名免费 quota 用完后返 `API count exceeded` | 不可控(用户侧) |
+| **crt.sh** | `.do` / 其它特殊 TLD 需要 25-30s 才返回,`SUBDOMAIN_SOURCE_TIMEOUT=15s` 不够 | timeout 加大到 45s |
+
+修复:
+- **删除 `_src_threatcrowd`**(死站)
+- **新增 `_src_certspotter`**(SSLMate CertSpotter API,免费 CT 日志,替补 crt.sh)
+  - 实测 linux.do 拉到 36 个候选(crt.sh 50 个 + certspotter 36 个 ≈ 60+ 独立子域)
+- **OTX 加 API key 支持**:`SPYEYES_OTX_API_KEY=YOUR_KEY` env var,
+  发 `X-OTX-API-KEY` header(免费注册 https://otx.alienvault.com)
+- `SUBDOMAIN_SOURCE_TIMEOUT` 15s → 45s
+
+实测 `linux.do` (`.do` TLD) **从 0 个 → 60+ 个子域**。
+
+### 🐛 Bug Fixes — PDF(P1,**视觉问题**)
+
+用户截图显示:
+1. **页脚 `SPYEYES▲ OSINT 调查工具` 字符间距过紧**
+   - 根因:之前用 `font_name`(STSong-Light 中文字体,Latin advance 偏窄)
+   - 修复:页脚 canvas 改用 `Helvetica`,纯英文 brand `SpyEyes  ·  OSINT Toolkit`(中英版统一)
+   - bonus:页脚加 query 作为 running header 居中
+2. **封面页冗余项目链接** `spyeyes ▲ github.com/Akxan/SpyEyes`(用户嫌弃)
+   - 修复:删除
+3. **PDF 生成失败 `'Canvas' object has no attribute 'setCharSpace'`**
+   - 根因:`setCharSpace` 是 reportlab textObject 方法不是 Canvas 直接方法
+   - 修复:删除该调用(Helvetica 间距已自然)
+
+### 🧪 Tests
+
+- **TestSubdomainParsers**:`test_threatcrowd_parses_subdomains` → 改成 `test_certspotter_parses_dns_names`(新源 + 跨域过滤验证)
+- **TestPassiveCollectSubdomains** / **TestEnumerateSubdomains** / **TestSubdomainStageProgress**:把 `'threatcrowd'` 引用全改为 `'certspotter'`
+- 417 测试全绿
+- ruff / mypy 全清
+
+### 📦 Packaging
+
+- `__version__` 1.4.3 → 1.4.4
+
+---
+
 ## [1.4.3] — 2026-05-09
 
 🐛 **两个用户报告问题修复** —— 子域名 cold start 返 0 + PDF 标题与 subtitle 重叠。

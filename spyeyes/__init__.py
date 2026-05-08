@@ -68,7 +68,7 @@ except ImportError:
 
 
 # 语义化版本号 —— 同步更新 docs/CHANGELOG.md 与 git tag
-__version__ = '1.4.3'
+__version__ = '1.4.4'
 
 
 # ====================================================================
@@ -2229,7 +2229,7 @@ SUBDOMAIN_DEFAULT_WORKERS = 30         # DNS 并发线程数(系统 resolver 不
 SUBDOMAIN_DNS_TIMEOUT = 3.0            # 单条 DNS 查询超时
 SUBDOMAIN_HTTP_PROBE_TIMEOUT = 5.0     # 单条 HTTP probe 超时
 SUBDOMAIN_PROBE_MAX_BODY = 16384       # probe 抓取 body 上限(只为提取 <title>)
-SUBDOMAIN_SOURCE_TIMEOUT = 15.0        # 单源被动 API 拉取超时
+SUBDOMAIN_SOURCE_TIMEOUT = 45.0        # v1.4.4:单源被动 API 拉取超时(crt.sh 对 .do 等 TLD 慢,15s 不够)
 
 # hostname 字符白名单:字母数字 + . - + 下划线(_dmarc 等合法 OSINT 子域)
 _SUBDOMAIN_HOSTNAME_RE = re.compile(r'^[a-z0-9._\-]+$')
@@ -2312,10 +2312,15 @@ def _src_hackertarget(domain: str) -> set[str]:
 
 def _src_otx(domain: str) -> set[str]:
     """https://otx.alienvault.com/api/v1/indicators/domain/{domain}/passive_dns
-    返回 {passive_dns: [{hostname: "a.example.com", ...}, ...]}"""
+    AlienVault OTX:passive DNS 数据库。
+    v1.4.4:2024 年起匿名访问被限速(429 anonymous limited),需要 API key。
+    设 SPYEYES_OTX_API_KEY=YOUR_KEY 启用(免费注册 https://otx.alienvault.com)。
+    无 key 时仍试匿名(可能 work 也可能 429)。"""
     url = f'https://otx.alienvault.com/api/v1/indicators/domain/{domain}/passive_dns'
-    # v1.4.3:OSINT 源首次连接握手可能很慢(crt.sh ~5s),不能让 connect 卡 3s
-    resp = safe_get(url, timeout=SUBDOMAIN_SOURCE_TIMEOUT, connect_timeout=10.0)
+    api_key = (os.environ.get('SPYEYES_OTX_API_KEY') or '').strip()
+    headers = {'X-OTX-API-KEY': api_key} if api_key else None
+    resp = safe_get(url, timeout=SUBDOMAIN_SOURCE_TIMEOUT,
+                    connect_timeout=10.0, headers=headers)
     if resp is None or resp.status_code != 200:
         return set()
     try:
@@ -2331,11 +2336,12 @@ def _src_otx(domain: str) -> set[str]:
     return _clean_subdomain_candidates(hosts, domain)
 
 
-def _src_threatcrowd(domain: str) -> set[str]:
-    """https://www.threatcrowd.org/searchApi/v2/domain/report/?domain={domain}
-    返回 {subdomains: [...], response_code: "1"}"""
-    url = f'https://www.threatcrowd.org/searchApi/v2/domain/report/?domain={domain}'
-    # v1.4.3:OSINT 源首次连接握手可能很慢(crt.sh ~5s),不能让 connect 卡 3s
+def _src_certspotter(domain: str) -> set[str]:
+    """https://api.certspotter.com/v1/issuances?domain={domain}&include_subdomains=true&expand=dns_names
+    SSLMate CertSpotter:免费 CT 日志查询 API,替补 crt.sh(后者经常超时)。
+    返回 [{dns_names: [host1, host2], ...}, ...]"""
+    url = (f'https://api.certspotter.com/v1/issuances?domain={domain}'
+           f'&include_subdomains=true&expand=dns_names')
     resp = safe_get(url, timeout=SUBDOMAIN_SOURCE_TIMEOUT, connect_timeout=10.0)
     if resp is None or resp.status_code != 200:
         return set()
@@ -2343,18 +2349,26 @@ def _src_threatcrowd(domain: str) -> set[str]:
         data = resp.json()
     except (ValueError, requests.exceptions.RequestException):
         return set()
-    if not isinstance(data, dict):
+    if not isinstance(data, list):
         return set()
-    subs = data.get('subdomains') or []
-    return _clean_subdomain_candidates(subs if isinstance(subs, list) else [], domain)
+    hosts: list = []
+    for entry in data:
+        if not isinstance(entry, dict):
+            continue
+        names = entry.get('dns_names') or []
+        if isinstance(names, list):
+            hosts.extend(n for n in names if isinstance(n, str))
+    return _clean_subdomain_candidates(hosts, domain)
 
 
-# 源映射表:测试可 monkeypatch 单个源;调整顺序不影响合并结果
+# v1.4.4:源映射表(测试可 monkeypatch 单个源;调整顺序不影响合并结果)
+# - 移除 threatcrowd(2024 年项目关闭,域名 www.threatcrowd.org 已无 DNS 记录)
+# - 加 certspotter(SSLMate 免费 CT 日志,替补 crt.sh 经常超时的情况)
 SUBDOMAIN_SOURCES = {
     'crtsh':         _src_crtsh,
+    'certspotter':   _src_certspotter,
     'hackertarget':  _src_hackertarget,
     'otx':           _src_otx,
-    'threatcrowd':   _src_threatcrowd,
 }
 
 
@@ -4470,11 +4484,6 @@ def _to_pdf(prefix: str, data: Any, out_path: str) -> Optional[str]:
             ('VALIGN', (0, 0), (-1, -1), 'MIDDLE'),
         ]))
         story.append(meta_table)
-        story.append(_rl_spacer(1, 18))
-        story.append(_pdf_story(
-            f'<para alignment="center"><font size="7" color="#6b6657" '
-            f'face="{font_name}">spyeyes · github.com/Akxan/SpyEyes</font></para>',
-            styles['Normal']))
         story.append(_rl_pagebreak())
         if isinstance(data, dict) and '_error' in data:
             story.append(_pdf_story(
@@ -4691,23 +4700,25 @@ def _to_pdf(prefix: str, data: Any, out_path: str) -> Optional[str]:
                       leftMargin=_PDF_MARGIN, rightMargin=_PDF_MARGIN,
                       topMargin=_PDF_MARGIN, bottomMargin=_PDF_MARGIN + 12)
 
-        # v1.4.2:页脚(每页底部) — SpyEyes brand + 页码 + 横线
-        page_footer_text = ('SPYEYES · OSINT TOOLKIT' if get_lang() == 'en'
-                            else 'SPYEYES · OSINT 调查工具')
+        # v1.4.4:页脚用 Helvetica 字体 — 纯英文 brand 避免 STSong 的 Latin advance 偏窄
+        # 字符串保持英文,中英两版统一(brand 名字"SpyEyes"是品牌不翻译)
+        # 加 query 作为页脚右侧"running header"风格,提升页面信息密度
+        page_footer_text = 'SpyEyes  ·  OSINT Toolkit'
+        page_footer_query = f'{cmd}: {query}'[:60]
 
         def _draw_footer(canvas, _doc):
             canvas.saveState()
-            try:
-                canvas.setFont(font_name, 7)
-            except Exception:
-                canvas.setFont('Helvetica', 7)
+            # 一律用 Helvetica(英文字体),英文字符间距才舒服
+            canvas.setFont('Helvetica', 7.5)
             canvas.setFillColor(_rl_colors.HexColor('#6b6657'))
             # 底部分隔线
             canvas.setStrokeColor(_rl_colors.HexColor('#0a0a0c'))
             canvas.setLineWidth(0.3)
             canvas.line(_PDF_MARGIN, 30, _rl_a4[0] - _PDF_MARGIN, 30)
-            # 左侧 brand
+            # 左侧 brand(英文,Helvetica 已经字符间距正常)
             canvas.drawString(_PDF_MARGIN, 18, page_footer_text)
+            # 中间 query(用 mono 风格)— 但 canvas 没 mono 内置,继续 Helvetica 也 OK
+            canvas.drawCentredString(_rl_a4[0] / 2, 18, page_footer_query)
             # 右侧页码
             canvas.drawRightString(_rl_a4[0] - _PDF_MARGIN, 18,
                                     f'p. {_doc.page}')
