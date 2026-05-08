@@ -54,6 +54,8 @@ try:
     from reportlab.lib.pagesizes import A4 as _rl_a4  # type: ignore
     from reportlab.lib.styles import getSampleStyleSheet as _rl_styles  # type: ignore
     from reportlab.platypus import (  # type: ignore
+        HRFlowable as _rl_hr,
+        PageBreak as _rl_pagebreak,
         Paragraph as _rl_paragraph,
         SimpleDocTemplate as _rl_doc,
         Spacer as _rl_spacer,
@@ -66,7 +68,7 @@ except ImportError:
 
 
 # 语义化版本号 —— 同步更新 docs/CHANGELOG.md 与 git tag
-__version__ = '1.4.1'
+__version__ = '1.4.2'
 
 
 # ====================================================================
@@ -4376,20 +4378,83 @@ def _to_pdf(prefix: str, data: Any, out_path: str) -> Optional[str]:
             if s_name in styles.byName:
                 styles[s_name].fontName = font_name
         # 行高放宽 — STSong-Light 中文字符高,默认 leading 偏挤
-        styles['Normal'].leading = 12
-        styles['Normal'].fontSize = 9
-        styles['Title'].leading = 22
-        styles['Heading2'].leading = 16
+        styles['Normal'].leading = 13
+        styles['Normal'].fontSize = 9.5
+        styles['Title'].leading = 38
+        styles['Title'].fontSize = 32
+        styles['Title'].spaceAfter = 0
+        styles['Heading2'].leading = 18
+        styles['Heading2'].fontSize = 15
         styles['Heading3'].leading = 14
-        styles['Heading2'].spaceBefore = 8
-        styles['Heading3'].spaceBefore = 4
+        styles['Heading3'].fontSize = 12
+        styles['Heading2'].spaceBefore = 12
+        styles['Heading3'].spaceBefore = 6
+
+        # v1.4.2:封面页 — Editorial Investigation Brief 调性
+        # 类似 HTML masthead:CONFIDENTIAL stamp + 大标题 + classification + 元数据 + 双线分隔
+        cover_classification = ('机密 · OSINT 简报' if get_lang() == 'zh'
+                                 else 'CONFIDENTIAL · OSINT BRIEF')
+        cover_subtitle = ('开源情报调查档案' if get_lang() == 'zh'
+                          else 'Open-Source Intelligence Dossier')
+        # CONFIDENTIAL 印章风(用 Table 给出红色边框 + center align)
+        stamp_table = _rl_table(
+            [[_pdf_story(f'<font color="#c8102e"><b>{_md_escape(cover_classification)}</b></font>',
+                          styles['Normal'])]],
+            colWidths=[260],
+        )
+        stamp_table.setStyle(_rl_table_style([
+            ('BOX', (0, 0), (-1, -1), 1.5, _rl_colors.HexColor('#c8102e')),
+            ('TOPPADDING', (0, 0), (-1, -1), 6),
+            ('BOTTOMPADDING', (0, 0), (-1, -1), 6),
+            ('ALIGN', (0, 0), (-1, -1), 'CENTER'),
+            ('FONTSIZE', (0, 0), (-1, -1), 9),
+        ]))
         story: list = []
-        story.append(_pdf_story(f"<b>{_md_escape(t('report.title'))}</b>", styles['Title']))
-        story.append(_rl_spacer(1, 12))
-        story.append(_pdf_story(f"<b>{_md_escape(t('report.command'))}:</b> {cmd}", styles['Normal']))
-        story.append(_pdf_story(f"<b>{_md_escape(t('report.query'))}:</b> {query}", styles['Normal']))
-        story.append(_pdf_story(f"<b>{_md_escape(t('report.generated'))}:</b> {ts}", styles['Normal']))
+        story.append(_rl_spacer(1, 80))
+        # CONFIDENTIAL stamp
+        story.append(stamp_table)
+        story.append(_rl_spacer(1, 30))
+        # 大标题
+        story.append(_pdf_story(
+            f'<para alignment="center"><font size="32"><b>'
+            f'{_md_escape(t("report.title"))}</b></font></para>',
+            styles['Normal']))
+        story.append(_rl_spacer(1, 8))
+        story.append(_pdf_story(
+            f'<para alignment="center"><font size="9" color="#6b6657">'
+            f'{_md_escape(cover_subtitle).upper()}</font></para>',
+            styles['Normal']))
+        story.append(_rl_spacer(1, 24))
+        # 双线分隔
+        story.append(_rl_hr(width='80%', thickness=2, color=_rl_colors.HexColor('#0a0a0c'),
+                            hAlign='CENTER', spaceBefore=0, spaceAfter=4))
+        story.append(_rl_hr(width='80%', thickness=0.5, color=_rl_colors.HexColor('#0a0a0c'),
+                            hAlign='CENTER', spaceBefore=0, spaceAfter=14))
+        # 元数据表(三列):命令 / 查询 / 生成时间
+        meta_table = _rl_table([
+            [_pdf_story(f'<para alignment="center"><font size="7" color="#6b6657">'
+                        f'{_md_escape(t("report.command")).upper()}</font></para>', styles['Normal']),
+             _pdf_story(f'<para alignment="center"><font size="7" color="#6b6657">'
+                        f'{_md_escape(t("report.query")).upper()}</font></para>', styles['Normal']),
+             _pdf_story(f'<para alignment="center"><font size="7" color="#6b6657">'
+                        f'{_md_escape(t("report.generated")).upper()}</font></para>', styles['Normal'])],
+            [_pdf_story(f'<para alignment="center"><b>{_md_escape(cmd)}</b></para>', styles['Normal']),
+             _pdf_story(f'<para alignment="center"><b>{_md_escape(query)}</b></para>', styles['Normal']),
+             _pdf_story(f'<para alignment="center"><b>{_md_escape(ts)}</b></para>', styles['Normal'])],
+        ], colWidths=[140, 200, 140])
+        meta_table.setStyle(_rl_table_style([
+            ('TOPPADDING', (0, 0), (-1, -1), 4),
+            ('BOTTOMPADDING', (0, 0), (-1, -1), 4),
+            ('ALIGN', (0, 0), (-1, -1), 'CENTER'),
+            ('VALIGN', (0, 0), (-1, -1), 'MIDDLE'),
+        ]))
+        story.append(meta_table)
         story.append(_rl_spacer(1, 18))
+        story.append(_pdf_story(
+            f'<para alignment="center"><font size="7" color="#6b6657" '
+            f'face="{font_name}">spyeyes · github.com/Akxan/SpyEyes</font></para>',
+            styles['Normal']))
+        story.append(_rl_pagebreak())
         if isinstance(data, dict) and '_error' in data:
             story.append(_pdf_story(
                 f"<b>{_md_escape(t('report.error'))}:</b> {_md_escape(data['_error'])}", styles['Normal']))
@@ -4600,10 +4665,34 @@ def _to_pdf(prefix: str, data: Any, out_path: str) -> Optional[str]:
                 _md_escape(json.dumps(data, ensure_ascii=False, default=str)),
                 styles['Code']))
         # v1.3.1:用更小边距(36pt vs 默认 72pt)+ 字号统一,给宽表格更多空间
+        # v1.4.2:topMargin 加大让封面页大标题有足够上空白
         doc = _rl_doc(out_path, pagesize=_rl_a4,
                       leftMargin=_PDF_MARGIN, rightMargin=_PDF_MARGIN,
-                      topMargin=_PDF_MARGIN, bottomMargin=_PDF_MARGIN)
-        doc.build(story)
+                      topMargin=_PDF_MARGIN, bottomMargin=_PDF_MARGIN + 12)
+
+        # v1.4.2:页脚(每页底部) — SpyEyes brand + 页码 + 横线
+        page_footer_text = ('SPYEYES · OSINT TOOLKIT' if get_lang() == 'en'
+                            else 'SPYEYES · OSINT 调查工具')
+
+        def _draw_footer(canvas, _doc):
+            canvas.saveState()
+            try:
+                canvas.setFont(font_name, 7)
+            except Exception:
+                canvas.setFont('Helvetica', 7)
+            canvas.setFillColor(_rl_colors.HexColor('#6b6657'))
+            # 底部分隔线
+            canvas.setStrokeColor(_rl_colors.HexColor('#0a0a0c'))
+            canvas.setLineWidth(0.3)
+            canvas.line(_PDF_MARGIN, 30, _rl_a4[0] - _PDF_MARGIN, 30)
+            # 左侧 brand
+            canvas.drawString(_PDF_MARGIN, 18, page_footer_text)
+            # 右侧页码
+            canvas.drawRightString(_rl_a4[0] - _PDF_MARGIN, 18,
+                                    f'p. {_doc.page}')
+            canvas.restoreState()
+
+        doc.build(story, onFirstPage=_draw_footer, onLaterPages=_draw_footer)
         return None
     except Exception as e:
         return t('err.pdf_failed', e=e)
@@ -5363,65 +5452,104 @@ def _to_csv(prefix: str, data: Any) -> str:
 
 
 def _to_xmind(prefix: str, data: Any, out_path: str) -> Optional[str]:
-    """XMind 8 文件（zip 含 content.xml + meta.xml + manifest.xml），纯标准库实现。
-    无新依赖；XMind 8 可直接打开。返回错误字符串（成功时返回 None）。"""
+    """XMind 8 文件(zip 含 content.xml + meta.xml + manifest.xml),纯标准库实现。
+    无新依赖;XMind 8 可直接打开。返回错误字符串(成功时返回 None)。
+    v1.4.2:加 marker-refs(XMind 内置图标)让节点视觉分级清晰 + emoji prefix。"""
     try:
         cmd, _, query = prefix.partition('_')
         ts = time.strftime('%Y-%m-%d %H:%M:%S')
 
         def _topic(title: str, children: Optional[list] = None,
-                   href: Optional[str] = None) -> str:
+                   href: Optional[str] = None,
+                   markers: Optional[list] = None) -> str:
+            """生成 XMind topic XML。markers 是 XMind 内置 marker ID 列表
+            (如 'task-done' / 'flag-red' / 'symbol-warning' 等),
+            会渲染为节点旁的彩色图标。"""
             tid = _uuid.uuid4().hex
             href_attr = f' xlink:href="{_html_escape(href)}"' if href else ''
             inner = f'<title>{_html_escape(title)}</title>'
+            if markers:
+                refs = ''.join(f'<marker-ref marker-id="{_html_escape(m)}"/>'
+                               for m in markers)
+                inner += f'<marker-refs>{refs}</marker-refs>'
             if children:
                 kids = ''.join(children)
                 inner += f'<children><topics type="attached">{kids}</topics></children>'
             return f'<topic id="{tid}"{href_attr}>{inner}</topic>'
 
+        # 元数据节点(每个报告都有,显示生成时间 + 命令)
+        meta_topic = _topic(
+            f'⏱  {t("report.generated")}: {ts}',
+            markers=['symbol-info'],
+        )
+
         if isinstance(data, dict) and '_error' in data:
-            sub_topics = [_topic(f'{t("report.error")}: {data["_error"]}')]
+            sub_topics = [meta_topic, _topic(
+                f'{t("report.error")}: {data["_error"]}',
+                markers=['flag-red', 'symbol-warning'],
+            )]
         elif cmd == 'username' and isinstance(data, dict):
-            sub_topics = []
+            sub_topics = [meta_topic]
             plat = _platform_only(data)
             for cat in CATEGORY_ORDER:
                 cat_pl = [p for p in _get_platforms() if p.category == cat and p.name in plat]
                 cat_found = [(p, plat[p.name]) for p in cat_pl if plat[p.name]]
                 if not cat_found:
                     continue
-                cat_kids = [_topic(p.name, href=url) for p, url in cat_found]
+                cat_kids = [_topic(p.name, href=url, markers=['task-done'])
+                            for p, url in cat_found]
                 sub_topics.append(_topic(
-                    f'{t(f"cat.{cat}")} ({len(cat_found)}/{len(cat_pl)})', cat_kids
+                    f'{t(f"cat.{cat}")} ({len(cat_found)}/{len(cat_pl)})',
+                    cat_kids,
+                    markers=['flag-blue'],
                 ))
         elif cmd == 'permute' and _is_permute_only(data):
-            # v1.2.1 P1-2：仅变形列表
-            sub_topics = [
-                _topic(v) for v in data.get('permutations', [])
-            ]
+            sub_topics = [meta_topic]
+            for v in data.get('permutations', []):
+                sub_topics.append(_topic(v, markers=['priority-1']))
         elif cmd == 'permute' and _is_permute_scan(data):
-            # v1.2.1 P1-2：每个变形一棵子树
-            sub_topics = []
+            sub_topics = [meta_topic]
             for var, scan in data.items():
                 if not isinstance(scan, dict):
                     continue
                 if '_error' in scan:
-                    sub_topics.append(_topic(f'{var}: {t("report.error")} {scan["_error"]}'))
+                    sub_topics.append(_topic(
+                        f'{var}: {t("report.error")} {scan["_error"]}',
+                        markers=['flag-red'],
+                    ))
                     continue
                 plat = _platform_only(scan)
-                p_kids = [_topic(p_name, href=url) for p_name, url in plat.items() if url]
+                p_kids = [_topic(p_name, href=url, markers=['task-done'])
+                          for p_name, url in plat.items() if url]
                 found = len(p_kids)
-                sub_topics.append(_topic(f'{var} ({found} hits)', p_kids))
+                sub_topics.append(_topic(
+                    f'{var} ({found} hits)', p_kids,
+                    markers=['flag-purple'] if found else ['flag-orange'],
+                ))
         elif cmd == 'mx' and isinstance(data, dict) and 'records' in data:
-            # MX 专用（v1.2.1 P0-3 修复）
             domain_lbl = data.get('domain', query)
-            mx_kids = [
-                _topic(f'{t("report.priority")} {r.get("preference", "")} → {r.get("exchange", "")}')
-                for r in data['records']
-            ]
-            sub_topics = [_topic(f'{t("report.mx_records")} {domain_lbl}', mx_kids)]
+            mx_kids = []
+            for r in data['records']:
+                pref = r.get('preference', '')
+                exch = r.get('exchange', '')
+                # priority-1..9 标记数字 1-9 越小优先级越高(MX 同义)
+                prio_marker = (f'priority-{min(int(pref), 9)}'
+                               if isinstance(pref, int) and pref >= 1 else 'priority-1')
+                mx_kids.append(_topic(
+                    f'{t("report.priority")} {pref} → {exch}',
+                    markers=[prio_marker],
+                ))
+            sub_topics = [meta_topic, _topic(
+                f'📧 {t("report.mx_records")} {domain_lbl}', mx_kids,
+                markers=['symbol-tip'],
+            )]
         elif cmd == 'domain-emails' and isinstance(data, dict) and 'emails' in data:
-            # v1.4.0: 域名邮箱 XMind — 按 source 分组
-            sub_topics = []
+            sub_topics = [meta_topic]
+            stats = data.get('_stats', {}) or {}
+            sub_topics.append(_topic(
+                f'📊 共 {stats.get("total", 0)} 个邮箱 · 爬取 {stats.get("pages_crawled", 0)} 页',
+                markers=['symbol-info'],
+            ))
             groups: dict = {'passive': [], 'crawl': [], 'pattern': []}
             for e in data.get('emails', []):
                 srcs = set(e.get('sources', []))
@@ -5431,19 +5559,36 @@ def _to_xmind(prefix: str, data: Any, out_path: str) -> Optional[str]:
                     groups['crawl'].append(e)
                 else:
                     groups['passive'].append(e)
-            for key, label_key in (('passive', 'demails.section_passive'),
-                                    ('crawl', 'demails.section_crawl'),
-                                    ('pattern', 'demails.section_pattern')):
+            # 每分组用不同 flag 颜色 + 不同 marker
+            section_meta = {
+                'passive': ('demails.section_passive', 'flag-blue', 'symbol-info'),
+                'crawl': ('demails.section_crawl', 'flag-green', 'symbol-attention'),
+                'pattern': ('demails.section_pattern', 'flag-purple', 'symbol-question'),
+            }
+            for key in ('passive', 'crawl', 'pattern'):
                 items = groups[key]
                 if not items:
                     continue
+                label_key, group_marker, item_marker = section_meta[key]
                 kids = []
                 for e in items:
-                    href = f'mailto:{e.get("address", "")}'
-                    kids.append(_topic(e.get('address', ''), href=href))
-                sub_topics.append(_topic(f'{t(label_key)} ({len(items)})', kids))
+                    addr = e.get('address', '')
+                    href = f'mailto:{addr}'
+                    # verified ✓ → task-done;unverified ✗ → flag-red;未验证 → 默认
+                    if e.get('verified') is True:
+                        kids.append(_topic(addr, href=href,
+                                           markers=['task-done', item_marker]))
+                    elif e.get('verified') is False:
+                        kids.append(_topic(addr, href=href,
+                                           markers=['flag-red', item_marker]))
+                    else:
+                        kids.append(_topic(addr, href=href,
+                                           markers=[item_marker]))
+                sub_topics.append(_topic(
+                    f'{t(label_key)} ({len(items)})', kids,
+                    markers=[group_marker],
+                ))
         elif cmd == 'subdomain' and isinstance(data, dict) and 'subdomains' in data:
-            # v1.3.0: subdomain 思维导图 — alive / dead 两支
             alive_kids = []
             dead_kids = []
             for s in data.get('subdomains', []):
@@ -5453,31 +5598,52 @@ def _to_xmind(prefix: str, data: Any, out_path: str) -> Optional[str]:
                 if status:
                     detail = f'{detail} [{status}]'.strip()
                 node_label = f'{s.get("host", "")} → {detail}' if detail else s.get('host', '')
-                # alive 子域:href 用 scheme,可点击
                 href = None
                 if s.get('alive') and s.get('scheme'):
                     href = f'{s["scheme"]}://{s.get("host", "")}/'
                 kids = []
                 if s.get('title'):
-                    kids.append(_topic(f'<title>: {s["title"]}'))
+                    kids.append(_topic(f'<title>: {s["title"]}',
+                                        markers=['symbol-info']))
                 if s.get('cname'):
-                    kids.append(_topic(f'CNAME → {s["cname"]}'))
-                topic = _topic(node_label, kids if kids else None, href=href)
+                    kids.append(_topic(f'CNAME → {s["cname"]}',
+                                        markers=['symbol-info']))
+                # 状态码 → marker:2xx=task-done, 3xx=task-3quar,
+                # 4xx=flag-orange, 5xx=flag-red
+                status_marker = 'task-done'
+                if status:
+                    if 200 <= status < 300:
+                        status_marker = 'task-done'
+                    elif 300 <= status < 400:
+                        status_marker = 'task-3quar'
+                    elif 400 <= status < 500:
+                        status_marker = 'flag-orange'
+                    elif status >= 500:
+                        status_marker = 'flag-red'
+                topic = _topic(node_label, kids if kids else None, href=href,
+                               markers=[status_marker if s.get('alive') else 'task-start'])
                 if s.get('alive'):
                     alive_kids.append(topic)
                 else:
                     dead_kids.append(topic)
-            sub_topics = []
+            sub_topics = [meta_topic]
+            if data.get('wildcard_suspect'):
+                sub_topics.append(_topic(
+                    f'⚠ {t("subdomain.wildcard_warn")}',
+                    markers=['symbol-warning', 'flag-red'],
+                ))
             if alive_kids:
                 sub_topics.append(_topic(
-                    f'{t("subdomain.alive_section")} ({len(alive_kids)})', alive_kids))
+                    f'{t("subdomain.alive_section")} ({len(alive_kids)})',
+                    alive_kids, markers=['flag-green'],
+                ))
             if dead_kids:
                 sub_topics.append(_topic(
-                    f'{t("subdomain.dead_section")} ({len(dead_kids)})', dead_kids))
-            if data.get('wildcard_suspect'):
-                sub_topics.insert(0, _topic(f'⚠ {t("subdomain.wildcard_warn")}'))
+                    f'{t("subdomain.dead_section")} ({len(dead_kids)})',
+                    dead_kids, markers=['flag-gray' if False else 'task-start'],
+                ))
         elif isinstance(data, dict):
-            sub_topics = []
+            sub_topics = [meta_topic]
             items = data.items() if cmd != 'username' else _platform_only(data).items()
             for k, v in items:
                 if v is None or v == '':
@@ -5491,12 +5657,28 @@ def _to_xmind(prefix: str, data: Any, out_path: str) -> Optional[str]:
                     v_str = str(v)
                 sub_topics.append(_topic(f'{k}: {v_str}'))
         else:
-            sub_topics = [_topic(json.dumps(data, ensure_ascii=False, default=str))]
+            sub_topics = [meta_topic, _topic(
+                json.dumps(data, ensure_ascii=False, default=str)
+            )]
 
         root_id = _uuid.uuid4().hex
         kids_xml = ''.join(sub_topics)
         children_xml = (f'<children><topics type="attached">{kids_xml}</topics></children>'
                        if sub_topics else '')
+
+        # v1.4.2:每个 cmd 类型有独立 emoji,让 root 节点视觉识别度高
+        _XMIND_CMD_EMOJI = {
+            'ip': '🌐', 'myip': '📡', 'phone': '📱', 'username': '👤',
+            'permute': '🧬', 'whois': '🔍', 'mx': '📧', 'email': '✉️',
+            'subdomain': '🌐', 'domain-emails': '📧', 'history': '🕐',
+        }
+        emoji = _XMIND_CMD_EMOJI.get(cmd, '🔎')
+        # root title:emoji + 报告名 + cmd · query(支持中英)
+        root_title = f'{emoji} {t("report.title")} · {cmd} · {query}'
+        # 根节点也加 marker(star-red 强调)
+        root_markers_xml = '<marker-refs><marker-ref marker-id="star-red"/></marker-refs>'
+        # sheet title 双语
+        sheet_title = f'{t("report.title")} — {query}'
 
         content_xml = (
             '<?xml version="1.0" encoding="UTF-8" standalone="no"?>\n'
@@ -5504,9 +5686,10 @@ def _to_xmind(prefix: str, data: Any, out_path: str) -> Optional[str]:
             'xmlns:xlink="http://www.w3.org/1999/xlink" '
             f'version="2.0" timestamp="{int(time.time() * 1000)}">'
             '<sheet id="sheet1">'
-            f'<title>{_html_escape(t("report.title"))}</title>'
+            f'<title>{_html_escape(sheet_title)}</title>'
             f'<topic id="{root_id}">'
-            f'<title>{_html_escape(cmd)}: {_html_escape(query)} ({_html_escape(ts)})</title>'
+            f'<title>{_html_escape(root_title)}</title>'
+            f'{root_markers_xml}'
             f'{children_xml}'
             '</topic>'
             '</sheet>'

@@ -18,6 +18,65 @@ This project adheres to [Keep a Changelog](https://keepachangelog.com/en/1.1.0/)
 
 ---
 
+## [1.4.2] — 2026-05-09
+
+🎨 **PDF + XMind 美化补完** —— v1.4.1 漏的两种格式同款 Editorial Investigation Brief 调性。
+
+### 🎨 PDF 大改
+
+- **独立封面页**(第一页 PageBreak 后才进数据):
+  - 80pt 上空白 + CONFIDENTIAL 印章(2px 红色边框 Table)+ 大号标题(`<font size="32">`)
+  - 双语 classification:zh `机密 · OSINT 简报` / en `CONFIDENTIAL · OSINT BRIEF`
+  - 双语 subtitle:zh `开源情报调查档案` / en `OPEN-SOURCE INTELLIGENCE DOSSIER`
+  - 双线 HRFlowable(2px + 0.5px)章节装饰
+  - 元数据三列表:`命令 / 查询 / 生成时间`,标签 7pt 灰色 uppercase + 值 9.5pt 加粗
+  - 底部品牌链接 `spyeyes · github.com/Akxan/SpyEyes`
+- **每页底部页脚**(`onFirstPage` + `onLaterPages` callback):
+  - 0.3px 横线分隔 + 左下品牌 `SPYEYES · OSINT 调查工具` / `SPYEYES · OSINT TOOLKIT`
+  - 右下页码 `p. N`(7pt 灰色 mono)
+- **更对比鲜明的字号 hierarchy**:
+  - Title 32pt(封面)/ Heading2 15pt / Heading3 12pt / Normal 9.5pt
+  - leading 加大让 STSong-Light 中文字符不挤
+- 引入 `HRFlowable` + `PageBreak`(reportlab.platypus)
+
+### 🎨 XMind 大改
+
+- **`<marker-refs>` XMind 内置图标系统**(让 XMind 8 渲染时节点视觉分级清晰):
+  - root 节点:`star-red`(红五角星强调)+ emoji prefix 按 cmd 区分
+    (`🌐 ip` / `📱 phone` / `👤 username` / `🔍 whois` / `📧 mx` / `🧬 permute` / `🌐 subdomain` / `📧 domain-emails`)
+  - 错误节点:`flag-red` + `symbol-warning`
+  - **username**:类别分组 `flag-blue`,命中平台 `task-done`(绿勾)
+  - **permute_scan**:有命中变形 `flag-purple`,空命中 `flag-orange`,命中平台 `task-done`
+  - **mx**:节点 `symbol-tip`,records 按 preference 数字映射 `priority-1..9`
+  - **domain-emails**:passive `flag-blue` + `symbol-info`,crawl `flag-green` + `symbol-attention`,
+    pattern `flag-purple` + `symbol-question`;verified ✓ → `task-done`,unverified ✗ → `flag-red`
+  - **subdomain**:status code 映射 — 2xx `task-done`,3xx `task-3quar`,
+    4xx `flag-orange`,5xx `flag-red`;wildcard 警告 `symbol-warning + flag-red`
+  - **wildcard 警告**:`symbol-warning + flag-red`(双图标视觉冲击)
+- **元数据 child topic**(每报告独立 `⏱ 生成时间: ...` 子节点)— XMind 单行 title 限制下,
+  把元数据外提到独立 child 让 root 简洁
+- root title:`{emoji} {报告名} · {cmd} · {query}` 简短易读
+- sheet title:`{报告名} — {query}`(XMind 8 会显示在 tab)
+
+### 🌍 Bilingual
+
+- 中英两版 PDF / XMind 都美观:
+  - 印章风:`机密 · OSINT 简报` ↔ `CONFIDENTIAL · OSINT BRIEF`
+  - subtitle:`开源情报调查档案` ↔ `OPEN-SOURCE INTELLIGENCE DOSSIER`
+  - 页脚品牌:`SPYEYES · OSINT 调查工具` ↔ `SPYEYES · OSINT TOOLKIT`
+
+### 🧪 Tests
+
+- 417 测试全绿(无新测试,通过现有报告生成测试覆盖)
+- ruff / mypy / bandit 全清
+- pypdf 验证 2 页结构 + 封面页文字提取确认双语正确
+
+### 📦 Packaging
+
+- `__version__` 1.4.1 → 1.4.2
+
+---
+
 ## [1.4.1] — 2026-05-09
 
 🎨 **报告美化 — Editorial Investigation Brief 风格**(调查档案/报刊调性)。
