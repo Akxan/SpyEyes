@@ -2308,7 +2308,7 @@ class TestEnumerateSubdomains:
     def test_full_flow(self, monkeypatch):
         if not gt.HAS_DNS:
             pytest.skip('dns 依赖未安装')
-        monkeypatch.setattr(gt, 'passive_collect_subdomains', lambda d: {
+        monkeypatch.setattr(gt, 'passive_collect_subdomains', lambda d, **kw: {
             'candidates': {'api.example.com', 'mail.example.com'},
             'sources': {'crtsh': 2, 'hackertarget': 0, 'otx': 0, 'threatcrowd': 0},
             'errors': {},
@@ -2337,7 +2337,7 @@ class TestEnumerateSubdomains:
     def test_no_probe_skips_http(self, monkeypatch):
         if not gt.HAS_DNS:
             pytest.skip('dns 依赖未安装')
-        monkeypatch.setattr(gt, 'passive_collect_subdomains', lambda d: {
+        monkeypatch.setattr(gt, 'passive_collect_subdomains', lambda d, **kw: {
             'candidates': {'api.example.com'},
             'sources': {'crtsh': 1}, 'errors': {},
         })
@@ -2359,7 +2359,7 @@ class TestEnumerateSubdomains:
     def test_wildcard_flag_propagated(self, monkeypatch):
         if not gt.HAS_DNS:
             pytest.skip('dns 依赖未安装')
-        monkeypatch.setattr(gt, 'passive_collect_subdomains', lambda d: {
+        monkeypatch.setattr(gt, 'passive_collect_subdomains', lambda d, **kw: {
             'candidates': set(), 'sources': {'crtsh': 0}, 'errors': {},
         })
         monkeypatch.setattr(gt, '_detect_wildcard_dns', lambda d, dns_timeout=3.0: True)
@@ -2372,7 +2372,7 @@ class TestEnumerateSubdomains:
             pytest.skip('dns 依赖未安装')
         # 临时调小 MAX 加快测试
         monkeypatch.setattr(gt, 'SUBDOMAIN_MAX_RESULTS', 3)
-        monkeypatch.setattr(gt, 'passive_collect_subdomains', lambda d: {
+        monkeypatch.setattr(gt, 'passive_collect_subdomains', lambda d, **kw: {
             'candidates': {f'h{i}.example.com' for i in range(10)},
             'sources': {'crtsh': 10}, 'errors': {},
         })
@@ -2755,6 +2755,127 @@ class TestNumverifyProvider:
         with patch.object(gt, 'safe_get', return_value=fake):
             r = gt._phone_provider_numverify('+34600320351', 'k')
         assert r['carrier'] is None
+
+
+class TestSubdomainStageProgress:
+    """v1.3.3:子域名枚举各阶段反馈(消除"卡顿期"困惑)。
+    由于 _stage_log 仅在 stderr.isatty() 时输出,这里 patch isatty=True 验证。"""
+
+    def test_passive_collect_emits_per_source_lines(self, monkeypatch, capsys):
+        """每个源完成后立即输出一行到 stderr。"""
+        monkeypatch.setattr('sys.stderr.isatty', lambda: True)
+        monkeypatch.setitem(gt.SUBDOMAIN_SOURCES, 'crtsh',
+                            lambda d: {'a.example.com', 'b.example.com'})
+        monkeypatch.setitem(gt.SUBDOMAIN_SOURCES, 'hackertarget', lambda d: set())
+        monkeypatch.setitem(gt.SUBDOMAIN_SOURCES, 'otx', lambda d: set())
+        monkeypatch.setitem(gt.SUBDOMAIN_SOURCES, 'threatcrowd', lambda d: set())
+        gt.passive_collect_subdomains('example.com', show_progress=True)
+        err = capsys.readouterr().err
+        # 每个源都应该有一行(成功的显示候选数,空的显示 0)
+        assert 'crtsh' in err
+        assert 'hackertarget' in err
+        assert 'otx' in err
+        assert 'threatcrowd' in err
+        # crtsh 应显示 2 个候选(数字)
+        assert '2' in err
+
+    def test_passive_collect_silent_when_progress_off(self, monkeypatch, capsys):
+        """show_progress=False 时不写 stderr(测试场景需要)。"""
+        monkeypatch.setattr('sys.stderr.isatty', lambda: True)
+        monkeypatch.setitem(gt.SUBDOMAIN_SOURCES, 'crtsh', lambda d: {'a.example.com'})
+        monkeypatch.setitem(gt.SUBDOMAIN_SOURCES, 'hackertarget', lambda d: set())
+        monkeypatch.setitem(gt.SUBDOMAIN_SOURCES, 'otx', lambda d: set())
+        monkeypatch.setitem(gt.SUBDOMAIN_SOURCES, 'threatcrowd', lambda d: set())
+        gt.passive_collect_subdomains('example.com', show_progress=False)
+        err = capsys.readouterr().err
+        assert 'crtsh' not in err
+
+    def test_passive_collect_errors_show_up(self, monkeypatch, capsys):
+        """单源抛异常 → 在 stderr 显示 error 行 + 继续其它源。"""
+        monkeypatch.setattr('sys.stderr.isatty', lambda: True)
+
+        def boom(d):
+            raise RuntimeError('rate limit')
+        monkeypatch.setitem(gt.SUBDOMAIN_SOURCES, 'crtsh', boom)
+        monkeypatch.setitem(gt.SUBDOMAIN_SOURCES, 'hackertarget',
+                            lambda d: {'good.example.com'})
+        monkeypatch.setitem(gt.SUBDOMAIN_SOURCES, 'otx', lambda d: set())
+        monkeypatch.setitem(gt.SUBDOMAIN_SOURCES, 'threatcrowd', lambda d: set())
+        result = gt.passive_collect_subdomains('example.com', show_progress=True)
+        err = capsys.readouterr().err
+        assert 'crtsh' in err
+        assert 'rate limit' in err
+        # 主流程不受影响
+        assert 'good.example.com' in result['candidates']
+
+    def test_stage_log_silent_when_not_tty(self, monkeypatch, capsys):
+        """stderr 不是 TTY(管道场景)时 _stage_log 静默 — 防污染 jq pipeline。"""
+        monkeypatch.setattr('sys.stderr.isatty', lambda: False)
+        gt._stage_log('this should not appear')
+        err = capsys.readouterr().err
+        assert 'this should not appear' not in err
+
+    def test_enumerate_emits_all_4_stage_headers(self, monkeypatch, capsys):
+        """enumerate_subdomains 跑完应输出 4 个 stage header。"""
+        if not gt.HAS_DNS:
+            pytest.skip('dns 依赖未安装')
+        monkeypatch.setattr('sys.stderr.isatty', lambda: True)
+        monkeypatch.setattr(gt, 'passive_collect_subdomains',
+                            lambda d, show_progress=True: {
+                                'candidates': {'api.example.com'},
+                                'sources': {'crtsh': 1}, 'errors': {}})
+        monkeypatch.setattr(gt, '_detect_wildcard_dns',
+                            lambda d, dns_timeout=3.0: False)
+        monkeypatch.setattr(gt, '_resolve_one_subdomain',
+                            lambda h, dns_timeout=3.0: {
+                                'host': h, 'alive': True, 'a': ['1.2.3.4'],
+                                'aaaa': [], 'cname': None})
+        monkeypatch.setattr(gt, '_probe_one_subdomain',
+                            lambda h, timeout=5.0: {'http_status': 200,
+                                                     'title': 't', 'scheme': 'https'})
+        gt.enumerate_subdomains('example.com', show_progress=True)
+        err = capsys.readouterr().err
+        # 4 个 stage header 关键词:'1/4'..'4/4'
+        for stage in ('1/4', '2/4', '3/4', '4/4'):
+            assert stage in err, f'missing stage {stage} in: {err}'
+
+    def test_enumerate_silent_when_progress_off(self, monkeypatch, capsys):
+        """show_progress=False 时,enumerate_subdomains 不写任何 stage 反馈。"""
+        if not gt.HAS_DNS:
+            pytest.skip('dns 依赖未安装')
+        monkeypatch.setattr('sys.stderr.isatty', lambda: True)
+        monkeypatch.setattr(gt, 'passive_collect_subdomains',
+                            lambda d, show_progress=True: {
+                                'candidates': set(),
+                                'sources': {'crtsh': 0}, 'errors': {}})
+        monkeypatch.setattr(gt, '_detect_wildcard_dns',
+                            lambda d, dns_timeout=3.0: False)
+        gt.enumerate_subdomains('example.com', show_progress=False)
+        err = capsys.readouterr().err
+        for stage in ('1/4', '2/4', '3/4', '4/4'):
+            assert stage not in err
+
+
+class TestSubdomainStageI18n:
+    """v1.3.3 stage 反馈 i18n 键完整性。"""
+
+    def test_stage_keys_in_both_langs(self):
+        keys = ['subdomain.stage_passive', 'subdomain.stage_wildcard',
+                'subdomain.stage_dns', 'subdomain.stage_probe',
+                'subdomain.source_done', 'subdomain.source_err',
+                'subdomain.wildcard_yes', 'subdomain.wildcard_no']
+        for k in keys:
+            assert k in gt.TRANSLATIONS['en'], f"Missing en: {k}"
+            assert k in gt.TRANSLATIONS['zh'], f"Missing zh: {k}"
+
+    def test_stage_localized(self):
+        gt.set_lang('en')
+        en = gt.t('subdomain.stage_passive')
+        gt.set_lang('zh')
+        zh = gt.t('subdomain.stage_passive')
+        assert en != zh
+        assert 'Stage 1/4' in en
+        assert '阶段 1/4' in zh
 
 
 class TestPhoneI18nKeys:

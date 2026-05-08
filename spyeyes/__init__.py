@@ -66,7 +66,7 @@ except ImportError:
 
 
 # 语义化版本号 —— 同步更新 docs/CHANGELOG.md 与 git tag
-__version__ = '1.3.2'
+__version__ = '1.3.3'
 
 
 # ====================================================================
@@ -326,6 +326,15 @@ TRANSLATIONS: dict = {
         'subdomain.col_cname':        'CNAME',
         'subdomain.col_status':       'HTTP',
         'subdomain.col_title':        'Title',
+        # v1.3.3:阶段进度反馈,告诉用户每一步在做什么(消除"卡顿期")
+        'subdomain.stage_passive':    'Stage 1/4: Fetching passive sources (crt.sh / HackerTarget / OTX / ThreatCrowd) ...',
+        'subdomain.stage_wildcard':   'Stage 2/4: Detecting wildcard DNS ...',
+        'subdomain.stage_dns':        'Stage 3/4: Resolving {n} candidates via DNS ...',
+        'subdomain.stage_probe':      'Stage 4/4: HTTP-probing {n} alive subdomains ...',
+        'subdomain.source_done':      '[{name:>13}] {n:>4} candidates',
+        'subdomain.source_err':       '[{name:>13}] error: {err}',
+        'subdomain.wildcard_yes':     'wildcard detected — results may be unreliable',
+        'subdomain.wildcard_no':      'no wildcard',
         'prompt.input_subdomain':     'Enter target domain (e.g. example.com): ',
         'prompt.subdomain_probe':     'Run HTTP probe to fetch <title>?\n   [ 1 ] Yes (default)  [ 2 ] No\n  Choose [1/2, default 1] : ',
         # Errors
@@ -557,6 +566,15 @@ TRANSLATIONS: dict = {
         'subdomain.col_cname':        'CNAME',
         'subdomain.col_status':       'HTTP',
         'subdomain.col_title':        '标题',
+        # v1.3.3:阶段进度反馈,告诉用户每一步在做什么(消除"卡顿期")
+        'subdomain.stage_passive':    '阶段 1/4:拉取被动数据源(crt.sh / HackerTarget / OTX / ThreatCrowd)...',
+        'subdomain.stage_wildcard':   '阶段 2/4:通配符 DNS 检测 ...',
+        'subdomain.stage_dns':        '阶段 3/4:DNS 解析 {n} 个候选 ...',
+        'subdomain.stage_probe':      '阶段 4/4:HTTP probe {n} 个活跃子域 ...',
+        'subdomain.source_done':      '[{name:>13}] {n:>4} 个候选',
+        'subdomain.source_err':       '[{name:>13}] 错误:{err}',
+        'subdomain.wildcard_yes':     '检测到通配符 — 结果可信度降低',
+        'subdomain.wildcard_no':      '无通配符',
         'prompt.input_subdomain':     '请输入目标域名（如 example.com）：',
         'prompt.subdomain_probe':     '是否抓 HTTP <title> 信息？\n   [ 1 ] 是（默认）  [ 2 ] 否\n  请选择 [1/2，默认 1] : ',
         'err.network':          '网络请求失败（超时或连接错误）',
@@ -2274,9 +2292,17 @@ SUBDOMAIN_SOURCES = {
 }
 
 
-def passive_collect_subdomains(domain: str) -> dict:
+def _stage_log(msg: str) -> None:
+    """子域名枚举阶段反馈(写 stderr,仅 TTY 时输出避免污染管道)。"""
+    if sys.stderr.isatty():
+        sys.stderr.write(msg + '\n')
+        sys.stderr.flush()
+
+
+def passive_collect_subdomains(domain: str, *, show_progress: bool = True) -> dict:
     """并发拉取所有被动源,返回 {sources: {name: count}, candidates: set, errors: {name: True}}.
-    任何单源失败都被吞,只在 errors 中记录;调用方据此判断结果可信度。"""
+    任何单源失败都被吞,只在 errors 中记录;调用方据此判断结果可信度。
+    show_progress=True 时每个源完成后输出一行到 stderr(消除"卡顿期"困惑)。"""
     candidates: set[str] = set()
     sources_count: dict = {}
     errors: dict = {}
@@ -2286,12 +2312,17 @@ def passive_collect_subdomains(domain: str) -> dict:
             name = futures[fut]
             try:
                 hosts = fut.result()
-            except Exception:
+            except Exception as e:
                 errors[name] = True
                 sources_count[name] = 0
+                if show_progress:
+                    _stage_log(f"   {Color.Re}{t('subdomain.source_err', name=name, err=str(e)[:60])}{Color.Reset}")
                 continue
             sources_count[name] = len(hosts)
             candidates |= hosts
+            if show_progress:
+                color = Color.Gr if hosts else Color.Bl  # 命中 = 绿,空 = 蓝
+                _stage_log(f"   {color}{t('subdomain.source_done', name=name, n=len(hosts))}{Color.Reset}")
     return {'sources': sources_count, 'candidates': candidates, 'errors': errors}
 
 
@@ -2415,11 +2446,20 @@ def enumerate_subdomains(domain: str, *, probe: bool = True,
     domain = normalized
 
     # 1) 被动多源
-    passive = passive_collect_subdomains(domain)
+    if show_progress:
+        _stage_log(f"\n {Color.Cy}{t('subdomain.stage_passive')}{Color.Reset}")
+    passive = passive_collect_subdomains(domain, show_progress=show_progress)
     candidates = passive['candidates']
 
     # 2) wildcard 探测(独立,失败不阻塞主流程)
+    if show_progress:
+        _stage_log(f"\n {Color.Cy}{t('subdomain.stage_wildcard')}{Color.Reset}")
     wildcard = _detect_wildcard_dns(domain)
+    if show_progress:
+        if wildcard:
+            _stage_log(f"   {Color.Re}{t('subdomain.wildcard_yes')}{Color.Reset}")
+        else:
+            _stage_log(f"   {Color.Gr}{t('subdomain.wildcard_no')}{Color.Reset}")
 
     # 3) DNS 解析 — 截断到 MAX 防巨型 wildcard 域(blogspot 等)拖垮
     if len(candidates) > SUBDOMAIN_MAX_RESULTS:
@@ -2430,6 +2470,8 @@ def enumerate_subdomains(domain: str, *, probe: bool = True,
     resolved: list = []
     total = len(candidates)
     done = 0
+    if show_progress:
+        _stage_log(f"\n {Color.Cy}{t('subdomain.stage_dns', n=total)}{Color.Reset}")
     with ThreadPoolExecutor(max_workers=max_workers) as ex:
         futures = {ex.submit(_resolve_one_subdomain, h, dns_timeout): h for h in candidates}
         try:
@@ -2456,6 +2498,8 @@ def enumerate_subdomains(domain: str, *, probe: bool = True,
     probed = 0
     if probe:
         alive_recs = [r for r in resolved if r.get('alive')]
+        if show_progress and alive_recs:
+            _stage_log(f"\n {Color.Cy}{t('subdomain.stage_probe', n=len(alive_recs))}{Color.Reset}")
         with ThreadPoolExecutor(max_workers=max_workers) as ex:
             futures = {ex.submit(_probe_one_subdomain, r['host'], probe_timeout): r
                        for r in alive_recs}

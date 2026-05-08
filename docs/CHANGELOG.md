@@ -18,6 +18,39 @@ This project adheres to [Keep a Changelog](https://keepachangelog.com/en/1.1.0/)
 
 ---
 
+## [1.3.3] — 2026-05-09
+
+🎯 **子域名枚举阶段反馈** —— 消除"输入域名后卡 5-15 秒不知在做什么"的困惑。
+
+### ✨ Features / UX
+
+- **4 个阶段实时反馈**(写 stderr,仅 TTY,不污染管道):
+  - `阶段 1/4:拉取被动数据源(crt.sh / HackerTarget / OTX / ThreatCrowd)...`
+  - 每个源完成时即时输出候选数:`[crtsh] 142 个候选` / `[hackertarget] error: rate limit`
+  - `阶段 2/4:通配符 DNS 检测 ...` → `无通配符` / `检测到通配符 — 结果可信度降低`
+  - `阶段 3/4:DNS 解析 N 个候选 ...`(沿用现有进度条)
+  - `阶段 4/4:HTTP probe N 个活跃子域 ...`(沿用现有进度条)
+- **`_stage_log()` helper** 仅在 `sys.stderr.isatty()` 时输出,管道场景静默
+- **新增 8 个 i18n 键**(中英双语):`subdomain.stage_passive/wildcard/dns/probe` / `source_done/source_err` / `wildcard_yes/wildcard_no`
+
+### 🐛 Bug Fixes
+
+- 之前用户输入域名后看到"黑屏 5-15 秒 → 突然出进度条",体验断层(根因:被动多源拉取阶段 + wildcard 探测阶段无任何反馈)
+- `passive_collect_subdomains` 加 `show_progress=True` 参数;调用方默认开启,测试用 `False` 静默
+
+### 🧪 Tests
+
+- **+8 个新测试**(全套 368 → 376):
+  - `TestSubdomainStageProgress` × 6:每源逐个出衡 / 静默模式 / error 显示 / 非 TTY 静默 / 4 stage header / show_progress=False
+  - `TestSubdomainStageI18n` × 2:i18n 键完整 + 双语本地化
+- 修复 4 个旧 mock 签名(添 `**kw` 容纳 `show_progress` 关键字)
+
+### 📦 Packaging
+
+- `__version__` 1.3.2 → 1.3.3
+
+---
+
 ## [1.3.2] — 2026-05-09
 
 🛠 **质量打磨 + 电话运营商 MNP 修复 + UX 优化** —— 围绕"用户实际使用"的多面修复。
