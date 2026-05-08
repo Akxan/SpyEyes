@@ -2878,6 +2878,384 @@ class TestSubdomainStageI18n:
         assert '阶段 1/4' in zh
 
 
+    pass  # marker
+
+
+# ====================================================================
+# v1.4.0: 域名邮箱枚举(多源 OSINT + 深度爬取 + 可选模式 + 可选 SMTP)
+# ====================================================================
+class TestEmailRelevance:
+    """_is_email_relevant: 仅接受 target domain 或子域,排除 fake/示例域。"""
+
+    def test_main_domain(self):
+        assert gt._is_email_relevant('a@example.com', 'example.com') is True
+
+    def test_subdomain(self):
+        assert gt._is_email_relevant('admin@mail.example.com', 'example.com') is True
+
+    def test_other_domain_rejected(self):
+        assert gt._is_email_relevant('a@evil.com', 'example.com') is False
+
+    def test_partial_match_rejected(self):
+        """notexample.com 不应匹配 example.com。"""
+        assert gt._is_email_relevant('a@notexample.com', 'example.com') is False
+
+    def test_fake_example_filtered(self):
+        """example.com 的 example.com 邮箱仍属合法,但 example.org 之类应被
+        视为示例。这里我们直接限定排除常见示例 — 输入 example.com 时其它
+        example.* 域的邮箱本来也不属于 example.com。"""
+        assert gt._is_email_relevant('foo@yourdomain.com', 'example.com') is False
+
+    def test_no_at_rejected(self):
+        assert gt._is_email_relevant('not-an-email', 'example.com') is False
+
+    def test_empty(self):
+        assert gt._is_email_relevant('', 'example.com') is False
+
+
+class TestEmailExtractFromText:
+    def test_mailto_link(self):
+        text = '<a href="mailto:contact@example.com">Email us</a>'
+        out = gt._extract_emails_from_text(text, 'example.com')
+        assert 'contact@example.com' in out
+
+    def test_plain_text(self):
+        text = 'Reach out to support@example.com or admin@example.com'
+        out = gt._extract_emails_from_text(text, 'example.com')
+        assert out == {'support@example.com', 'admin@example.com'}
+
+    def test_filters_other_domains(self):
+        text = 'Internal: x@example.com / External: x@gmail.com'
+        out = gt._extract_emails_from_text(text, 'example.com')
+        assert out == {'x@example.com'}
+
+    def test_subdomain_emails_kept(self):
+        text = 'Mail: ops@mail.example.com / Web: web@example.com'
+        out = gt._extract_emails_from_text(text, 'example.com')
+        assert 'ops@mail.example.com' in out
+        assert 'web@example.com' in out
+
+    def test_lookbehind_prevents_truncation(self):
+        """正则 lookbehind 防 'abc@example.com' 被切成 'bc@example.com'。"""
+        text = 'visit prefixabc@example.com today'  # 没有空格前缀
+        out = gt._extract_emails_from_text(text, 'example.com')
+        # 完整 'prefixabc@example.com' 而非裸 'abc@example.com'
+        assert 'prefixabc@example.com' in out
+        assert 'abc@example.com' not in out
+
+    def test_empty_input(self):
+        assert gt._extract_emails_from_text('', 'example.com') == set()
+        assert gt._extract_emails_from_text(None, 'example.com') == set()
+
+
+class TestEmailPatternGeneration:
+    def test_single_name(self):
+        out = gt._generate_email_patterns('John Doe', 'example.com')
+        assert 'john.doe@example.com' in out
+        assert 'jdoe@example.com' in out
+        assert 'john@example.com' in out
+        assert 'doe@example.com' in out
+        assert 'jd@example.com' in out
+
+    def test_multiple_names(self):
+        out = gt._generate_email_patterns('John Doe, Jane Smith', 'example.com')
+        assert any('john' in e for e in out)
+        assert any('jane' in e for e in out)
+
+    def test_empty_input(self):
+        assert gt._generate_email_patterns('', 'example.com') == []
+        assert gt._generate_email_patterns(None, 'example.com') == []
+
+    def test_dedup(self):
+        out = gt._generate_email_patterns('John Doe, John Doe', 'example.com')
+        assert len(out) == len(set(out))
+
+    def test_unicode(self):
+        """中文姓名会被剥离非 word 字符,得到拼音前的字母名(可能空)。"""
+        out = gt._generate_email_patterns('张 三', 'example.com')
+        # 至少不抛异常
+        assert isinstance(out, list)
+
+
+class TestRobotsTxt:
+    def test_extract_sitemap_and_disallow(self):
+        fake = MagicMock(status_code=200, text=(
+            "User-agent: *\n"
+            "Disallow: /private/\n"
+            "Disallow: /admin\n"
+            "Sitemap: https://example.com/sitemap.xml\n"
+        ))
+        with patch.object(gt, 'safe_get', return_value=fake):
+            sm, dis = gt._fetch_robots_txt('https', 'example.com')
+        assert sm == {'https://example.com/sitemap.xml'}
+        assert '/private/' in dis
+        assert '/admin' in dis
+
+    def test_404_returns_empty(self):
+        fake = MagicMock(status_code=404)
+        with patch.object(gt, 'safe_get', return_value=fake):
+            sm, dis = gt._fetch_robots_txt('https', 'example.com')
+        assert sm == set() and dis == []
+
+    def test_disallow_match(self):
+        assert gt._is_path_disallowed('https://example.com/admin/x',
+                                       ['/admin']) is True
+        assert gt._is_path_disallowed('https://example.com/public',
+                                       ['/admin']) is False
+        # '/' 全站禁
+        assert gt._is_path_disallowed('https://example.com/anything',
+                                       ['/']) is True
+
+
+class TestSitemapParsing:
+    def test_extract_locs(self):
+        fake = MagicMock(status_code=200, text=(
+            '<?xml version="1.0"?><urlset>'
+            '<url><loc>https://example.com/page1</loc></url>'
+            '<url><loc>https://example.com/page2</loc></url>'
+            '<url><loc>https://evil.com/notmine</loc></url>'  # 跨域应被过滤
+            '</urlset>'
+        ))
+        with patch.object(gt, 'safe_get', return_value=fake):
+            urls = gt._fetch_sitemap_urls('https://example.com/sitemap.xml',
+                                           'example.com')
+        assert 'https://example.com/page1' in urls
+        assert 'https://example.com/page2' in urls
+        assert 'https://evil.com/notmine' not in urls
+
+
+class TestEmailsFromCrtsh:
+    def test_extracts_from_name_value(self):
+        fake = MagicMock(status_code=200)
+        fake.json.return_value = [
+            {'name_value': 'admin@example.com\nfoo@example.com',
+             'common_name': 'support@example.com'},
+        ]
+        with patch.object(gt, 'safe_get', return_value=fake):
+            out = gt._emails_from_crtsh('example.com')
+        assert {'admin@example.com', 'foo@example.com',
+                'support@example.com'} <= out
+
+    def test_handles_non_list(self):
+        fake = MagicMock(status_code=200)
+        fake.json.return_value = {}
+        with patch.object(gt, 'safe_get', return_value=fake):
+            assert gt._emails_from_crtsh('example.com') == set()
+
+
+class TestEnumerateDomainEmails:
+    """主入口集成测试 — mock 各组件验证流程编排正确。"""
+
+    def test_invalid_domain_rejected(self):
+        result = gt.enumerate_domain_emails('http://bad/x')
+        assert '_error' in result
+
+    def test_passive_only_no_crawl(self, monkeypatch):
+        """crawl=False 时不调爬虫,只用 crtsh + WHOIS。"""
+        monkeypatch.setattr(gt, '_emails_from_crtsh',
+                            lambda d: {'a@example.com'})
+        monkeypatch.setattr(gt, '_emails_from_whois',
+                            lambda d: {'admin@example.com'})
+        called = {'crawl': 0}
+
+        def fake_crawl(*a, **kw):
+            called['crawl'] += 1
+            return {'emails': set(), 'page_map': {}, 'pages_crawled': 0,
+                    'sitemap_found': False, 'robots_disallows': 0}
+        monkeypatch.setattr(gt, '_crawl_domain_for_emails', fake_crawl)
+        r = gt.enumerate_domain_emails('example.com', crawl=False,
+                                        show_progress=False)
+        assert called['crawl'] == 0
+        addrs = {e['address'] for e in r['emails']}
+        assert addrs == {'a@example.com', 'admin@example.com'}
+
+    def test_full_flow_with_crawl(self, monkeypatch):
+        monkeypatch.setattr(gt, '_emails_from_crtsh',
+                            lambda d: {'a@example.com'})
+        monkeypatch.setattr(gt, '_emails_from_whois',
+                            lambda d: {'admin@example.com'})
+
+        def fake_crawl(target, **kw):
+            return {'emails': {'web@example.com'},
+                    'page_map': {'web@example.com': 'https://example.com/'},
+                    'pages_crawled': 5, 'sitemap_found': True,
+                    'robots_disallows': 0}
+        monkeypatch.setattr(gt, '_crawl_domain_for_emails', fake_crawl)
+        # include_subdomains=False → 不调 enumerate_subdomains
+        r = gt.enumerate_domain_emails('example.com', include_subdomains=False,
+                                        show_progress=False)
+        addrs = {e['address'] for e in r['emails']}
+        assert {'a@example.com', 'admin@example.com', 'web@example.com'} <= addrs
+        assert r['_stats']['pages_crawled'] == 5
+        assert r['_stats']['sitemap_found'] is True
+
+    def test_pattern_generation(self, monkeypatch):
+        monkeypatch.setattr(gt, '_emails_from_crtsh', lambda d: set())
+        monkeypatch.setattr(gt, '_emails_from_whois', lambda d: set())
+        r = gt.enumerate_domain_emails('example.com', crawl=False,
+                                        guess_names='John Doe',
+                                        show_progress=False)
+        addrs = {e['address'] for e in r['emails']}
+        assert 'john.doe@example.com' in addrs
+        # source 标记是 pattern
+        for e in r['emails']:
+            if e['address'] == 'john.doe@example.com':
+                assert 'pattern' in e['sources']
+
+    def test_smtp_verify_off_by_default(self, monkeypatch):
+        monkeypatch.setattr(gt, '_emails_from_crtsh',
+                            lambda d: {'a@example.com'})
+        monkeypatch.setattr(gt, '_emails_from_whois', lambda d: set())
+        with patch.object(gt, '_verify_smtp') as mock_verify:
+            r = gt.enumerate_domain_emails('example.com', crawl=False,
+                                            show_progress=False)
+        assert mock_verify.call_count == 0
+        # verified 字段都是 None
+        assert all(e['verified'] is None for e in r['emails'])
+
+    def test_smtp_verify_when_opted_in(self, monkeypatch):
+        monkeypatch.setattr(gt, '_emails_from_crtsh',
+                            lambda d: {'a@example.com', 'b@example.com'})
+        monkeypatch.setattr(gt, '_emails_from_whois', lambda d: set())
+
+        def fake_verify(em, **kw):
+            return (em == 'a@example.com', 'mocked')
+        monkeypatch.setattr(gt, '_verify_smtp', fake_verify)
+        r = gt.enumerate_domain_emails('example.com', crawl=False,
+                                        verify_smtp=True, show_progress=False)
+        verified = [e for e in r['emails'] if e['verified'] is True]
+        not_verified = [e for e in r['emails'] if e['verified'] is False]
+        assert len(verified) == 1
+        assert verified[0]['address'] == 'a@example.com'
+        assert len(not_verified) == 1
+
+
+class TestDomainEmailsCli:
+    def test_subcommand_parses(self):
+        args = gt.build_parser().parse_args(['domain-emails', 'example.com'])
+        assert args.command == 'domain-emails'
+        assert args.domain == 'example.com'
+        assert args.no_crawl is False
+
+    def test_all_flags(self):
+        args = gt.build_parser().parse_args([
+            'domain-emails', 'example.com',
+            '--no-crawl', '--no-include-subdomains',
+            '--max-pages', '100', '--crawl-depth', '3',
+            '--ignore-robots', '--guess', 'John Doe',
+            '--verify-smtp',
+        ])
+        assert args.no_crawl is True
+        assert args.no_include_subdomains is True
+        assert args.max_pages == 100
+        assert args.crawl_depth == 3
+        assert args.ignore_robots is True
+        assert args.guess_names == 'John Doe'
+        assert args.verify_smtp is True
+
+    def test_run_cli(self, monkeypatch, capsys, tmp_path):
+        monkeypatch.setattr(gt, 'HISTORY_FILE', str(tmp_path / 'h.jsonl'))
+        monkeypatch.setattr(gt, 'CONFIG_DIR', str(tmp_path))
+        monkeypatch.setattr(gt, 'enumerate_domain_emails', lambda d, **kw: {
+            'domain': 'example.com',
+            'emails': [{'address': 'a@example.com', 'sources': ['crtsh'],
+                        'page': None, 'verified': None, 'verify_reason': None}],
+            '_stats': {'total': 1, 'by_source': {'crtsh': 1},
+                       'pages_crawled': 0, 'sitemap_found': False, 'verified': 0},
+        })
+        import argparse
+        args = argparse.Namespace(command='domain-emails', domain='example.com',
+                                   no_crawl=True, no_include_subdomains=True,
+                                   max_pages=100, crawl_depth=3,
+                                   ignore_robots=False, guess_names=None,
+                                   verify_smtp=False, json=True, save=None)
+        rc = gt.run_cli(args)
+        assert rc == 0
+        out = capsys.readouterr().out
+        data = json.loads(out)
+        assert data['domain'] == 'example.com'
+        assert len(data['emails']) == 1
+
+
+class TestDomainEmailsReports:
+    """8 种报告生成器在 domain-emails 数据上不崩 + 关键内容存在。"""
+
+    @pytest.fixture
+    def sample(self):
+        return {
+            'domain': 'example.com',
+            'emails': [
+                {'address': 'admin@example.com', 'sources': ['whois'],
+                 'page': None, 'verified': None, 'verify_reason': None},
+                {'address': 'support@example.com', 'sources': ['crawl'],
+                 'page': 'https://example.com/contact',
+                 'verified': True, 'verify_reason': 'rcpt accepted'},
+                {'address': 'john.doe@example.com', 'sources': ['pattern'],
+                 'page': None, 'verified': False, 'verify_reason': 'rejected'},
+            ],
+            '_stats': {'total': 3, 'by_source': {'whois': 1, 'crawl': 1, 'pattern': 1},
+                       'pages_crawled': 12, 'sitemap_found': True, 'verified': 1},
+        }
+
+    def test_markdown(self, sample):
+        md = gt._to_markdown('domain-emails_example.com', sample)
+        assert 'admin@example.com' in md
+        assert 'support@example.com' in md
+        assert 'john.doe@example.com' in md
+        assert '|' in md  # table
+
+    def test_html(self, sample):
+        html = gt._to_html('domain-emails_example.com', sample)
+        assert 'mailto:admin@example.com' in html
+        assert 'support@example.com' in html
+
+    def test_txt(self, sample):
+        txt = gt._to_txt('domain-emails_example.com', sample)
+        assert 'admin@example.com' in txt
+        assert '[verified]' in txt or '[unverified]' in txt
+
+    def test_csv(self, sample):
+        csv = gt._to_csv('domain-emails_example.com', sample)
+        first = csv.split('\n')[0]
+        # 4 列
+        assert first.count(',') == 3
+        assert 'admin@example.com' in csv
+
+    def test_xmind(self, sample, tmp_path):
+        out = tmp_path / 'r.xmind'
+        err = gt._to_xmind('domain-emails_example.com', sample, str(out))
+        assert err is None
+        assert out.exists()
+
+    def test_graph(self, sample):
+        html = gt._to_graph_html('domain-emails_example.com', sample)
+        assert 'admin@example.com' in html
+        assert 'mailto:' in html
+
+    @pytest.mark.skipif(not gt.HAS_REPORTLAB, reason="reportlab not installed")
+    def test_pdf(self, sample, tmp_path):
+        out = tmp_path / 'r.pdf'
+        err = gt._to_pdf('domain-emails_example.com', sample, str(out))
+        assert err is None
+        assert out.read_bytes().startswith(b'%PDF')
+
+
+class TestDomainEmailsI18n:
+    def test_keys_in_both_langs(self):
+        keys = ['menu.domain_emails', 'section.demails',
+                'demails.title', 'demails.summary', 'demails.no_results',
+                'demails.col_address', 'demails.col_sources',
+                'demails.col_page', 'demails.col_verified',
+                'demails.stage_passive', 'demails.stage_subdomain',
+                'demails.stage_crawl', 'demails.stage_guess',
+                'demails.stage_smtp', 'demails.smtp_warn',
+                'prompt.input_demails', 'prompt.demails_subdomains',
+                'prompt.demails_guess', 'prompt.demails_verify']
+        for k in keys:
+            assert k in gt.TRANSLATIONS['en'], f'Missing en: {k}'
+            assert k in gt.TRANSLATIONS['zh'], f'Missing zh: {k}'
+
+
 class TestPhoneI18nKeys:
     """v1.3.2 新 i18n 键完整性。"""
 

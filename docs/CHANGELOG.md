@@ -18,6 +18,78 @@ This project adheres to [Keep a Changelog](https://keepachangelog.com/en/1.1.0/)
 
 ---
 
+## [1.4.0] — 2026-05-09
+
+📧 **新增域名邮箱枚举(OSINT email harvest)** —— 第 9 个核心 OSINT 能力。设计哲学"全 + 准":多源被动 + 深度爬取 + 含 alive 子域,默认开;高调动作(SMTP 验证)opt-in。
+
+### ✨ Features
+
+- **`spyeyes domain-emails example.com` 子命令** —— 类 theHarvester + Hunter.io 混合:
+  - **被动多源(默认全开)**:
+    - crt.sh CT 日志 SAN/email 字段(`_emails_from_crtsh`)
+    - WHOIS 注册联系人(`_emails_from_whois`)
+  - **深度爬取(默认开 + 含 alive 子域)**:
+    - robots.txt 解析 + 默认遵守 Disallow(`--ignore-robots` opt-out)
+    - sitemap.xml 提取(`<loc>` 标签 + 一层嵌套 sitemap index)
+    - 内部链接 BFS 递归(默认深度 5,最多 500 页)
+    - 单域 500ms 速率限制(防 IP 被封反而拿不到)
+    - 优先路径补充种子:`/contact /about /team /imprint /privacy ...`
+    - 复用 `enumerate_subdomains` 拿 alive 子域,逐个爬(`--no-include-subdomains` 关闭)
+  - **模式生成(opt-in `--guess "John Doe,Jane"`)**:
+    - 10 种 Hunter.io 风格模式:`firstname.lastname` / `f.lastname` / `firstname` / `lastname` / `fl` 等
+    - 输入 `John Doe, Jane Smith` 多人逗号分隔
+  - **SMTP 验证(opt-in `--verify-smtp`)**:
+    - HELO + MAIL FROM + RCPT TO 探测,250 = 存在,550/551/553 = 不存在
+    - 强制 disclaimer "仅对自己拥有的域使用"
+- **4 阶段实时反馈**(沿用 v1.3.3 stage 风格):
+  - 阶段 1/4:被动数据源 → `[crtsh]` `[whois]` 各自候选数
+  - 阶段 2/4:发现 alive 子域(显示爬取目标数)
+  - 阶段 3/4:深度爬取(实时 pages/emails/queue 进度,每 10 页刷新)
+  - 阶段 4/4:SMTP 验证(逐个 ✓/✗ 显示)
+- **输出按 source 分组**(passive / crawl / pattern):
+  - 终端打印高亮 ✓ verified / ✗ unverified / 出处页面 URL
+  - 8 种报告全支持:Markdown 表 / HTML mailto: 链接 / PDF / TXT / CSV 4列 / XMind 三分支(passive/crawl/pattern)/ Graph 力导向图(domain 中心 + 邮箱节点按 source 着色)/ JSON
+- **交互菜单 `[ 9 ]` 域名邮箱枚举**(语言切换从 [9] 让位到 [10])
+- **历史记录**:`history` 列出 domain + 邮箱总数 + 爬取页数 + 验证数
+
+### 🔒 Security
+
+- **跨域过滤**:`_is_email_relevant` 仅接受 target 或子域邮箱(crawl 偶尔抓到第三方邮箱直接丢)
+- **占位域名黑名单**:`yourdomain.com` 等(target 自己若是占位符则不过滤,允许真实测试)
+- **正则 lookbehind**:`(?<![a-zA-Z0-9._%+-])` 防 `prefixabc@x.com` 被截成 `abc@x.com`
+- **robots.txt 默认遵守**(opt-out)— 礼貌爬虫,降低被反爬墙拒概率反而拿到更多数据
+- **速率限制 500ms**(不可调)— 防爬虫拉黑
+- **总超时 5 分钟**(可调) + 单页 10s + body 256KB 早停 — 防大站把进程拖死
+- **SMTP 验证 opt-in + 强 disclaimer** — 仅对自己拥有/授权域使用
+
+### 🧪 Tests
+
+- **+41 个新测试**(全套 376 → 417):
+  - `TestEmailRelevance` × 7:跨域过滤、子域、占位符
+  - `TestEmailExtractFromText` × 6:mailto / regex / lookbehind / Unicode / 空输入
+  - `TestEmailPatternGeneration` × 5:单姓名/多姓名/dedup/Unicode
+  - `TestRobotsTxt` × 3:解析 + Disallow 匹配
+  - `TestSitemapParsing` × 1:`<loc>` 跨域过滤
+  - `TestEmailsFromCrtsh` × 2:多字段 + 异常响应
+  - `TestEnumerateDomainEmails` × 6:invalid 拒、被动 only、完整流程、模式生成、SMTP off/on
+  - `TestDomainEmailsCli` × 3:argparse + 全 flag + run_cli
+  - `TestDomainEmailsReports` × 7:8 种格式不崩 + 关键内容
+  - `TestDomainEmailsI18n` × 1:19 个新键中英完整
+- ruff / mypy / bandit 全清
+
+### 📦 Packaging
+
+- `__version__` 1.3.3 → 1.4.0
+- `pyproject.toml` description 加 "Domain emails enumeration"
+
+### ⚠️ 使用合规提醒
+
+- 默认行为(被动 + robots.txt 遵守)合法、礼貌
+- `--ignore-robots` / `--verify-smtp` 高风险,仅对自己拥有或获得授权的域使用
+- SpyEyes 项目"不发未授权请求"哲学:此命令爬目标公开 HTTP 资源(类似搜索引擎爬虫),但仍建议有授权
+
+---
+
 ## [1.3.3] — 2026-05-09
 
 🎯 **子域名枚举阶段反馈** —— 消除"输入域名后卡 5-15 秒不知在做什么"的困惑。

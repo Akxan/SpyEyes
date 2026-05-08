@@ -66,7 +66,7 @@ except ImportError:
 
 
 # 语义化版本号 —— 同步更新 docs/CHANGELOG.md 与 git tag
-__version__ = '1.3.3'
+__version__ = '1.4.0'
 
 
 # ====================================================================
@@ -188,6 +188,7 @@ TRANSLATIONS: dict = {
         'menu.mx':              'Domain MX Records',
         'menu.email':           'Email Validator',
         'menu.subdomain':       'Subdomain Enumeration',
+        'menu.domain_emails':   'Domain Emails (OSINT email harvest)',
         'menu.lang':            'Language / 语言',
         'menu.exit':            'Exit',
         'menu.back_hint':       '(In any sub-menu, enter 0 or press Enter to return here)',
@@ -337,6 +338,31 @@ TRANSLATIONS: dict = {
         'subdomain.wildcard_no':      'no wildcard',
         'prompt.input_subdomain':     'Enter target domain (e.g. example.com): ',
         'prompt.subdomain_probe':     'Run HTTP probe to fetch <title>?\n   [ 1 ] Yes (default)  [ 2 ] No\n  Choose [1/2, default 1] : ',
+        # v1.4.0 — Domain emails enumeration
+        'section.demails':            'Domain Email Enumeration',
+        'demails.title':              'Domain emails: {domain}',
+        'demails.summary':            '{total} emails found ({pages} pages crawled · sitemap: {sitemap})',
+        'demails.no_results':         'No emails found',
+        'demails.col_address':        'Email Address',
+        'demails.col_sources':        'Sources',
+        'demails.col_page':           'First seen at',
+        'demails.col_verified':       'Verified',
+        'demails.stage_passive':      'Stage 1/4: Passive sources (crt.sh CT logs + WHOIS contacts) ...',
+        'demails.stage_subdomain':    'Stage 2/4: Discovering alive subdomains to crawl ...',
+        'demails.stage_crawl':        'Stage 3/4: Deep-crawling {n} target(s) (robots.txt + sitemap.xml + BFS) ...',
+        'demails.stage_guess':        'Stage 3.5/4: Generating pattern emails from provided names ...',
+        'demails.stage_smtp':         'Stage 4/4: SMTP verification of {n} candidates (HIGH-PROFILE) ...',
+        'demails.smtp_warn':          'SMTP verification connects to target MX servers — only run on domains you own or have authorization to test',
+        'demails.found_emails':       'emails',
+        'demails.target_count':       'crawl targets',
+        'demails.pattern_emails':     'pattern emails generated',
+        'demails.section_passive':    'From passive sources (crt.sh / WHOIS)',
+        'demails.section_crawl':      'From deep crawl',
+        'demails.section_pattern':    'From pattern generation (UNVERIFIED guesses)',
+        'prompt.input_demails':       'Enter target domain for email harvest (e.g. example.com): ',
+        'prompt.demails_subdomains':  'Include alive subdomains in crawl?\n   [ 1 ] Yes (default, more thorough)  [ 2 ] No (main domain only, faster)\n  Choose [1/2, default 1] : ',
+        'prompt.demails_guess':       'Generate pattern emails from names? Enter comma-separated names (or empty to skip): ',
+        'prompt.demails_verify':      'Run SMTP verification (HIGH-PROFILE — only for domains you own)?\n   [ 1 ] Yes  [ 2 ] No (default)\n  Choose [1/2, default 2] : ',
         # Errors
         'err.network':          'Network request failed (timeout or connection error)',
         'err.non_json':         'API returned non-JSON response',
@@ -438,6 +464,7 @@ TRANSLATIONS: dict = {
         'menu.mx':              '域名 MX 记录',
         'menu.email':           '邮箱有效性检查',
         'menu.subdomain':       '子域名枚举',
+        'menu.domain_emails':   '域名邮箱枚举(OSINT 邮箱挖取)',
         'menu.lang':            '切换语言 / Language',
         'menu.exit':            '退出',
         'menu.back_hint':       '(在任意子功能中输入 0 或直接回车可返回此菜单)',
@@ -577,6 +604,31 @@ TRANSLATIONS: dict = {
         'subdomain.wildcard_no':      '无通配符',
         'prompt.input_subdomain':     '请输入目标域名（如 example.com）：',
         'prompt.subdomain_probe':     '是否抓 HTTP <title> 信息？\n   [ 1 ] 是（默认）  [ 2 ] 否\n  请选择 [1/2，默认 1] : ',
+        # v1.4.0 —— 域名邮箱枚举
+        'section.demails':            '域名邮箱枚举',
+        'demails.title':              '域名邮箱:{domain}',
+        'demails.summary':            '共找到 {total} 个邮箱(爬取 {pages} 页 · sitemap:{sitemap})',
+        'demails.no_results':         '未发现邮箱',
+        'demails.col_address':        '邮箱地址',
+        'demails.col_sources':        '来源',
+        'demails.col_page':           '首次出现页面',
+        'demails.col_verified':       '已验证',
+        'demails.stage_passive':      '阶段 1/4:被动数据源(crt.sh CT 日志 + WHOIS 联系人)...',
+        'demails.stage_subdomain':    '阶段 2/4:发现可爬取的活跃子域名 ...',
+        'demails.stage_crawl':        '阶段 3/4:深度爬取 {n} 个目标(robots.txt + sitemap.xml + BFS)...',
+        'demails.stage_guess':        '阶段 3.5/4:从提供的姓名生成模式邮箱 ...',
+        'demails.stage_smtp':         '阶段 4/4:SMTP 验证 {n} 个候选(高调动作)...',
+        'demails.smtp_warn':          'SMTP 验证会连接目标 MX 服务器 — 仅对自己拥有或获得授权的域使用',
+        'demails.found_emails':       '个邮箱',
+        'demails.target_count':       '个爬取目标',
+        'demails.pattern_emails':     '个模式邮箱生成',
+        'demails.section_passive':    '来自被动数据源(crt.sh / WHOIS)',
+        'demails.section_crawl':      '来自深度爬取',
+        'demails.section_pattern':    '来自模式生成(未验证的猜测)',
+        'prompt.input_demails':       '请输入要挖邮箱的目标域名(如 example.com):',
+        'prompt.demails_subdomains':  '是否包含活跃子域名一起爬取?\n   [ 1 ] 是(默认,更全面)  [ 2 ] 否(仅主域,更快)\n  请选择 [1/2,默认 1] : ',
+        'prompt.demails_guess':       '从姓名生成模式邮箱?用逗号分隔多人(留空跳过):',
+        'prompt.demails_verify':      '是否做 SMTP 验证(高调 — 仅对自己拥有的域使用)?\n   [ 1 ] 是  [ 2 ] 否(默认)\n  请选择 [1/2,默认 2] : ',
         'err.network':          '网络请求失败（超时或连接错误）',
         'err.non_json':         'API 返回了非 JSON 响应',
         'err.unknown_api':      '未知 API 错误',
@@ -2537,6 +2589,613 @@ def enumerate_subdomains(domain: str, *, probe: bool = True,
 
 
 # ====================================================================
+# v1.4.0: 域名邮箱枚举(多源 OSINT + 深度爬取 + 可选模式生成 + 可选 SMTP 验证)
+# ====================================================================
+# 设计哲学:"全 + 准" — 默认开所有被动源 + 深度爬取 + 含 alive 子域;高调动作 opt-in
+# 数据源(默认全开):
+#   1. crt.sh CT 日志的 SAN/email 字段
+#   2. WHOIS 注册联系人 emails
+#   3. 深度爬取主域(或主域 + alive 子域)
+# 高级(opt-in):
+#   4. 模式生成 `--guess "John Doe,Jane Smith"`(姓名 → firstname.lastname@domain 等)
+#   5. SMTP HELO/RCPT 验证(`--verify-smtp`,带强 disclaimer)
+
+DOMAIN_EMAIL_DEFAULT_MAX_PAGES = 500
+DOMAIN_EMAIL_DEFAULT_DEPTH = 5
+DOMAIN_EMAIL_DEFAULT_WORKERS = 5
+DOMAIN_EMAIL_RATE_LIMIT_MS = 500          # 单域请求间最少 500ms 防被反爬墙拉黑
+DOMAIN_EMAIL_PAGE_TIMEOUT = 10.0
+DOMAIN_EMAIL_MAX_BODY = 256 * 1024        # 单页只读前 256KB(防大页面拖慢)
+DOMAIN_EMAIL_TOTAL_TIMEOUT = 300.0        # 总超时 5 分钟,防跑飞
+DOMAIN_EMAIL_PRIORITY_PATHS = (
+    '/', '/contact', '/contact-us', '/about', '/about-us', '/team',
+    '/imprint', '/legal', '/privacy', '/support', '/help', '/jobs',
+    '/careers', '/press',
+)
+
+# 邮箱提取正则(比 EMAIL_RE 宽松,因为爬取场景可能含混杂上下文)
+# (?<![a-zA-Z0-9._%+-]) lookbehind 防 "abc@gmail.com" 被截成 "bc@gmail.com"
+_DOMAIN_EMAIL_EXTRACT_RE = re.compile(
+    r'(?<![a-zA-Z0-9._%+-])'
+    r'([a-zA-Z0-9][a-zA-Z0-9._%+-]{0,63})'      # local part(首字符必须字母数字)
+    r'@'
+    r'([a-zA-Z0-9-]+(?:\.[a-zA-Z0-9-]+)+)'       # domain
+    r'(?![a-zA-Z0-9.-])',
+)
+
+# mailto: 链接专用正则
+_MAILTO_RE = re.compile(r'mailto:\s*([^?\s"\'<>]+)', re.IGNORECASE)
+
+# 内部链接提取(href / src)— 仅 http/https/相对路径
+_HREF_RE = re.compile(r'''<a\s[^>]*href\s*=\s*["']([^"'#]+)["']''', re.IGNORECASE)
+
+# 占位域名黑名单:仅用于过滤"用户没在查这些域,但爬出来碰巧含这些域邮箱"的场景
+# 注意:仅当 target_domain 与黑名单**不重叠**时才生效 — 用户主动查 example.com 是合法的
+_FAKE_DOMAINS = ('yourdomain.com', 'yoursite.com', 'domain.example')
+
+
+def _is_email_relevant(email: str, target_domain: str) -> bool:
+    """判断邮箱是否属于 target_domain 或其子域。
+    target = example.com → 接受 *@example.com / *@*.example.com,拒绝 *@gmail.com。
+    target = example.com → 接受 *@example.com / *@www.example.com / *@mail.example.com。"""
+    email_l = email.lower().strip()
+    if '@' not in email_l:
+        return False
+    local, _, edomain = email_l.rpartition('@')
+    if not local or not edomain:
+        return False
+    target = target_domain.lower().strip().rstrip('.')
+    # 必须等于 target 或其子域(endswith '.' + target);跨域自动拒
+    if edomain == target or edomain.endswith('.' + target):
+        # 仅当 target 不是占位符域时才过滤(用户主动查 yourdomain.com 是允许的)
+        if target not in _FAKE_DOMAINS:
+            for fake in _FAKE_DOMAINS:
+                if edomain == fake or edomain.endswith('.' + fake):
+                    return False
+        return True
+    return False
+
+
+def _extract_emails_from_text(text: str, target_domain: str) -> set[str]:
+    """从一段文本(HTML / 纯文本)提取 target_domain 的邮箱。
+    优先匹配 mailto: + 通用 email regex,合并去重。"""
+    if not text:
+        return set()
+    found: set[str] = set()
+    # mailto: 链接(优先 + 高可信)
+    for m in _MAILTO_RE.finditer(text):
+        addr = m.group(1).strip().lower()
+        if _is_email_relevant(addr, target_domain):
+            found.add(addr)
+    # 通用 email regex(扫描所有匹配)
+    for m in _DOMAIN_EMAIL_EXTRACT_RE.finditer(text):
+        local = m.group(1).strip().lower()
+        edom = m.group(2).strip().lower()
+        addr = f'{local}@{edom}'
+        if _is_email_relevant(addr, target_domain):
+            found.add(addr)
+    return found
+
+
+def _emails_from_crtsh(domain: str) -> set[str]:
+    """crt.sh CT 日志的 entries 含 'name_value'(SAN)和 'common_name';有些证书把
+    管理员邮箱放到 SAN 里(`email:admin@example.com`)。同时挖 'name_value' 字段
+    所有 substring 匹配的邮箱(部分 CA 在 OU 字段写 contact email)。"""
+    url = f'https://crt.sh/?q=%25.{domain}&output=json'
+    resp = safe_get(url, timeout=SUBDOMAIN_SOURCE_TIMEOUT)
+    if resp is None or resp.status_code != 200:
+        return set()
+    try:
+        data = resp.json()
+    except (ValueError, requests.exceptions.RequestException):
+        return set()
+    if not isinstance(data, list):
+        return set()
+    found: set[str] = set()
+    for entry in data:
+        if not isinstance(entry, dict):
+            continue
+        for key in ('name_value', 'common_name', 'issuer_name'):
+            v = entry.get(key) or ''
+            if isinstance(v, str):
+                found |= _extract_emails_from_text(v, domain)
+    return found
+
+
+def _emails_from_whois(domain: str) -> set[str]:
+    """从 WHOIS 注册联系人 emails 字段提取。复用现有 whois_lookup,容错 None 值。"""
+    if not HAS_WHOIS:
+        return set()
+    result = whois_lookup(domain)
+    if not isinstance(result, dict) or '_error' in result:
+        return set()
+    found: set[str] = set()
+    val = result.get('emails')
+    if isinstance(val, str):
+        if _is_email_relevant(val, domain):
+            found.add(val.lower().strip())
+    elif isinstance(val, list):
+        for e in val:
+            if isinstance(e, str) and _is_email_relevant(e, domain):
+                found.add(e.lower().strip())
+    return found
+
+
+def _fetch_robots_txt(scheme: str, host: str) -> tuple[set[str], list[str]]:
+    """拉取 robots.txt,返回 (sitemap urls, disallow paths)。
+    失败时返回空,不影响主流程。"""
+    url = f'{scheme}://{host}/robots.txt'
+    resp = safe_get(url, timeout=DOMAIN_EMAIL_PAGE_TIMEOUT)
+    if resp is None or resp.status_code != 200:
+        return set(), []
+    text = (resp.text or '')[:DOMAIN_EMAIL_MAX_BODY]
+    sitemaps: set[str] = set()
+    disallows: list[str] = []
+    for line in text.splitlines():
+        line = line.strip()
+        if line.lower().startswith('sitemap:'):
+            sm = line[8:].strip()
+            if sm:
+                sitemaps.add(sm)
+        elif line.lower().startswith('disallow:'):
+            path = line[9:].strip()
+            if path:
+                disallows.append(path)
+    return sitemaps, disallows
+
+
+def _fetch_sitemap_urls(sitemap_url: str, target_domain: str,
+                       max_urls: int = 2000) -> set[str]:
+    """拉取 sitemap.xml 提取 <loc> 标签 URL。支持 sitemap index 嵌套(一层)。"""
+    resp = safe_get(sitemap_url, timeout=DOMAIN_EMAIL_PAGE_TIMEOUT)
+    if resp is None or resp.status_code != 200:
+        return set()
+    text = (resp.text or '')[:DOMAIN_EMAIL_MAX_BODY * 4]  # sitemap 通常较大
+    urls: set[str] = set()
+    nested: set[str] = set()
+    # 简单 regex 提 <loc>(避免 xml 解析复杂度)
+    loc_re = re.compile(r'<loc>\s*([^<\s]+)\s*</loc>', re.IGNORECASE)
+    for m in loc_re.finditer(text):
+        u = m.group(1).strip()
+        if not u:
+            continue
+        if u.endswith('.xml'):
+            nested.add(u)
+        else:
+            urls.add(u)
+        if len(urls) >= max_urls:
+            break
+    # 处理一层嵌套 sitemap index
+    for nu in list(nested)[:10]:  # 最多展开 10 个嵌套
+        sub_resp = safe_get(nu, timeout=DOMAIN_EMAIL_PAGE_TIMEOUT)
+        if sub_resp is None or sub_resp.status_code != 200:
+            continue
+        sub_text = (sub_resp.text or '')[:DOMAIN_EMAIL_MAX_BODY * 4]
+        for m in loc_re.finditer(sub_text):
+            u = m.group(1).strip()
+            if u and not u.endswith('.xml'):
+                urls.add(u)
+                if len(urls) >= max_urls:
+                    break
+        if len(urls) >= max_urls:
+            break
+    # 仅保留属于 target_domain 的 URL
+    target = target_domain.lower().rstrip('.')
+    out = set()
+    for u in urls:
+        try:
+            from urllib.parse import urlparse as _up
+            host = _up(u).netloc.lower()
+            if host == target or host.endswith('.' + target):
+                out.add(u)
+        except Exception:
+            continue
+    return out
+
+
+def _is_path_disallowed(url: str, disallows: list[str]) -> bool:
+    """判断 URL 是否被 robots.txt Disallow 命中(简单前缀匹配)。"""
+    if not disallows:
+        return False
+    try:
+        from urllib.parse import urlparse as _up
+        path = _up(url).path or '/'
+    except Exception:
+        return False
+    for d in disallows:
+        if d == '/' or path.startswith(d):
+            return True
+    return False
+
+
+def _crawl_domain_for_emails(domain: str, *,
+                             max_pages: int = DOMAIN_EMAIL_DEFAULT_MAX_PAGES,
+                             max_depth: int = DOMAIN_EMAIL_DEFAULT_DEPTH,
+                             workers: int = DOMAIN_EMAIL_DEFAULT_WORKERS,
+                             obey_robots: bool = True,
+                             show_progress: bool = True) -> dict:
+    """深度爬取 domain,返回 {emails: set, pages_crawled: int, sitemap_found: bool, ...}.
+
+    起点:robots.txt + sitemap.xml + 主页 + DOMAIN_EMAIL_PRIORITY_PATHS。
+    BFS 跟内部链接,深度限制,礼貌速率限制(单域 500ms 间隔)。"""
+    target = domain.lower().rstrip('.')
+    found_emails: set[str] = set()
+    page_emails: dict = {}  # email → first 出现的 page url(用于 source 元数据)
+    visited: set[str] = set()
+    pages_crawled = 0
+
+    # 1) robots.txt
+    sitemaps, disallows = _fetch_robots_txt('https', target)
+    if not sitemaps and not disallows:
+        # 试 http(有些 site 没 https)
+        sitemaps, disallows = _fetch_robots_txt('http', target)
+    if not obey_robots:
+        disallows = []
+
+    # 2) sitemap.xml(显式来自 robots 的 + 默认路径)
+    sitemap_urls: set[str] = set(sitemaps)
+    sitemap_urls.add(f'https://{target}/sitemap.xml')
+    sitemap_urls.add(f'https://{target}/sitemap_index.xml')
+    seed_urls: set[str] = set()
+    sitemap_found = False
+    for sm in sitemap_urls:
+        urls = _fetch_sitemap_urls(sm, target, max_urls=max_pages * 2)
+        if urls:
+            sitemap_found = True
+            seed_urls |= urls
+        if len(seed_urls) >= max_pages * 2:
+            break
+
+    # 3) 加优先路径作为补充种子
+    for p in DOMAIN_EMAIL_PRIORITY_PATHS:
+        seed_urls.add(f'https://{target}{p}')
+
+    # 4) BFS 队列:(url, depth)
+    queue: list[tuple[str, int]] = [(u, 0) for u in seed_urls]
+    last_request_ts = 0.0
+
+    def _fetch_page(url: str) -> Optional[str]:
+        """拉取一页 HTML,返 text 或 None。每域 500ms 速率限制(简单 sleep,
+        多 worker 共享同一速率窗口防被封)。"""
+        nonlocal last_request_ts
+        # 速率限制
+        elapsed_ms = (time.time() - last_request_ts) * 1000
+        if elapsed_ms < DOMAIN_EMAIL_RATE_LIMIT_MS:
+            time.sleep((DOMAIN_EMAIL_RATE_LIMIT_MS - elapsed_ms) / 1000.0)
+        last_request_ts = time.time()
+        resp = safe_get(url, timeout=DOMAIN_EMAIL_PAGE_TIMEOUT, stream=True)
+        if resp is None or resp.status_code != 200:
+            return None
+        try:
+            ctype = (resp.headers.get('Content-Type') or '').lower()
+            if 'html' not in ctype and 'text/' not in ctype and 'xml' not in ctype:
+                return None
+            chunks = []
+            remaining = DOMAIN_EMAIL_MAX_BODY
+            while remaining > 0:
+                chunk = resp.raw.read(remaining, decode_content=True)
+                if not chunk:
+                    break
+                chunks.append(chunk)
+                remaining -= len(chunk)
+            return b''.join(chunks).decode('utf-8', errors='replace')
+        except (OSError, ValueError, requests.exceptions.RequestException):
+            return None
+        finally:
+            resp.close()
+
+    started = time.time()
+    # 简单串行 BFS(多 worker 互相速率限制反而难协调,单域抓取 500 ms*200 页=100s 可接受)
+    while queue and pages_crawled < max_pages:
+        if (time.time() - started) > DOMAIN_EMAIL_TOTAL_TIMEOUT:
+            break
+        url, depth = queue.pop(0)
+        if url in visited:
+            continue
+        visited.add(url)
+        # robots.txt 拒绝
+        if _is_path_disallowed(url, disallows):
+            continue
+        # 仅同主域(含子域)
+        try:
+            from urllib.parse import urlparse as _up, urljoin as _uj
+            parsed = _up(url)
+            if parsed.scheme not in ('http', 'https'):
+                continue
+            host = parsed.netloc.lower()
+            if host != target and not host.endswith('.' + target):
+                continue
+        except Exception:
+            continue
+        body = _fetch_page(url)
+        if body is None:
+            continue
+        pages_crawled += 1
+        # 提取邮箱
+        for email in _extract_emails_from_text(body, target):
+            if email not in found_emails:
+                found_emails.add(email)
+                page_emails[email] = url
+        # 进度反馈(每 10 页输出一次)
+        if show_progress and pages_crawled % 10 == 0 and sys.stderr.isatty():
+            sys.stderr.write(
+                f"\r   [crawl] pages={pages_crawled}/{max_pages} "
+                f"emails={len(found_emails)} queue={len(queue)}     "
+            )
+            sys.stderr.flush()
+        # 深度未到则提取内部链接入队
+        if depth < max_depth:
+            for m in _HREF_RE.finditer(body):
+                href = m.group(1).strip()
+                if not href:
+                    continue
+                try:
+                    abs_url = _uj(url, href)
+                    abs_url = abs_url.split('#', 1)[0]
+                    if abs_url and abs_url not in visited:
+                        queue.append((abs_url, depth + 1))
+                except Exception:
+                    continue
+    if show_progress and sys.stderr.isatty():
+        sys.stderr.write('\r' + ' ' * 70 + '\r')
+        sys.stderr.flush()
+    return {
+        'emails': found_emails,
+        'page_map': page_emails,  # email → first page url
+        'pages_crawled': pages_crawled,
+        'sitemap_found': sitemap_found,
+        'robots_disallows': len(disallows),
+    }
+
+
+# 模式生成:用户给的姓名 → 常见邮箱组合
+_EMAIL_PATTERNS = (
+    '{first}.{last}',
+    '{f}.{last}',
+    '{first}.{l}',
+    '{first}{last}',
+    '{f}{last}',
+    '{first}_{last}',
+    '{last}.{first}',
+    '{first}',
+    '{last}',
+    '{f}{l}',
+)
+
+
+def _generate_email_patterns(names_csv: str, domain: str) -> list[str]:
+    """从 'John Doe, Jane Smith' 生成模式邮箱。每个姓名生成 ~10 变体。
+    输入用 [,;] 分隔多人,空白分隔 first/last。"""
+    domain = domain.lower().strip()
+    out: list[str] = []
+    seen: set[str] = set()
+    for entry in re.split(r'[,;]+', names_csv or ''):
+        entry = entry.strip()
+        if not entry:
+            continue
+        parts = re.split(r'\s+', entry)
+        if not parts:
+            continue
+        first = re.sub(r'[^\w]', '', parts[0]).lower()
+        last = re.sub(r'[^\w]', '', parts[-1]).lower() if len(parts) > 1 else ''
+        if not first:
+            continue
+        f = first[0]
+        last_initial = last[0] if last else ''
+        for tpl in _EMAIL_PATTERNS:
+            try:
+                local = tpl.format(first=first, last=last, f=f, l=last_initial)
+            except (KeyError, IndexError):
+                continue
+            local = local.strip('.').replace('..', '.')  # 干净化
+            if not local:
+                continue
+            email = f'{local}@{domain}'
+            if email not in seen:
+                seen.add(email)
+                out.append(email)
+    return out
+
+
+def _verify_smtp(email: str, *, helo_domain: str = 'spyeyes.osint',
+                from_addr: str = 'verify@spyeyes.osint',
+                timeout: float = 8.0) -> tuple[bool, str]:
+    """SMTP HELO/MAIL/RCPT 验证邮箱是否存在。
+    返回 (verified_bool, reason)。
+    高调动作:走目标域 MX → SMTP 25 端口连接 → 提示用户负责合法性。"""
+    if not HAS_DNS:
+        return False, 'dns dependency missing'
+    _, _, edom = email.rpartition('@')
+    if not edom:
+        return False, 'no domain part'
+    try:
+        # 拿 MX
+        mx_ans = dns.resolver.resolve(edom, 'MX')
+        mx_records = sorted(
+            [(r.preference, str(r.exchange).rstrip('.')) for r in mx_ans])
+        if not mx_records:
+            return False, 'no MX records'
+        # 试最高优先级 MX(preference 数字最小)
+        target = mx_records[0][1]
+    except Exception as e:
+        return False, f'mx lookup failed: {e}'
+    try:
+        import smtplib
+        with smtplib.SMTP(target, 25, timeout=timeout) as srv:
+            srv.helo(helo_domain)
+            srv.mail(from_addr)
+            code, _ = srv.rcpt(email)
+            # 250 = exists,550/551/553 = not exists,其它 = ambiguous
+            if code in (250, 251):
+                return True, f'rcpt accepted ({code})'
+            if code in (550, 551, 553):
+                return False, f'rcpt rejected ({code})'
+            return False, f'rcpt ambiguous ({code})'
+    except Exception as e:
+        return False, f'smtp connect failed: {e}'
+
+
+def enumerate_domain_emails(domain: str, *,
+                           crawl: bool = True,
+                           include_subdomains: bool = True,
+                           max_pages: int = DOMAIN_EMAIL_DEFAULT_MAX_PAGES,
+                           max_depth: int = DOMAIN_EMAIL_DEFAULT_DEPTH,
+                           workers: int = DOMAIN_EMAIL_DEFAULT_WORKERS,
+                           obey_robots: bool = True,
+                           guess_names: Optional[str] = None,
+                           verify_smtp: bool = False,
+                           show_progress: bool = True) -> dict:
+    """域名邮箱枚举主入口。
+    - 阶段 1:crt.sh + WHOIS 拉被动数据
+    - 阶段 2:深度爬取主域(可选 include_subdomains 复用 enumerate_subdomains 拿 alive 子域)
+    - 阶段 3:[可选] 模式生成 — 需 guess_names 输入
+    - 阶段 4:[可选] SMTP 验证 — verify_smtp=True
+
+    返回结构:
+      {'domain': str,
+       'emails': [{'address': str, 'sources': [str], 'page': str|None,
+                   'verified': None | True | False, 'verify_reason': str|None}, ...],
+       '_stats': {'total': int, 'by_source': {...}, 'pages_crawled': int,
+                  'sitemap_found': bool, 'verified': int, 'errors': dict}}
+    """
+    normalized = _normalize_domain(domain)
+    if normalized is None:
+        return {'_error': t('err.invalid_domain', domain=(domain or '').strip()[:80])}
+    domain = normalized
+
+    # email → {sources: set, page: str|None}
+    by_email: dict = {}
+
+    def _add(email: str, source: str, page: Optional[str] = None) -> None:
+        rec = by_email.setdefault(email.lower().strip(),
+                                   {'sources': set(), 'page': None})
+        rec['sources'].add(source)
+        if page and not rec['page']:
+            rec['page'] = page
+
+    # 阶段 1:被动数据源
+    if show_progress:
+        _stage_log(f"\n {Color.Cy}{t('demails.stage_passive')}{Color.Reset}")
+    try:
+        for e in _emails_from_crtsh(domain):
+            _add(e, 'crtsh')
+    except Exception:
+        pass
+    if show_progress:
+        n_crt = sum(1 for v in by_email.values() if 'crtsh' in v['sources'])
+        _stage_log(f"   {Color.Gr}[crtsh] {n_crt} {t('demails.found_emails')}{Color.Reset}")
+    try:
+        for e in _emails_from_whois(domain):
+            _add(e, 'whois')
+    except Exception:
+        pass
+    if show_progress:
+        n_w = sum(1 for v in by_email.values() if 'whois' in v['sources'])
+        _stage_log(f"   {Color.Gr}[whois] {n_w} {t('demails.found_emails')}{Color.Reset}")
+
+    # 阶段 2:深度爬取
+    pages_crawled_total = 0
+    sitemap_found_any = False
+    if crawl:
+        targets_to_crawl = [domain]
+        if include_subdomains and HAS_DNS:
+            if show_progress:
+                _stage_log(f"\n {Color.Cy}{t('demails.stage_subdomain')}{Color.Reset}")
+            sub_result = enumerate_subdomains(domain, probe=False,
+                                              show_progress=False)
+            if isinstance(sub_result, dict) and 'subdomains' in sub_result:
+                alive = [s['host'] for s in sub_result['subdomains']
+                         if s.get('alive')]
+                # 排除主域自己,加 alive 子域
+                for h in alive:
+                    if h != domain and h not in targets_to_crawl:
+                        targets_to_crawl.append(h)
+            if show_progress:
+                _stage_log(f"   {Color.Gr}{len(targets_to_crawl)} "
+                           f"{t('demails.target_count')}{Color.Reset}")
+
+        if show_progress:
+            _stage_log(f"\n {Color.Cy}{t('demails.stage_crawl', n=len(targets_to_crawl))}{Color.Reset}")
+        # 把 max_pages 平均分给每个目标
+        per_target = max(10, max_pages // max(1, len(targets_to_crawl)))
+        for target in targets_to_crawl:
+            crawl_result = _crawl_domain_for_emails(
+                target, max_pages=per_target, max_depth=max_depth,
+                workers=workers, obey_robots=obey_robots,
+                show_progress=show_progress)
+            for em in crawl_result.get('emails', set()):
+                _add(em, 'crawl', crawl_result.get('page_map', {}).get(em))
+            pages_crawled_total += crawl_result.get('pages_crawled', 0)
+            sitemap_found_any = sitemap_found_any or crawl_result.get('sitemap_found', False)
+            if show_progress:
+                _stage_log(f"   {Color.Gr}[{target}] "
+                           f"pages={crawl_result.get('pages_crawled', 0)} "
+                           f"emails={len(crawl_result.get('emails', set()))}{Color.Reset}")
+
+    # 阶段 3:模式生成(opt-in)
+    if guess_names:
+        if show_progress:
+            _stage_log(f"\n {Color.Cy}{t('demails.stage_guess')}{Color.Reset}")
+        for em in _generate_email_patterns(guess_names, domain):
+            _add(em, 'pattern')
+        n_pat = sum(1 for v in by_email.values() if 'pattern' in v['sources'])
+        if show_progress:
+            _stage_log(f"   {Color.Gr}{n_pat} {t('demails.pattern_emails')}{Color.Reset}")
+
+    # 阶段 4:SMTP 验证(opt-in)
+    verified_count = 0
+    if verify_smtp and by_email:
+        if show_progress:
+            _stage_log(f"\n {Color.Cy}{t('demails.stage_smtp', n=len(by_email))}{Color.Reset}")
+            _stage_log(f"   {Color.Re}⚠ {t('demails.smtp_warn')}{Color.Reset}")
+        for em, rec in list(by_email.items()):
+            ok, reason = _verify_smtp(em)
+            rec['verified'] = ok
+            rec['verify_reason'] = reason
+            if ok:
+                verified_count += 1
+            if show_progress and sys.stderr.isatty():
+                sys.stderr.write(
+                    f"\r   [smtp] {em[:40]:40} → "
+                    f"{'✓' if ok else '✗'} {reason[:40]}     "
+                )
+                sys.stderr.flush()
+        if show_progress and sys.stderr.isatty():
+            sys.stderr.write('\r' + ' ' * 100 + '\r')
+            sys.stderr.flush()
+
+    # 整理输出:list of dict 按字母序
+    emails_list = []
+    for em in sorted(by_email.keys()):
+        rec = by_email[em]
+        emails_list.append({
+            'address': em,
+            'sources': sorted(rec['sources']),
+            'page': rec.get('page'),
+            'verified': rec.get('verified'),       # None / True / False
+            'verify_reason': rec.get('verify_reason'),
+        })
+
+    # 按 source 统计
+    by_source: dict = {}
+    for em in emails_list:
+        for s in em['sources']:
+            by_source[s] = by_source.get(s, 0) + 1
+
+    return {
+        'domain': domain,
+        'emails': emails_list,
+        '_stats': {
+            'total': len(emails_list),
+            'by_source': by_source,
+            'pages_crawled': pages_crawled_total,
+            'sitemap_found': sitemap_found_any,
+            'verified': verified_count,
+        },
+    }
+
+
+# ====================================================================
 # 输出格式化
 # ====================================================================
 def _print_section_header(section_key: str, *, equals: int = 10) -> None:
@@ -2794,6 +3453,64 @@ def print_email(result: dict) -> None:
         print(f" {Color.Re}{msg}{Color.Reset}")
 
 
+def print_domain_emails(data: dict) -> None:
+    """v1.4.0:打印域名邮箱枚举结果。按 source 分组(passive / crawl / pattern)。"""
+    _print_section_header('section.demails')
+    print()
+    if '_error' in data:
+        print(f" {Color.Re}{t('err.query_failed', msg=data['_error'])}{Color.Reset}")
+        return
+    domain = data.get('domain', '')
+    emails = data.get('emails', []) or []
+    stats = data.get('_stats', {}) or {}
+    print(f" {Color.Wh}{t('demails.title', domain=domain)}{Color.Reset}")
+    sm_label = ('✓' if stats.get('sitemap_found') else '✗')
+    print(f" {Color.Wh}{t('demails.summary', total=stats.get('total', 0), pages=stats.get('pages_crawled', 0), sitemap=sm_label)}{Color.Reset}")
+    by_src = stats.get('by_source', {})
+    if by_src:
+        breakdown = ', '.join(f"{k}={v}" for k, v in sorted(by_src.items()))
+        print(f" {Color.Bl}{breakdown}{Color.Reset}")
+    print()
+    if not emails:
+        print(f" {Color.Ye}{t('demails.no_results')}{Color.Reset}")
+        return
+
+    # 分组:passive(crtsh+whois) / crawl / pattern
+    groups: dict = {'passive': [], 'crawl': [], 'pattern': []}
+    for e in emails:
+        srcs = set(e.get('sources', []))
+        if 'pattern' in srcs and not (srcs & {'crtsh', 'whois', 'crawl'}):
+            groups['pattern'].append(e)
+        elif 'crawl' in srcs:
+            groups['crawl'].append(e)
+        else:
+            groups['passive'].append(e)
+
+    section_keys = [('passive', 'demails.section_passive'),
+                    ('crawl', 'demails.section_crawl'),
+                    ('pattern', 'demails.section_pattern')]
+    for key, label_key in section_keys:
+        items = groups[key]
+        if not items:
+            continue
+        print(f" {Color.Cy}┌─ {t(label_key)} ({len(items)}) ─{Color.Reset}")
+        for e in items:
+            addr = e.get('address', '')
+            srcs_str = ','.join(e.get('sources', []))
+            verified = e.get('verified')
+            v_str = ''
+            if verified is True:
+                v_str = f" {Color.Gr}[✓ verified]{Color.Reset}"
+            elif verified is False:
+                reason = (e.get('verify_reason') or '')[:30]
+                v_str = f" {Color.Re}[✗ {reason}]{Color.Reset}"
+            page_str = ''
+            if e.get('page'):
+                page_str = f"  {Color.Bl}{e['page'][:60]}{Color.Reset}"
+            print(f" {Color.Wh}[ {Color.Gr}+ {Color.Wh}] {addr:45} {Color.Mage}({srcs_str}){Color.Reset}{v_str}{page_str}")
+        print()
+
+
 def print_subdomains(data: dict) -> None:
     """v1.3.0：打印子域名枚举结果。按 alive/dead 分组,WAF wildcard 警告优先。"""
     _print_section_header('section.subdomain')
@@ -2903,8 +3620,9 @@ MENU_KEYS = [
     (5, 'menu.whois'),
     (6, 'menu.mx'),
     (7, 'menu.email'),
-    (8, 'menu.subdomain'),  # v1.3.0: 子域名枚举（语言切换从 [8] 让位到 [9]）
-    (9, 'menu.lang'),
+    (8, 'menu.subdomain'),     # v1.3.0: 子域名枚举
+    (9, 'menu.domain_emails'), # v1.4.0: 域名邮箱枚举(语言切换从 [9] 让位到 [10])
+    (10, 'menu.lang'),
     (0, 'menu.exit'),
 ]
 
@@ -3171,7 +3889,38 @@ def handle_choice(choice: int, save_dir: Optional[str] = None) -> None:
         print_subdomains(result)
         _interactive_save_prompt(f'subdomain_{domain}', result, save_dir)
     elif choice == 9:
-        # v1.3.0: 切换语言（v1.2.0 是 [8]，加 subdomain 后让位到 [9]）
+        # v1.4.0: 域名邮箱枚举
+        domain = _ask_input('prompt.input_demails')
+        if domain is None:
+            return
+        # 子问题:是否含 alive 子域(默认是)
+        try:
+            inc_ans = input(f"\n {Color.Wh}{t('prompt.demails_subdomains')}{Color.Gr}").strip()
+        except (EOFError, KeyboardInterrupt):
+            inc_ans = ''
+        include_subdomains = inc_ans != '2'
+        # 子问题:是否要模式生成
+        try:
+            guess_ans = input(f"\n {Color.Wh}{t('prompt.demails_guess')}{Color.Gr}").strip()
+        except (EOFError, KeyboardInterrupt):
+            guess_ans = ''
+        guess_names = guess_ans if guess_ans else None
+        # 子问题:是否 SMTP 验证(默认否)
+        try:
+            verify_ans = input(f"\n {Color.Wh}{t('prompt.demails_verify')}{Color.Gr}").strip()
+        except (EOFError, KeyboardInterrupt):
+            verify_ans = ''
+        verify_smtp = verify_ans == '1'
+        result = enumerate_domain_emails(
+            domain,
+            include_subdomains=include_subdomains,
+            guess_names=guess_names,
+            verify_smtp=verify_smtp,
+        )
+        print_domain_emails(result)
+        _interactive_save_prompt(f'domain-emails_{domain}', result, save_dir)
+    elif choice == 10:
+        # v1.4.0: 切换语言(v1.3.0 是 [9],加 domain-emails 后让位到 [10])
         switch_language_menu()
     elif choice == 0:
         print(f"\n {Color.Gr}{t('prompt.bye')}{Color.Reset}")
@@ -3337,6 +4086,38 @@ def _to_markdown(prefix: str, data: Any) -> str:
         lines.append("|---:|---|")
         for r in data['records']:
             lines.append(f"| {r['preference']} | `{r['exchange']}` |")
+        lines.append("")
+        return '\n'.join(lines)
+
+    # v1.4.0: domain-emails 枚举 — 表格列 邮箱 / 来源 / 出处页面 / 已验证
+    if cmd == 'domain-emails' and isinstance(data, dict) and 'emails' in data:
+        domain_lbl = _md_escape(data.get('domain', query))
+        stats = data.get('_stats', {}) or {}
+        sm_label = '✓' if stats.get('sitemap_found') else '✗'
+        lines.append(f"## {_md_escape(t('demails.title', domain=domain_lbl))}")
+        lines.append("")
+        lines.append(f"**{_md_escape(t('demails.summary', total=stats.get('total', 0), pages=stats.get('pages_crawled', 0), sitemap=sm_label))}**")
+        lines.append("")
+        if not data.get('emails'):
+            lines.append(f"_{_md_escape(t('demails.no_results'))}_")
+            return '\n'.join(lines)
+        lines.append(
+            f"| {t('demails.col_address')} | {t('demails.col_sources')} | "
+            f"{t('demails.col_page')} | {t('demails.col_verified')} |"
+        )
+        lines.append("|---|---|---|---:|")
+        for e in data['emails']:
+            ver = ''
+            if e.get('verified') is True:
+                ver = '✓'
+            elif e.get('verified') is False:
+                ver = '✗'
+            page = e.get('page') or ''
+            lines.append(
+                f"| `{_md_escape(e.get('address', ''))}` | "
+                f"{_md_escape(','.join(e.get('sources', [])))} | "
+                f"{_md_escape(page)} | {ver} |"
+            )
         lines.append("")
         return '\n'.join(lines)
 
@@ -3700,6 +4481,40 @@ def _to_pdf(prefix: str, data: Any, out_path: str) -> Optional[str]:
                 ('ALIGN', (0, 0), (0, -1), 'CENTER'),  # priority 列居中
             ]))
             story.append(tbl)
+        elif cmd == 'domain-emails' and isinstance(data, dict) and 'emails' in data:
+            # v1.4.0:域名邮箱 PDF 表格
+            domain_lbl = _md_escape(data.get('domain', query))
+            stats = data.get('_stats', {}) or {}
+            sm_label = '✓' if stats.get('sitemap_found') else '✗'
+            story.append(_pdf_story(
+                f"<b>{_md_escape(t('demails.title', domain=domain_lbl))}</b>",
+                styles['Heading2']))
+            story.append(_pdf_story(
+                _md_escape(t('demails.summary', total=stats.get('total', 0),
+                             pages=stats.get('pages_crawled', 0), sitemap=sm_label)),
+                styles['Normal']))
+            story.append(_rl_spacer(1, 8))
+            tbl_data = [[
+                _pdf_para(t('demails.col_address'), styles['Normal'], bold=True),
+                _pdf_para(t('demails.col_sources'), styles['Normal'], bold=True),
+                _pdf_para(t('demails.col_page'), styles['Normal'], bold=True),
+                _pdf_para(t('demails.col_verified'), styles['Normal'], bold=True),
+            ]]
+            for e in data.get('emails', []):
+                ver = ''
+                if e.get('verified') is True:
+                    ver = '✓'
+                elif e.get('verified') is False:
+                    ver = '✗'
+                tbl_data.append([
+                    _pdf_para(e.get('address', ''), styles['Normal']),
+                    _pdf_para(','.join(e.get('sources', [])), styles['Normal']),
+                    _pdf_para((e.get('page') or '')[:80], styles['Normal']),
+                    _pdf_para(ver, styles['Normal']),
+                ])
+            tbl = _rl_table(tbl_data, colWidths=[180, 110, 200, 30], repeatRows=1)
+            tbl.setStyle(_pdf_table_style(font_name, 8))
+            story.append(tbl)
         elif cmd == 'subdomain' and isinstance(data, dict) and 'subdomains' in data:
             # v1.3.0:子域名枚举 PDF 表格
             domain_lbl = _md_escape(data.get('domain', query))
@@ -3959,6 +4774,46 @@ def _to_html(prefix: str, data: Any) -> str:
         parts.extend(['</body>', '</html>'])
         return '\n'.join(parts)
 
+    # v1.4.0: domain-emails HTML 报告
+    if cmd == 'domain-emails' and isinstance(data, dict) and 'emails' in data:
+        domain_safe = _html_escape(data.get('domain', query))
+        stats = data.get('_stats', {}) or {}
+        sm_label = '✓' if stats.get('sitemap_found') else '✗'
+        parts.append(f'<h2>{_html_escape(t("demails.title", domain=domain_safe))}</h2>')
+        parts.append(
+            f'<p><b>{_html_escape(t("demails.summary", total=stats.get("total", 0), pages=stats.get("pages_crawled", 0), sitemap=sm_label))}</b></p>'
+        )
+        if not data.get('emails'):
+            parts.append(f'<p><i>{_html_escape(t("demails.no_results"))}</i></p>')
+        else:
+            parts.append(
+                '<table><thead><tr>'
+                f'<th>{_html_escape(t("demails.col_address"))}</th>'
+                f'<th>{_html_escape(t("demails.col_sources"))}</th>'
+                f'<th>{_html_escape(t("demails.col_page"))}</th>'
+                f'<th>{_html_escape(t("demails.col_verified"))}</th>'
+                '</tr></thead><tbody>'
+            )
+            for e in data['emails']:
+                addr_safe = _html_escape(e.get('address', ''))
+                page = e.get('page') or ''
+                page_html = (f'<a href="{_html_escape(page)}" target="_blank" rel="noopener noreferrer">{_html_escape(page)[:60]}</a>'
+                             if page else '')
+                ver = ''
+                if e.get('verified') is True:
+                    ver = '✓'
+                elif e.get('verified') is False:
+                    ver = '✗'
+                parts.append(
+                    f'<tr><td><a href="mailto:{addr_safe}">{addr_safe}</a></td>'
+                    f'<td>{_html_escape(",".join(e.get("sources", [])))}</td>'
+                    f'<td>{page_html}</td>'
+                    f'<td>{_html_escape(ver)}</td></tr>'
+                )
+            parts.append('</tbody></table>')
+        parts.extend(['</body>', '</html>'])
+        return '\n'.join(parts)
+
     # v1.3.0: subdomain 枚举 — 表格 host / IP / CNAME / status / title
     if cmd == 'subdomain' and isinstance(data, dict) and 'subdomains' in data:
         domain_safe = _html_escape(data.get('domain', query))
@@ -4142,6 +4997,29 @@ def _to_txt(prefix: str, data: Any) -> str:
                          f'{r.get("exchange", "")}')
         return '\n'.join(lines) + '\n'
 
+    # v1.4.0: domain-emails TXT 报告
+    if cmd == 'domain-emails' and isinstance(data, dict) and 'emails' in data:
+        domain_lbl = data.get('domain', query)
+        stats = data.get('_stats', {}) or {}
+        sm_label = '✓' if stats.get('sitemap_found') else '✗'
+        lines.append(t('demails.title', domain=domain_lbl))
+        lines.append(t('demails.summary', total=stats.get('total', 0),
+                       pages=stats.get('pages_crawled', 0), sitemap=sm_label))
+        lines.append('')
+        if not data.get('emails'):
+            lines.append(t('demails.no_results'))
+            return '\n'.join(lines) + '\n'
+        for e in data['emails']:
+            srcs = ','.join(e.get('sources', []))
+            ver = ''
+            if e.get('verified') is True:
+                ver = '  [verified]'
+            elif e.get('verified') is False:
+                ver = '  [unverified]'
+            page = f'  ← {e.get("page")}' if e.get('page') else ''
+            lines.append(f'  {e.get("address", "")} ({srcs}){ver}{page}')
+        return '\n'.join(lines) + '\n'
+
     # v1.3.0: subdomain 枚举 TXT
     if cmd == 'subdomain' and isinstance(data, dict) and 'subdomains' in data:
         domain_lbl = data.get('domain', query)
@@ -4266,6 +5144,26 @@ def _to_csv(prefix: str, data: Any) -> str:
                              _csv_safe(r.get('exchange', ''))])
         return buf.getvalue()
 
+    # v1.4.0: domain-emails CSV — address, sources, page, verified
+    if cmd == 'domain-emails' and isinstance(data, dict) and 'emails' in data:
+        writer.writerow([
+            t('demails.col_address'), t('demails.col_sources'),
+            t('demails.col_page'), t('demails.col_verified'),
+        ])
+        for e in data.get('emails', []):
+            ver = ''
+            if e.get('verified') is True:
+                ver = '1'
+            elif e.get('verified') is False:
+                ver = '0'
+            writer.writerow([
+                _csv_safe(e.get('address', '')),
+                _csv_safe(','.join(e.get('sources', []))),
+                _csv_safe(e.get('page') or ''),
+                _csv_safe(ver),
+            ])
+        return buf.getvalue()
+
     # v1.3.0: subdomain 枚举 CSV — host, alive, a, aaaa, cname, http_status, title
     if cmd == 'subdomain' and isinstance(data, dict) and 'subdomains' in data:
         writer.writerow([
@@ -4363,6 +5261,29 @@ def _to_xmind(prefix: str, data: Any, out_path: str) -> Optional[str]:
                 for r in data['records']
             ]
             sub_topics = [_topic(f'{t("report.mx_records")} {domain_lbl}', mx_kids)]
+        elif cmd == 'domain-emails' and isinstance(data, dict) and 'emails' in data:
+            # v1.4.0: 域名邮箱 XMind — 按 source 分组
+            sub_topics = []
+            groups: dict = {'passive': [], 'crawl': [], 'pattern': []}
+            for e in data.get('emails', []):
+                srcs = set(e.get('sources', []))
+                if 'pattern' in srcs and not (srcs & {'crtsh', 'whois', 'crawl'}):
+                    groups['pattern'].append(e)
+                elif 'crawl' in srcs:
+                    groups['crawl'].append(e)
+                else:
+                    groups['passive'].append(e)
+            for key, label_key in (('passive', 'demails.section_passive'),
+                                    ('crawl', 'demails.section_crawl'),
+                                    ('pattern', 'demails.section_pattern')):
+                items = groups[key]
+                if not items:
+                    continue
+                kids = []
+                for e in items:
+                    href = f'mailto:{e.get("address", "")}'
+                    kids.append(_topic(e.get('address', ''), href=href))
+                sub_topics.append(_topic(f'{t(label_key)} ({len(items)})', kids))
         elif cmd == 'subdomain' and isinstance(data, dict) and 'subdomains' in data:
             # v1.3.0: subdomain 思维导图 — alive / dead 两支
             alive_kids = []
@@ -4508,6 +5429,26 @@ def _to_graph_html(prefix: str, data: Any) -> str:
                     'category': cat_lookup.get(p_name, 'other'),
                 })
                 links.append({'source': var, 'target': node_id, 'value': 1})
+    elif cmd == 'domain-emails' and isinstance(data, dict) and 'emails' in data:
+        # v1.4.0: 域名邮箱力导向图 —— domain 中心 + email 节点(按 source 颜色分组)
+        nodes = [{'id': data.get('domain', query), 'group': 1,
+                  'name': data.get('domain', query), 'url': ''}]
+        root_id = data.get('domain', query)
+        # group:passive=2 / crawl=3 / pattern=4
+        src_to_group = {'crtsh': 2, 'whois': 2, 'crawl': 3, 'pattern': 4}
+        for e in data.get('emails', []):
+            addr = e.get('address', '')
+            if not addr:
+                continue
+            srcs = e.get('sources', [])
+            grp = max((src_to_group.get(s, 2) for s in srcs), default=2)
+            nodes.append({
+                'id': f'em_{addr}',
+                'group': grp,
+                'name': addr,
+                'url': f'mailto:{addr}',
+            })
+            links.append({'source': root_id, 'target': f'em_{addr}', 'value': 1})
     elif cmd == 'subdomain' and isinstance(data, dict) and 'subdomains' in data:
         # v1.3.0: 子域名力导向图 —— root domain (group=1) + alive 子域 (group=2) + dead (group=3)
         nodes = [{'id': data.get('domain', query), 'group': 1,
@@ -4883,6 +5824,29 @@ def build_parser() -> argparse.ArgumentParser:
     sp.add_argument('--alive-only', action='store_true', dest='alive_only',
                     help='In CLI output, hide subdomains that did not resolve')
 
+    # v1.4.0: 域名邮箱枚举(OSINT email harvest)
+    sp = sub.add_parser('domain-emails', parents=[common],
+                        help='Enumerate emails for a domain / 域名邮箱枚举 (v1.4.0)')
+    sp.add_argument('domain', help='Target domain (e.g. example.com)')
+    sp.add_argument('--no-crawl', action='store_true', dest='no_crawl',
+                    help='Skip deep crawl, only use crt.sh + WHOIS')
+    sp.add_argument('--no-include-subdomains', action='store_true',
+                    dest='no_include_subdomains',
+                    help='Skip alive subdomains in crawl (main domain only, faster)')
+    sp.add_argument('--max-pages', type=_positive_int,
+                    default=DOMAIN_EMAIL_DEFAULT_MAX_PAGES,
+                    help=f'Max pages to crawl (default: {DOMAIN_EMAIL_DEFAULT_MAX_PAGES})')
+    sp.add_argument('--crawl-depth', type=int, default=DOMAIN_EMAIL_DEFAULT_DEPTH,
+                    help=f'BFS depth limit (default: {DOMAIN_EMAIL_DEFAULT_DEPTH})')
+    sp.add_argument('--ignore-robots', action='store_true', dest='ignore_robots',
+                    help='Ignore robots.txt Disallow (use carefully)')
+    sp.add_argument('--guess', dest='guess_names',
+                    help='Generate pattern emails from comma-separated names'
+                         ' (e.g. "John Doe,Jane Smith")')
+    sp.add_argument('--verify-smtp', action='store_true', dest='verify_smtp',
+                    help='SMTP HELO/RCPT verification (HIGH-PROFILE — only for'
+                         ' domains you own)')
+
     sp = sub.add_parser('history', parents=[common], help='Show recent queries / 显示历史查询')
     sp.add_argument('--limit', type=_positive_int, default=20,
                     help='Max entries to show, must be >= 1 (default: 20, max 200)')
@@ -5027,6 +5991,24 @@ def run_cli(args: argparse.Namespace) -> int:
             _emit_json(data)
         else:
             print_email(data)
+    elif cmd == 'domain-emails':
+        # v1.4.0: 域名邮箱枚举
+        data = enumerate_domain_emails(
+            args.domain,
+            crawl=not getattr(args, 'no_crawl', False),
+            include_subdomains=not getattr(args, 'no_include_subdomains', False),
+            max_pages=args.max_pages,
+            max_depth=args.crawl_depth,
+            obey_robots=not getattr(args, 'ignore_robots', False),
+            guess_names=getattr(args, 'guess_names', None),
+            verify_smtp=getattr(args, 'verify_smtp', False),
+            show_progress=not args.json,
+        )
+        save_prefix = f'domain-emails_{args.domain}'
+        if args.json:
+            _emit_json(data)
+        else:
+            print_domain_emails(data)
     elif cmd == 'subdomain':
         # v1.3.0: 子域名枚举
         probe = not getattr(args, 'no_probe', False)
@@ -5134,6 +6116,13 @@ def _record_history(cmd: str, args: argparse.Namespace, data: Any) -> None:
                    'total': stats.get('total', 0),
                    'alive': stats.get('alive', 0),
                    'wildcard': bool(data.get('wildcard_suspect'))}
+    elif cmd == 'domain-emails':
+        # v1.4.0: 记录 domain + 邮箱总数 + 爬取页数
+        stats = data.get('_stats', {}) or {}
+        summary = {'domain': args.domain,
+                   'total': stats.get('total', 0),
+                   'pages_crawled': stats.get('pages_crawled', 0),
+                   'verified': stats.get('verified', 0)}
     else:
         # 未知 cmd（未来加新子命令但忘了更新这里）→ 不写空 entry 污染历史
         return
