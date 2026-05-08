@@ -18,6 +18,76 @@ This project adheres to [Keep a Changelog](https://keepachangelog.com/en/1.1.0/)
 
 ---
 
+## [1.3.0] — 2026-05-09
+
+🌐 **新增子域名枚举(被动多源 + DNS 验证 + HTTP probe)** —— 第 8 个核心 OSINT 能力。
+
+### ✨ Features 新功能
+
+- **🔎 `spyeyes subdomain example.com` 子命令** —— 一站式子域名情报:
+  - **被动多源汇总**:并发拉取 4 个公开数据源,任一源挂掉不影响整体
+    - `crt.sh` —— Certificate Transparency 日志(免费、无 API key、覆盖率高)
+    - HackerTarget hostsearch(每日匿名 quota,触发限速时优雅降级)
+    - AlienVault OTX passive_dns
+    - ThreatCrowd domain report
+  - **Wildcard DNS 探测**:用 32 字符随机前缀做 DNS 查询,命中即标 `wildcard_suspect`,
+    通配符域(blogspot/github.io 等)结果可信度降级显示
+  - **DNS 主动验证**:并发(默认 30 worker)对每条候选跑 A/AAAA/CNAME,确认活性
+  - **HTTP probe(默认开,`--no-probe` 关闭)**:对 alive 子域抓 status_code + `<title>`
+    (https 失败回退 http;只读 16KB body 早停;复用现有 `_get_session` 连接池)
+  - 返回结构含 `domain / sources / wildcard_suspect / subdomains[] / _stats`,
+    每条子域 `host / alive / a / aaaa / cname / http_status / title / scheme`
+- **🌍 全报告本地化** —— 8 种报告格式都加 subdomain 专用渲染分支:
+  - **Markdown / HTML / PDF / TXT** 表格列出 host / IP / CNAME / HTTP / title;
+    HTML alive 子域渲染为可点击 anchor
+  - **CSV** 7 列 `host, alive, a, aaaa, cname, http_status, title`(injection-safe)
+  - **XMind** 按 alive/dead 两支组织树形,alive 节点带 URL hyperlink
+  - **D3.js Graph** 域名为中心节点(group=1),alive 子域 group=2(蓝)/dead group=3(灰)
+  - 中英双语 16 个新 i18n 键(`subdomain.*` + `menu.subdomain` + `prompt.input_subdomain`)
+- **🎯 交互菜单 `[ 8 ]` 子域名枚举** —— 主菜单从 9 项扩到 10 项;
+  - `[8]` = 子域名枚举(原)/`[9]` = 切换语言(让位)/`[0]` = 退出
+  - 进入后选 `1=Yes(默认)/2=No` 是否抓 HTTP `<title>`
+- **🔢 CLI flags**:
+  - `--no-probe`:仅 DNS 不抓 HTTP(快/匿名场景)
+  - `--workers N`:DNS/probe 并发(默认 30,与系统 resolver 友好;最大 200)
+  - `--timeout T`:单 probe 超时(默认 5s)
+  - `--alive-only`:终端打印仅显示活跃子域(JSON/报告仍含完整数据)
+- **📚 历史记录**:`history` 子命令显示子域名查询的 `alive/total` + ⚠wildcard 标记
+
+### 🔒 Security 安全
+
+- **`_clean_subdomain_candidates` 输入归一化**:
+  - 大小写归一化 + 过滤 wildcard `*.` 前缀 + 去 trailing dot
+  - **跨域过滤**:被动源串域返回的 `evil.com` 强制丢弃(防数据污染)
+  - 字符白名单(`a-z 0-9 . - _`)拒绝空格/斜杠/控制字符
+  - hostname 长度上限 253 字符(DNS spec)
+  - 拒绝含 `\n` `\r` 的项(crt.sh `name_value` 多行已在上层 split)
+- **入口域名校验** 沿用 `_normalize_domain`(IDN/punycode/`_dmarc` 子域支持)
+- **wildcard 探测用 `secrets.token_hex(16)`**:32 字符密码学随机前缀,假阳性率 ~0
+- **HTTP probe 仅 alive 子域**:不对未解析子域发请求(省时间 + 减目标侧噪声)
+- **JSON `</` 转义**(graph 已有;新增 subdomain 节点也走同路径,无 XSS)
+
+### 🧪 Tests 测试
+
+- **+44 个新测试**(全套 306 → 350):
+  - `TestSubdomainCleanCandidates`(9 测试):跨域过滤、wildcard 剥离、字符白名单、长度上限、None/非字符串容错
+  - `TestSubdomainParsers`(8):4 源 mock(成功/网络失败/限速/非 dict 响应)
+  - `TestPassiveCollectSubdomains`(2):多源并发 + 单源失败容错
+  - `TestEnumerateSubdomains`(5):无效域名拒绝、完整流程、`probe=False`、wildcard 标记传递、MAX 截断
+  - `TestSubdomainProbe`(5):title 提取、Unicode title、4xx 不抓 title、https → http 回退、全失败兜底
+  - `TestSubdomainCli`(5):argparse(`--no-probe` / `--alive-only` / `--workers` 校验)+ run_cli json
+  - `TestSubdomainReports`(8):8 种格式 × 关键内容验证 + wildcard 警告 + HTML alive anchor
+  - `TestSubdomainHistoryRecord`(1):history.jsonl 写入 alive/total
+  - `TestSubdomainI18nKeys`(1):16 个新 i18n 键中英完整性
+- 全套 lint 全清:ruff / mypy / bandit(0 issue)
+
+### 📦 Packaging 打包
+
+- `__version__` 1.2.0 → 1.3.0
+- `pyproject.toml` description 加入 "Subdomain enumeration"
+
+---
+
 ## [1.2.0] — 2026-05-02
 
 🎨 **8 种报告格式 + 全报告 i18n + 菜单流程优化** —— 围绕"用户输出"的全方位升级。

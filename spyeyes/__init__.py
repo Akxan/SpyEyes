@@ -66,7 +66,7 @@ except ImportError:
 
 
 # 语义化版本号 —— 同步更新 docs/CHANGELOG.md 与 git tag
-__version__ = '1.2.0'
+__version__ = '1.3.0'
 
 
 # ====================================================================
@@ -187,6 +187,7 @@ TRANSLATIONS: dict = {
         'menu.whois':           'Domain WHOIS Lookup',
         'menu.mx':              'Domain MX Records',
         'menu.email':           'Email Validator',
+        'menu.subdomain':       'Subdomain Enumeration',
         'menu.lang':            'Language / 语言',
         'menu.exit':            'Exit',
         # Prompts
@@ -216,6 +217,7 @@ TRANSLATIONS: dict = {
         'section.whois':        'WHOIS Lookup',
         'section.mx':           'MX Records',
         'section.email':        'Email Validity',
+        'section.subdomain':    'Subdomain Enumeration',
         'section.history':      'Recent Queries',
         # IP fields
         'field.target_ip':      'Target IP',
@@ -306,6 +308,21 @@ TRANSLATIONS: dict = {
         'cat.adult':            'Adult / Dating (18+)',
         'cat.other':            'Other',
         'msg.show_all_hint':    '(showing only matches; use --all to see misses)',
+        # v1.3.0 — Subdomain enumeration
+        'subdomain.title':            'Subdomain enumeration: {domain}',
+        'subdomain.summary':          '{total} discovered · {alive} alive · {sources} sources',
+        'subdomain.wildcard_warn':    'Wildcard DNS detected — results may be unreliable',
+        'subdomain.no_results':       'No subdomains discovered (all sources empty or rate-limited)',
+        'subdomain.source_breakdown': 'Sources: {breakdown}',
+        'subdomain.alive_section':    'Alive subdomains',
+        'subdomain.dead_section':     'Dead / unresolved subdomains',
+        'subdomain.col_host':         'Hostname',
+        'subdomain.col_ip':           'IP address',
+        'subdomain.col_cname':        'CNAME',
+        'subdomain.col_status':       'HTTP',
+        'subdomain.col_title':        'Title',
+        'prompt.input_subdomain':     'Enter target domain (e.g. example.com): ',
+        'prompt.subdomain_probe':     'Run HTTP probe to fetch <title>?\n   [ 1 ] Yes (default)  [ 2 ] No\n  Choose [1/2, default 1] : ',
         # Errors
         'err.network':          'Network request failed (timeout or connection error)',
         'err.non_json':         'API returned non-JSON response',
@@ -406,6 +423,7 @@ TRANSLATIONS: dict = {
         'menu.whois':           '域名 WHOIS 查询',
         'menu.mx':              '域名 MX 记录',
         'menu.email':           '邮箱有效性检查',
+        'menu.subdomain':       '子域名枚举',
         'menu.lang':            '切换语言 / Language',
         'menu.exit':            '退出',
         'prompt.select_option': '请选择功能 : ',
@@ -432,6 +450,7 @@ TRANSLATIONS: dict = {
         'section.whois':        'WHOIS 查询',
         'section.mx':           'MX 记录',
         'section.email':        '邮箱有效性',
+        'section.subdomain':    '子域名枚举',
         'section.history':      '最近查询',
         'field.target_ip':      '目标 IP',
         'field.ip_type':        'IP 类型',
@@ -515,6 +534,21 @@ TRANSLATIONS: dict = {
         'cat.adult':            '成人 / 约会（18+）',
         'cat.other':            '其他平台',
         'msg.show_all_hint':    '（仅显示命中；用 --all 查看未命中）',
+        # v1.3.0 —— 子域名枚举
+        'subdomain.title':            '子域名枚举：{domain}',
+        'subdomain.summary':          '共发现 {total} 个 · 活跃 {alive} 个 · 来自 {sources} 个数据源',
+        'subdomain.wildcard_warn':    '检测到通配符 DNS — 结果可信度降低',
+        'subdomain.no_results':       '未发现子域名（所有数据源为空或触发限速）',
+        'subdomain.source_breakdown': '数据源：{breakdown}',
+        'subdomain.alive_section':    '活跃子域',
+        'subdomain.dead_section':     '不可达 / 未解析子域',
+        'subdomain.col_host':         '主机名',
+        'subdomain.col_ip':           'IP 地址',
+        'subdomain.col_cname':        'CNAME',
+        'subdomain.col_status':       'HTTP',
+        'subdomain.col_title':        '标题',
+        'prompt.input_subdomain':     '请输入目标域名（如 example.com）：',
+        'prompt.subdomain_probe':     '是否抓 HTTP <title> 信息？\n   [ 1 ] 是（默认）  [ 2 ] 否\n  请选择 [1/2，默认 1] : ',
         'err.network':          '网络请求失败（超时或连接错误）',
         'err.non_json':         'API 返回了非 JSON 响应',
         'err.unknown_api':      '未知 API 错误',
@@ -2012,6 +2046,364 @@ def email_validate(email: str) -> dict:
 
 
 # ====================================================================
+# v1.3.0: 子域名枚举(被动多源 + DNS 验证 + 可选 HTTP probe)
+# ====================================================================
+# 设计:
+#   - 被动多源(crt.sh / HackerTarget / AlienVault OTX / ThreatCrowd)并发拉取
+#   - 单源失败/超时不影响其它源(每源独立 try/except,返回空 set)
+#   - Wildcard 检测:解析 32 字符随机前缀,命中则给所有结果加 wildcard_suspect 标记
+#   - DNS A/AAAA/CNAME 解析每个候选,确认活性
+#   - HTTP probe(默认开启,--no-probe 关闭)对 alive 子域抓 status + <title>
+#   - 所有用户输入字段经 _normalize_domain 校验(沿用 whois/mx 同套防御)
+SUBDOMAIN_MAX_RESULTS = 2000           # 输出上限,防被动源刷出几万条压垮内存/网络
+SUBDOMAIN_DEFAULT_WORKERS = 30         # DNS 并发线程数(系统 resolver 不喜欢过高并发)
+SUBDOMAIN_DNS_TIMEOUT = 3.0            # 单条 DNS 查询超时
+SUBDOMAIN_HTTP_PROBE_TIMEOUT = 5.0     # 单条 HTTP probe 超时
+SUBDOMAIN_PROBE_MAX_BODY = 16384       # probe 抓取 body 上限(只为提取 <title>)
+SUBDOMAIN_SOURCE_TIMEOUT = 15.0        # 单源被动 API 拉取超时
+
+# hostname 字符白名单:字母数字 + . - + 下划线(_dmarc 等合法 OSINT 子域)
+_SUBDOMAIN_HOSTNAME_RE = re.compile(r'^[a-z0-9._\-]+$')
+
+# 提取 <title> 用的正则;case-insensitive + dotall 不必要(title 一般在头部 16KB 内)
+_HTML_TITLE_RE = re.compile(rb'<title[^>]*>([^<]{0,200})</title>', re.IGNORECASE)
+
+
+def _clean_subdomain_candidates(raw_hosts, parent_domain: str) -> set[str]:
+    """归一化被动源返回的 hostname:小写、strip、过滤 wildcard `*.`、去 trailing dot,
+    丢弃不属于 parent_domain 的项(防被动源串域)。"""
+    parent = parent_domain.lower().strip().rstrip('.')
+    out: set[str] = set()
+    if not isinstance(raw_hosts, (list, tuple, set)):
+        return out
+    for h in raw_hosts:
+        if not isinstance(h, str):
+            continue
+        host = h.strip().lower().rstrip('.')
+        # 去掉 wildcard 前缀 `*.example.com` → `example.com`
+        if host.startswith('*.'):
+            host = host[2:]
+        # 部分源会返回多行(crt.sh `name_value` 含换行),逐行处理交给上层
+        if '\n' in host or '\r' in host:
+            continue
+        # 必须是 parent_domain 的子域(包括 parent 本身)
+        if not (host == parent or host.endswith('.' + parent)):
+            continue
+        if not _SUBDOMAIN_HOSTNAME_RE.match(host):
+            continue
+        if len(host) > 253:  # DNS 上限
+            continue
+        out.add(host)
+    return out
+
+
+def _src_crtsh(domain: str) -> set[str]:
+    """https://crt.sh/?q=%25.{domain}&output=json — Certificate Transparency 日志。
+    返回 [{name_value: "a.example.com\\nb.example.com", ...}, ...]"""
+    url = f'https://crt.sh/?q=%25.{domain}&output=json'
+    resp = safe_get(url, timeout=SUBDOMAIN_SOURCE_TIMEOUT)
+    if resp is None or resp.status_code != 200:
+        return set()
+    try:
+        data = resp.json()
+    except (ValueError, requests.exceptions.RequestException):
+        return set()
+    if not isinstance(data, list):
+        return set()
+    hosts: list[str] = []
+    for entry in data:
+        if not isinstance(entry, dict):
+            continue
+        # name_value 可能含 \n 分隔的多个 SAN
+        nv = entry.get('name_value') or ''
+        if isinstance(nv, str):
+            for line in nv.split('\n'):
+                hosts.append(line)
+        cn = entry.get('common_name')
+        if isinstance(cn, str):
+            hosts.append(cn)
+    return _clean_subdomain_candidates(hosts, domain)
+
+
+def _src_hackertarget(domain: str) -> set[str]:
+    """https://api.hackertarget.com/hostsearch/?q={domain} — text/CSV `host,ip`(每日 ~50 quota)。"""
+    url = f'https://api.hackertarget.com/hostsearch/?q={domain}'
+    resp = safe_get(url, timeout=SUBDOMAIN_SOURCE_TIMEOUT)
+    if resp is None or resp.status_code != 200:
+        return set()
+    text = (resp.text or '').strip()
+    # quota 用尽时返回 "API count exceeded - rate limit reached" 而非 CSV
+    if 'error' in text.lower() or 'rate limit' in text.lower() or 'exceeded' in text.lower():
+        return set()
+    hosts = [line.split(',', 1)[0] for line in text.splitlines() if ',' in line]
+    return _clean_subdomain_candidates(hosts, domain)
+
+
+def _src_otx(domain: str) -> set[str]:
+    """https://otx.alienvault.com/api/v1/indicators/domain/{domain}/passive_dns
+    返回 {passive_dns: [{hostname: "a.example.com", ...}, ...]}"""
+    url = f'https://otx.alienvault.com/api/v1/indicators/domain/{domain}/passive_dns'
+    resp = safe_get(url, timeout=SUBDOMAIN_SOURCE_TIMEOUT)
+    if resp is None or resp.status_code != 200:
+        return set()
+    try:
+        data = resp.json()
+    except (ValueError, requests.exceptions.RequestException):
+        return set()
+    if not isinstance(data, dict):
+        return set()
+    records = data.get('passive_dns') or []
+    if not isinstance(records, list):
+        return set()
+    hosts = [r.get('hostname') for r in records if isinstance(r, dict)]
+    return _clean_subdomain_candidates(hosts, domain)
+
+
+def _src_threatcrowd(domain: str) -> set[str]:
+    """https://www.threatcrowd.org/searchApi/v2/domain/report/?domain={domain}
+    返回 {subdomains: [...], response_code: "1"}"""
+    url = f'https://www.threatcrowd.org/searchApi/v2/domain/report/?domain={domain}'
+    resp = safe_get(url, timeout=SUBDOMAIN_SOURCE_TIMEOUT)
+    if resp is None or resp.status_code != 200:
+        return set()
+    try:
+        data = resp.json()
+    except (ValueError, requests.exceptions.RequestException):
+        return set()
+    if not isinstance(data, dict):
+        return set()
+    subs = data.get('subdomains') or []
+    return _clean_subdomain_candidates(subs if isinstance(subs, list) else [], domain)
+
+
+# 源映射表:测试可 monkeypatch 单个源;调整顺序不影响合并结果
+SUBDOMAIN_SOURCES = {
+    'crtsh':         _src_crtsh,
+    'hackertarget':  _src_hackertarget,
+    'otx':           _src_otx,
+    'threatcrowd':   _src_threatcrowd,
+}
+
+
+def passive_collect_subdomains(domain: str) -> dict:
+    """并发拉取所有被动源,返回 {sources: {name: count}, candidates: set, errors: {name: True}}.
+    任何单源失败都被吞,只在 errors 中记录;调用方据此判断结果可信度。"""
+    candidates: set[str] = set()
+    sources_count: dict = {}
+    errors: dict = {}
+    with ThreadPoolExecutor(max_workers=len(SUBDOMAIN_SOURCES)) as ex:
+        futures = {ex.submit(fn, domain): name for name, fn in SUBDOMAIN_SOURCES.items()}
+        for fut in as_completed(futures):
+            name = futures[fut]
+            try:
+                hosts = fut.result()
+            except Exception:
+                errors[name] = True
+                sources_count[name] = 0
+                continue
+            sources_count[name] = len(hosts)
+            candidates |= hosts
+    return {'sources': sources_count, 'candidates': candidates, 'errors': errors}
+
+
+def _detect_wildcard_dns(domain: str, dns_timeout: float = SUBDOMAIN_DNS_TIMEOUT) -> bool:
+    """检测 `*.example.com` 是否解析到 IP。命中 = wildcard DNS,所有结果可信度降低。
+    随机 32 字符前缀 + 不在被动结果里 → 几乎不可能真有此子域,若解析成功必是 wildcard。"""
+    if not HAS_DNS:
+        return False
+    import secrets
+    probe_label = secrets.token_hex(16)  # 32 hex chars
+    probe_host = f'{probe_label}.{domain}'
+    try:
+        resolver = dns.resolver.Resolver()
+        resolver.timeout = dns_timeout
+        resolver.lifetime = dns_timeout
+        resolver.resolve(probe_host, 'A')
+        return True
+    except Exception:
+        return False
+
+
+def _resolve_one_subdomain(host: str, dns_timeout: float = SUBDOMAIN_DNS_TIMEOUT) -> dict:
+    """对单个 hostname 跑 A/AAAA/CNAME 三种查询,返回 dict.
+    alive=True 当且仅当至少有一种记录命中。任何 DNS 异常归到 alive=False。"""
+    rec: dict = {'host': host, 'alive': False, 'a': [], 'aaaa': [], 'cname': None}
+    if not HAS_DNS:
+        return rec
+    resolver = dns.resolver.Resolver()
+    resolver.timeout = dns_timeout
+    resolver.lifetime = dns_timeout
+    for qtype, key in (('A', 'a'), ('AAAA', 'aaaa')):
+        try:
+            ans = resolver.resolve(host, qtype)
+            rec[key] = sorted(str(r).rstrip('.') for r in ans)
+            rec['alive'] = True
+        except Exception:
+            pass
+    try:
+        ans = resolver.resolve(host, 'CNAME')
+        cname = str(ans[0].target).rstrip('.') if ans else None
+        if cname:
+            rec['cname'] = cname
+            rec['alive'] = True
+    except Exception:
+        pass
+    return rec
+
+
+def _probe_one_subdomain(host: str, timeout: float = SUBDOMAIN_HTTP_PROBE_TIMEOUT) -> dict:
+    """对 alive 子域抓 HTTP status + <title>。先试 https,失败回退 http。
+    复用 _get_session 连接池;stream 早停只读 16KB 提取 title。"""
+    out: dict = {'http_status': None, 'title': None, 'scheme': None}
+    for scheme in ('https', 'http'):
+        url = f'{scheme}://{host}/'
+        resp = safe_get(url, timeout=timeout, stream=True, allow_redirects=True)
+        if resp is None:
+            continue
+        try:
+            out['scheme'] = scheme
+            out['http_status'] = resp.status_code
+            # 只对 2xx/3xx 提取 title(4xx/5xx 标题通常是 "404 Not Found" 噪声)
+            if 200 <= resp.status_code < 400:
+                try:
+                    chunks = []
+                    remaining = SUBDOMAIN_PROBE_MAX_BODY
+                    while remaining > 0:
+                        chunk = resp.raw.read(remaining, decode_content=True)
+                        if not chunk:
+                            break
+                        chunks.append(chunk)
+                        remaining -= len(chunk)
+                    body = b''.join(chunks)
+                    m = _HTML_TITLE_RE.search(body)
+                    if m:
+                        title_bytes = m.group(1).strip()
+                        try:
+                            out['title'] = title_bytes.decode('utf-8', errors='replace').strip()[:120]
+                        except Exception:
+                            pass
+                except (OSError, ValueError, requests.exceptions.RequestException):
+                    pass
+            return out
+        finally:
+            resp.close()
+    return out
+
+
+def enumerate_subdomains(domain: str, *, probe: bool = True,
+                        max_workers: int = SUBDOMAIN_DEFAULT_WORKERS,
+                        dns_timeout: float = SUBDOMAIN_DNS_TIMEOUT,
+                        probe_timeout: float = SUBDOMAIN_HTTP_PROBE_TIMEOUT,
+                        show_progress: bool = True) -> dict:
+    """子域名枚举主入口。
+
+    流程:
+    1. _normalize_domain 校验输入(沿用 whois/mx 同套防御:拒 URL/路径穿越/控制字符)
+    2. passive_collect_subdomains 并发跑 4 个被动源
+    3. _detect_wildcard_dns 探测 wildcard
+    4. ThreadPoolExecutor 并发 DNS 解析每个候选
+    5. 若 probe=True,对 alive 子域并发跑 HTTP probe
+    6. 截断到 SUBDOMAIN_MAX_RESULTS,按 host 字母序输出
+
+    返回结构:
+      {'domain': str,                   # 规范化后的 punycode/lowercase
+       'sources': {name: int},          # 每源贡献候选数
+       'wildcard_suspect': bool,        # wildcard DNS 检测结果
+       'subdomains': [                  # 按 host 字母序
+         {'host': str, 'alive': bool, 'a': [...], 'aaaa': [...], 'cname': str|None,
+          'http_status': int|None, 'title': str|None, 'scheme': str|None},
+         ...
+       ],
+       '_stats': {'total': int, 'alive': int, 'probed': int, 'errors': dict}
+      }
+      失败:{'_error': i18n_msg}
+    """
+    if not HAS_DNS:
+        return {'_error': t('err.no_dns')}
+    normalized = _normalize_domain(domain)
+    if normalized is None:
+        return {'_error': t('err.invalid_domain', domain=(domain or '').strip()[:80])}
+    domain = normalized
+
+    # 1) 被动多源
+    passive = passive_collect_subdomains(domain)
+    candidates = passive['candidates']
+
+    # 2) wildcard 探测(独立,失败不阻塞主流程)
+    wildcard = _detect_wildcard_dns(domain)
+
+    # 3) DNS 解析 — 截断到 MAX 防巨型 wildcard 域(blogspot 等)拖垮
+    if len(candidates) > SUBDOMAIN_MAX_RESULTS:
+        candidates = set(sorted(candidates)[:SUBDOMAIN_MAX_RESULTS])
+
+    if max_workers < 1:
+        max_workers = 1
+    resolved: list = []
+    total = len(candidates)
+    done = 0
+    with ThreadPoolExecutor(max_workers=max_workers) as ex:
+        futures = {ex.submit(_resolve_one_subdomain, h, dns_timeout): h for h in candidates}
+        try:
+            for fut in as_completed(futures):
+                try:
+                    rec = fut.result()
+                except Exception:
+                    rec = {'host': futures[fut], 'alive': False,
+                           'a': [], 'aaaa': [], 'cname': None}
+                resolved.append(rec)
+                done += 1
+                if show_progress:
+                    _print_scan_progress(done, total,
+                                         sum(1 for r in resolved if r.get('alive')))
+        except KeyboardInterrupt:
+            ex.shutdown(wait=False, cancel_futures=True)
+            if show_progress:
+                _clear_progress_line()
+            raise
+    if show_progress:
+        _clear_progress_line()
+
+    # 4) HTTP probe(仅 alive,除非 wildcard 全标记不可信)
+    probed = 0
+    if probe:
+        alive_recs = [r for r in resolved if r.get('alive')]
+        with ThreadPoolExecutor(max_workers=max_workers) as ex:
+            futures = {ex.submit(_probe_one_subdomain, r['host'], probe_timeout): r
+                       for r in alive_recs}
+            try:
+                for fut in as_completed(futures):
+                    rec = futures[fut]
+                    try:
+                        rec.update(fut.result())
+                    except Exception:
+                        rec['http_status'] = None
+                    probed += 1
+            except KeyboardInterrupt:
+                ex.shutdown(wait=False, cancel_futures=True)
+                raise
+    # 默认填空(报告生成器不要做存在性检查)
+    for r in resolved:
+        r.setdefault('http_status', None)
+        r.setdefault('title', None)
+        r.setdefault('scheme', None)
+
+    resolved.sort(key=lambda r: r.get('host', ''))
+    alive_count = sum(1 for r in resolved if r.get('alive'))
+    return {
+        'domain': domain,
+        'sources': passive['sources'],
+        'wildcard_suspect': wildcard,
+        'subdomains': resolved,
+        '_stats': {
+            'total': len(resolved),
+            'alive': alive_count,
+            'probed': probed,
+            'errors': passive.get('errors', {}),
+        },
+    }
+
+
+# ====================================================================
 # 输出格式化
 # ====================================================================
 def _print_section_header(section_key: str, *, equals: int = 10) -> None:
@@ -2257,6 +2649,57 @@ def print_email(result: dict) -> None:
         print(f" {Color.Re}{msg}{Color.Reset}")
 
 
+def print_subdomains(data: dict) -> None:
+    """v1.3.0：打印子域名枚举结果。按 alive/dead 分组,WAF wildcard 警告优先。"""
+    _print_section_header('section.subdomain')
+    print()
+    if '_error' in data:
+        print(f" {Color.Re}{t('err.query_failed', msg=data['_error'])}{Color.Reset}")
+        return
+    domain = data.get('domain', '')
+    subs = data.get('subdomains', []) or []
+    stats = data.get('_stats', {}) or {}
+    sources = data.get('sources', {}) or {}
+    sources_active = sum(1 for v in sources.values() if v > 0)
+
+    # 标题 + 概要
+    print(f" {Color.Wh}{t('subdomain.title', domain=domain)}{Color.Reset}")
+    print(f" {Color.Wh}{t('subdomain.summary', total=stats.get('total', 0), alive=stats.get('alive', 0), sources=sources_active)}{Color.Reset}")
+    if data.get('wildcard_suspect'):
+        print(f" {Color.Re}⚠ {t('subdomain.wildcard_warn')}{Color.Reset}")
+    if sources:
+        breakdown = ', '.join(f"{k}={v}" for k, v in sources.items())
+        print(f" {Color.Bl}{t('subdomain.source_breakdown', breakdown=breakdown)}{Color.Reset}")
+    print()
+
+    if not subs:
+        print(f" {Color.Ye}{t('subdomain.no_results')}{Color.Reset}")
+        return
+
+    alive = [s for s in subs if s.get('alive')]
+    dead = [s for s in subs if not s.get('alive')]
+
+    if alive:
+        print(f" {Color.Cy}┌─ {t('subdomain.alive_section')} ({len(alive)}) ─{Color.Reset}")
+        for s in alive:
+            host = s.get('host', '')
+            ips = (s.get('a') or []) + (s.get('aaaa') or [])
+            ip_str = ', '.join(ips) if ips else (s.get('cname') or '?')
+            status = s.get('http_status')
+            status_str = f"{Color.Gr}{status}{Color.Reset}" if status and status < 400 else \
+                         (f"{Color.Ye}{status}{Color.Reset}" if status else f"{Color.Bl}-{Color.Reset}")
+            title = s.get('title') or ''
+            title_str = f"  {Color.Bl}{title[:60]}{Color.Reset}" if title else ''
+            print(f" {Color.Wh}[ {Color.Gr}+ {Color.Wh}] {host:40} {Color.Gr}{ip_str:30}{Color.Reset}  HTTP {status_str}{title_str}")
+        print()
+
+    if dead:
+        print(f" {Color.Cy}┌─ {t('subdomain.dead_section')} ({len(dead)}) ─{Color.Reset}")
+        for s in dead:
+            print(f" {Color.Wh}[ {Color.Re}- {Color.Wh}] {s.get('host', '')}{Color.Reset}")
+        print()
+
+
 # ====================================================================
 # 语言选择器（首次启动 + 菜单切换）
 # ====================================================================
@@ -2315,7 +2758,8 @@ MENU_KEYS = [
     (5, 'menu.whois'),
     (6, 'menu.mx'),
     (7, 'menu.email'),
-    (8, 'menu.lang'),
+    (8, 'menu.subdomain'),  # v1.3.0: 子域名枚举（语言切换从 [8] 让位到 [9]）
+    (9, 'menu.lang'),
     (0, 'menu.exit'),
 ]
 
@@ -2540,7 +2984,22 @@ def handle_choice(choice: int, save_dir: Optional[str] = None) -> None:
         print_email(result)
         _interactive_save_prompt(f'email_{addr}', result, save_dir)
     elif choice == 8:
-        # v1.2.0: 切换语言（之前是 [9]，permute 子菜单合并到 [4] 后腾出位置）
+        # v1.3.0: 子域名枚举
+        domain = input(f"\n {Color.Wh}{t('prompt.input_subdomain')}{Color.Gr}").strip()
+        if not domain:
+            return
+        # 询问 probe 偏好(默认开)
+        try:
+            probe_ans = input(f"\n {Color.Wh}{t('prompt.subdomain_probe')}{Color.Gr}").strip()
+        except EOFError:
+            probe_ans = ''
+        # '2' = 否,其它都按 yes(默认 1 / 空回车)
+        probe = probe_ans != '2'
+        result = enumerate_subdomains(domain, probe=probe)
+        print_subdomains(result)
+        _interactive_save_prompt(f'subdomain_{domain}', result, save_dir)
+    elif choice == 9:
+        # v1.3.0: 切换语言（v1.2.0 是 [8]，加 subdomain 后让位到 [9]）
         switch_language_menu()
     elif choice == 0:
         print(f"\n {Color.Gr}{t('prompt.bye')}{Color.Reset}")
@@ -2706,6 +3165,38 @@ def _to_markdown(prefix: str, data: Any) -> str:
         lines.append("|---:|---|")
         for r in data['records']:
             lines.append(f"| {r['preference']} | `{r['exchange']}` |")
+        lines.append("")
+        return '\n'.join(lines)
+
+    # v1.3.0: subdomain 枚举 — 表格列出 host / IP / CNAME / status / title
+    if cmd == 'subdomain' and isinstance(data, dict) and 'subdomains' in data:
+        domain_lbl = _md_escape(data.get('domain', query))
+        stats = data.get('_stats', {}) or {}
+        lines.append(f"## {_md_escape(t('subdomain.title', domain=domain_lbl))}")
+        lines.append("")
+        lines.append(f"**{_md_escape(t('subdomain.summary', total=stats.get('total', 0), alive=stats.get('alive', 0), sources=sum(1 for v in (data.get('sources') or {}).values() if v > 0)))}**")
+        if data.get('wildcard_suspect'):
+            lines.append(f"\n> ⚠ {_md_escape(t('subdomain.wildcard_warn'))}")
+        lines.append("")
+        if not data.get('subdomains'):
+            lines.append(f"_{_md_escape(t('subdomain.no_results'))}_")
+            return '\n'.join(lines)
+        lines.append(
+            f"| {t('subdomain.col_host')} | {t('subdomain.col_ip')} | "
+            f"{t('subdomain.col_cname')} | {t('subdomain.col_status')} | {t('subdomain.col_title')} |"
+        )
+        lines.append("|---|---|---|---:|---|")
+        for s in data['subdomains']:
+            ips = ', '.join((s.get('a') or []) + (s.get('aaaa') or []))
+            cname = s.get('cname') or ''
+            status = s.get('http_status')
+            status_str = str(status) if status is not None else ''
+            title = s.get('title') or ''
+            host = s.get('host') or ''
+            lines.append(
+                f"| `{_md_escape(host)}` | {_md_escape(ips)} | "
+                f"{_md_escape(cname)} | {status_str} | {_md_escape(title)} |"
+            )
         lines.append("")
         return '\n'.join(lines)
 
@@ -2899,6 +3390,45 @@ def _to_pdf(prefix: str, data: Any, out_path: str) -> Optional[str]:
                 ('GRID', (0, 0), (-1, -1), 0.25, _rl_colors.grey),
                 ('VALIGN', (0, 0), (-1, -1), 'TOP'),
                 ('ALIGN', (0, 0), (0, -1), 'CENTER'),
+            ]))
+            story.append(tbl)
+        elif cmd == 'subdomain' and isinstance(data, dict) and 'subdomains' in data:
+            # v1.3.0:子域名枚举 PDF 表格
+            domain_lbl = _md_escape(data.get('domain', query))
+            stats = data.get('_stats', {}) or {}
+            sources_active = sum(1 for v in (data.get('sources') or {}).values() if v > 0)
+            story.append(_rl_paragraph(
+                f"<b>{_md_escape(t('subdomain.title', domain=domain_lbl))}</b>",
+                styles['Heading2']))
+            story.append(_rl_paragraph(
+                _md_escape(t('subdomain.summary',
+                             total=stats.get('total', 0), alive=stats.get('alive', 0),
+                             sources=sources_active)),
+                styles['Normal']))
+            if data.get('wildcard_suspect'):
+                story.append(_rl_paragraph(
+                    f"<b>⚠ {_md_escape(t('subdomain.wildcard_warn'))}</b>", styles['Normal']))
+            story.append(_rl_spacer(1, 8))
+            sub_table = [[
+                _md_escape(t('subdomain.col_host')), _md_escape(t('subdomain.col_ip')),
+                _md_escape(t('subdomain.col_cname')), _md_escape(t('subdomain.col_status')),
+                _md_escape(t('subdomain.col_title')),
+            ]]
+            for s in data.get('subdomains', []):
+                ips = ', '.join((s.get('a') or []) + (s.get('aaaa') or []))
+                sub_table.append([
+                    _md_escape(s.get('host', '')), _md_escape(ips),
+                    _md_escape(s.get('cname') or ''),
+                    str(s.get('http_status') or ''),
+                    _md_escape((s.get('title') or '')[:80]),
+                ])
+            tbl = _rl_table(sub_table, colWidths=[150, 110, 110, 35, 95])
+            tbl.setStyle(_rl_table_style([
+                ('BACKGROUND', (0, 0), (-1, 0), _rl_colors.lightgrey),
+                ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'),
+                ('FONTSIZE', (0, 0), (-1, -1), 7),
+                ('GRID', (0, 0), (-1, -1), 0.25, _rl_colors.grey),
+                ('VALIGN', (0, 0), (-1, -1), 'TOP'),
             ]))
             story.append(tbl)
         elif isinstance(data, dict):
@@ -3113,6 +3643,56 @@ def _to_html(prefix: str, data: Any) -> str:
         parts.extend(['</body>', '</html>'])
         return '\n'.join(parts)
 
+    # v1.3.0: subdomain 枚举 — 表格 host / IP / CNAME / status / title
+    if cmd == 'subdomain' and isinstance(data, dict) and 'subdomains' in data:
+        domain_safe = _html_escape(data.get('domain', query))
+        stats = data.get('_stats', {}) or {}
+        sources_active = sum(1 for v in (data.get('sources') or {}).values() if v > 0)
+        parts.append(
+            f'<h2>{_html_escape(t("subdomain.title", domain=domain_safe))}</h2>'
+        )
+        parts.append(
+            f'<p><b>{_html_escape(t("subdomain.summary", total=stats.get("total", 0), alive=stats.get("alive", 0), sources=sources_active))}</b></p>'
+        )
+        if data.get('wildcard_suspect'):
+            parts.append(
+                f'<div class="error">⚠ {_html_escape(t("subdomain.wildcard_warn"))}</div>'
+            )
+        if not data.get('subdomains'):
+            parts.append(f'<p><i>{_html_escape(t("subdomain.no_results"))}</i></p>')
+        else:
+            parts.append(
+                '<table><thead><tr>'
+                f'<th>{_html_escape(t("subdomain.col_host"))}</th>'
+                f'<th>{_html_escape(t("subdomain.col_ip"))}</th>'
+                f'<th>{_html_escape(t("subdomain.col_cname"))}</th>'
+                f'<th>{_html_escape(t("subdomain.col_status"))}</th>'
+                f'<th>{_html_escape(t("subdomain.col_title"))}</th>'
+                '</tr></thead><tbody>'
+            )
+            for s in data['subdomains']:
+                ips = ', '.join((s.get('a') or []) + (s.get('aaaa') or []))
+                status = s.get('http_status')
+                status_str = str(status) if status is not None else ''
+                title = s.get('title') or ''
+                host = s.get('host') or ''
+                # alive 子域 host 列加超链接(scheme 优先 https,fallback http)
+                if s.get('alive') and s.get('scheme'):
+                    href = f'{s["scheme"]}://{_html_escape(host)}/'
+                    host_html = f'<a href="{href}" target="_blank" rel="noopener noreferrer">{_html_escape(host)}</a>'
+                else:
+                    host_html = _html_escape(host)
+                parts.append(
+                    f'<tr><td>{host_html}</td>'
+                    f'<td>{_html_escape(ips)}</td>'
+                    f'<td>{_html_escape(s.get("cname") or "")}</td>'
+                    f'<td>{_html_escape(status_str)}</td>'
+                    f'<td>{_html_escape(title)}</td></tr>'
+                )
+            parts.append('</tbody></table>')
+        parts.extend(['</body>', '</html>'])
+        return '\n'.join(parts)
+
     # MX 专用：渲染优先级表（v1.2.1 P0-3 修复，之前会落到通用 dict 把 records list 压成 repr）
     if cmd == 'mx' and isinstance(data, dict) and 'records' in data:
         domain_safe = _html_escape(data.get('domain', query))
@@ -3246,6 +3826,40 @@ def _to_txt(prefix: str, data: Any) -> str:
                          f'{r.get("exchange", "")}')
         return '\n'.join(lines) + '\n'
 
+    # v1.3.0: subdomain 枚举 TXT
+    if cmd == 'subdomain' and isinstance(data, dict) and 'subdomains' in data:
+        domain_lbl = data.get('domain', query)
+        stats = data.get('_stats', {}) or {}
+        sources_active = sum(1 for v in (data.get('sources') or {}).values() if v > 0)
+        lines.append(t('subdomain.title', domain=domain_lbl))
+        lines.append(t('subdomain.summary', total=stats.get('total', 0),
+                       alive=stats.get('alive', 0), sources=sources_active))
+        if data.get('wildcard_suspect'):
+            lines.append(f'⚠ {t("subdomain.wildcard_warn")}')
+        lines.append('')
+        if not data.get('subdomains'):
+            lines.append(t('subdomain.no_results'))
+            return '\n'.join(lines) + '\n'
+        for s in data['subdomains']:
+            host = s.get('host', '')
+            ips = ', '.join((s.get('a') or []) + (s.get('aaaa') or []))
+            cname = s.get('cname') or ''
+            status = s.get('http_status')
+            status_str = f'HTTP {status}' if status else ''
+            title = s.get('title') or ''
+            mark = '+' if s.get('alive') else '-'
+            extra = []
+            if ips:
+                extra.append(ips)
+            if cname:
+                extra.append(f'CNAME→{cname}')
+            if status_str:
+                extra.append(status_str)
+            if title:
+                extra.append(title[:60])
+            lines.append(f'  [{mark}] {host:40}  {"  |  ".join(extra)}')
+        return '\n'.join(lines) + '\n'
+
     if isinstance(data, dict):
         lines.append(f'{cmd.upper()} {t("report.info_for")}: {query}')
         lines.append('')
@@ -3336,6 +3950,25 @@ def _to_csv(prefix: str, data: Any) -> str:
                              _csv_safe(r.get('exchange', ''))])
         return buf.getvalue()
 
+    # v1.3.0: subdomain 枚举 CSV — host, alive, a, aaaa, cname, http_status, title
+    if cmd == 'subdomain' and isinstance(data, dict) and 'subdomains' in data:
+        writer.writerow([
+            t('subdomain.col_host'), 'alive',
+            'a', 'aaaa', t('subdomain.col_cname'),
+            t('subdomain.col_status'), t('subdomain.col_title'),
+        ])
+        for s in data.get('subdomains', []):
+            writer.writerow([
+                _csv_safe(s.get('host', '')),
+                _csv_safe('1' if s.get('alive') else '0'),
+                _csv_safe(','.join(s.get('a') or [])),
+                _csv_safe(','.join(s.get('aaaa') or [])),
+                _csv_safe(s.get('cname') or ''),
+                _csv_safe(s.get('http_status') if s.get('http_status') is not None else ''),
+                _csv_safe(s.get('title') or ''),
+            ])
+        return buf.getvalue()
+
     if isinstance(data, dict):
         writer.writerow([t('report.field'), t('report.value')])
         items = data.items() if cmd != 'username' else _platform_only(data).items()
@@ -3414,6 +4047,40 @@ def _to_xmind(prefix: str, data: Any, out_path: str) -> Optional[str]:
                 for r in data['records']
             ]
             sub_topics = [_topic(f'{t("report.mx_records")} {domain_lbl}', mx_kids)]
+        elif cmd == 'subdomain' and isinstance(data, dict) and 'subdomains' in data:
+            # v1.3.0: subdomain 思维导图 — alive / dead 两支
+            alive_kids = []
+            dead_kids = []
+            for s in data.get('subdomains', []):
+                ips = ', '.join((s.get('a') or []) + (s.get('aaaa') or []))
+                detail = ips or (s.get('cname') or '')
+                status = s.get('http_status')
+                if status:
+                    detail = f'{detail} [{status}]'.strip()
+                node_label = f'{s.get("host", "")} → {detail}' if detail else s.get('host', '')
+                # alive 子域:href 用 scheme,可点击
+                href = None
+                if s.get('alive') and s.get('scheme'):
+                    href = f'{s["scheme"]}://{s.get("host", "")}/'
+                kids = []
+                if s.get('title'):
+                    kids.append(_topic(f'<title>: {s["title"]}'))
+                if s.get('cname'):
+                    kids.append(_topic(f'CNAME → {s["cname"]}'))
+                topic = _topic(node_label, kids if kids else None, href=href)
+                if s.get('alive'):
+                    alive_kids.append(topic)
+                else:
+                    dead_kids.append(topic)
+            sub_topics = []
+            if alive_kids:
+                sub_topics.append(_topic(
+                    f'{t("subdomain.alive_section")} ({len(alive_kids)})', alive_kids))
+            if dead_kids:
+                sub_topics.append(_topic(
+                    f'{t("subdomain.dead_section")} ({len(dead_kids)})', dead_kids))
+            if data.get('wildcard_suspect'):
+                sub_topics.insert(0, _topic(f'⚠ {t("subdomain.wildcard_warn")}'))
         elif isinstance(data, dict):
             sub_topics = []
             items = data.items() if cmd != 'username' else _platform_only(data).items()
@@ -3525,6 +4192,26 @@ def _to_graph_html(prefix: str, data: Any) -> str:
                     'category': cat_lookup.get(p_name, 'other'),
                 })
                 links.append({'source': var, 'target': node_id, 'value': 1})
+    elif cmd == 'subdomain' and isinstance(data, dict) and 'subdomains' in data:
+        # v1.3.0: 子域名力导向图 —— root domain (group=1) + alive 子域 (group=2) + dead (group=3)
+        nodes = [{'id': data.get('domain', query), 'group': 1,
+                  'name': data.get('domain', query), 'url': ''}]
+        root_id = data.get('domain', query)
+        for s in data.get('subdomains', []):
+            host = s.get('host', '')
+            if not host or host == root_id:
+                continue
+            alive = s.get('alive')
+            url = ''
+            if alive and s.get('scheme'):
+                url = f'{s["scheme"]}://{host}/'
+            nodes.append({
+                'id': f'sd_{host}',
+                'group': 2 if alive else 3,
+                'name': host,
+                'url': url,
+            })
+            links.append({'source': root_id, 'target': f'sd_{host}', 'value': 1})
     elif isinstance(data, dict) and '_error' in data:
         # 非 username 命令也允许导出 graph，仅展示 query 单节点 + 错误提示
         nodes.append({'id': 'err', 'group': 3, 'name': data['_error'], 'url': ''})
@@ -3777,6 +4464,8 @@ def build_parser() -> argparse.ArgumentParser:
   python3 -m spyeyes whois example.com            # WHOIS
   python3 -m spyeyes mx gmail.com                 # MX records
   python3 -m spyeyes email a@b.com                # Email validate
+  python3 -m spyeyes subdomain example.com        # v1.3.0: subdomain enum (CT logs + DNS + HTTP probe)
+  python3 -m spyeyes subdomain example.com --no-probe  # skip HTTP probe (faster)
   python3 -m spyeyes ip 8.8.8.8 --json            # JSON output
   python3 -m spyeyes ip 8.8.8.8 --save out/       # Save to dir (auto JSON)
   python3 -m spyeyes user torvalds --save r.pdf   # v1.1.0: PDF report (needs spyeyes[pdf])
@@ -3839,6 +4528,19 @@ def build_parser() -> argparse.ArgumentParser:
 
     sp = sub.add_parser('email', parents=[common], help='Email validation / 邮箱验证')
     sp.add_argument('address')
+
+    # v1.3.0: 子域名枚举
+    sp = sub.add_parser('subdomain', parents=[common],
+                        help='Enumerate subdomains / 子域名枚举 (v1.3.0)')
+    sp.add_argument('domain', help='Target domain (e.g. example.com)')
+    sp.add_argument('--no-probe', action='store_true', dest='no_probe',
+                    help='Skip HTTP probe (faster, only DNS resolution)')
+    sp.add_argument('--workers', type=_positive_int, default=SUBDOMAIN_DEFAULT_WORKERS,
+                    help=f'DNS / probe concurrency (default: {SUBDOMAIN_DEFAULT_WORKERS}, max 200)')
+    sp.add_argument('--timeout', type=float, default=SUBDOMAIN_HTTP_PROBE_TIMEOUT,
+                    help=f'HTTP probe timeout per host (default: {SUBDOMAIN_HTTP_PROBE_TIMEOUT}s)')
+    sp.add_argument('--alive-only', action='store_true', dest='alive_only',
+                    help='In CLI output, hide subdomains that did not resolve')
 
     sp = sub.add_parser('history', parents=[common], help='Show recent queries / 显示历史查询')
     sp.add_argument('--limit', type=_positive_int, default=20,
@@ -3984,6 +4686,25 @@ def run_cli(args: argparse.Namespace) -> int:
             _emit_json(data)
         else:
             print_email(data)
+    elif cmd == 'subdomain':
+        # v1.3.0: 子域名枚举
+        probe = not getattr(args, 'no_probe', False)
+        data = enumerate_subdomains(
+            args.domain,
+            probe=probe,
+            max_workers=args.workers,
+            probe_timeout=args.timeout,
+            show_progress=not args.json,
+        )
+        save_prefix = f'subdomain_{args.domain}'
+        if args.json:
+            _emit_json(data)
+        else:
+            # --alive-only 仅影响终端打印,不影响 JSON / 报告(完整数据更有价值)
+            display = data
+            if getattr(args, 'alive_only', False) and isinstance(data, dict) and 'subdomains' in data:
+                display = {**data, 'subdomains': [s for s in data['subdomains'] if s.get('alive')]}
+            print_subdomains(display)
     elif cmd == 'history':
         entries = read_history(limit=args.limit, search=getattr(args, 'search', None))
         if args.json:
@@ -4065,12 +4786,19 @@ def _record_history(cmd: str, args: argparse.Namespace, data: Any) -> None:
         summary = {'domains': args.domains}
     elif cmd == 'email':
         summary = {'address': args.address, 'mx_valid': data.get('mx_valid')}
+    elif cmd == 'subdomain':
+        # v1.3.0: 记录 domain + 总数 + alive 数(配合 history --search 排查)
+        stats = data.get('_stats', {}) or {}
+        summary = {'domain': args.domain,
+                   'total': stats.get('total', 0),
+                   'alive': stats.get('alive', 0),
+                   'wildcard': bool(data.get('wildcard_suspect'))}
     else:
         # 未知 cmd（未来加新子命令但忘了更新这里）→ 不写空 entry 污染历史
         return
     query = summary.get('target') or summary.get('username') or summary.get('address') \
             or (summary.get('domains') and ','.join(summary['domains'])) or summary.get('number') \
-            or summary.get('name') or ''
+            or summary.get('name') or summary.get('domain') or ''
     append_history(cmd, str(query), summary)
 
 
@@ -4091,6 +4819,11 @@ def print_history(entries: list) -> None:
             extras.append('✓' if e['ok'] else '✗')
         if 'mx_valid' in e:
             extras.append('mx✓' if e['mx_valid'] else 'mx✗')
+        # v1.3.0: subdomain 命令的 alive/total 显示 + wildcard 警告
+        if 'alive' in e and 'total' in e:
+            extras.append(f"{e['alive']}/{e['total']}")
+            if e.get('wildcard'):
+                extras.append('⚠wildcard')
         extra_str = f"  [{Color.Cy}{', '.join(str(x) for x in extras)}{Color.Reset}]" if extras else ''
         print(f"  {Color.Bl}{ts}{Color.Reset}  {Color.Wh}{cmd:7}{Color.Reset}  {Color.Gr}{query}{Color.Reset}{extra_str}")
 

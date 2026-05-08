@@ -2150,3 +2150,448 @@ class TestNewTranslationKeys:
         # 都不应是 key 本身（fallback 失败）
         assert en_msg != 'recursive.title'
         assert zh_msg != 'recursive.title'
+
+
+# ====================================================================
+# v1.3.0: 子域名枚举(被动多源 + DNS + HTTP probe)
+# ====================================================================
+class TestSubdomainCleanCandidates:
+    """归一化逻辑:小写、过滤 wildcard、过滤跨域、字符白名单。"""
+
+    def test_basic_filter(self):
+        out = gt._clean_subdomain_candidates(['API.example.com', 'mail.example.com'],
+                                              'example.com')
+        assert 'api.example.com' in out
+        assert 'mail.example.com' in out
+
+    def test_wildcard_prefix_stripped(self):
+        out = gt._clean_subdomain_candidates(['*.example.com'], 'example.com')
+        assert out == {'example.com'}
+
+    def test_cross_domain_filtered(self):
+        """被动源串域(返回 evil.com)必须丢弃 — 防数据污染。"""
+        out = gt._clean_subdomain_candidates(
+            ['api.example.com', 'evil.com', 'sub.evil.com'], 'example.com')
+        assert out == {'api.example.com'}
+
+    def test_invalid_chars_rejected(self):
+        out = gt._clean_subdomain_candidates(
+            ['api.example.com', 'a b.example.com', 'a/b.example.com'], 'example.com')
+        assert out == {'api.example.com'}
+
+    def test_overly_long_rejected(self):
+        long_host = 'a' * 254 + '.example.com'
+        out = gt._clean_subdomain_candidates([long_host], 'example.com')
+        assert out == set()
+
+    def test_trailing_dot_normalized(self):
+        out = gt._clean_subdomain_candidates(['api.example.com.'], 'example.com')
+        assert 'api.example.com' in out
+
+    def test_non_string_filtered(self):
+        out = gt._clean_subdomain_candidates(['api.example.com', None, 42, ''], 'example.com')
+        assert out == {'api.example.com'}
+
+    def test_non_iterable_returns_empty(self):
+        assert gt._clean_subdomain_candidates(None, 'example.com') == set()
+        assert gt._clean_subdomain_candidates('string', 'example.com') == set()
+
+    def test_newlines_in_host_skipped(self):
+        """crt.sh name_value 含 \\n 是上层负责按行 split,这里防御性拒收剩余的换行。"""
+        out = gt._clean_subdomain_candidates(['a.example.com\nb.example.com'], 'example.com')
+        assert out == set()
+
+
+class TestSubdomainParsers:
+    """4 个被动数据源的 mock 测试。"""
+
+    def test_crtsh_parses_name_value(self):
+        fake = MagicMock(status_code=200)
+        fake.json.return_value = [
+            {'name_value': 'api.example.com\nmail.example.com'},
+            {'common_name': 'blog.example.com'},
+        ]
+        with patch.object(gt, 'safe_get', return_value=fake):
+            out = gt._src_crtsh('example.com')
+        assert {'api.example.com', 'mail.example.com', 'blog.example.com'} <= out
+
+    def test_crtsh_handles_non_json(self):
+        fake = MagicMock(status_code=200)
+        fake.json.side_effect = ValueError('not JSON')
+        with patch.object(gt, 'safe_get', return_value=fake):
+            assert gt._src_crtsh('example.com') == set()
+
+    def test_crtsh_network_failure(self):
+        with patch.object(gt, 'safe_get', return_value=None):
+            assert gt._src_crtsh('example.com') == set()
+
+    def test_hackertarget_csv_format(self):
+        fake = MagicMock(status_code=200,
+                         text='api.example.com,1.2.3.4\nmail.example.com,5.6.7.8\n')
+        with patch.object(gt, 'safe_get', return_value=fake):
+            out = gt._src_hackertarget('example.com')
+        assert 'api.example.com' in out
+        assert 'mail.example.com' in out
+
+    def test_hackertarget_rate_limit_returns_empty(self):
+        fake = MagicMock(status_code=200, text='API count exceeded - rate limit reached')
+        with patch.object(gt, 'safe_get', return_value=fake):
+            assert gt._src_hackertarget('example.com') == set()
+
+    def test_otx_parses_passive_dns(self):
+        fake = MagicMock(status_code=200)
+        fake.json.return_value = {
+            'passive_dns': [
+                {'hostname': 'api.example.com'},
+                {'hostname': 'mail.example.com'},
+                {'no_hostname': 'irrelevant'},
+            ]
+        }
+        with patch.object(gt, 'safe_get', return_value=fake):
+            out = gt._src_otx('example.com')
+        assert {'api.example.com', 'mail.example.com'} <= out
+
+    def test_otx_handles_non_dict(self):
+        fake = MagicMock(status_code=200)
+        fake.json.return_value = ['unexpected', 'list', 'format']
+        with patch.object(gt, 'safe_get', return_value=fake):
+            assert gt._src_otx('example.com') == set()
+
+    def test_threatcrowd_parses_subdomains(self):
+        fake = MagicMock(status_code=200)
+        fake.json.return_value = {'subdomains': ['api.example.com', 'mail.example.com'],
+                                   'response_code': '1'}
+        with patch.object(gt, 'safe_get', return_value=fake):
+            out = gt._src_threatcrowd('example.com')
+        assert out == {'api.example.com', 'mail.example.com'}
+
+
+class TestPassiveCollectSubdomains:
+    """多源并发汇总:任何单源失败不影响整体。"""
+
+    def test_all_sources_succeed(self, monkeypatch):
+        monkeypatch.setitem(gt.SUBDOMAIN_SOURCES, 'crtsh',
+                            lambda d: {'api.example.com', 'mail.example.com'})
+        monkeypatch.setitem(gt.SUBDOMAIN_SOURCES, 'hackertarget',
+                            lambda d: {'api.example.com', 'blog.example.com'})
+        monkeypatch.setitem(gt.SUBDOMAIN_SOURCES, 'otx', lambda d: set())
+        monkeypatch.setitem(gt.SUBDOMAIN_SOURCES, 'threatcrowd',
+                            lambda d: {'cdn.example.com'})
+        result = gt.passive_collect_subdomains('example.com')
+        assert result['candidates'] == {'api.example.com', 'mail.example.com',
+                                         'blog.example.com', 'cdn.example.com'}
+        assert result['sources']['crtsh'] == 2
+        assert result['errors'] == {}
+
+    def test_one_source_throws_does_not_break_others(self, monkeypatch):
+        def boom(d):
+            raise RuntimeError('source down')
+        monkeypatch.setitem(gt.SUBDOMAIN_SOURCES, 'crtsh', boom)
+        monkeypatch.setitem(gt.SUBDOMAIN_SOURCES, 'hackertarget',
+                            lambda d: {'good.example.com'})
+        monkeypatch.setitem(gt.SUBDOMAIN_SOURCES, 'otx', lambda d: set())
+        monkeypatch.setitem(gt.SUBDOMAIN_SOURCES, 'threatcrowd', lambda d: set())
+        result = gt.passive_collect_subdomains('example.com')
+        assert 'good.example.com' in result['candidates']
+        assert result['errors'].get('crtsh') is True
+
+
+class TestEnumerateSubdomains:
+    """主流程 mock 测试 — 跳过真实网络。"""
+
+    def test_invalid_domain_rejected(self):
+        if not gt.HAS_DNS:
+            pytest.skip('dns 依赖未安装')
+        result = gt.enumerate_subdomains('http://bad/x')
+        assert '_error' in result
+
+    def test_full_flow(self, monkeypatch):
+        if not gt.HAS_DNS:
+            pytest.skip('dns 依赖未安装')
+        monkeypatch.setattr(gt, 'passive_collect_subdomains', lambda d: {
+            'candidates': {'api.example.com', 'mail.example.com'},
+            'sources': {'crtsh': 2, 'hackertarget': 0, 'otx': 0, 'threatcrowd': 0},
+            'errors': {},
+        })
+        monkeypatch.setattr(gt, '_detect_wildcard_dns', lambda d, dns_timeout=3.0: False)
+
+        def fake_resolve(host, dns_timeout=3.0):
+            return {'host': host, 'alive': True, 'a': ['1.2.3.4'],
+                    'aaaa': [], 'cname': None}
+        monkeypatch.setattr(gt, '_resolve_one_subdomain', fake_resolve)
+
+        def fake_probe(host, timeout=5.0):
+            return {'http_status': 200, 'title': 'Example', 'scheme': 'https'}
+        monkeypatch.setattr(gt, '_probe_one_subdomain', fake_probe)
+
+        result = gt.enumerate_subdomains('example.com', show_progress=False)
+        assert result['domain'] == 'example.com'
+        assert result['_stats']['total'] == 2
+        assert result['_stats']['alive'] == 2
+        assert result['_stats']['probed'] == 2
+        assert all(s.get('http_status') == 200 for s in result['subdomains'])
+        # 输出按字母序排序
+        hosts = [s['host'] for s in result['subdomains']]
+        assert hosts == sorted(hosts)
+
+    def test_no_probe_skips_http(self, monkeypatch):
+        if not gt.HAS_DNS:
+            pytest.skip('dns 依赖未安装')
+        monkeypatch.setattr(gt, 'passive_collect_subdomains', lambda d: {
+            'candidates': {'api.example.com'},
+            'sources': {'crtsh': 1}, 'errors': {},
+        })
+        monkeypatch.setattr(gt, '_detect_wildcard_dns', lambda d, dns_timeout=3.0: False)
+        monkeypatch.setattr(gt, '_resolve_one_subdomain', lambda host, dns_timeout=3.0: {
+            'host': host, 'alive': True, 'a': ['1.2.3.4'], 'aaaa': [], 'cname': None
+        })
+        called = {'probe': 0}
+
+        def fake_probe(host, timeout=5.0):
+            called['probe'] += 1
+            return {}
+        monkeypatch.setattr(gt, '_probe_one_subdomain', fake_probe)
+
+        result = gt.enumerate_subdomains('example.com', probe=False, show_progress=False)
+        assert called['probe'] == 0, '--no-probe 时不应调 _probe_one_subdomain'
+        assert result['_stats']['probed'] == 0
+
+    def test_wildcard_flag_propagated(self, monkeypatch):
+        if not gt.HAS_DNS:
+            pytest.skip('dns 依赖未安装')
+        monkeypatch.setattr(gt, 'passive_collect_subdomains', lambda d: {
+            'candidates': set(), 'sources': {'crtsh': 0}, 'errors': {},
+        })
+        monkeypatch.setattr(gt, '_detect_wildcard_dns', lambda d, dns_timeout=3.0: True)
+        result = gt.enumerate_subdomains('example.com', show_progress=False)
+        assert result['wildcard_suspect'] is True
+
+    def test_max_results_truncation(self, monkeypatch):
+        """超过 SUBDOMAIN_MAX_RESULTS 时只解析前 N 条,防 wildcard 域刷爆资源。"""
+        if not gt.HAS_DNS:
+            pytest.skip('dns 依赖未安装')
+        # 临时调小 MAX 加快测试
+        monkeypatch.setattr(gt, 'SUBDOMAIN_MAX_RESULTS', 3)
+        monkeypatch.setattr(gt, 'passive_collect_subdomains', lambda d: {
+            'candidates': {f'h{i}.example.com' for i in range(10)},
+            'sources': {'crtsh': 10}, 'errors': {},
+        })
+        monkeypatch.setattr(gt, '_detect_wildcard_dns', lambda d, dns_timeout=3.0: False)
+        monkeypatch.setattr(gt, '_resolve_one_subdomain', lambda host, dns_timeout=3.0: {
+            'host': host, 'alive': False, 'a': [], 'aaaa': [], 'cname': None
+        })
+        result = gt.enumerate_subdomains('example.com', probe=False, show_progress=False)
+        assert result['_stats']['total'] == 3
+
+
+class TestSubdomainProbe:
+    def test_probe_extracts_title(self):
+        fake = MagicMock(status_code=200)
+        fake.raw.read.return_value = b'<html><head><title>Example Site</title></head>'
+        with patch.object(gt, 'safe_get', return_value=fake):
+            out = gt._probe_one_subdomain('api.example.com')
+        assert out['http_status'] == 200
+        assert out['title'] == 'Example Site'
+        assert out['scheme'] == 'https'
+
+    def test_probe_handles_unicode_title(self):
+        fake = MagicMock(status_code=200)
+        fake.raw.read.return_value = '<title>中文标题</title>'.encode('utf-8')
+        with patch.object(gt, 'safe_get', return_value=fake):
+            out = gt._probe_one_subdomain('api.example.com')
+        assert out['title'] == '中文标题'
+
+    def test_probe_skips_title_for_4xx(self):
+        fake = MagicMock(status_code=404)
+        with patch.object(gt, 'safe_get', return_value=fake):
+            out = gt._probe_one_subdomain('api.example.com')
+        assert out['http_status'] == 404
+        assert out['title'] is None
+
+    def test_probe_https_fail_falls_back_to_http(self):
+        responses = [None]  # https 失败
+        fake_http = MagicMock(status_code=200)
+        fake_http.raw.read.return_value = b''
+        responses.append(fake_http)
+
+        def fake_get(url, **kwargs):
+            return responses.pop(0)
+        with patch.object(gt, 'safe_get', side_effect=fake_get):
+            out = gt._probe_one_subdomain('api.example.com')
+        assert out['scheme'] == 'http'
+        assert out['http_status'] == 200
+
+    def test_probe_total_failure_returns_empty_status(self):
+        with patch.object(gt, 'safe_get', return_value=None):
+            out = gt._probe_one_subdomain('api.example.com')
+        assert out['http_status'] is None
+
+
+class TestSubdomainCli:
+    """CLI argparse + run_cli 路由。"""
+
+    def test_subdomain_subcommand_parses(self):
+        args = gt.build_parser().parse_args(['subdomain', 'example.com'])
+        assert args.command == 'subdomain'
+        assert args.domain == 'example.com'
+        assert args.no_probe is False
+
+    def test_no_probe_flag(self):
+        args = gt.build_parser().parse_args(['subdomain', 'example.com', '--no-probe'])
+        assert args.no_probe is True
+
+    def test_alive_only_flag(self):
+        args = gt.build_parser().parse_args(['subdomain', 'example.com', '--alive-only'])
+        assert args.alive_only is True
+
+    def test_workers_validation(self):
+        with pytest.raises(SystemExit):
+            gt.build_parser().parse_args(['subdomain', 'example.com', '--workers', '0'])
+
+    def test_run_cli_subdomain_json(self, monkeypatch, capsys, tmp_path):
+        monkeypatch.setattr(gt, 'HISTORY_FILE', str(tmp_path / 'h.jsonl'))
+        monkeypatch.setattr(gt, 'CONFIG_DIR', str(tmp_path))
+        fake_result = {
+            'domain': 'example.com',
+            'sources': {'crtsh': 1},
+            'wildcard_suspect': False,
+            'subdomains': [{'host': 'api.example.com', 'alive': True,
+                            'a': ['1.2.3.4'], 'aaaa': [], 'cname': None,
+                            'http_status': 200, 'title': 'API', 'scheme': 'https'}],
+            '_stats': {'total': 1, 'alive': 1, 'probed': 1, 'errors': {}},
+        }
+        monkeypatch.setattr(gt, 'enumerate_subdomains',
+                            lambda *a, **kw: fake_result)
+        import argparse
+        args = argparse.Namespace(command='subdomain', domain='example.com',
+                                   no_probe=False, workers=30, timeout=5.0,
+                                   alive_only=False, json=True, save=None)
+        rc = gt.run_cli(args)
+        assert rc == 0
+        out = capsys.readouterr().out
+        data = json.loads(out)
+        assert data['domain'] == 'example.com'
+        assert len(data['subdomains']) == 1
+
+
+class TestSubdomainReports:
+    """8 种报告生成器在 subdomain 数据上不崩 + 关键内容存在。"""
+
+    @pytest.fixture
+    def sample_data(self):
+        return {
+            'domain': 'example.com',
+            'sources': {'crtsh': 2, 'otx': 1},
+            'wildcard_suspect': False,
+            'subdomains': [
+                {'host': 'api.example.com', 'alive': True,
+                 'a': ['1.2.3.4'], 'aaaa': [], 'cname': None,
+                 'http_status': 200, 'title': 'API', 'scheme': 'https'},
+                {'host': 'old.example.com', 'alive': False,
+                 'a': [], 'aaaa': [], 'cname': None,
+                 'http_status': None, 'title': None, 'scheme': None},
+            ],
+            '_stats': {'total': 2, 'alive': 1, 'probed': 1, 'errors': {}},
+        }
+
+    def test_markdown_renders_subdomain_table(self, sample_data):
+        md = gt._to_markdown('subdomain_example.com', sample_data)
+        assert 'api.example.com' in md
+        assert 'old.example.com' in md
+        # 命中行含 IP
+        assert '1.2.3.4' in md
+        # 含 markdown 表头
+        assert '|' in md and '---' in md
+
+    def test_html_renders_anchor_for_alive(self, sample_data):
+        html = gt._to_html('subdomain_example.com', sample_data)
+        assert 'api.example.com' in html
+        # alive 子域应渲染为可点击 anchor
+        assert 'href="https://api.example.com/"' in html
+        # dead 子域不应有 href(就是文本)
+        assert 'href="https://old.example.com' not in html
+
+    def test_txt_renders(self, sample_data):
+        txt = gt._to_txt('subdomain_example.com', sample_data)
+        assert 'api.example.com' in txt
+        assert 'old.example.com' in txt
+
+    def test_csv_columns(self, sample_data):
+        csv = gt._to_csv('subdomain_example.com', sample_data)
+        # CSV 有 7 列
+        first = csv.split('\n')[0]
+        assert first.count(',') == 6
+        assert 'api.example.com' in csv
+        assert 'old.example.com' in csv
+
+    def test_xmind_creates_file(self, sample_data, tmp_path):
+        out = tmp_path / 'r.xmind'
+        err = gt._to_xmind('subdomain_example.com', sample_data, str(out))
+        assert err is None
+        assert out.exists()
+        # 验证是合法 zip
+        import zipfile
+        with zipfile.ZipFile(str(out)) as zf:
+            assert 'content.xml' in zf.namelist()
+            content = zf.read('content.xml').decode('utf-8')
+            assert 'api.example.com' in content
+
+    def test_graph_html_has_root_and_subs(self, sample_data):
+        html = gt._to_graph_html('subdomain_example.com', sample_data)
+        assert 'api.example.com' in html
+        assert 'old.example.com' in html
+        # alive 子域 url 字段存在(JSON 里)
+        assert '"https://api.example.com/"' in html
+
+    def test_wildcard_warning_in_reports(self, sample_data):
+        sample_data['wildcard_suspect'] = True
+        for fn in (gt._to_markdown, gt._to_html, gt._to_txt):
+            out = fn('subdomain_example.com', sample_data)
+            # 应含警告(中或英版本)
+            assert 'wildcard' in out.lower() or '通配符' in out
+
+    @pytest.mark.skipif(not gt.HAS_REPORTLAB, reason="reportlab not installed")
+    def test_pdf_renders(self, sample_data, tmp_path):
+        out = tmp_path / 'r.pdf'
+        err = gt._to_pdf('subdomain_example.com', sample_data, str(out))
+        assert err is None
+        assert out.exists()
+        assert out.read_bytes().startswith(b'%PDF')
+
+
+class TestSubdomainHistoryRecord:
+    def test_record_history_subdomain(self, tmp_path, monkeypatch):
+        h = tmp_path / 'h.jsonl'
+        monkeypatch.setattr(gt, 'HISTORY_FILE', str(h))
+        monkeypatch.setattr(gt, 'CONFIG_DIR', str(tmp_path))
+        import argparse
+        gt._record_history('subdomain',
+                           argparse.Namespace(domain='example.com'),
+                           {'_stats': {'total': 5, 'alive': 3},
+                            'wildcard_suspect': False,
+                            'subdomains': []})
+        line = h.read_text(encoding='utf-8').strip()
+        rec = json.loads(line)
+        assert rec['cmd'] == 'subdomain'
+        assert rec['query'] == 'example.com'
+        assert rec['total'] == 5
+        assert rec['alive'] == 3
+
+
+class TestSubdomainI18nKeys:
+    """i18n 完整性:新增 13 个 subdomain.* 与 menu.subdomain 键中英都齐。"""
+
+    def test_subdomain_keys_exist_both_langs(self):
+        new_keys = [
+            'menu.subdomain', 'section.subdomain',
+            'subdomain.title', 'subdomain.summary',
+            'subdomain.wildcard_warn', 'subdomain.no_results',
+            'subdomain.source_breakdown',
+            'subdomain.alive_section', 'subdomain.dead_section',
+            'subdomain.col_host', 'subdomain.col_ip', 'subdomain.col_cname',
+            'subdomain.col_status', 'subdomain.col_title',
+            'prompt.input_subdomain', 'prompt.subdomain_probe',
+        ]
+        for key in new_keys:
+            assert key in gt.TRANSLATIONS['en'], f"Missing en: {key}"
+            assert key in gt.TRANSLATIONS['zh'], f"Missing zh: {key}"
