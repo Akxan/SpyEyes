@@ -2595,3 +2595,181 @@ class TestSubdomainI18nKeys:
         for key in new_keys:
             assert key in gt.TRANSLATIONS['en'], f"Missing en: {key}"
             assert key in gt.TRANSLATIONS['zh'], f"Missing zh: {key}"
+
+
+# ====================================================================
+# v1.3.2: 电话运营商 MNP-aware (block-allocated disclaimer + 实时 HLR API)
+# ====================================================================
+class TestPhoneCarrierMNP:
+    """v1.3.2: track_phone 输出 carrier_note 提示号段所属(MNP 不感知),
+    可选实时 HLR API 查询补充准确数据。"""
+
+    def test_carrier_note_present_by_default(self):
+        """每次 track_phone 都应返回 carrier_note disclaimer 让用户理解局限。"""
+        data = gt.track_phone('+8613800138000')
+        assert '_error' not in data
+        assert 'carrier_note' in data
+        assert data['carrier_note']  # 非空
+        # disclaimer 必含 MNP 概念(中或英)
+        note = data['carrier_note'].lower()
+        assert 'mnp' in note or '携号' in data['carrier_note'] or 'port' in note
+
+    def test_carrier_note_localized(self):
+        """carrier_note 跟随 UI 语言。"""
+        gt.set_lang('en')
+        en_data = gt.track_phone('+8613800138000')
+        gt.set_lang('zh')
+        zh_data = gt.track_phone('+8613800138000')
+        assert en_data['carrier_note'] != zh_data['carrier_note']
+        assert 'port' in en_data['carrier_note'].lower()
+        assert '携号' in zh_data['carrier_note'] or '号段' in zh_data['carrier_note']
+
+    def test_carrier_field_remains_block_carrier(self):
+        """carrier 字段保留号段所属(向后兼容,只是标签变更)。"""
+        data = gt.track_phone('+8613800138000')
+        # 中国移动号段 13800 应仍报 China Mobile
+        assert ('Mobile' in data['carrier'] or '移动' in data['carrier']
+                or 'China' in data['carrier'])
+
+    def test_realtime_hint_when_no_api_key(self, monkeypatch):
+        """没设 SPYEYES_PHONE_API_KEY 时,carrier_realtime=None + 给出 hint。"""
+        monkeypatch.delenv('SPYEYES_PHONE_API_KEY', raising=False)
+        data = gt.track_phone('+8613800138000')
+        assert data.get('carrier_realtime') is None
+        assert data.get('carrier_realtime_hint')
+        # hint 应提到 SPYEYES_PHONE_API_KEY env var
+        assert 'SPYEYES_PHONE_API_KEY' in data['carrier_realtime_hint']
+
+    def test_realtime_disabled_explicitly(self, monkeypatch):
+        """lookup_realtime=False 时,即使 env 设了也不调用,且不出 hint。"""
+        monkeypatch.setenv('SPYEYES_PHONE_API_KEY', 'numverify:fakekey')
+        with patch.object(gt, '_resolve_phone_realtime') as mock_lookup:
+            data = gt.track_phone('+8613800138000', lookup_realtime=False)
+        assert mock_lookup.call_count == 0
+        # 不该出现 carrier_realtime_* 字段
+        assert 'carrier_realtime' not in data
+        assert 'carrier_realtime_hint' not in data
+
+    def test_realtime_success_via_env(self, monkeypatch):
+        """env var 设了 numverify:key,假装 API 返回 'Jazztel',应进 carrier_realtime。
+        注意:_resolve_phone_realtime 通过 _PHONE_PROVIDERS dict 查 fn,
+        必须 monkeypatch.setitem(dict) 而非 patch.object(module, fn_name)。"""
+        monkeypatch.setenv('SPYEYES_PHONE_API_KEY', 'numverify:fakekey')
+        monkeypatch.setitem(gt._PHONE_PROVIDERS, 'numverify',
+                            lambda e164, key: {'carrier': 'Jazztel'})
+        data = gt.track_phone('+34600320351', default_region='ES')
+        assert data.get('carrier_realtime') == 'Jazztel'
+        assert 'carrier_realtime_error' not in data
+        # 号段层仍是 Vodafone(phonenumbers 数据);realtime 给出真实运营商
+        assert 'Vodafone' in data['carrier']
+
+    def test_realtime_provider_failure_graceful(self, monkeypatch):
+        """API 调用抛异常 → carrier_realtime=None + carrier_realtime_error 字段,主流程不受影响。"""
+        monkeypatch.setenv('SPYEYES_PHONE_API_KEY', 'numverify:fakekey')
+
+        def boom(e164, key):
+            raise RuntimeError('rate limit exceeded')
+        monkeypatch.setitem(gt._PHONE_PROVIDERS, 'numverify', boom)
+        data = gt.track_phone('+8613800138000')
+        assert '_error' not in data  # 主流程仍成功
+        assert data.get('carrier_realtime') is None
+        assert 'rate limit' in data.get('carrier_realtime_error', '')
+
+    def test_realtime_unknown_provider(self, monkeypatch):
+        """env 写错 provider → 优雅报错,不影响主流程。"""
+        monkeypatch.setenv('SPYEYES_PHONE_API_KEY', 'unknownprovider:key')
+        data = gt.track_phone('+8613800138000')
+        assert '_error' not in data
+        err = data.get('carrier_realtime_error', '')
+        assert 'unsupported provider' in err or 'unknownprovider' in err
+
+    def test_realtime_malformed_env(self, monkeypatch):
+        """env 没冒号或缺 key/provider → 视为未配置(走 hint 分支)。"""
+        for malformed in ('numverify', ':keyonly', 'numverify:', ''):
+            monkeypatch.setenv('SPYEYES_PHONE_API_KEY', malformed)
+            data = gt.track_phone('+8613800138000')
+            assert data.get('carrier_realtime') is None
+            assert data.get('carrier_realtime_hint'), \
+                f'malformed {malformed!r} 应出 hint'
+
+
+class TestNumverifyProvider:
+    """numverify provider HTTP 行为单测(纯 mock)。"""
+
+    def test_success_extracts_carrier(self):
+        fake = MagicMock(status_code=200)
+        fake.json.return_value = {
+            'success': True, 'valid': True,
+            'carrier': 'Jazztel S.A.U.', 'country_code': 'ES',
+        }
+        with patch.object(gt, 'safe_get', return_value=fake):
+            r = gt._phone_provider_numverify('+34600320351', 'fakekey')
+        assert r['carrier'] == 'Jazztel S.A.U.'
+
+    def test_strips_plus_in_url(self):
+        captured = {}
+
+        def fake_get(url, **kw):
+            captured['url'] = url
+            fake = MagicMock(status_code=200)
+            fake.json.return_value = {'success': True, 'carrier': 'X'}
+            return fake
+        with patch.object(gt, 'safe_get', side_effect=fake_get):
+            gt._phone_provider_numverify('+34600320351', 'KEY')
+        # E.164 number 必须不带 + 进 numverify
+        assert 'number=34600320351' in captured['url']
+        assert 'access_key=KEY' in captured['url']
+
+    def test_api_error_response(self):
+        fake = MagicMock(status_code=200)
+        fake.json.return_value = {
+            'success': False, 'error': {'type': 'invalid_access_key',
+                                         'info': 'Bad key'}
+        }
+        with patch.object(gt, 'safe_get', return_value=fake):
+            with pytest.raises(RuntimeError, match='Bad key|invalid'):
+                gt._phone_provider_numverify('+34600320351', 'badkey')
+
+    def test_http_failure(self):
+        with patch.object(gt, 'safe_get', return_value=None):
+            with pytest.raises(RuntimeError):
+                gt._phone_provider_numverify('+34600320351', 'k')
+
+    def test_http_500(self):
+        fake = MagicMock(status_code=500)
+        with patch.object(gt, 'safe_get', return_value=fake):
+            with pytest.raises(RuntimeError, match='500'):
+                gt._phone_provider_numverify('+34600320351', 'k')
+
+    def test_non_json(self):
+        fake = MagicMock(status_code=200)
+        fake.json.side_effect = ValueError('not JSON')
+        with patch.object(gt, 'safe_get', return_value=fake):
+            with pytest.raises(RuntimeError, match='non-JSON'):
+                gt._phone_provider_numverify('+34600320351', 'k')
+
+    def test_empty_carrier_returns_none(self):
+        """API 响应中 carrier 字段为空字符串 → 返回 None(不报错)。"""
+        fake = MagicMock(status_code=200)
+        fake.json.return_value = {'success': True, 'carrier': ''}
+        with patch.object(gt, 'safe_get', return_value=fake):
+            r = gt._phone_provider_numverify('+34600320351', 'k')
+        assert r['carrier'] is None
+
+
+class TestPhoneI18nKeys:
+    """v1.3.2 新 i18n 键完整性。"""
+
+    def test_keys_in_both_langs(self):
+        keys = ['phone.mnp_note', 'phone.realtime_hint', 'phone.realtime_failed',
+                'field.carrier_realtime']
+        for k in keys:
+            assert k in gt.TRANSLATIONS['en'], f"Missing en: {k}"
+            assert k in gt.TRANSLATIONS['zh'], f"Missing zh: {k}"
+
+    def test_carrier_label_now_block_aware(self):
+        """field.carrier 标签现在含'block'/'号段'词,不再是裸'Carrier'。"""
+        en = gt.TRANSLATIONS['en']['field.carrier']
+        zh = gt.TRANSLATIONS['zh']['field.carrier']
+        assert 'block' in en.lower(), f"en label not block-aware: {en}"
+        assert '号段' in zh, f"zh label not block-aware: {zh}"

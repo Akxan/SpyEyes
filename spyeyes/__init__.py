@@ -66,7 +66,7 @@ except ImportError:
 
 
 # 语义化版本号 —— 同步更新 docs/CHANGELOG.md 与 git tag
-__version__ = '1.3.0'
+__version__ = '1.3.2'
 
 
 # ====================================================================
@@ -190,6 +190,7 @@ TRANSLATIONS: dict = {
         'menu.subdomain':       'Subdomain Enumeration',
         'menu.lang':            'Language / 语言',
         'menu.exit':            'Exit',
+        'menu.back_hint':       '(In any sub-menu, enter 0 or press Enter to return here)',
         # Prompts
         'prompt.select_option': 'Select option : ',
         'prompt.input_ip':      'Enter target IP : ',
@@ -246,7 +247,11 @@ TRANSLATIONS: dict = {
         'field.location':       'Location',
         'field.region_code':    'Region Code',
         'field.timezone':       'Timezone',
-        'field.carrier':        'Carrier',
+        'field.carrier':        'Carrier (block-allocated)',
+        'field.carrier_realtime': 'Carrier (realtime HLR)',
+        'phone.mnp_note':       'Block-allocated carrier — actual carrier may differ if number was ported (MNP)',
+        'phone.realtime_hint':  'Set SPYEYES_PHONE_API_KEY=numverify:YOUR_KEY for realtime carrier lookup',
+        'phone.realtime_failed': 'Realtime carrier lookup failed: {err}',
         'field.is_valid':       'Valid Number',
         'field.is_possible':    'Possible Number',
         'field.intl_format':    'International Format',
@@ -426,6 +431,7 @@ TRANSLATIONS: dict = {
         'menu.subdomain':       '子域名枚举',
         'menu.lang':            '切换语言 / Language',
         'menu.exit':            '退出',
+        'menu.back_hint':       '(在任意子功能中输入 0 或直接回车可返回此菜单)',
         'prompt.select_option': '请选择功能 : ',
         'prompt.input_ip':      '请输入目标 IP : ',
         'prompt.input_phone':   '请输入电话号码 例如 [+8613800138000] : ',
@@ -477,7 +483,11 @@ TRANSLATIONS: dict = {
         'field.location':       '归属地',
         'field.region_code':    '地区代码',
         'field.timezone':       '时区',
-        'field.carrier':        '运营商',
+        'field.carrier':        '运营商(号段所属)',
+        'field.carrier_realtime': '运营商(实时 HLR)',
+        'phone.mnp_note':       '号段原始分配方;实际运营商可能因携号转网(MNP)与此不同',
+        'phone.realtime_hint':  '设置 SPYEYES_PHONE_API_KEY=numverify:YOUR_KEY 启用实时运营商查询',
+        'phone.realtime_failed': '实时运营商查询失败:{err}',
         'field.is_valid':       '是否有效号码',
         'field.is_possible':    '是否可能号码',
         'field.intl_format':    '国际格式',
@@ -938,7 +948,66 @@ _PHONE_TYPE_KEY = {
 }
 
 
-def track_phone(number: str, default_region: str = 'CN') -> dict:
+# v1.3.2:实时运营商查询(HLR-aware)
+# 解决 phonenumbers 不感知 MNP(号码携带)的根本局限。
+# Provider 接口设计:每个 provider 接 (e164_number, api_key) 返回 {'carrier': str, 'mcc_mnc': str|None} 或抛异常。
+
+
+def _phone_provider_numverify(e164: str, api_key: str) -> dict:
+    """numverify.com 实时运营商查询 (free tier 100/月)。返回 {'carrier': str, ...}。
+    Numverify 的 carrier 字段对 MNP 携号转网比 phonenumbers 准很多。"""
+    # numverify 接受不带 + 的 E.164
+    num = e164.lstrip('+')
+    url = f'https://apilayer.net/api/validate?access_key={api_key}&number={num}'
+    resp = safe_get(url, timeout=10)
+    if resp is None or resp.status_code != 200:
+        raise RuntimeError(f'HTTP {resp.status_code if resp else "no response"}')
+    try:
+        data = resp.json()
+    except (ValueError, requests.exceptions.RequestException) as e:
+        raise RuntimeError(f'non-JSON response: {e}') from e
+    if not isinstance(data, dict):
+        raise RuntimeError('unexpected response shape')
+    if data.get('success') is False:
+        err = data.get('error', {})
+        raise RuntimeError(f'API error: {err.get("info", err.get("type", "unknown"))}')
+    return {'carrier': (data.get('carrier') or '').strip() or None}
+
+
+# 可扩展:以后加 numlookupapi / abstractapi 等 provider
+_PHONE_PROVIDERS = {
+    'numverify': _phone_provider_numverify,
+}
+
+
+def _resolve_phone_realtime(e164: str) -> Optional[dict]:
+    """读 SPYEYES_PHONE_API_KEY=provider:key 环境变量并调用对应 provider。
+    返回 dict(成功)、None(未配置)、{'_error': str}(失败)。"""
+    env = (os.environ.get('SPYEYES_PHONE_API_KEY') or '').strip()
+    if not env or ':' not in env:
+        return None
+    provider, _, key = env.partition(':')
+    provider = provider.strip().lower()
+    key = key.strip()
+    if not provider or not key:
+        return None
+    fn = _PHONE_PROVIDERS.get(provider)
+    if fn is None:
+        return {'_error': f'unsupported provider: {provider!r}, valid: {list(_PHONE_PROVIDERS)}'}
+    try:
+        return fn(e164, key)
+    except Exception as e:
+        return {'_error': str(e)}
+
+
+def track_phone(number: str, default_region: str = 'CN', *,
+                lookup_realtime: Optional[bool] = None) -> dict:
+    """解析电话号码。
+    - 默认基于 phonenumbers 静态号段映射(carrier 字段是号段原始分配方,不感知 MNP)
+    - 设 SPYEYES_PHONE_API_KEY=provider:key 自动启用实时 HLR 查询
+      (carrier_realtime 字段补充准确数据;失败优雅降级,不影响主流程)
+    - lookup_realtime=True/False 显式覆盖 env var 决策
+    """
     try:
         parsed = phonenumbers.parse(number, default_region)
     except NumberParseException as e:
@@ -950,24 +1019,44 @@ def track_phone(number: str, default_region: str = 'CN') -> dict:
         return {'_error': t('err.phone_invalid')}
 
     lib_lang = 'zh' if _lang == 'zh' else 'en'
-    return {
+    e164 = phonenumbers.format_number(parsed, phonenumbers.PhoneNumberFormat.E164)
+    block_carrier = (carrier.name_for_number(parsed, lib_lang)
+                     or carrier.name_for_number(parsed, 'en')
+                     or t('msg.unknown'))
+
+    result: dict = {
         'location':      geocoder.description_for_number(parsed, lib_lang) or t('msg.unknown'),
         'region_code':   phonenumbers.region_code_for_number(parsed) or t('msg.unknown'),
         'timezones':     ', '.join(timezone.time_zones_for_number(parsed)) or t('msg.unknown'),
-        # phonenumbers 库的 carrier 中文翻译只覆盖中国 —— 国外号码 zh 模式拿不到，
-        # 必须回退英文（如 'KDDI' / 'T-Mobile' / 'Airtel'）；都拿不到才显示「未知」
-        'carrier':       (carrier.name_for_number(parsed, lib_lang)
-                          or carrier.name_for_number(parsed, 'en')
-                          or t('msg.unknown')),
+        # carrier 现在明确是「号段所属」(block-allocated),carrier_note 提示用户
+        'carrier':       block_carrier,
+        'carrier_note':  t('phone.mnp_note'),
         'is_valid':      phonenumbers.is_valid_number(parsed),
         'is_possible':   phonenumbers.is_possible_number(parsed),
         'international': phonenumbers.format_number(parsed, phonenumbers.PhoneNumberFormat.INTERNATIONAL),
         'mobile_dial':   phonenumbers.format_number_for_mobile_dialing(parsed, default_region, with_formatting=True),
         'national':      parsed.national_number,
-        'e164':          phonenumbers.format_number(parsed, phonenumbers.PhoneNumberFormat.E164),
+        'e164':          e164,
         'country_code':  parsed.country_code,
         'number_type':   t(_PHONE_TYPE_KEY.get(phonenumbers.number_type(parsed), 'phone.other')),
     }
+
+    # 实时 HLR 查询(可选;失败优雅降级)
+    # lookup_realtime=False 显式禁用;True 强制启用(无 key 也尝试 = 报 None)
+    # None(默认)= 看 env var 决定
+    if lookup_realtime is False:
+        return result
+    rt = _resolve_phone_realtime(e164)
+    if rt is None:
+        # 未配置 API key,不影响主流程;hint 让用户知道可启用
+        result['carrier_realtime'] = None
+        result['carrier_realtime_hint'] = t('phone.realtime_hint')
+    elif '_error' in rt:
+        result['carrier_realtime'] = None
+        result['carrier_realtime_error'] = t('phone.realtime_failed', err=rt['_error'])
+    else:
+        result['carrier_realtime'] = rt.get('carrier') or t('msg.unknown')
+    return result
 
 
 # ====================================================================
@@ -2486,7 +2575,19 @@ def print_phone_info(data: dict) -> None:
     print_field(t('field.location'),       data['location'],      width=22)
     print_field(t('field.region_code'),    data['region_code'],   width=22)
     print_field(t('field.timezone'),       data['timezones'],     width=22)
+    # carrier(号段所属)+ disclaimer 子条
     print_field(t('field.carrier'),        data['carrier'],       width=22)
+    note = data.get('carrier_note')
+    if note:
+        print(f"     {Color.Bl}↳ {note}{Color.Reset}")
+    # 实时 HLR 运营商(若有)
+    rt = data.get('carrier_realtime')
+    if rt:
+        print_field(t('field.carrier_realtime'), rt, width=22)
+    elif data.get('carrier_realtime_error'):
+        print(f"     {Color.Re}↳ {data['carrier_realtime_error']}{Color.Reset}")
+    elif data.get('carrier_realtime_hint'):
+        print(f"     {Color.Bl}↳ {data['carrier_realtime_hint']}{Color.Reset}")
     print_field(t('field.is_valid'),       data['is_valid'],      width=22)
     print_field(t('field.is_possible'),    data['is_possible'],   width=22)
     print_field(t('field.intl_format'),    data['international'], width=22)
@@ -2769,6 +2870,24 @@ def show_menu() -> None:
     print()
     for num, key in MENU_KEYS:
         print(f"{Color.Wh}[ {num} ] {Color.Gr}{t(key)}{Color.Reset}")
+    # v1.3.2:全局提示子功能内可用 0 / 回车返回主菜单
+    print(f"\n  {Color.Bl}{t('menu.back_hint')}{Color.Reset}")
+
+
+def _ask_input(prompt_key: str, **kwargs) -> Optional[str]:
+    """子功能输入 helper(v1.3.2):统一"返回主菜单"语义。
+    返回 None 表示用户想返回主菜单 — 触发条件:
+      - 空输入(直接回车)
+      - 输入 '0'
+      - EOFError / KeyboardInterrupt(管道末尾 / Ctrl+C)
+    返回非空字符串则是用户实际查询输入。"""
+    try:
+        v = input(f"\n {Color.Wh}{t(prompt_key, **kwargs)}{Color.Gr}").strip()
+    except (EOFError, KeyboardInterrupt):
+        return None
+    if not v or v == '0':
+        return None
+    return v
 
 
 def _is_affirmative(answer: str) -> bool:
@@ -2889,8 +3008,11 @@ def _ask_username_strategy() -> str:
 
 
 def handle_choice(choice: int, save_dir: Optional[str] = None) -> None:
+    # v1.3.2:所有顶层输入用 _ask_input,空 / '0' / EOF / Ctrl+C 都返回主菜单
     if choice == 1:
-        ip = input(f"{Color.Wh}\n {t('prompt.input_ip')}{Color.Gr}").strip()
+        ip = _ask_input('prompt.input_ip')
+        if ip is None:
+            return
         data = track_ip(ip)
         print_ip_info(ip, data)
         _interactive_save_prompt(f'ip_{ip}', data, save_dir)
@@ -2899,14 +3021,15 @@ def handle_choice(choice: int, save_dir: Optional[str] = None) -> None:
         print_my_ip(my)
         _interactive_save_prompt('myip', {'ip': my}, save_dir)
     elif choice == 3:
-        num = input(f"\n {Color.Wh}{t('prompt.input_phone')}{Color.Gr}").strip()
+        num = _ask_input('prompt.input_phone')
+        if num is None:
+            return
         data = track_phone(num)
         print_phone_info(data)
         _interactive_save_prompt(f'phone_{num}', data, save_dir)
     elif choice == 4:
-        name = input(f"\n {Color.Wh}{t('prompt.input_username')}{Color.Gr}").strip()
-        if not name:
-            print_username_results({})
+        name = _ask_input('prompt.input_username')
+        if name is None:
             return
         # v1.2.0：先选策略 — 直接 / 变形扫描 / 仅变形（替代旧 [8] permute 菜单项）
         strategy = _ask_username_strategy()
@@ -2969,31 +3092,36 @@ def handle_choice(choice: int, save_dir: Optional[str] = None) -> None:
             print_username_results(results)
         _interactive_save_prompt(f'username_{name}', results, save_dir)
     elif choice == 5:
-        domain = input(f"\n {Color.Wh}{t('prompt.input_domain')}{Color.Gr}").strip()
+        domain = _ask_input('prompt.input_domain')
+        if domain is None:
+            return
         data = whois_lookup(domain)
         print_whois(data)
         _interactive_save_prompt(f'whois_{domain}', data, save_dir)
     elif choice == 6:
-        domain = input(f"\n {Color.Wh}{t('prompt.input_domain')}{Color.Gr}").strip()
+        domain = _ask_input('prompt.input_domain')
+        if domain is None:
+            return
         data = mx_lookup(domain)
         print_mx(data)
         _interactive_save_prompt(f'mx_{domain}', data, save_dir)
     elif choice == 7:
-        addr = input(f"\n {Color.Wh}{t('prompt.input_email')}{Color.Gr}").strip()
+        addr = _ask_input('prompt.input_email')
+        if addr is None:
+            return
         result = email_validate(addr)
         print_email(result)
         _interactive_save_prompt(f'email_{addr}', result, save_dir)
     elif choice == 8:
         # v1.3.0: 子域名枚举
-        domain = input(f"\n {Color.Wh}{t('prompt.input_subdomain')}{Color.Gr}").strip()
-        if not domain:
+        domain = _ask_input('prompt.input_subdomain')
+        if domain is None:
             return
-        # 询问 probe 偏好(默认开)
+        # 询问 probe 偏好(默认开);'2'=否,其它=是(包括空回车)
         try:
             probe_ans = input(f"\n {Color.Wh}{t('prompt.subdomain_probe')}{Color.Gr}").strip()
-        except EOFError:
+        except (EOFError, KeyboardInterrupt):
             probe_ans = ''
-        # '2' = 否,其它都按 yes(默认 1 / 空回车)
         probe = probe_ans != '2'
         result = enumerate_subdomains(domain, probe=probe)
         print_subdomains(result)
@@ -3267,6 +3395,130 @@ def _to_markdown(prefix: str, data: Any) -> str:
     return '\n'.join(lines)
 
 
+# PDF CJK 字体缓存:reportlab 默认 Helvetica/Times 不含 CJK glyph,中文显示成 □
+# 注册一次内置 CID 字体 STSong-Light(简中,reportlab 自带,无需外部 TTF,跨平台 work)
+_PDF_FONT: Optional[str] = None
+
+
+def _register_pdf_cjk_font() -> str:
+    """注册 reportlab 内置 STSong-Light(简中 CID 字体)用于 PDF 中文渲染。
+    一次注册全局生效,失败回退 Helvetica(英文场景仍可用)。"""
+    global _PDF_FONT
+    if _PDF_FONT is not None:
+        return _PDF_FONT
+    if not HAS_REPORTLAB:
+        _PDF_FONT = 'Helvetica'
+        return _PDF_FONT
+    try:
+        from reportlab.pdfbase import pdfmetrics  # type: ignore
+        from reportlab.pdfbase.cidfonts import UnicodeCIDFont  # type: ignore
+        pdfmetrics.registerFont(UnicodeCIDFont('STSong-Light'))
+        _PDF_FONT = 'STSong-Light'
+    except Exception:
+        _PDF_FONT = 'Helvetica'
+    return _PDF_FONT
+
+
+# A4 宽 595pt,默认 margin 72×2 = 451pt 可用;新边距 36×2 = 523pt 给 buffer
+_PDF_MARGIN = 36
+_PDF_USABLE_WIDTH = 523  # 595 - 36*2
+# 表格内文本格式化(IP 列截断、title 截断)
+_PDF_MAX_IPS_SHOWN = 4
+_PDF_MAX_TITLE_LEN = 50
+
+# v1.3.1:连续 ASCII 可打印字符段(0x20-0x7E)切换到 Helvetica 字体,避免 STSong-Light
+# 把英文/数字字符宽度压得太紧贴(中文字体下 Latin advance 偏窄)
+_PDF_LATIN_RUN_RE = re.compile(r'[\x20-\x7E]+')
+
+
+def _pdf_para_text(raw: Any) -> str:
+    """Paragraph 输入文本预处理:
+    1) XML escape(防 reportlab 解析器把 `<` `>` `&` 当标签/实体起点)
+    2) 连续 ASCII 段包 `<font name="Helvetica">...</font>`,中文部分保持 STSong-Light
+    返回的是已含合法 reportlab inline 标签的字符串,可直接喂给 Paragraph。"""
+    s = '' if raw is None else str(raw)
+    # XML escape;CR/LF 单行化(避免在表格单元格内强换行)
+    s = (s.replace('&', '&amp;')
+          .replace('<', '&lt;')
+          .replace('>', '&gt;')
+          .replace('\r', ' ')
+          .replace('\n', ' '))
+    return _PDF_LATIN_RUN_RE.sub(
+        lambda m: f'<font name="Helvetica">{m.group(0)}</font>', s
+    )
+
+
+def _pdf_para(raw: Any, style, bold: bool = False) -> Any:
+    """生成自动换行的表格单元格 Paragraph。raw 是任意用户文本,函数内 XML escape +
+    中英字体回退。bold=True 时加 <b> 让 reportlab 合成粗体效果(STSong-Light 无 Bold variant)。"""
+    if raw is None or raw == '':
+        return ''
+    txt = _pdf_para_text(raw)
+    if bold:
+        txt = f'<b>{txt}</b>'
+    return _rl_paragraph(txt, style)
+
+
+def _pdf_table_style(font_name: str, font_size: int = 9, *,
+                     extra: Optional[list] = None) -> Any:
+    """统一表格样式:浅灰表头 + 网格 + 单元格 padding + 隔行斑马纹。
+    所有 _to_pdf 表格共用,保证视觉一致。"""
+    base = [
+        ('BACKGROUND', (0, 0), (-1, 0), _rl_colors.lightgrey),
+        ('FONTNAME', (0, 0), (-1, -1), font_name),
+        ('FONTSIZE', (0, 0), (-1, -1), font_size),
+        ('GRID', (0, 0), (-1, -1), 0.25, _rl_colors.grey),
+        ('VALIGN', (0, 0), (-1, -1), 'TOP'),
+        ('TOPPADDING', (0, 0), (-1, -1), 5),
+        ('BOTTOMPADDING', (0, 0), (-1, -1), 5),
+        ('LEFTPADDING', (0, 0), (-1, -1), 6),
+        ('RIGHTPADDING', (0, 0), (-1, -1), 6),
+        ('ROWBACKGROUNDS', (0, 1), (-1, -1), [None, _rl_colors.HexColor('#fafafa')]),
+    ]
+    if extra:
+        base.extend(extra)
+    return _rl_table_style(base)
+
+
+def _pdf_format_ips(a_records: list, aaaa_records: list) -> str:
+    """格式化 IP 列:每个 IP 一行,> _PDF_MAX_IPS_SHOWN 截断显示 +N more。
+    返回值已 XML escape + 中英字体回退 + 含 `<br/>` 标签,需直接 _rl_paragraph 渲染
+    (不要再走 _pdf_para,会把 <br/> 转义掉)。"""
+    ips = (a_records or []) + (aaaa_records or [])
+    if not ips:
+        return ''
+    parts = [_pdf_para_text(ip) for ip in ips[:_PDF_MAX_IPS_SHOWN]]
+    if len(ips) > _PDF_MAX_IPS_SHOWN:
+        parts.append(_pdf_para_text(f'+{len(ips) - _PDF_MAX_IPS_SHOWN} more'))
+    return '<br/>'.join(parts)
+
+
+# 匹配 reportlab inline 标签(<b>、</b>、<font ...>、<br/> 等)
+_PDF_INLINE_TAG_RE = re.compile(r'<[^>]+>')
+
+
+def _pdf_inline_html(prepared: str) -> str:
+    """开发者书写的含 inline 标签的字符串(如 `<b>命令</b>: ip`),把标签**之间**的纯文本
+    段做 XML escape + 中英字体回退,标签本身原样保留。
+    Caller 写 inline 标签时不需要在内容里手动 escape `& < >`,本函数会处理。"""
+    if not prepared:
+        return ''
+    out: list = []
+    last = 0
+    for m in _PDF_INLINE_TAG_RE.finditer(prepared):
+        out.append(_pdf_para_text(prepared[last:m.start()]))
+        out.append(m.group(0))  # 标签原样
+        last = m.end()
+    out.append(_pdf_para_text(prepared[last:]))
+    return ''.join(out)
+
+
+def _pdf_story(prepared: str, style) -> Any:
+    """story 段 Paragraph 工厂(支持 <b>/<i>/<br/> 等内联标签 + 自动中英字体回退)。
+    用于标题、heading、元数据等"非表格单元格"位置。"""
+    return _rl_paragraph(_pdf_inline_html(prepared), style)
+
+
 def _to_pdf(prefix: str, data: Any, out_path: str) -> Optional[str]:
     """生成 PDF 报告（v1.1.0 新增）。需要 reportlab：pip install spyeyes[pdf]
     返回错误字符串（成功时返回 None）。
@@ -3280,23 +3532,38 @@ def _to_pdf(prefix: str, data: Any, out_path: str) -> Optional[str]:
         cmd = _md_escape(cmd) or '?'
         query = _md_escape(query)
         ts = time.strftime('%Y-%m-%d %H:%M:%S')
+        # v1.3.1 修复:注册 CJK 字体让中文不显示成 □,并把所有 styles 字体改成它
+        # (Helvetica/Times 不含 CJK glyph,reportlab 静默用 □ 替代)
+        font_name = _register_pdf_cjk_font()
         styles = _rl_styles()
+        for s_name in ('Normal', 'Title', 'Heading1', 'Heading2',
+                       'Heading3', 'Code', 'BodyText'):
+            if s_name in styles.byName:
+                styles[s_name].fontName = font_name
+        # 行高放宽 — STSong-Light 中文字符高,默认 leading 偏挤
+        styles['Normal'].leading = 12
+        styles['Normal'].fontSize = 9
+        styles['Title'].leading = 22
+        styles['Heading2'].leading = 16
+        styles['Heading3'].leading = 14
+        styles['Heading2'].spaceBefore = 8
+        styles['Heading3'].spaceBefore = 4
         story: list = []
-        story.append(_rl_paragraph(f"<b>{_md_escape(t('report.title'))}</b>", styles['Title']))
+        story.append(_pdf_story(f"<b>{_md_escape(t('report.title'))}</b>", styles['Title']))
         story.append(_rl_spacer(1, 12))
-        story.append(_rl_paragraph(f"<b>{_md_escape(t('report.command'))}:</b> {cmd}", styles['Normal']))
-        story.append(_rl_paragraph(f"<b>{_md_escape(t('report.query'))}:</b> {query}", styles['Normal']))
-        story.append(_rl_paragraph(f"<b>{_md_escape(t('report.generated'))}:</b> {ts}", styles['Normal']))
+        story.append(_pdf_story(f"<b>{_md_escape(t('report.command'))}:</b> {cmd}", styles['Normal']))
+        story.append(_pdf_story(f"<b>{_md_escape(t('report.query'))}:</b> {query}", styles['Normal']))
+        story.append(_pdf_story(f"<b>{_md_escape(t('report.generated'))}:</b> {ts}", styles['Normal']))
         story.append(_rl_spacer(1, 18))
         if isinstance(data, dict) and '_error' in data:
-            story.append(_rl_paragraph(
+            story.append(_pdf_story(
                 f"<b>{_md_escape(t('report.error'))}:</b> {_md_escape(data['_error'])}", styles['Normal']))
         elif cmd == 'username' and isinstance(data, dict):
             plat = _platform_only(data)
             found = sum(1 for v in plat.values() if v)
-            story.append(_rl_paragraph(
+            story.append(_pdf_story(
                 f"<b>{_md_escape(t('report.username_scan'))}:</b> {query}", styles['Heading2']))
-            story.append(_rl_paragraph(
+            story.append(_pdf_story(
                 _md_escape(t('report.scan_summary', total=len(plat), found=found)),
                 styles['Normal']))
             story.append(_rl_spacer(1, 12))
@@ -3306,90 +3573,87 @@ def _to_pdf(prefix: str, data: Any, out_path: str) -> Optional[str]:
                 if not cat_found:
                     continue
                 cat_label = _md_escape(t(f'cat.{cat}'))
-                story.append(_rl_paragraph(
+                story.append(_pdf_story(
                     f"<b>{cat_label}</b> ({len(cat_found)}/{len(cat_pl)})",
                     styles['Heading3']))
-                table_data = [[_md_escape(t('report.platform')), _md_escape(t('report.url'))]]
+                # v1.3.1:Paragraph 自动 XML escape + 中英字体回退 + bold 表头
+                table_data = [[
+                    _pdf_para(t('report.platform'), styles['Normal'], bold=True),
+                    _pdf_para(t('report.url'), styles['Normal'], bold=True),
+                ]]
                 for p, url in cat_found:
-                    # reportlab 支持 inline 标签，但用户输入须 escape 防伪标签注入
-                    safe_name = _md_escape(p.name)
-                    safe_url = _md_escape(url)
-                    table_data.append([safe_name, safe_url])
-                tbl = _rl_table(table_data, colWidths=[150, 350])
-                tbl.setStyle(_rl_table_style([
-                    ('BACKGROUND', (0, 0), (-1, 0), _rl_colors.lightgrey),
-                    ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'),
-                    ('FONTSIZE', (0, 0), (-1, -1), 8),
-                    ('GRID', (0, 0), (-1, -1), 0.25, _rl_colors.grey),
-                    ('VALIGN', (0, 0), (-1, -1), 'TOP'),
-                ]))
+                    table_data.append([
+                        _pdf_para(p.name, styles['Normal']),
+                        _pdf_para(url, styles['Normal']),
+                    ])
+                tbl = _rl_table(table_data, colWidths=[140, 380], repeatRows=1)
+                tbl.setStyle(_pdf_table_style(font_name, 9))
                 story.append(tbl)
                 story.append(_rl_spacer(1, 12))
         elif cmd == 'permute' and _is_permute_only(data):
             # v1.2.1 P1-2：仅生成变形（不扫描）
-            story.append(_rl_paragraph(
+            story.append(_pdf_story(
                 f"<b>{_md_escape(t('permute.title'))}:</b> {_md_escape(data.get('name', query))}",
                 styles['Heading2']))
             story.append(_rl_spacer(1, 8))
             for v in data.get('permutations', []):
-                story.append(_rl_paragraph(f"• {_md_escape(v)}", styles['Normal']))
+                story.append(_pdf_story(f"• {_md_escape(v)}", styles['Normal']))
         elif cmd == 'permute' and _is_permute_scan(data):
             # v1.2.1 P1-2：变形 + 批量扫描，每个变形一节
-            story.append(_rl_paragraph(
+            story.append(_pdf_story(
                 f"<b>{_md_escape(t('permute.title'))}:</b> {query}", styles['Heading2']))
-            story.append(_rl_paragraph(
+            story.append(_pdf_story(
                 f"{len(data)} variations scanned", styles['Normal']))
             story.append(_rl_spacer(1, 12))
             for var, scan in data.items():
                 if not isinstance(scan, dict):
                     continue
-                story.append(_rl_paragraph(f"<b>{_md_escape(var)}</b>", styles['Heading3']))
+                story.append(_pdf_story(f"<b>{_md_escape(var)}</b>", styles['Heading3']))
                 if '_error' in scan:
-                    story.append(_rl_paragraph(
+                    story.append(_pdf_story(
                         f"{_md_escape(t('report.error'))}: {_md_escape(scan['_error'])}",
                         styles['Normal']))
                     story.append(_rl_spacer(1, 6))
                     continue
                 plat = _platform_only(scan)
                 found = sum(1 for v in plat.values() if v)
-                story.append(_rl_paragraph(
+                story.append(_pdf_story(
                     _md_escape(t('report.scan_summary', total=len(plat), found=found)),
                     styles['Normal']))
                 if found > 0:
-                    p_table = [[_md_escape(t('report.platform')),
-                                _md_escape(t('report.url'))]]
+                    p_table = [[
+                        _pdf_para(t('report.platform'), styles['Normal'], bold=True),
+                        _pdf_para(t('report.url'), styles['Normal'], bold=True),
+                    ]]
                     for p_name, url in plat.items():
                         if url:
-                            p_table.append([_md_escape(p_name), _md_escape(url)])
-                    tbl = _rl_table(p_table, colWidths=[150, 350])
-                    tbl.setStyle(_rl_table_style([
-                        ('BACKGROUND', (0, 0), (-1, 0), _rl_colors.lightgrey),
-                        ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'),
-                        ('FONTSIZE', (0, 0), (-1, -1), 8),
-                        ('GRID', (0, 0), (-1, -1), 0.25, _rl_colors.grey),
-                        ('VALIGN', (0, 0), (-1, -1), 'TOP'),
-                    ]))
+                            p_table.append([
+                                _pdf_para(p_name, styles['Normal']),
+                                _pdf_para(url, styles['Normal']),
+                            ])
+                    tbl = _rl_table(p_table, colWidths=[140, 380], repeatRows=1)
+                    tbl.setStyle(_pdf_table_style(font_name, 9))
                     story.append(tbl)
                 story.append(_rl_spacer(1, 10))
         elif cmd == 'mx' and isinstance(data, dict) and 'records' in data:
             # MX 专用（v1.2.1 P0-3 修复，之前落到通用 dict 把 records list 压成 repr）
             domain_lbl = _md_escape(data.get('domain', query))
-            story.append(_rl_paragraph(
+            story.append(_pdf_story(
                 f"<b>{_md_escape(t('report.mx_records'))}:</b> {domain_lbl}",
                 styles['Heading2']))
             story.append(_rl_spacer(1, 8))
-            mx_table = [[_md_escape(t('report.priority')), _md_escape(t('report.mail_server'))]]
+            mx_table = [[
+                _pdf_para(t('report.priority'), styles['Normal'], bold=True),
+                _pdf_para(t('report.mail_server'), styles['Normal'], bold=True),
+            ]]
             for r in data['records']:
-                mx_table.append([str(r.get('preference', '')),
-                                 _md_escape(r.get('exchange', ''))])
-            tbl = _rl_table(mx_table, colWidths=[80, 420])
-            tbl.setStyle(_rl_table_style([
-                ('BACKGROUND', (0, 0), (-1, 0), _rl_colors.lightgrey),
-                ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'),
-                ('FONTSIZE', (0, 0), (-1, -1), 9),
-                ('GRID', (0, 0), (-1, -1), 0.25, _rl_colors.grey),
-                ('VALIGN', (0, 0), (-1, -1), 'TOP'),
-                ('ALIGN', (0, 0), (0, -1), 'CENTER'),
+                mx_table.append([
+                    _pdf_para(r.get('preference', ''), styles['Normal']),
+                    _pdf_para(r.get('exchange', ''), styles['Normal']),
+                ])
+            tbl = _rl_table(mx_table, colWidths=[60, 460], repeatRows=1)
+            tbl.setStyle(_pdf_table_style(font_name, 10, extra=[
+                ('ALIGN', (0, 0), (0, -1), 'CENTER'),  # priority 列居中
             ]))
             story.append(tbl)
         elif cmd == 'subdomain' and isinstance(data, dict) and 'subdomains' in data:
@@ -3397,46 +3661,54 @@ def _to_pdf(prefix: str, data: Any, out_path: str) -> Optional[str]:
             domain_lbl = _md_escape(data.get('domain', query))
             stats = data.get('_stats', {}) or {}
             sources_active = sum(1 for v in (data.get('sources') or {}).values() if v > 0)
-            story.append(_rl_paragraph(
+            story.append(_pdf_story(
                 f"<b>{_md_escape(t('subdomain.title', domain=domain_lbl))}</b>",
                 styles['Heading2']))
-            story.append(_rl_paragraph(
+            story.append(_pdf_story(
                 _md_escape(t('subdomain.summary',
                              total=stats.get('total', 0), alive=stats.get('alive', 0),
                              sources=sources_active)),
                 styles['Normal']))
             if data.get('wildcard_suspect'):
-                story.append(_rl_paragraph(
+                story.append(_pdf_story(
                     f"<b>⚠ {_md_escape(t('subdomain.wildcard_warn'))}</b>", styles['Normal']))
             story.append(_rl_spacer(1, 8))
-            sub_table = [[
-                _md_escape(t('subdomain.col_host')), _md_escape(t('subdomain.col_ip')),
-                _md_escape(t('subdomain.col_cname')), _md_escape(t('subdomain.col_status')),
-                _md_escape(t('subdomain.col_title')),
-            ]]
+            # v1.3.1:Paragraph 自动 XML escape + 中英字体回退;表头 bold;IP 列保留 <br/>
+            header = [
+                _pdf_para(t('subdomain.col_host'), styles['Normal'], bold=True),
+                _pdf_para(t('subdomain.col_ip'), styles['Normal'], bold=True),
+                _pdf_para(t('subdomain.col_cname'), styles['Normal'], bold=True),
+                _pdf_para(t('subdomain.col_status'), styles['Normal'], bold=True),
+                _pdf_para(t('subdomain.col_title'), styles['Normal'], bold=True),
+            ]
+            sub_table = [header]
             for s in data.get('subdomains', []):
-                ips = ', '.join((s.get('a') or []) + (s.get('aaaa') or []))
+                ips_html = _pdf_format_ips(s.get('a') or [], s.get('aaaa') or [])
+                # ips_html 已 escape + 字体 mix,且含 <br/>,直接给 Paragraph(不要再走 _pdf_para)
+                ips_cell = _rl_paragraph(ips_html, styles['Normal']) if ips_html else ''
+                title = (s.get('title') or '')[:_PDF_MAX_TITLE_LEN]
                 sub_table.append([
-                    _md_escape(s.get('host', '')), _md_escape(ips),
-                    _md_escape(s.get('cname') or ''),
-                    str(s.get('http_status') or ''),
-                    _md_escape((s.get('title') or '')[:80]),
+                    _pdf_para(s.get('host', ''), styles['Normal']),
+                    ips_cell,
+                    _pdf_para(s.get('cname') or '', styles['Normal']),
+                    _pdf_para(s.get('http_status', '') or '', styles['Normal']),
+                    _pdf_para(title, styles['Normal']),
                 ])
-            tbl = _rl_table(sub_table, colWidths=[150, 110, 110, 35, 95])
-            tbl.setStyle(_rl_table_style([
-                ('BACKGROUND', (0, 0), (-1, 0), _rl_colors.lightgrey),
-                ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'),
-                ('FONTSIZE', (0, 0), (-1, -1), 7),
-                ('GRID', (0, 0), (-1, -1), 0.25, _rl_colors.grey),
-                ('VALIGN', (0, 0), (-1, -1), 'TOP'),
+            # 列宽合计 520pt(host 145 + ip 130 + cname 110 + status 45 + title 90),在 523 内
+            tbl = _rl_table(sub_table, colWidths=[145, 130, 110, 45, 90], repeatRows=1)
+            tbl.setStyle(_pdf_table_style(font_name, 8, extra=[
+                ('ALIGN', (3, 1), (3, -1), 'CENTER'),  # status 列居中
             ]))
             story.append(tbl)
         elif isinstance(data, dict):
-            story.append(_rl_paragraph(
+            story.append(_pdf_story(
                 f"<b>{cmd.upper()} {_md_escape(t('report.info_for'))}:</b> {query}", styles['Heading2']))
             story.append(_rl_spacer(1, 8))
             items = data.items() if cmd != 'username' else _platform_only(data).items()
-            table_data = [[_md_escape(t('report.field')), _md_escape(t('report.value'))]]
+            table_data = [[
+                _pdf_para(t('report.field'), styles['Normal'], bold=True),
+                _pdf_para(t('report.value'), styles['Normal'], bold=True),
+            ]]
             for k, v in items:
                 if v is None or v == '':
                     continue
@@ -3447,21 +3719,21 @@ def _to_pdf(prefix: str, data: Any, out_path: str) -> Optional[str]:
                     v_str = ', '.join(str(x) for x in v)
                 else:
                     v_str = str(v)
-                table_data.append([_md_escape(k), _md_escape(v_str)])
-            tbl = _rl_table(table_data, colWidths=[150, 350])
-            tbl.setStyle(_rl_table_style([
-                ('BACKGROUND', (0, 0), (-1, 0), _rl_colors.lightgrey),
-                ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'),
-                ('FONTSIZE', (0, 0), (-1, -1), 9),
-                ('GRID', (0, 0), (-1, -1), 0.25, _rl_colors.grey),
-                ('VALIGN', (0, 0), (-1, -1), 'TOP'),
-            ]))
+                table_data.append([
+                    _pdf_para(k, styles['Normal']),
+                    _pdf_para(v_str, styles['Normal']),
+                ])
+            tbl = _rl_table(table_data, colWidths=[140, 380], repeatRows=1)
+            tbl.setStyle(_pdf_table_style(font_name, 10))
             story.append(tbl)
         else:
-            story.append(_rl_paragraph(
+            story.append(_pdf_story(
                 _md_escape(json.dumps(data, ensure_ascii=False, default=str)),
                 styles['Code']))
-        doc = _rl_doc(out_path, pagesize=_rl_a4)
+        # v1.3.1:用更小边距(36pt vs 默认 72pt)+ 字号统一,给宽表格更多空间
+        doc = _rl_doc(out_path, pagesize=_rl_a4,
+                      leftMargin=_PDF_MARGIN, rightMargin=_PDF_MARGIN,
+                      topMargin=_PDF_MARGIN, bottomMargin=_PDF_MARGIN)
         doc.build(story)
         return None
     except Exception as e:
@@ -4277,6 +4549,16 @@ const initialRadius = {initial_radius};
 const svg = d3.select('svg');
 const container = svg.node();
 
+// 把 viewBox 设为以 (0,0) 为中心,这样 forceCenter(0,0) 拉拢的节点显示在视窗正中
+// (修复 v1.3.0:之前默认 viewBox 从 (0,0) 起,导致节点全堆在左上角被裁掉)
+function applyCenterViewBox() {{
+  const w = container.clientWidth || window.innerWidth;
+  const h = container.clientHeight || (window.innerHeight - 140);
+  svg.attr('viewBox', `${{-w/2}} ${{-h/2}} ${{w}} ${{h}}`)
+     .attr('preserveAspectRatio', 'xMidYMid meet');
+}}
+applyCenterViewBox();
+
 // Pan/zoom 容器
 const root = svg.append('g').attr('class', 'root');
 
@@ -4307,16 +4589,26 @@ simulation.on('tick', () => {{
   node.attr('transform', d => `translate(${{d.x}},${{d.y}})`);
 }});
 
-// d3.zoom：滚轮缩放 + 拖拽空白处平移；scale 0.1-8 防过度缩放
+// d3.zoom:滚轮缩放 + 拖拽空白处平移;scale 0.05-8 防过度缩放
+// userZoomed:用户主动操作过(拖/缩)→ 停止自动 fit,不打断用户
+let userZoomed = false;
 const zoom = d3.zoom()
   .scaleExtent([0.05, 8])
-  .on('zoom', e => root.attr('transform', e.transform));
+  .on('zoom', e => {{
+    root.attr('transform', e.transform);
+    if (e.sourceEvent) userZoomed = true;  // sourceEvent 只在真实用户事件时存在(programmatic transition 没有)
+  }});
 svg.call(zoom);
 
-// 自适应：模拟稳定后或按 F 键，把整个图缩放/平移到完全可见
+// 自适应:模拟稳定后或按 F 键,把整个图缩放/平移到完全可见
+// viewBox 已居中 (0,0),所以这里只需把 bbox 中心拉到 (0,0)
 function fitToView() {{
   const bbox = root.node().getBBox();
-  if (!bbox.width || !bbox.height) return;
+  // bbox 不可用(初始化所有节点都在 0,0 / simulation 没跑开)→ 重置 zoom,viewBox 居中能保证看到节点
+  if (!isFinite(bbox.width) || !isFinite(bbox.height) || bbox.width < 1 || bbox.height < 1) {{
+    svg.transition().duration(400).call(zoom.transform, d3.zoomIdentity);
+    return;
+  }}
   const padding = 60;
   const w = container.clientWidth || window.innerWidth;
   const h = container.clientHeight || (window.innerHeight - 140);
@@ -4325,28 +4617,33 @@ function fitToView() {{
     (h - padding * 2) / bbox.height,
     1.5
   );
-  const tx = w / 2 - (bbox.x + bbox.width / 2) * scale;
-  const ty = h / 2 - (bbox.y + bbox.height / 2) * scale;
+  const tx = -(bbox.x + bbox.width / 2) * scale;
+  const ty = -(bbox.y + bbox.height / 2) * scale;
   svg.transition().duration(700).call(
     zoom.transform,
     d3.zoomIdentity.translate(tx, ty).scale(scale)
   );
 }}
 
-// 第一次稳定后自动 fit
-let fitted = false;
-simulation.on('end', () => {{ if (!fitted) {{ fitted = true; fitToView(); }} }});
-// 兜底：3 秒后无论稳定与否都 fit 一次（节点多时模拟可能跑很久）
-setTimeout(() => {{ if (!fitted) {{ fitted = true; fitToView(); }} }}, 3000);
+// 自动 fit:用户没主动操作过时多次重试,确保图最终居中
+// 多个时间点覆盖:小图很快稳定 / 中图 1-2s / 大图 simulation.end / 兜底 3.5s
+function autoFit() {{ if (!userZoomed) fitToView(); }}
+setTimeout(autoFit, 600);
+setTimeout(autoFit, 1500);
+simulation.on('end', autoFit);
+setTimeout(autoFit, 3500);
 
-// F 键随时重新 fit；R 键重置缩放
+// F 键随时重新 fit(强制,忽略 userZoomed);R 键重置缩放
 window.addEventListener('keydown', e => {{
-  if (e.key === 'f' || e.key === 'F') fitToView();
-  if (e.key === 'r' || e.key === 'R') svg.transition().duration(500).call(zoom.transform, d3.zoomIdentity);
+  if (e.key === 'f' || e.key === 'F') {{ userZoomed = false; fitToView(); }}
+  if (e.key === 'r' || e.key === 'R') {{
+    userZoomed = false;
+    svg.transition().duration(500).call(zoom.transform, d3.zoomIdentity);
+  }}
 }});
 
-// 窗口 resize 自适应
-window.addEventListener('resize', () => fitToView());
+// 窗口 resize:viewBox 跟着重算 + 重新 fit
+window.addEventListener('resize', () => {{ applyCenterViewBox(); fitToView(); }});
 </script>
 </body>
 </html>

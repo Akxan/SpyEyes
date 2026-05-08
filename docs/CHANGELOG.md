@@ -18,6 +18,69 @@ This project adheres to [Keep a Changelog](https://keepachangelog.com/en/1.1.0/)
 
 ---
 
+## [1.3.2] — 2026-05-09
+
+🛠 **质量打磨 + 电话运营商 MNP 修复 + UX 优化** —— 围绕"用户实际使用"的多面修复。
+
+### 🐛 Bug Fixes
+
+- **📞 电话运营商误导修复(MNP-aware)** —— 用户报告西班牙号 `+34600320351` 显示为 Vodafone,实际是 Jazztel(Orange España 集团)
+  - **根因**:phonenumbers 库基于静态号段映射(libphonenumber 内嵌的 ITU/CNMC 公开数据),不感知 MNP 携号转网。 `+34600` 号段 2001 年由 Vodafone 收购 Airtel 时获得,phonenumbers 数据正确反映了号段所属
+  - **解决**:**双层防御** — Layer 1 静态号段 + 清晰 disclaimer 标签(总是开启);Layer 2 可选实时 HLR API(env var opt-in)
+  - 字段标签:`运营商` → `运营商(号段所属)` / `Carrier` → `Carrier (block-allocated)`
+  - 输出附 ↳ 子条:`号段原始分配方;实际运营商可能因携号转网(MNP)与此不同`
+  - 新增 4 个 i18n 键(中英):`field.carrier_realtime` / `phone.mnp_note` / `phone.realtime_hint` / `phone.realtime_failed`
+  - **可选实时 HLR**:设 `SPYEYES_PHONE_API_KEY=numverify:YOUR_KEY` 自动启用(numverify free tier 100 次/月);失败优雅降级
+  - 可扩展 provider 接口 `_PHONE_PROVIDERS` dict,以后可加 numlookupapi / abstractapi / IPQualityScore
+- **📄 PDF 报告中文显示成 □ + 字符间距过紧修复**
+  - **根因 1**:reportlab 默认 Helvetica/Times 不含 CJK glyph → 中文字符渲染为 □
+  - **根因 2**:STSong-Light(中文 CID 字体)Latin advance width 偏窄,英文/数字字符过紧贴
+  - **解决**:注册 reportlab 内置 `STSong-Light` CID 字体 + **字体回退**(`_PDF_LATIN_RUN_RE` regex 把连续 ASCII 段切到 Helvetica,Paragraph 内嵌 `<font name="Helvetica">...</font>`)
+  - 同时修复:用户输入未 XML escape(URL 含 `&` 可让 reportlab 解析失败)→ `_pdf_para_text` 完整 escape `& < > \r \n`
+- **📊 PDF 表格排版乱修复**
+  - 长 IP 列表挤一行撑爆单元格 → `_pdf_format_ips` 每个 IP 一行,> 4 个截断显示 `+N more`
+  - 长 hostname/CNAME/title 文本溢出 → `Paragraph` 自动换行
+  - 列宽超 A4 可用宽度 → 文档 margin 36pt(可用 523pt),列宽统一收到 ≤ 520pt
+  - `HTTP` 列名分行成 `HT`/`TP` → 列宽 30 → 45pt
+- **🎨 D3.js Graph 节点堆左上角修复(v1.3.0 引入)**
+  - `forceCenter(0,0)` 拉到 SVG 坐标 (0,0) 但没设 viewBox 让原点居中 → 节点全在左上角
+  - `fitToView` 在 `bbox.width||bbox.height === 0` 时早退 → 永远不 fit
+  - 修复:加 `applyCenterViewBox()` viewBox 居中 + `fitToView` 加 fallback + 4 次自动 fit 重试 + 用户拖拽后停止自动 fit
+
+### ✨ Features
+
+- **🔄 交互菜单加全局"返回主菜单"** —— 之前只有 `[ 9 ]` 切换语言能 `[ 0 ]` 返回,其它 7 个子功能输入步骤无法取消
+  - 新增 `_ask_input(prompt_key)` 统一 helper:输入空 / `0` / EOF / Ctrl+C 都返回 None → 退回主菜单
+  - 主菜单底部加全局 hint:`(在任意子功能中输入 0 或直接回车可返回此菜单)` / `(In any sub-menu, enter 0 or press Enter to return here)`
+  - 影响:`[1]` IP / `[3]` Phone / `[4]` Username / `[5]` WHOIS / `[6]` MX / `[7]` Email / `[8]` Subdomain 全部支持
+
+### 🎨 UX/打磨
+
+- **PDF 表格统一视觉**:新 `_pdf_table_style()` helper(浅灰表头 + 网格 + 5pt 单元格 padding + 隔行斑马纹)
+- **PDF 行高放宽**:`Normal.leading=12` / `Title.leading=22` / `Heading2.leading=16`,中文字体下不再挤
+- **PDF 长表格分页表头重复**:`repeatRows=1`
+- **PDF 文档边距**:36pt(默认 72pt)给宽表格更多空间
+
+### 🔒 Security
+
+- PDF Paragraph 内文 XML escape `& < > \r \n` 防 reportlab 解析器误解析用户输入(URL 含 `&` 等)
+- numverify provider 调用走 `safe_get`(沿用现有 connection pool + timeout 防御)
+- env var malformed 检测(无 `:` / 缺 provider / 缺 key 一律视为未配置,不抛异常)
+
+### 🧪 Tests
+
+- **+18 个新测试**(全套 350 → 368):
+  - `TestPhoneCarrierMNP`(8):disclaimer 双语 / env var / 优雅降级 / provider mock / 实时 HLR 集成
+  - `TestNumverifyProvider`(7):HTTP 200 / 500 / non-JSON / API error / 空 carrier 优雅处理
+  - `TestPhoneI18nKeys`(2):4 个新键中英完整 + 标签 block-aware
+- 全套 lint 全清:ruff / mypy / bandit(0 issue)
+
+### 📦 Packaging
+
+- `__version__` 1.3.0 → 1.3.2
+
+---
+
 ## [1.3.0] — 2026-05-09
 
 🌐 **新增子域名枚举(被动多源 + DNS 验证 + HTTP probe)** —— 第 8 个核心 OSINT 能力。
