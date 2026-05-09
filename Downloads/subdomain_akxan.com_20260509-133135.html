@@ -1,0 +1,344 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>SpyEyes 报告 — akxan.com</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@400;500;600;700&family=Crimson+Pro:ital,wght@0,400;0,500;0,600;1,400&family=JetBrains+Mono:wght@400;500;700&family=Noto+Serif+SC:wght@400;500;700&display=swap" rel="stylesheet">
+<style>
+:root{
+--bg:#fafaf5;--surface:#fff;--ink:#0a0a0c;--rule:#0a0a0c;
+--muted:#6b6657;--soft:#e8e3d6;--row-alt:#f4f0e6;
+--accent:#c8102e;--link:#1d4ed8;--success:#1f5837;--warn:#a06800;
+--serif:"Cormorant Garamond","Noto Serif SC",Georgia,"Songti SC",serif;
+--body:"Crimson Pro","Noto Serif SC",Georgia,"Songti SC",serif;
+--mono:"JetBrains Mono","Sarasa Mono SC",ui-monospace,Menlo,monospace;
+}
+*{box-sizing:border-box}
+html,body{margin:0;padding:0}
+body{background:var(--bg);color:var(--ink);font-family:var(--body);font-size:17px;line-height:1.7;max-width:1280px;margin:3em auto;padding:0 3em 4em;letter-spacing:0.005em;-webkit-font-smoothing:antialiased;text-rendering:optimizeLegibility}
+@media(max-width:1340px){body{max-width:none;margin:2em 4em 3em}}
+@media(max-width:720px){body{margin:1em;padding:0 1em 2em;font-size:15px}}
+.masthead{border-top:5px double var(--ink);border-bottom:5px double var(--ink);padding:1.6em 0 1.4em;margin-bottom:2.5em;text-align:center;position:relative}
+.stamp{display:inline-block;border:1.5px solid var(--accent);color:var(--accent);font-family:var(--mono);font-size:0.65em;letter-spacing:0.28em;text-transform:uppercase;padding:0.3em 0.9em;margin-bottom:0.8em;font-weight:700;transform:rotate(-1.5deg)}
+.masthead h1{font-family:var(--serif);font-weight:500;font-size:3.2em;line-height:1.05;letter-spacing:-0.03em;margin:0.1em 0;color:var(--ink)}
+.masthead .subtitle{font-family:var(--mono);font-size:0.7em;letter-spacing:0.35em;text-transform:uppercase;color:var(--muted);margin-top:0.4em}
+.meta{font-family:var(--mono);font-size:0.78em;display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:1.5em;padding:1em 0;border-bottom:1px solid var(--rule);margin-bottom:2em}
+.meta-item{display:flex;flex-direction:column;gap:0.3em}
+.meta-label{text-transform:uppercase;letter-spacing:0.18em;font-size:0.85em;color:var(--muted);font-weight:500}
+.meta-value{color:var(--ink);font-weight:700;word-break:break-all}
+body{counter-reset:section}
+h2{font-family:var(--serif);font-weight:500;font-size:2em;line-height:1.2;margin:2.5em 0 0.8em;padding-bottom:0.4em;border-bottom:1px solid var(--rule);display:flex;align-items:baseline;gap:0.6em;letter-spacing:-0.01em}
+h2::before{content:counter(section,upper-roman);counter-increment:section;font-family:var(--mono);font-size:0.45em;color:var(--muted);letter-spacing:0.15em;font-weight:500;flex-shrink:0}
+h2 code{background:transparent;padding:0;font-size:0.8em;color:var(--accent)}
+h3,h3.cat{font-family:var(--serif);font-weight:600;font-size:1.3em;margin:1.8em 0 0.7em;padding-left:0.7em;border-left:3px solid var(--accent);color:var(--ink);letter-spacing:-0.005em}
+table{border-collapse:collapse;width:100%;margin:1em 0 1.5em;font-family:var(--mono);font-size:0.85em;background:var(--surface);border-top:1.5px solid var(--ink);border-bottom:1.5px solid var(--ink)}
+thead tr{border-bottom:1px solid var(--ink)}
+th{text-align:left;padding:0.85em 1em;font-family:var(--serif);font-weight:700;font-size:0.95em;letter-spacing:0.02em;color:var(--ink);background:var(--soft);border-bottom:1.5px solid var(--ink);white-space:nowrap;position:sticky;top:0;z-index:5;box-shadow:0 2px 0 0 var(--ink),0 4px 6px -2px rgba(10,10,12,0.1)}
+td{padding:0.7em 1em;border-bottom:1px solid #e8e3d6;vertical-align:top;word-break:normal;overflow-wrap:anywhere}
+td:first-child{white-space:nowrap;font-weight:500}
+@media(max-width:900px){td:first-child{white-space:normal}}
+tr:nth-child(even) td{background:var(--row-alt)}
+tr[data-alive="true"] td:first-child{border-left:3px solid #1f5837;padding-left:calc(1em - 3px)}
+tr[data-alive="false"] td:first-child{border-left:3px solid #c8c1ad;padding-left:calc(1em - 3px);color:var(--muted)}
+tr[data-alive="false"] td{color:var(--muted)}
+tbody tr:hover td{background:var(--soft);transition:background 0.15s ease}
+tbody tr:hover{box-shadow:inset 0 0 0 0.5px var(--ink)}
+td.status-ok{color:var(--success);font-weight:700}
+td.status-redir{color:var(--link);font-weight:600}
+td.status-warn{color:var(--warn);font-weight:600}
+td.status-err{color:var(--accent);font-weight:700}
+a{color:var(--link);text-decoration:underline;text-decoration-thickness:0.5px;text-underline-offset:0.22em;transition:text-decoration-thickness 0.15s ease}
+a:hover{text-decoration-thickness:1.5px}
+code{font-family:var(--mono);background:var(--soft);padding:0.05em 0.45em;border-radius:1px;font-size:0.95em;color:var(--ink)}
+.error{color:#7a0a0a;background:#fdf3f3;border-left:4px solid var(--accent);padding:1em 1.4em;margin:1em 0;font-family:var(--body);font-style:italic}
+.error b{font-style:normal;text-transform:uppercase;letter-spacing:0.1em;font-size:0.85em;font-family:var(--mono)}
+.summary{font-family:var(--serif);font-size:1.15em;font-style:italic;color:var(--muted);margin:0.5em 0 1.5em;padding-left:1em;border-left:2px solid var(--soft)}
+.colophon{margin-top:5em;padding-top:1.5em;border-top:1px solid var(--rule);font-family:var(--mono);font-size:0.7em;color:var(--muted);letter-spacing:0.18em;text-transform:uppercase;text-align:center}
+.colophon a{color:var(--muted);text-decoration:none}
+.colophon a:hover{color:var(--ink)}
+@media print{body{max-width:none;margin:0;padding:1em;font-size:11pt}.masthead,h2,h3{break-after:avoid}table{break-inside:avoid}}
+</style>
+</head><body>
+<header class="masthead">
+<div class="stamp">机密 · OSINT 简报</div>
+<h1>SpyEyes 报告</h1>
+<div class="subtitle">开源情报调查档案</div>
+</header>
+<div class="meta">
+<div class="meta-item"><span class="meta-label">命令</span><span class="meta-value">subdomain</span></div>
+<div class="meta-item"><span class="meta-label">查询</span><span class="meta-value">akxan.com</span></div>
+<div class="meta-item"><span class="meta-label">生成时间</span><span class="meta-value">2026-05-09 13:31:36</span></div>
+</div>
+<h2>子域名枚举：akxan.com</h2>
+<p><b>共发现 259 个 · 活跃 259 个 · 来自 3 个数据源</b></p>
+<div class="error">⚠ 检测到通配符 DNS — 结果可信度降低</div>
+<table><thead><tr><th>主机名</th><th>IP 地址</th><th>CNAME</th><th>HTTP</th><th>标题</th></tr></thead><tbody>
+<tr data-alive="true"><td><a href="https://about.akxan.com/" target="_blank" rel="noopener noreferrer">about.akxan.com</a></td><td>198.18.1.221</td><td></td><td></td><td></td></tr>
+<tr data-alive="true"><td><a href="https://account.akxan.com/" target="_blank" rel="noopener noreferrer">account.akxan.com</a></td><td>198.18.1.153</td><td></td><td></td><td></td></tr>
+<tr data-alive="true"><td><a href="https://accounts.akxan.com/" target="_blank" rel="noopener noreferrer">accounts.akxan.com</a></td><td>198.18.1.250</td><td></td><td></td><td></td></tr>
+<tr data-alive="true"><td><a href="https://ad.akxan.com/" target="_blank" rel="noopener noreferrer">ad.akxan.com</a></td><td>198.18.1.100</td><td></td><td></td><td></td></tr>
+<tr data-alive="true"><td><a href="https://admin.akxan.com/" target="_blank" rel="noopener noreferrer">admin.akxan.com</a></td><td>198.18.1.95</td><td></td><td></td><td></td></tr>
+<tr data-alive="true"><td><a href="https://administrator.akxan.com/" target="_blank" rel="noopener noreferrer">administrator.akxan.com</a></td><td>198.18.1.110</td><td></td><td></td><td></td></tr>
+<tr data-alive="true"><td><a href="https://ads.akxan.com/" target="_blank" rel="noopener noreferrer">ads.akxan.com</a></td><td>198.18.1.91</td><td></td><td></td><td></td></tr>
+<tr data-alive="true"><td><a href="https://akxan.com/" target="_blank" rel="noopener noreferrer">akxan.com</a></td><td>198.18.1.115</td><td></td><td class="status-ok">200</td><td>Finder Logistics - Comparador de Envíos | Logística Inteligente</td></tr>
+<tr data-alive="true"><td><a href="https://alpha.akxan.com/" target="_blank" rel="noopener noreferrer">alpha.akxan.com</a></td><td>198.18.1.86</td><td></td><td></td><td></td></tr>
+<tr data-alive="true"><td><a href="https://analytics.akxan.com/" target="_blank" rel="noopener noreferrer">analytics.akxan.com</a></td><td>198.18.1.232</td><td></td><td></td><td></td></tr>
+<tr data-alive="true"><td><a href="https://api-dev.akxan.com/" target="_blank" rel="noopener noreferrer">api-dev.akxan.com</a></td><td>198.18.1.161</td><td></td><td></td><td></td></tr>
+<tr data-alive="true"><td><a href="https://api-prod.akxan.com/" target="_blank" rel="noopener noreferrer">api-prod.akxan.com</a></td><td>198.18.1.42</td><td></td><td></td><td></td></tr>
+<tr data-alive="true"><td><a href="https://api-staging.akxan.com/" target="_blank" rel="noopener noreferrer">api-staging.akxan.com</a></td><td>198.18.2.1</td><td></td><td></td><td></td></tr>
+<tr data-alive="true"><td><a href="https://api-test.akxan.com/" target="_blank" rel="noopener noreferrer">api-test.akxan.com</a></td><td>198.18.2.4</td><td></td><td></td><td></td></tr>
+<tr data-alive="true"><td><a href="https://api.akxan.com/" target="_blank" rel="noopener noreferrer">api.akxan.com</a></td><td>198.18.1.49</td><td></td><td></td><td></td></tr>
+<tr data-alive="true"><td><a href="https://api1.akxan.com/" target="_blank" rel="noopener noreferrer">api1.akxan.com</a></td><td>198.18.1.96</td><td></td><td></td><td></td></tr>
+<tr data-alive="true"><td><a href="https://api2.akxan.com/" target="_blank" rel="noopener noreferrer">api2.akxan.com</a></td><td>198.18.2.18</td><td></td><td></td><td></td></tr>
+<tr data-alive="true"><td><a href="https://app.akxan.com/" target="_blank" rel="noopener noreferrer">app.akxan.com</a></td><td>198.18.1.68</td><td></td><td></td><td></td></tr>
+<tr data-alive="true"><td><a href="https://application.akxan.com/" target="_blank" rel="noopener noreferrer">application.akxan.com</a></td><td>198.18.2.31</td><td></td><td></td><td></td></tr>
+<tr data-alive="true"><td><a href="https://apps.akxan.com/" target="_blank" rel="noopener noreferrer">apps.akxan.com</a></td><td>198.18.1.191</td><td></td><td></td><td></td></tr>
+<tr data-alive="true"><td><a href="https://assets.akxan.com/" target="_blank" rel="noopener noreferrer">assets.akxan.com</a></td><td>198.18.1.79</td><td></td><td></td><td></td></tr>
+<tr data-alive="true"><td><a href="https://auth.akxan.com/" target="_blank" rel="noopener noreferrer">auth.akxan.com</a></td><td>198.18.1.70</td><td></td><td></td><td></td></tr>
+<tr data-alive="true"><td><a href="http://autodiscover.akxan.com/" target="_blank" rel="noopener noreferrer">autodiscover.akxan.com</a></td><td>198.18.2.16</td><td>adsredir.ionos.info</td><td class="status-warn">403</td><td></td></tr>
+<tr data-alive="true"><td><a href="https://aws.akxan.com/" target="_blank" rel="noopener noreferrer">aws.akxan.com</a></td><td>198.18.1.208</td><td></td><td></td><td></td></tr>
+<tr data-alive="true"><td><a href="https://azure.akxan.com/" target="_blank" rel="noopener noreferrer">azure.akxan.com</a></td><td>198.18.1.148</td><td></td><td></td><td></td></tr>
+<tr data-alive="true"><td><a href="https://backup.akxan.com/" target="_blank" rel="noopener noreferrer">backup.akxan.com</a></td><td>198.18.1.109</td><td></td><td></td><td></td></tr>
+<tr data-alive="true"><td><a href="https://bak.akxan.com/" target="_blank" rel="noopener noreferrer">bak.akxan.com</a></td><td>198.18.1.235</td><td></td><td></td><td></td></tr>
+<tr data-alive="true"><td><a href="https://bamboo.akxan.com/" target="_blank" rel="noopener noreferrer">bamboo.akxan.com</a></td><td>198.18.1.129</td><td></td><td></td><td></td></tr>
+<tr data-alive="true"><td><a href="https://beta.akxan.com/" target="_blank" rel="noopener noreferrer">beta.akxan.com</a></td><td>198.18.1.65</td><td></td><td></td><td></td></tr>
+<tr data-alive="true"><td><a href="https://billing.akxan.com/" target="_blank" rel="noopener noreferrer">billing.akxan.com</a></td><td>198.18.1.54</td><td></td><td></td><td></td></tr>
+<tr data-alive="true"><td><a href="https://bitbucket.akxan.com/" target="_blank" rel="noopener noreferrer">bitbucket.akxan.com</a></td><td>198.18.1.236</td><td></td><td></td><td></td></tr>
+<tr data-alive="true"><td><a href="https://blog.akxan.com/" target="_blank" rel="noopener noreferrer">blog.akxan.com</a></td><td>198.18.1.80</td><td></td><td></td><td></td></tr>
+<tr data-alive="true"><td><a href="https://book.akxan.com/" target="_blank" rel="noopener noreferrer">book.akxan.com</a></td><td>198.18.1.167</td><td></td><td></td><td></td></tr>
+<tr data-alive="true"><td><a href="https://bt.akxan.com/" target="_blank" rel="noopener noreferrer">bt.akxan.com</a></td><td>198.18.1.214</td><td></td><td></td><td></td></tr>
+<tr data-alive="true"><td><a href="https://build.akxan.com/" target="_blank" rel="noopener noreferrer">build.akxan.com</a></td><td>198.18.2.7</td><td></td><td></td><td></td></tr>
+<tr data-alive="true"><td><a href="https://campaign.akxan.com/" target="_blank" rel="noopener noreferrer">campaign.akxan.com</a></td><td>198.18.1.124</td><td></td><td></td><td></td></tr>
+<tr data-alive="true"><td><a href="https://careers.akxan.com/" target="_blank" rel="noopener noreferrer">careers.akxan.com</a></td><td>198.18.1.220</td><td></td><td></td><td></td></tr>
+<tr data-alive="true"><td><a href="https://cart.akxan.com/" target="_blank" rel="noopener noreferrer">cart.akxan.com</a></td><td>198.18.1.179</td><td></td><td></td><td></td></tr>
+<tr data-alive="true"><td><a href="https://cdn.akxan.com/" target="_blank" rel="noopener noreferrer">cdn.akxan.com</a></td><td>198.18.1.230</td><td></td><td></td><td></td></tr>
+<tr data-alive="true"><td><a href="https://cdn1.akxan.com/" target="_blank" rel="noopener noreferrer">cdn1.akxan.com</a></td><td>198.18.1.82</td><td></td><td></td><td></td></tr>
+<tr data-alive="true"><td><a href="https://cdn2.akxan.com/" target="_blank" rel="noopener noreferrer">cdn2.akxan.com</a></td><td>198.18.2.0</td><td></td><td></td><td></td></tr>
+<tr data-alive="true"><td><a href="https://cert.akxan.com/" target="_blank" rel="noopener noreferrer">cert.akxan.com</a></td><td>198.18.2.15</td><td></td><td></td><td></td></tr>
+<tr data-alive="true"><td><a href="https://chat.akxan.com/" target="_blank" rel="noopener noreferrer">chat.akxan.com</a></td><td>198.18.1.136</td><td></td><td></td><td></td></tr>
+<tr data-alive="true"><td><a href="https://checkout.akxan.com/" target="_blank" rel="noopener noreferrer">checkout.akxan.com</a></td><td>198.18.1.59</td><td></td><td></td><td></td></tr>
+<tr data-alive="true"><td><a href="https://ci.akxan.com/" target="_blank" rel="noopener noreferrer">ci.akxan.com</a></td><td>198.18.1.128</td><td></td><td></td><td></td></tr>
+<tr data-alive="true"><td><a href="https://clawpanel.akxan.com/" target="_blank" rel="noopener noreferrer">clawpanel.akxan.com</a></td><td>198.18.2.20</td><td></td><td></td><td></td></tr>
+<tr data-alive="true"><td><a href="https://cloud.akxan.com/" target="_blank" rel="noopener noreferrer">cloud.akxan.com</a></td><td>198.18.1.224</td><td></td><td></td><td></td></tr>
+<tr data-alive="true"><td><a href="https://community.akxan.com/" target="_blank" rel="noopener noreferrer">community.akxan.com</a></td><td>198.18.1.228</td><td></td><td></td><td></td></tr>
+<tr data-alive="true"><td><a href="https://confluence.akxan.com/" target="_blank" rel="noopener noreferrer">confluence.akxan.com</a></td><td>198.18.2.11</td><td></td><td></td><td></td></tr>
+<tr data-alive="true"><td><a href="https://contact.akxan.com/" target="_blank" rel="noopener noreferrer">contact.akxan.com</a></td><td>198.18.1.66</td><td></td><td></td><td></td></tr>
+<tr data-alive="true"><td><a href="https://cpa.akxan.com/" target="_blank" rel="noopener noreferrer">cpa.akxan.com</a></td><td>198.18.1.152</td><td></td><td class="status-ok">200</td><td>CLI Proxy API Management Center</td></tr>
+<tr data-alive="true"><td><a href="https://cpanel.akxan.com/" target="_blank" rel="noopener noreferrer">cpanel.akxan.com</a></td><td>198.18.1.37</td><td></td><td></td><td></td></tr>
+<tr data-alive="true"><td><a href="https://crm.akxan.com/" target="_blank" rel="noopener noreferrer">crm.akxan.com</a></td><td>198.18.1.251</td><td></td><td></td><td></td></tr>
+<tr data-alive="true"><td><a href="https://dashboard.akxan.com/" target="_blank" rel="noopener noreferrer">dashboard.akxan.com</a></td><td>198.18.1.106</td><td></td><td></td><td></td></tr>
+<tr data-alive="true"><td><a href="https://database.akxan.com/" target="_blank" rel="noopener noreferrer">database.akxan.com</a></td><td>198.18.1.174</td><td></td><td></td><td></td></tr>
+<tr data-alive="true"><td><a href="https://db.akxan.com/" target="_blank" rel="noopener noreferrer">db.akxan.com</a></td><td>198.18.1.182</td><td></td><td></td><td></td></tr>
+<tr data-alive="true"><td><a href="https://demo.akxan.com/" target="_blank" rel="noopener noreferrer">demo.akxan.com</a></td><td>198.18.1.127</td><td></td><td></td><td></td></tr>
+<tr data-alive="true"><td><a href="https://deploy.akxan.com/" target="_blank" rel="noopener noreferrer">deploy.akxan.com</a></td><td>198.18.2.23</td><td></td><td></td><td></td></tr>
+<tr data-alive="true"><td><a href="https://dev.akxan.com/" target="_blank" rel="noopener noreferrer">dev.akxan.com</a></td><td>198.18.1.178</td><td></td><td></td><td></td></tr>
+<tr data-alive="true"><td><a href="https://dev1.akxan.com/" target="_blank" rel="noopener noreferrer">dev1.akxan.com</a></td><td>198.18.1.151</td><td></td><td></td><td></td></tr>
+<tr data-alive="true"><td><a href="https://dev2.akxan.com/" target="_blank" rel="noopener noreferrer">dev2.akxan.com</a></td><td>198.18.2.12</td><td></td><td></td><td></td></tr>
+<tr data-alive="true"><td><a href="https://development.akxan.com/" target="_blank" rel="noopener noreferrer">development.akxan.com</a></td><td>198.18.2.25</td><td></td><td></td><td></td></tr>
+<tr data-alive="true"><td><a href="https://dns.akxan.com/" target="_blank" rel="noopener noreferrer">dns.akxan.com</a></td><td>198.18.1.157</td><td></td><td></td><td></td></tr>
+<tr data-alive="true"><td><a href="https://dns1.akxan.com/" target="_blank" rel="noopener noreferrer">dns1.akxan.com</a></td><td>198.18.1.117</td><td></td><td></td><td></td></tr>
+<tr data-alive="true"><td><a href="https://dns2.akxan.com/" target="_blank" rel="noopener noreferrer">dns2.akxan.com</a></td><td>198.18.2.30</td><td></td><td></td><td></td></tr>
+<tr data-alive="true"><td><a href="https://doc.akxan.com/" target="_blank" rel="noopener noreferrer">doc.akxan.com</a></td><td>198.18.1.165</td><td></td><td></td><td></td></tr>
+<tr data-alive="true"><td><a href="https://docs.akxan.com/" target="_blank" rel="noopener noreferrer">docs.akxan.com</a></td><td>198.18.1.168</td><td></td><td></td><td></td></tr>
+<tr data-alive="true"><td><a href="https://documentation.akxan.com/" target="_blank" rel="noopener noreferrer">documentation.akxan.com</a></td><td>198.18.1.207</td><td></td><td></td><td></td></tr>
+<tr data-alive="true"><td><a href="https://download.akxan.com/" target="_blank" rel="noopener noreferrer">download.akxan.com</a></td><td>198.18.1.40</td><td></td><td></td><td></td></tr>
+<tr data-alive="true"><td><a href="https://edge.akxan.com/" target="_blank" rel="noopener noreferrer">edge.akxan.com</a></td><td>198.18.1.76</td><td></td><td></td><td></td></tr>
+<tr data-alive="true"><td><a href="https://elastic.akxan.com/" target="_blank" rel="noopener noreferrer">elastic.akxan.com</a></td><td>198.18.1.237</td><td></td><td></td><td></td></tr>
+<tr data-alive="true"><td><a href="https://elasticsearch.akxan.com/" target="_blank" rel="noopener noreferrer">elasticsearch.akxan.com</a></td><td>198.18.1.84</td><td></td><td></td><td></td></tr>
+<tr data-alive="true"><td><a href="https://email.akxan.com/" target="_blank" rel="noopener noreferrer">email.akxan.com</a></td><td>198.18.1.43</td><td></td><td></td><td></td></tr>
+<tr data-alive="true"><td><a href="https://erp.akxan.com/" target="_blank" rel="noopener noreferrer">erp.akxan.com</a></td><td>198.18.2.33</td><td></td><td></td><td></td></tr>
+<tr data-alive="true"><td><a href="https://es.akxan.com/" target="_blank" rel="noopener noreferrer">es.akxan.com</a></td><td>198.18.1.51</td><td></td><td></td><td></td></tr>
+<tr data-alive="true"><td><a href="https://event.akxan.com/" target="_blank" rel="noopener noreferrer">event.akxan.com</a></td><td>198.18.1.205</td><td></td><td></td><td></td></tr>
+<tr data-alive="true"><td><a href="https://events.akxan.com/" target="_blank" rel="noopener noreferrer">events.akxan.com</a></td><td>198.18.1.240</td><td></td><td></td><td></td></tr>
+<tr data-alive="true"><td><a href="https://extranet.akxan.com/" target="_blank" rel="noopener noreferrer">extranet.akxan.com</a></td><td>198.18.1.36</td><td></td><td></td><td></td></tr>
+<tr data-alive="true"><td><a href="https://faq.akxan.com/" target="_blank" rel="noopener noreferrer">faq.akxan.com</a></td><td>198.18.1.189</td><td></td><td></td><td></td></tr>
+<tr data-alive="true"><td><a href="https://file.akxan.com/" target="_blank" rel="noopener noreferrer">file.akxan.com</a></td><td>198.18.1.53</td><td></td><td></td><td></td></tr>
+<tr data-alive="true"><td><a href="https://files.akxan.com/" target="_blank" rel="noopener noreferrer">files.akxan.com</a></td><td>198.18.1.88</td><td></td><td></td><td></td></tr>
+<tr data-alive="true"><td><a href="https://fileserver.akxan.com/" target="_blank" rel="noopener noreferrer">fileserver.akxan.com</a></td><td>198.18.1.45</td><td></td><td></td><td></td></tr>
+<tr data-alive="true"><td><a href="https://film.akxan.com/" target="_blank" rel="noopener noreferrer">film.akxan.com</a></td><td>198.18.1.222</td><td></td><td class="status-warn">401</td><td></td></tr>
+<tr data-alive="true"><td><a href="https://finance.akxan.com/" target="_blank" rel="noopener noreferrer">finance.akxan.com</a></td><td>198.18.1.132</td><td></td><td></td><td></td></tr>
+<tr data-alive="true"><td><a href="https://flow2api.akxan.com/" target="_blank" rel="noopener noreferrer">flow2api.akxan.com</a></td><td>198.18.1.166</td><td></td><td class="status-ok">200</td><td>登录 - Flow2API</td></tr>
+<tr data-alive="true"><td><a href="https://forum.akxan.com/" target="_blank" rel="noopener noreferrer">forum.akxan.com</a></td><td>198.18.1.107</td><td></td><td></td><td></td></tr>
+<tr data-alive="true"><td><a href="https://forums.akxan.com/" target="_blank" rel="noopener noreferrer">forums.akxan.com</a></td><td>198.18.1.133</td><td></td><td></td><td></td></tr>
+<tr data-alive="true"><td><a href="https://fox.akxan.com/" target="_blank" rel="noopener noreferrer">fox.akxan.com</a></td><td>198.18.1.180</td><td></td><td class="status-ok">200</td><td>New API</td></tr>
+<tr data-alive="true"><td><a href="https://free.akxan.com/" target="_blank" rel="noopener noreferrer">free.akxan.com</a></td><td>198.18.1.171</td><td></td><td class="status-ok">200</td><td>185.155.61.166 – Welcome</td></tr>
+<tr data-alive="true"><td><a href="https://ftp.akxan.com/" target="_blank" rel="noopener noreferrer">ftp.akxan.com</a></td><td>198.18.1.163</td><td></td><td></td><td></td></tr>
+<tr data-alive="true"><td><a href="https://ftps.akxan.com/" target="_blank" rel="noopener noreferrer">ftps.akxan.com</a></td><td>198.18.1.242</td><td></td><td></td><td></td></tr>
+<tr data-alive="true"><td><a href="https://gateway.akxan.com/" target="_blank" rel="noopener noreferrer">gateway.akxan.com</a></td><td>198.18.2.24</td><td></td><td></td><td></td></tr>
+<tr data-alive="true"><td><a href="https://gcp.akxan.com/" target="_blank" rel="noopener noreferrer">gcp.akxan.com</a></td><td>198.18.1.141</td><td></td><td></td><td></td></tr>
+<tr data-alive="true"><td><a href="https://git.akxan.com/" target="_blank" rel="noopener noreferrer">git.akxan.com</a></td><td>198.18.1.111</td><td></td><td></td><td></td></tr>
+<tr data-alive="true"><td><a href="https://gitlab.akxan.com/" target="_blank" rel="noopener noreferrer">gitlab.akxan.com</a></td><td>198.18.1.116</td><td></td><td></td><td></td></tr>
+<tr data-alive="true"><td><a href="https://grafana.akxan.com/" target="_blank" rel="noopener noreferrer">grafana.akxan.com</a></td><td>198.18.1.186</td><td></td><td></td><td></td></tr>
+<tr data-alive="true"><td><a href="https://gw.akxan.com/" target="_blank" rel="noopener noreferrer">gw.akxan.com</a></td><td>198.18.2.26</td><td></td><td></td><td></td></tr>
+<tr data-alive="true"><td><a href="https://help.akxan.com/" target="_blank" rel="noopener noreferrer">help.akxan.com</a></td><td>198.18.1.248</td><td></td><td></td><td></td></tr>
+<tr data-alive="true"><td><a href="https://home.akxan.com/" target="_blank" rel="noopener noreferrer">home.akxan.com</a></td><td>198.18.1.217</td><td></td><td class="status-warn">401</td><td></td></tr>
+<tr data-alive="true"><td><a href="https://hr.akxan.com/" target="_blank" rel="noopener noreferrer">hr.akxan.com</a></td><td>198.18.1.75</td><td></td><td></td><td></td></tr>
+<tr data-alive="true"><td><a href="https://hy2.akxan.com/" target="_blank" rel="noopener noreferrer">hy2.akxan.com</a></td><td>198.18.1.195</td><td></td><td></td><td></td></tr>
+<tr data-alive="true"><td><a href="https://im.akxan.com/" target="_blank" rel="noopener noreferrer">im.akxan.com</a></td><td>198.18.1.135</td><td></td><td></td><td></td></tr>
+<tr data-alive="true"><td><a href="https://images.akxan.com/" target="_blank" rel="noopener noreferrer">images.akxan.com</a></td><td>198.18.1.162</td><td></td><td></td><td></td></tr>
+<tr data-alive="true"><td><a href="https://imap.akxan.com/" target="_blank" rel="noopener noreferrer">imap.akxan.com</a></td><td>198.18.1.192</td><td></td><td></td><td></td></tr>
+<tr data-alive="true"><td><a href="https://img.akxan.com/" target="_blank" rel="noopener noreferrer">img.akxan.com</a></td><td>198.18.1.46</td><td></td><td></td><td></td></tr>
+<tr data-alive="true"><td><a href="https://internal.akxan.com/" target="_blank" rel="noopener noreferrer">internal.akxan.com</a></td><td>198.18.1.118</td><td></td><td></td><td></td></tr>
+<tr data-alive="true"><td><a href="https://intranet.akxan.com/" target="_blank" rel="noopener noreferrer">intranet.akxan.com</a></td><td>198.18.1.169</td><td></td><td></td><td></td></tr>
+<tr data-alive="true"><td><a href="https://investor.akxan.com/" target="_blank" rel="noopener noreferrer">investor.akxan.com</a></td><td>198.18.1.197</td><td></td><td></td><td></td></tr>
+<tr data-alive="true"><td><a href="https://investors.akxan.com/" target="_blank" rel="noopener noreferrer">investors.akxan.com</a></td><td>198.18.1.39</td><td></td><td></td><td></td></tr>
+<tr data-alive="true"><td><a href="https://invoice.akxan.com/" target="_blank" rel="noopener noreferrer">invoice.akxan.com</a></td><td>198.18.1.173</td><td></td><td></td><td></td></tr>
+<tr data-alive="true"><td><a href="https://jenkins.akxan.com/" target="_blank" rel="noopener noreferrer">jenkins.akxan.com</a></td><td>198.18.2.19</td><td></td><td></td><td></td></tr>
+<tr data-alive="true"><td><a href="https://jira.akxan.com/" target="_blank" rel="noopener noreferrer">jira.akxan.com</a></td><td>198.18.1.138</td><td></td><td></td><td></td></tr>
+<tr data-alive="true"><td><a href="https://job.akxan.com/" target="_blank" rel="noopener noreferrer">job.akxan.com</a></td><td>198.18.1.125</td><td></td><td></td><td></td></tr>
+<tr data-alive="true"><td><a href="https://jobs.akxan.com/" target="_blank" rel="noopener noreferrer">jobs.akxan.com</a></td><td>198.18.1.44</td><td></td><td></td><td></td></tr>
+<tr data-alive="true"><td><a href="https://kb.akxan.com/" target="_blank" rel="noopener noreferrer">kb.akxan.com</a></td><td>198.18.1.69</td><td></td><td></td><td></td></tr>
+<tr data-alive="true"><td><a href="https://kibana.akxan.com/" target="_blank" rel="noopener noreferrer">kibana.akxan.com</a></td><td>198.18.1.60</td><td></td><td></td><td></td></tr>
+<tr data-alive="true"><td><a href="https://live.akxan.com/" target="_blank" rel="noopener noreferrer">live.akxan.com</a></td><td>198.18.1.238</td><td></td><td></td><td></td></tr>
+<tr data-alive="true"><td><a href="https://log.akxan.com/" target="_blank" rel="noopener noreferrer">log.akxan.com</a></td><td>198.18.1.143</td><td></td><td class="status-warn">401</td><td></td></tr>
+<tr data-alive="true"><td><a href="https://logging.akxan.com/" target="_blank" rel="noopener noreferrer">logging.akxan.com</a></td><td>198.18.1.120</td><td></td><td></td><td></td></tr>
+<tr data-alive="true"><td><a href="https://login.akxan.com/" target="_blank" rel="noopener noreferrer">login.akxan.com</a></td><td>198.18.1.50</td><td></td><td></td><td></td></tr>
+<tr data-alive="true"><td><a href="https://logs.akxan.com/" target="_blank" rel="noopener noreferrer">logs.akxan.com</a></td><td>198.18.1.78</td><td></td><td></td><td></td></tr>
+<tr data-alive="true"><td><a href="https://lync.akxan.com/" target="_blank" rel="noopener noreferrer">lync.akxan.com</a></td><td>198.18.1.239</td><td></td><td></td><td></td></tr>
+<tr data-alive="true"><td><a href="https://m.akxan.com/" target="_blank" rel="noopener noreferrer">m.akxan.com</a></td><td>198.18.1.105</td><td></td><td></td><td></td></tr>
+<tr data-alive="true"><td><a href="https://mail.akxan.com/" target="_blank" rel="noopener noreferrer">mail.akxan.com</a></td><td>198.18.1.245</td><td></td><td></td><td></td></tr>
+<tr data-alive="true"><td><a href="https://mail2.akxan.com/" target="_blank" rel="noopener noreferrer">mail2.akxan.com</a></td><td>198.18.1.131</td><td></td><td></td><td></td></tr>
+<tr data-alive="true"><td><a href="https://main.akxan.com/" target="_blank" rel="noopener noreferrer">main.akxan.com</a></td><td>198.18.2.6</td><td></td><td></td><td></td></tr>
+<tr data-alive="true"><td><a href="https://marketing.akxan.com/" target="_blank" rel="noopener noreferrer">marketing.akxan.com</a></td><td>198.18.2.32</td><td></td><td></td><td></td></tr>
+<tr data-alive="true"><td><a href="https://mcmap.akxan.com/" target="_blank" rel="noopener noreferrer">mcmap.akxan.com</a></td><td>198.18.1.175</td><td></td><td class="status-ok">200</td><td>BlueMap</td></tr>
+<tr data-alive="true"><td><a href="https://me.akxan.com/" target="_blank" rel="noopener noreferrer">me.akxan.com</a></td><td>198.18.1.201</td><td></td><td></td><td></td></tr>
+<tr data-alive="true"><td><a href="https://media.akxan.com/" target="_blank" rel="noopener noreferrer">media.akxan.com</a></td><td>198.18.1.154</td><td></td><td></td><td></td></tr>
+<tr data-alive="true"><td><a href="https://meet.akxan.com/" target="_blank" rel="noopener noreferrer">meet.akxan.com</a></td><td>198.18.1.253</td><td></td><td></td><td></td></tr>
+<tr data-alive="true"><td><a href="https://metrics.akxan.com/" target="_blank" rel="noopener noreferrer">metrics.akxan.com</a></td><td>198.18.1.241</td><td></td><td></td><td></td></tr>
+<tr data-alive="true"><td><a href="https://mobi.akxan.com/" target="_blank" rel="noopener noreferrer">mobi.akxan.com</a></td><td>198.18.1.159</td><td></td><td></td><td></td></tr>
+<tr data-alive="true"><td><a href="https://mobile.akxan.com/" target="_blank" rel="noopener noreferrer">mobile.akxan.com</a></td><td>198.18.1.89</td><td></td><td></td><td></td></tr>
+<tr data-alive="true"><td><a href="https://mongo.akxan.com/" target="_blank" rel="noopener noreferrer">mongo.akxan.com</a></td><td>198.18.1.140</td><td></td><td></td><td></td></tr>
+<tr data-alive="true"><td><a href="https://mongodb.akxan.com/" target="_blank" rel="noopener noreferrer">mongodb.akxan.com</a></td><td>198.18.1.183</td><td></td><td></td><td></td></tr>
+<tr data-alive="true"><td><a href="https://monitor.akxan.com/" target="_blank" rel="noopener noreferrer">monitor.akxan.com</a></td><td>198.18.2.27</td><td></td><td></td><td></td></tr>
+<tr data-alive="true"><td><a href="https://monitoring.akxan.com/" target="_blank" rel="noopener noreferrer">monitoring.akxan.com</a></td><td>198.18.1.225</td><td></td><td></td><td></td></tr>
+<tr data-alive="true"><td><a href="https://mx.akxan.com/" target="_blank" rel="noopener noreferrer">mx.akxan.com</a></td><td>198.18.1.196</td><td></td><td></td><td></td></tr>
+<tr data-alive="true"><td><a href="https://mx1.akxan.com/" target="_blank" rel="noopener noreferrer">mx1.akxan.com</a></td><td>198.18.1.121</td><td></td><td></td><td></td></tr>
+<tr data-alive="true"><td><a href="https://mx2.akxan.com/" target="_blank" rel="noopener noreferrer">mx2.akxan.com</a></td><td>198.18.1.226</td><td></td><td></td><td></td></tr>
+<tr data-alive="true"><td><a href="https://my.akxan.com/" target="_blank" rel="noopener noreferrer">my.akxan.com</a></td><td>198.18.1.219</td><td></td><td></td><td></td></tr>
+<tr data-alive="true"><td><a href="https://mysql.akxan.com/" target="_blank" rel="noopener noreferrer">mysql.akxan.com</a></td><td>198.18.1.55</td><td></td><td></td><td></td></tr>
+<tr data-alive="true"><td><a href="https://netdata.akxan.com/" target="_blank" rel="noopener noreferrer">netdata.akxan.com</a></td><td>198.18.1.58</td><td></td><td></td><td></td></tr>
+<tr data-alive="true"><td><a href="https://new.akxan.com/" target="_blank" rel="noopener noreferrer">new.akxan.com</a></td><td>198.18.1.181</td><td></td><td></td><td></td></tr>
+<tr data-alive="true"><td><a href="https://newapi.akxan.com/" target="_blank" rel="noopener noreferrer">newapi.akxan.com</a></td><td>198.18.1.61</td><td></td><td></td><td></td></tr>
+<tr data-alive="true"><td><a href="https://news.akxan.com/" target="_blank" rel="noopener noreferrer">news.akxan.com</a></td><td>198.18.1.206</td><td></td><td></td><td></td></tr>
+<tr data-alive="true"><td><a href="https://ns.akxan.com/" target="_blank" rel="noopener noreferrer">ns.akxan.com</a></td><td>198.18.1.103</td><td></td><td></td><td></td></tr>
+<tr data-alive="true"><td><a href="https://ns1.akxan.com/" target="_blank" rel="noopener noreferrer">ns1.akxan.com</a></td><td>198.18.1.90</td><td></td><td></td><td></td></tr>
+<tr data-alive="true"><td><a href="https://ns2.akxan.com/" target="_blank" rel="noopener noreferrer">ns2.akxan.com</a></td><td>198.18.1.48</td><td></td><td></td><td></td></tr>
+<tr data-alive="true"><td><a href="https://ns3.akxan.com/" target="_blank" rel="noopener noreferrer">ns3.akxan.com</a></td><td>198.18.1.34</td><td></td><td></td><td></td></tr>
+<tr data-alive="true"><td><a href="https://ns4.akxan.com/" target="_blank" rel="noopener noreferrer">ns4.akxan.com</a></td><td>198.18.2.29</td><td></td><td></td><td></td></tr>
+<tr data-alive="true"><td><a href="https://oauth.akxan.com/" target="_blank" rel="noopener noreferrer">oauth.akxan.com</a></td><td>198.18.1.147</td><td></td><td></td><td></td></tr>
+<tr data-alive="true"><td><a href="https://office.akxan.com/" target="_blank" rel="noopener noreferrer">office.akxan.com</a></td><td>198.18.1.71</td><td></td><td></td><td></td></tr>
+<tr data-alive="true"><td><a href="https://office365.akxan.com/" target="_blank" rel="noopener noreferrer">office365.akxan.com</a></td><td>198.18.1.203</td><td></td><td></td><td></td></tr>
+<tr data-alive="true"><td><a href="https://old.akxan.com/" target="_blank" rel="noopener noreferrer">old.akxan.com</a></td><td>198.18.1.212</td><td></td><td></td><td></td></tr>
+<tr data-alive="true"><td><a href="https://orders.akxan.com/" target="_blank" rel="noopener noreferrer">orders.akxan.com</a></td><td>198.18.2.5</td><td></td><td></td><td></td></tr>
+<tr data-alive="true"><td><a href="https://partner.akxan.com/" target="_blank" rel="noopener noreferrer">partner.akxan.com</a></td><td>198.18.1.57</td><td></td><td></td><td></td></tr>
+<tr data-alive="true"><td><a href="https://partners.akxan.com/" target="_blank" rel="noopener noreferrer">partners.akxan.com</a></td><td>198.18.1.47</td><td></td><td></td><td></td></tr>
+<tr data-alive="true"><td><a href="https://pay.akxan.com/" target="_blank" rel="noopener noreferrer">pay.akxan.com</a></td><td>198.18.1.62</td><td></td><td></td><td></td></tr>
+<tr data-alive="true"><td><a href="https://payment.akxan.com/" target="_blank" rel="noopener noreferrer">payment.akxan.com</a></td><td>198.18.1.64</td><td></td><td></td><td></td></tr>
+<tr data-alive="true"><td><a href="https://payments.akxan.com/" target="_blank" rel="noopener noreferrer">payments.akxan.com</a></td><td>198.18.1.130</td><td></td><td></td><td></td></tr>
+<tr data-alive="true"><td><a href="https://pbx.akxan.com/" target="_blank" rel="noopener noreferrer">pbx.akxan.com</a></td><td>198.18.1.119</td><td></td><td></td><td></td></tr>
+<tr data-alive="true"><td><a href="https://pdf.akxan.com/" target="_blank" rel="noopener noreferrer">pdf.akxan.com</a></td><td>198.18.1.101</td><td></td><td class="status-warn">401</td><td></td></tr>
+<tr data-alive="true"><td><a href="https://pixel.akxan.com/" target="_blank" rel="noopener noreferrer">pixel.akxan.com</a></td><td>198.18.1.41</td><td></td><td></td><td></td></tr>
+<tr data-alive="true"><td><a href="https://pop.akxan.com/" target="_blank" rel="noopener noreferrer">pop.akxan.com</a></td><td>198.18.1.104</td><td></td><td></td><td></td></tr>
+<tr data-alive="true"><td><a href="https://pop3.akxan.com/" target="_blank" rel="noopener noreferrer">pop3.akxan.com</a></td><td>198.18.1.142</td><td></td><td></td><td></td></tr>
+<tr data-alive="true"><td><a href="https://portal.akxan.com/" target="_blank" rel="noopener noreferrer">portal.akxan.com</a></td><td>198.18.1.247</td><td></td><td></td><td></td></tr>
+<tr data-alive="true"><td><a href="https://postgres.akxan.com/" target="_blank" rel="noopener noreferrer">postgres.akxan.com</a></td><td>198.18.1.223</td><td></td><td></td><td></td></tr>
+<tr data-alive="true"><td><a href="https://pre-prod.akxan.com/" target="_blank" rel="noopener noreferrer">pre-prod.akxan.com</a></td><td>198.18.1.87</td><td></td><td></td><td></td></tr>
+<tr data-alive="true"><td><a href="https://preprod.akxan.com/" target="_blank" rel="noopener noreferrer">preprod.akxan.com</a></td><td>198.18.1.145</td><td></td><td></td><td></td></tr>
+<tr data-alive="true"><td><a href="https://press.akxan.com/" target="_blank" rel="noopener noreferrer">press.akxan.com</a></td><td>198.18.1.198</td><td></td><td></td><td></td></tr>
+<tr data-alive="true"><td><a href="https://preview.akxan.com/" target="_blank" rel="noopener noreferrer">preview.akxan.com</a></td><td>198.18.1.134</td><td></td><td></td><td></td></tr>
+<tr data-alive="true"><td><a href="https://private.akxan.com/" target="_blank" rel="noopener noreferrer">private.akxan.com</a></td><td>198.18.1.199</td><td></td><td></td><td></td></tr>
+<tr data-alive="true"><td><a href="https://prod.akxan.com/" target="_blank" rel="noopener noreferrer">prod.akxan.com</a></td><td>198.18.1.164</td><td></td><td></td><td></td></tr>
+<tr data-alive="true"><td><a href="https://production.akxan.com/" target="_blank" rel="noopener noreferrer">production.akxan.com</a></td><td>198.18.1.227</td><td></td><td></td><td></td></tr>
+<tr data-alive="true"><td><a href="https://profile.akxan.com/" target="_blank" rel="noopener noreferrer">profile.akxan.com</a></td><td>198.18.2.14</td><td></td><td></td><td></td></tr>
+<tr data-alive="true"><td><a href="https://prometheus.akxan.com/" target="_blank" rel="noopener noreferrer">prometheus.akxan.com</a></td><td>198.18.1.150</td><td></td><td></td><td></td></tr>
+<tr data-alive="true"><td><a href="https://promo.akxan.com/" target="_blank" rel="noopener noreferrer">promo.akxan.com</a></td><td>198.18.2.10</td><td></td><td></td><td></td></tr>
+<tr data-alive="true"><td><a href="https://proxy.akxan.com/" target="_blank" rel="noopener noreferrer">proxy.akxan.com</a></td><td>198.18.1.77</td><td></td><td></td><td></td></tr>
+<tr data-alive="true"><td><a href="https://public.akxan.com/" target="_blank" rel="noopener noreferrer">public.akxan.com</a></td><td>198.18.1.185</td><td></td><td></td><td></td></tr>
+<tr data-alive="true"><td><a href="https://qa.akxan.com/" target="_blank" rel="noopener noreferrer">qa.akxan.com</a></td><td>198.18.1.177</td><td></td><td></td><td></td></tr>
+<tr data-alive="true"><td><a href="https://rc.akxan.com/" target="_blank" rel="noopener noreferrer">rc.akxan.com</a></td><td>198.18.2.21</td><td></td><td></td><td></td></tr>
+<tr data-alive="true"><td><a href="https://rdp.akxan.com/" target="_blank" rel="noopener noreferrer">rdp.akxan.com</a></td><td>198.18.1.93</td><td></td><td></td><td></td></tr>
+<tr data-alive="true"><td><a href="https://redis.akxan.com/" target="_blank" rel="noopener noreferrer">redis.akxan.com</a></td><td>198.18.1.92</td><td></td><td></td><td></td></tr>
+<tr data-alive="true"><td><a href="https://register.akxan.com/" target="_blank" rel="noopener noreferrer">register.akxan.com</a></td><td>198.18.1.193</td><td></td><td></td><td></td></tr>
+<tr data-alive="true"><td><a href="https://remote.akxan.com/" target="_blank" rel="noopener noreferrer">remote.akxan.com</a></td><td>198.18.1.113</td><td></td><td></td><td></td></tr>
+<tr data-alive="true"><td><a href="https://reseller.akxan.com/" target="_blank" rel="noopener noreferrer">reseller.akxan.com</a></td><td>198.18.1.72</td><td></td><td></td><td></td></tr>
+<tr data-alive="true"><td><a href="https://root.akxan.com/" target="_blank" rel="noopener noreferrer">root.akxan.com</a></td><td>198.18.1.33</td><td></td><td></td><td></td></tr>
+<tr data-alive="true"><td><a href="https://router.akxan.com/" target="_blank" rel="noopener noreferrer">router.akxan.com</a></td><td>198.18.2.3</td><td></td><td></td><td></td></tr>
+<tr data-alive="true"><td><a href="https://rtc.akxan.com/" target="_blank" rel="noopener noreferrer">rtc.akxan.com</a></td><td>198.18.1.229</td><td></td><td></td><td></td></tr>
+<tr data-alive="true"><td><a href="https://s3.akxan.com/" target="_blank" rel="noopener noreferrer">s3.akxan.com</a></td><td>198.18.1.67</td><td></td><td></td><td></td></tr>
+<tr data-alive="true"><td><a href="https://sales.akxan.com/" target="_blank" rel="noopener noreferrer">sales.akxan.com</a></td><td>198.18.2.2</td><td></td><td></td><td></td></tr>
+<tr data-alive="true"><td><a href="https://sandbox.akxan.com/" target="_blank" rel="noopener noreferrer">sandbox.akxan.com</a></td><td>198.18.1.194</td><td></td><td></td><td></td></tr>
+<tr data-alive="true"><td><a href="https://search.akxan.com/" target="_blank" rel="noopener noreferrer">search.akxan.com</a></td><td>198.18.1.216</td><td></td><td></td><td></td></tr>
+<tr data-alive="true"><td><a href="https://secure.akxan.com/" target="_blank" rel="noopener noreferrer">secure.akxan.com</a></td><td>198.18.1.188</td><td></td><td></td><td></td></tr>
+<tr data-alive="true"><td><a href="https://security.akxan.com/" target="_blank" rel="noopener noreferrer">security.akxan.com</a></td><td>198.18.1.254</td><td></td><td></td><td></td></tr>
+<tr data-alive="true"><td><a href="https://sftp.akxan.com/" target="_blank" rel="noopener noreferrer">sftp.akxan.com</a></td><td>198.18.1.52</td><td></td><td></td><td></td></tr>
+<tr data-alive="true"><td><a href="https://shop.akxan.com/" target="_blank" rel="noopener noreferrer">shop.akxan.com</a></td><td>198.18.1.98</td><td></td><td></td><td></td></tr>
+<tr data-alive="true"><td><a href="https://signin.akxan.com/" target="_blank" rel="noopener noreferrer">signin.akxan.com</a></td><td>198.18.1.170</td><td></td><td></td><td></td></tr>
+<tr data-alive="true"><td><a href="https://signup.akxan.com/" target="_blank" rel="noopener noreferrer">signup.akxan.com</a></td><td>198.18.1.211</td><td></td><td></td><td></td></tr>
+<tr data-alive="true"><td><a href="https://sip.akxan.com/" target="_blank" rel="noopener noreferrer">sip.akxan.com</a></td><td>198.18.1.243</td><td></td><td></td><td></td></tr>
+<tr data-alive="true"><td><a href="https://sit.akxan.com/" target="_blank" rel="noopener noreferrer">sit.akxan.com</a></td><td>198.18.1.231</td><td></td><td></td><td></td></tr>
+<tr data-alive="true"><td><a href="https://smtp.akxan.com/" target="_blank" rel="noopener noreferrer">smtp.akxan.com</a></td><td>198.18.1.144</td><td></td><td></td><td></td></tr>
+<tr data-alive="true"><td><a href="https://solr.akxan.com/" target="_blank" rel="noopener noreferrer">solr.akxan.com</a></td><td>198.18.1.233</td><td></td><td></td><td></td></tr>
+<tr data-alive="true"><td><a href="https://ssh.akxan.com/" target="_blank" rel="noopener noreferrer">ssh.akxan.com</a></td><td>198.18.1.85</td><td></td><td></td><td></td></tr>
+<tr data-alive="true"><td><a href="https://ssl.akxan.com/" target="_blank" rel="noopener noreferrer">ssl.akxan.com</a></td><td>198.18.1.97</td><td></td><td></td><td></td></tr>
+<tr data-alive="true"><td><a href="https://sso.akxan.com/" target="_blank" rel="noopener noreferrer">sso.akxan.com</a></td><td>198.18.1.156</td><td></td><td></td><td></td></tr>
+<tr data-alive="true"><td><a href="https://stage.akxan.com/" target="_blank" rel="noopener noreferrer">stage.akxan.com</a></td><td>198.18.1.210</td><td></td><td></td><td></td></tr>
+<tr data-alive="true"><td><a href="https://staging.akxan.com/" target="_blank" rel="noopener noreferrer">staging.akxan.com</a></td><td>198.18.1.99</td><td></td><td></td><td></td></tr>
+<tr data-alive="true"><td><a href="https://static.akxan.com/" target="_blank" rel="noopener noreferrer">static.akxan.com</a></td><td>198.18.2.17</td><td></td><td></td><td></td></tr>
+<tr data-alive="true"><td><a href="https://status.akxan.com/" target="_blank" rel="noopener noreferrer">status.akxan.com</a></td><td>198.18.1.32</td><td></td><td class="status-warn">401</td><td></td></tr>
+<tr data-alive="true"><td><a href="https://storage.akxan.com/" target="_blank" rel="noopener noreferrer">storage.akxan.com</a></td><td>198.18.1.244</td><td></td><td></td><td></td></tr>
+<tr data-alive="true"><td><a href="https://store.akxan.com/" target="_blank" rel="noopener noreferrer">store.akxan.com</a></td><td>198.18.1.202</td><td></td><td></td><td></td></tr>
+<tr data-alive="true"><td><a href="https://stream.akxan.com/" target="_blank" rel="noopener noreferrer">stream.akxan.com</a></td><td>198.18.1.249</td><td></td><td></td><td></td></tr>
+<tr data-alive="true"><td><a href="https://streaming.akxan.com/" target="_blank" rel="noopener noreferrer">streaming.akxan.com</a></td><td>198.18.1.56</td><td></td><td></td><td></td></tr>
+<tr data-alive="true"><td><a href="https://sub2api.akxan.com/" target="_blank" rel="noopener noreferrer">sub2api.akxan.com</a></td><td>198.18.1.155</td><td></td><td class="status-ok">200</td><td>Matrix - AI API Gateway</td></tr>
+<tr data-alive="true"><td><a href="https://support.akxan.com/" target="_blank" rel="noopener noreferrer">support.akxan.com</a></td><td>198.18.1.114</td><td></td><td></td><td></td></tr>
+<tr data-alive="true"><td><a href="https://svn.akxan.com/" target="_blank" rel="noopener noreferrer">svn.akxan.com</a></td><td>198.18.1.190</td><td></td><td></td><td></td></tr>
+<tr data-alive="true"><td><a href="https://syslog.akxan.com/" target="_blank" rel="noopener noreferrer">syslog.akxan.com</a></td><td>198.18.1.63</td><td></td><td></td><td></td></tr>
+<tr data-alive="true"><td><a href="https://tag.akxan.com/" target="_blank" rel="noopener noreferrer">tag.akxan.com</a></td><td>198.18.1.255</td><td></td><td></td><td></td></tr>
+<tr data-alive="true"><td><a href="https://tagmanager.akxan.com/" target="_blank" rel="noopener noreferrer">tagmanager.akxan.com</a></td><td>198.18.1.215</td><td></td><td></td><td></td></tr>
+<tr data-alive="true"><td><a href="https://tags.akxan.com/" target="_blank" rel="noopener noreferrer">tags.akxan.com</a></td><td>198.18.2.8</td><td></td><td></td><td></td></tr>
+<tr data-alive="true"><td><a href="https://temp.akxan.com/" target="_blank" rel="noopener noreferrer">temp.akxan.com</a></td><td>198.18.1.126</td><td></td><td></td><td></td></tr>
+<tr data-alive="true"><td><a href="https://terminal.akxan.com/" target="_blank" rel="noopener noreferrer">terminal.akxan.com</a></td><td>198.18.1.73</td><td></td><td class="status-warn">401</td><td></td></tr>
+<tr data-alive="true"><td><a href="https://test.akxan.com/" target="_blank" rel="noopener noreferrer">test.akxan.com</a></td><td>198.18.1.200</td><td></td><td></td><td></td></tr>
+<tr data-alive="true"><td><a href="https://test1.akxan.com/" target="_blank" rel="noopener noreferrer">test1.akxan.com</a></td><td>198.18.1.112</td><td></td><td></td><td></td></tr>
+<tr data-alive="true"><td><a href="https://test2.akxan.com/" target="_blank" rel="noopener noreferrer">test2.akxan.com</a></td><td>198.18.1.122</td><td></td><td></td><td></td></tr>
+<tr data-alive="true"><td><a href="https://testing.akxan.com/" target="_blank" rel="noopener noreferrer">testing.akxan.com</a></td><td>198.18.1.234</td><td></td><td></td><td></td></tr>
+<tr data-alive="true"><td><a href="https://tmp.akxan.com/" target="_blank" rel="noopener noreferrer">tmp.akxan.com</a></td><td>198.18.1.213</td><td></td><td></td><td></td></tr>
+<tr data-alive="true"><td><a href="https://tracking.akxan.com/" target="_blank" rel="noopener noreferrer">tracking.akxan.com</a></td><td>198.18.2.22</td><td></td><td></td><td></td></tr>
+<tr data-alive="true"><td><a href="https://uat.akxan.com/" target="_blank" rel="noopener noreferrer">uat.akxan.com</a></td><td>198.18.1.102</td><td></td><td></td><td></td></tr>
+<tr data-alive="true"><td><a href="https://upload.akxan.com/" target="_blank" rel="noopener noreferrer">upload.akxan.com</a></td><td>198.18.1.35</td><td></td><td></td><td></td></tr>
+<tr data-alive="true"><td><a href="https://uploads.akxan.com/" target="_blank" rel="noopener noreferrer">uploads.akxan.com</a></td><td>198.18.1.38</td><td></td><td></td><td></td></tr>
+<tr data-alive="true"><td><a href="https://user.akxan.com/" target="_blank" rel="noopener noreferrer">user.akxan.com</a></td><td>198.18.2.34</td><td></td><td></td><td></td></tr>
+<tr data-alive="true"><td><a href="https://users.akxan.com/" target="_blank" rel="noopener noreferrer">users.akxan.com</a></td><td>198.18.1.149</td><td></td><td></td><td></td></tr>
+<tr data-alive="true"><td><a href="https://vendor.akxan.com/" target="_blank" rel="noopener noreferrer">vendor.akxan.com</a></td><td>198.18.1.83</td><td></td><td></td><td></td></tr>
+<tr data-alive="true"><td><a href="https://video.akxan.com/" target="_blank" rel="noopener noreferrer">video.akxan.com</a></td><td>198.18.1.137</td><td></td><td class="status-ok">200</td><td>Video Downloader</td></tr>
+<tr data-alive="true"><td><a href="https://videos.akxan.com/" target="_blank" rel="noopener noreferrer">videos.akxan.com</a></td><td>198.18.1.218</td><td></td><td></td><td></td></tr>
+<tr data-alive="true"><td><a href="https://voip.akxan.com/" target="_blank" rel="noopener noreferrer">voip.akxan.com</a></td><td>198.18.1.160</td><td></td><td></td><td></td></tr>
+<tr data-alive="true"><td><a href="https://vpn.akxan.com/" target="_blank" rel="noopener noreferrer">vpn.akxan.com</a></td><td>198.18.1.123</td><td></td><td></td><td></td></tr>
+<tr data-alive="true"><td><a href="https://vpn1.akxan.com/" target="_blank" rel="noopener noreferrer">vpn1.akxan.com</a></td><td>198.18.1.172</td><td></td><td></td><td></td></tr>
+<tr data-alive="true"><td><a href="https://vpn2.akxan.com/" target="_blank" rel="noopener noreferrer">vpn2.akxan.com</a></td><td>198.18.1.108</td><td></td><td></td><td></td></tr>
+<tr data-alive="true"><td><a href="https://wap.akxan.com/" target="_blank" rel="noopener noreferrer">wap.akxan.com</a></td><td>198.18.1.209</td><td></td><td></td><td></td></tr>
+<tr data-alive="true"><td><a href="https://web.akxan.com/" target="_blank" rel="noopener noreferrer">web.akxan.com</a></td><td>198.18.1.187</td><td></td><td></td><td></td></tr>
+<tr data-alive="true"><td><a href="https://web1.akxan.com/" target="_blank" rel="noopener noreferrer">web1.akxan.com</a></td><td>198.18.1.246</td><td></td><td></td><td></td></tr>
+<tr data-alive="true"><td><a href="https://web2.akxan.com/" target="_blank" rel="noopener noreferrer">web2.akxan.com</a></td><td>198.18.2.28</td><td></td><td></td><td></td></tr>
+<tr data-alive="true"><td><a href="https://webdisk.akxan.com/" target="_blank" rel="noopener noreferrer">webdisk.akxan.com</a></td><td>198.18.1.184</td><td></td><td></td><td></td></tr>
+<tr data-alive="true"><td><a href="https://webinar.akxan.com/" target="_blank" rel="noopener noreferrer">webinar.akxan.com</a></td><td>198.18.2.9</td><td></td><td></td><td></td></tr>
+<tr data-alive="true"><td><a href="https://webmail.akxan.com/" target="_blank" rel="noopener noreferrer">webmail.akxan.com</a></td><td>198.18.1.81</td><td></td><td></td><td></td></tr>
+<tr data-alive="true"><td><a href="https://webmail2.akxan.com/" target="_blank" rel="noopener noreferrer">webmail2.akxan.com</a></td><td>198.18.2.13</td><td></td><td></td><td></td></tr>
+<tr data-alive="true"><td><a href="https://websocket.akxan.com/" target="_blank" rel="noopener noreferrer">websocket.akxan.com</a></td><td>198.18.1.204</td><td></td><td></td><td></td></tr>
+<tr data-alive="true"><td><a href="https://whm.akxan.com/" target="_blank" rel="noopener noreferrer">whm.akxan.com</a></td><td>198.18.1.252</td><td></td><td></td><td></td></tr>
+<tr data-alive="true"><td><a href="https://wiki.akxan.com/" target="_blank" rel="noopener noreferrer">wiki.akxan.com</a></td><td>198.18.1.94</td><td></td><td></td><td></td></tr>
+<tr data-alive="true"><td><a href="https://ws.akxan.com/" target="_blank" rel="noopener noreferrer">ws.akxan.com</a></td><td>198.18.1.176</td><td></td><td></td><td></td></tr>
+<tr data-alive="true"><td><a href="https://www.akxan.com/" target="_blank" rel="noopener noreferrer">www.akxan.com</a></td><td>198.18.1.146</td><td></td><td class="status-ok">200</td><td>Finder Logistics - Comparador de Envíos | Logística Inteligente</td></tr>
+<tr data-alive="true"><td><a href="https://www1.akxan.com/" target="_blank" rel="noopener noreferrer">www1.akxan.com</a></td><td>198.18.1.139</td><td></td><td></td><td></td></tr>
+<tr data-alive="true"><td><a href="https://www2.akxan.com/" target="_blank" rel="noopener noreferrer">www2.akxan.com</a></td><td>198.18.1.158</td><td></td><td></td><td></td></tr>
+<tr data-alive="true"><td><a href="https://www3.akxan.com/" target="_blank" rel="noopener noreferrer">www3.akxan.com</a></td><td>198.18.1.74</td><td></td><td></td><td></td></tr>
+</tbody></table>
+<footer class="colophon">
+Generated by <a href="https://github.com/Akxan/SpyEyes" target="_blank" rel="noopener noreferrer">SpyEyes</a>
+ · OSINT Toolkit
+</footer>
+</body>
+</html>

@@ -736,15 +736,15 @@ class TestCliParser:
 # _maybe_save 真写文件
 # ------------------------------------------------------------------
 class TestDefaultReportDir:
-    """v1.6.3:跨平台统一行为 — cwd/下载/ + SPYEYES_REPORTS_DIR 覆盖。"""
+    """v1.6.4:跨平台统一行为 — cwd/Downloads/ + SPYEYES_REPORTS_DIR 覆盖。"""
 
-    def test_default_creates_xiazai_in_cwd(self, monkeypatch, tmp_path):
-        """默认行为:在当前 cwd 下创建 '下载' 子目录。"""
+    def test_default_creates_downloads_in_cwd(self, monkeypatch, tmp_path):
+        """默认行为:在当前 cwd 下创建 'Downloads' 子目录(v1.6.4 改为英文)。"""
         monkeypatch.delenv('SPYEYES_REPORTS_DIR', raising=False)
         monkeypatch.chdir(tmp_path)
         result = gt._default_report_dir()
-        # 路径应是 cwd/下载
-        assert os.path.basename(result) == '下载'
+        # 路径应是 cwd/Downloads
+        assert os.path.basename(result) == 'Downloads'
         # 目录已被自动创建
         assert os.path.isdir(result)
 
@@ -785,8 +785,8 @@ class TestDefaultReportDir:
         monkeypatch.setenv('SPYEYES_REPORTS_DIR', '   ')  # 仅空白
         monkeypatch.chdir(tmp_path)
         result = gt._default_report_dir()
-        # 应走默认 cwd/下载/
-        assert os.path.basename(result) == '下载'
+        # 应走默认 cwd/Downloads/
+        assert os.path.basename(result) == 'Downloads'
 
 
 class TestMaybeSave:

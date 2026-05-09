@@ -18,6 +18,44 @@ This project adheres to [Keep a Changelog](https://keepachangelog.com/en/1.1.0/)
 
 ---
 
+## [1.6.4] — 2026-05-09
+
+🐛 **报告默认目录改回英文 `Downloads/`**(用户反馈)
+
+### 背景
+
+v1.6.3 用了中文 `下载/`,用户反馈太"中文化",在某些环境不友好:
+
+- SSH / scp / rsync 传输路径含非 ASCII 字符可能需要额外转义
+- Windows CMD / 老 PowerShell 处理 Unicode 路径有时显示乱码
+- 部分 CI/CD pipeline 对非 ASCII 文件名敏感
+- 国际协作 / Issue 截图里 `下载/` 让英文用户困惑
+
+### 修复
+
+`下载/` → `Downloads/`(单数大写,沿袭 macOS / Windows 标准命名)
+
+```bash
+cd ~/work
+spyeyes subdomain example.com --save report.html
+# v1.6.3:→ ~/work/下载/report.html  ← 中文
+# v1.6.4:→ ~/work/Downloads/report.html  ← 英文(现在)
+```
+
+### 已经存的旧报告怎么办
+
+留在 `下载/` 文件夹里的旧报告**不会被自动迁移**。如果需要,手动 `mv ./下载/* ./Downloads/` 即可。
+
+### Tests
+
+5 个测试更新断言从 `'下载'` 改成 `'Downloads'`,共 **473 全绿**。
+
+### Packaging
+
+- `__version__` 1.6.3 → 1.6.4
+
+---
+
 ## [1.6.3] — 2026-05-09
 
 ✨ **报告默认保存目录跨平台统一 — `<cwd>/下载/`**(用户反馈)

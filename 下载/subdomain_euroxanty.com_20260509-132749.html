@@ -1,0 +1,328 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>SpyEyes 报告 — euroxanty.com</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@400;500;600;700&family=Crimson+Pro:ital,wght@0,400;0,500;0,600;1,400&family=JetBrains+Mono:wght@400;500;700&family=Noto+Serif+SC:wght@400;500;700&display=swap" rel="stylesheet">
+<style>
+:root{
+--bg:#fafaf5;--surface:#fff;--ink:#0a0a0c;--rule:#0a0a0c;
+--muted:#6b6657;--soft:#e8e3d6;--row-alt:#f4f0e6;
+--accent:#c8102e;--link:#1d4ed8;--success:#1f5837;--warn:#a06800;
+--serif:"Cormorant Garamond","Noto Serif SC",Georgia,"Songti SC",serif;
+--body:"Crimson Pro","Noto Serif SC",Georgia,"Songti SC",serif;
+--mono:"JetBrains Mono","Sarasa Mono SC",ui-monospace,Menlo,monospace;
+}
+*{box-sizing:border-box}
+html,body{margin:0;padding:0}
+body{background:var(--bg);color:var(--ink);font-family:var(--body);font-size:17px;line-height:1.7;max-width:1280px;margin:3em auto;padding:0 3em 4em;letter-spacing:0.005em;-webkit-font-smoothing:antialiased;text-rendering:optimizeLegibility}
+@media(max-width:1340px){body{max-width:none;margin:2em 4em 3em}}
+@media(max-width:720px){body{margin:1em;padding:0 1em 2em;font-size:15px}}
+.masthead{border-top:5px double var(--ink);border-bottom:5px double var(--ink);padding:1.6em 0 1.4em;margin-bottom:2.5em;text-align:center;position:relative}
+.stamp{display:inline-block;border:1.5px solid var(--accent);color:var(--accent);font-family:var(--mono);font-size:0.65em;letter-spacing:0.28em;text-transform:uppercase;padding:0.3em 0.9em;margin-bottom:0.8em;font-weight:700;transform:rotate(-1.5deg)}
+.masthead h1{font-family:var(--serif);font-weight:500;font-size:3.2em;line-height:1.05;letter-spacing:-0.03em;margin:0.1em 0;color:var(--ink)}
+.masthead .subtitle{font-family:var(--mono);font-size:0.7em;letter-spacing:0.35em;text-transform:uppercase;color:var(--muted);margin-top:0.4em}
+.meta{font-family:var(--mono);font-size:0.78em;display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:1.5em;padding:1em 0;border-bottom:1px solid var(--rule);margin-bottom:2em}
+.meta-item{display:flex;flex-direction:column;gap:0.3em}
+.meta-label{text-transform:uppercase;letter-spacing:0.18em;font-size:0.85em;color:var(--muted);font-weight:500}
+.meta-value{color:var(--ink);font-weight:700;word-break:break-all}
+body{counter-reset:section}
+h2{font-family:var(--serif);font-weight:500;font-size:2em;line-height:1.2;margin:2.5em 0 0.8em;padding-bottom:0.4em;border-bottom:1px solid var(--rule);display:flex;align-items:baseline;gap:0.6em;letter-spacing:-0.01em}
+h2::before{content:counter(section,upper-roman);counter-increment:section;font-family:var(--mono);font-size:0.45em;color:var(--muted);letter-spacing:0.15em;font-weight:500;flex-shrink:0}
+h2 code{background:transparent;padding:0;font-size:0.8em;color:var(--accent)}
+h3,h3.cat{font-family:var(--serif);font-weight:600;font-size:1.3em;margin:1.8em 0 0.7em;padding-left:0.7em;border-left:3px solid var(--accent);color:var(--ink);letter-spacing:-0.005em}
+table{border-collapse:collapse;width:100%;margin:1em 0 1.5em;font-family:var(--mono);font-size:0.85em;background:var(--surface);border-top:1.5px solid var(--ink);border-bottom:1.5px solid var(--ink)}
+thead tr{border-bottom:1px solid var(--ink)}
+th{text-align:left;padding:0.85em 1em;font-family:var(--serif);font-weight:700;font-size:0.95em;letter-spacing:0.02em;color:var(--ink);background:var(--soft);border-bottom:1.5px solid var(--ink);white-space:nowrap;position:sticky;top:0;z-index:5;box-shadow:0 2px 0 0 var(--ink),0 4px 6px -2px rgba(10,10,12,0.1)}
+td{padding:0.7em 1em;border-bottom:1px solid #e8e3d6;vertical-align:top;word-break:normal;overflow-wrap:anywhere}
+td:first-child{white-space:nowrap;font-weight:500}
+@media(max-width:900px){td:first-child{white-space:normal}}
+tr:nth-child(even) td{background:var(--row-alt)}
+tr[data-alive="true"] td:first-child{border-left:3px solid #1f5837;padding-left:calc(1em - 3px)}
+tr[data-alive="false"] td:first-child{border-left:3px solid #c8c1ad;padding-left:calc(1em - 3px);color:var(--muted)}
+tr[data-alive="false"] td{color:var(--muted)}
+tbody tr:hover td{background:var(--soft);transition:background 0.15s ease}
+tbody tr:hover{box-shadow:inset 0 0 0 0.5px var(--ink)}
+td.status-ok{color:var(--success);font-weight:700}
+td.status-redir{color:var(--link);font-weight:600}
+td.status-warn{color:var(--warn);font-weight:600}
+td.status-err{color:var(--accent);font-weight:700}
+a{color:var(--link);text-decoration:underline;text-decoration-thickness:0.5px;text-underline-offset:0.22em;transition:text-decoration-thickness 0.15s ease}
+a:hover{text-decoration-thickness:1.5px}
+code{font-family:var(--mono);background:var(--soft);padding:0.05em 0.45em;border-radius:1px;font-size:0.95em;color:var(--ink)}
+.error{color:#7a0a0a;background:#fdf3f3;border-left:4px solid var(--accent);padding:1em 1.4em;margin:1em 0;font-family:var(--body);font-style:italic}
+.error b{font-style:normal;text-transform:uppercase;letter-spacing:0.1em;font-size:0.85em;font-family:var(--mono)}
+.summary{font-family:var(--serif);font-size:1.15em;font-style:italic;color:var(--muted);margin:0.5em 0 1.5em;padding-left:1em;border-left:2px solid var(--soft)}
+.colophon{margin-top:5em;padding-top:1.5em;border-top:1px solid var(--rule);font-family:var(--mono);font-size:0.7em;color:var(--muted);letter-spacing:0.18em;text-transform:uppercase;text-align:center}
+.colophon a{color:var(--muted);text-decoration:none}
+.colophon a:hover{color:var(--ink)}
+@media print{body{max-width:none;margin:0;padding:1em;font-size:11pt}.masthead,h2,h3{break-after:avoid}table{break-inside:avoid}}
+</style>
+</head><body>
+<header class="masthead">
+<div class="stamp">机密 · OSINT 简报</div>
+<h1>SpyEyes 报告</h1>
+<div class="subtitle">开源情报调查档案</div>
+</header>
+<div class="meta">
+<div class="meta-item"><span class="meta-label">命令</span><span class="meta-value">subdomain</span></div>
+<div class="meta-item"><span class="meta-label">查询</span><span class="meta-value">euroxanty.com</span></div>
+<div class="meta-item"><span class="meta-label">生成时间</span><span class="meta-value">2026-05-09 13:28:09</span></div>
+</div>
+<h2>子域名枚举：euroxanty.com</h2>
+<p><b>共发现 243 个 · 活跃 243 个 · 来自 2 个数据源</b></p>
+<div class="error">⚠ 检测到通配符 DNS — 结果可信度降低</div>
+<table><thead><tr><th>主机名</th><th>IP 地址</th><th>CNAME</th><th>HTTP</th><th>标题</th></tr></thead><tbody>
+<tr data-alive="true"><td><a href="https://about.euroxanty.com/" target="_blank" rel="noopener noreferrer">about.euroxanty.com</a></td><td>198.18.0.128</td><td></td><td></td><td></td></tr>
+<tr data-alive="true"><td><a href="https://account.euroxanty.com/" target="_blank" rel="noopener noreferrer">account.euroxanty.com</a></td><td>198.18.0.60</td><td></td><td></td><td></td></tr>
+<tr data-alive="true"><td><a href="https://accounts.euroxanty.com/" target="_blank" rel="noopener noreferrer">accounts.euroxanty.com</a></td><td>198.18.0.165</td><td></td><td></td><td></td></tr>
+<tr data-alive="true"><td><a href="https://ad.euroxanty.com/" target="_blank" rel="noopener noreferrer">ad.euroxanty.com</a></td><td>198.18.0.145</td><td></td><td></td><td></td></tr>
+<tr data-alive="true"><td><a href="https://admin.euroxanty.com/" target="_blank" rel="noopener noreferrer">admin.euroxanty.com</a></td><td>198.18.0.95</td><td></td><td></td><td></td></tr>
+<tr data-alive="true"><td><a href="https://administrator.euroxanty.com/" target="_blank" rel="noopener noreferrer">administrator.euroxanty.com</a></td><td>198.18.0.188</td><td></td><td></td><td></td></tr>
+<tr data-alive="true"><td><a href="https://ads.euroxanty.com/" target="_blank" rel="noopener noreferrer">ads.euroxanty.com</a></td><td>198.18.0.51</td><td></td><td></td><td></td></tr>
+<tr data-alive="true"><td><a href="https://alpha.euroxanty.com/" target="_blank" rel="noopener noreferrer">alpha.euroxanty.com</a></td><td>198.18.0.82</td><td></td><td></td><td></td></tr>
+<tr data-alive="true"><td><a href="https://analytics.euroxanty.com/" target="_blank" rel="noopener noreferrer">analytics.euroxanty.com</a></td><td>198.18.0.233</td><td></td><td></td><td></td></tr>
+<tr data-alive="true"><td><a href="https://api-dev.euroxanty.com/" target="_blank" rel="noopener noreferrer">api-dev.euroxanty.com</a></td><td>198.18.0.137</td><td></td><td></td><td></td></tr>
+<tr data-alive="true"><td><a href="https://api-prod.euroxanty.com/" target="_blank" rel="noopener noreferrer">api-prod.euroxanty.com</a></td><td>198.18.0.215</td><td></td><td></td><td></td></tr>
+<tr data-alive="true"><td><a href="https://api-staging.euroxanty.com/" target="_blank" rel="noopener noreferrer">api-staging.euroxanty.com</a></td><td>198.18.0.72</td><td></td><td></td><td></td></tr>
+<tr data-alive="true"><td><a href="https://api-test.euroxanty.com/" target="_blank" rel="noopener noreferrer">api-test.euroxanty.com</a></td><td>198.18.0.198</td><td></td><td></td><td></td></tr>
+<tr data-alive="true"><td><a href="https://api.euroxanty.com/" target="_blank" rel="noopener noreferrer">api.euroxanty.com</a></td><td>198.18.0.155</td><td></td><td></td><td></td></tr>
+<tr data-alive="true"><td><a href="https://api1.euroxanty.com/" target="_blank" rel="noopener noreferrer">api1.euroxanty.com</a></td><td>198.18.0.250</td><td></td><td></td><td></td></tr>
+<tr data-alive="true"><td><a href="https://api2.euroxanty.com/" target="_blank" rel="noopener noreferrer">api2.euroxanty.com</a></td><td>198.18.0.74</td><td></td><td></td><td></td></tr>
+<tr data-alive="true"><td><a href="https://app.euroxanty.com/" target="_blank" rel="noopener noreferrer">app.euroxanty.com</a></td><td>198.18.0.120</td><td></td><td></td><td></td></tr>
+<tr data-alive="true"><td><a href="https://application.euroxanty.com/" target="_blank" rel="noopener noreferrer">application.euroxanty.com</a></td><td>198.18.0.205</td><td></td><td></td><td></td></tr>
+<tr data-alive="true"><td><a href="https://apps.euroxanty.com/" target="_blank" rel="noopener noreferrer">apps.euroxanty.com</a></td><td>198.18.1.10</td><td></td><td></td><td></td></tr>
+<tr data-alive="true"><td><a href="https://assets.euroxanty.com/" target="_blank" rel="noopener noreferrer">assets.euroxanty.com</a></td><td>198.18.0.225</td><td></td><td></td><td></td></tr>
+<tr data-alive="true"><td><a href="https://auth.euroxanty.com/" target="_blank" rel="noopener noreferrer">auth.euroxanty.com</a></td><td>198.18.0.208</td><td></td><td></td><td></td></tr>
+<tr data-alive="true"><td><a href="http://autodiscover.euroxanty.com/" target="_blank" rel="noopener noreferrer">autodiscover.euroxanty.com</a></td><td>198.18.0.234</td><td>autodiscover.loading.es</td><td class="status-ok">200</td><td></td></tr>
+<tr data-alive="true"><td><a href="https://aws.euroxanty.com/" target="_blank" rel="noopener noreferrer">aws.euroxanty.com</a></td><td>198.18.1.1</td><td></td><td></td><td></td></tr>
+<tr data-alive="true"><td><a href="https://azure.euroxanty.com/" target="_blank" rel="noopener noreferrer">azure.euroxanty.com</a></td><td>198.18.0.130</td><td></td><td></td><td></td></tr>
+<tr data-alive="true"><td><a href="https://backup.euroxanty.com/" target="_blank" rel="noopener noreferrer">backup.euroxanty.com</a></td><td>198.18.0.97</td><td></td><td></td><td></td></tr>
+<tr data-alive="true"><td><a href="https://bak.euroxanty.com/" target="_blank" rel="noopener noreferrer">bak.euroxanty.com</a></td><td>198.18.0.43</td><td></td><td></td><td></td></tr>
+<tr data-alive="true"><td><a href="https://bamboo.euroxanty.com/" target="_blank" rel="noopener noreferrer">bamboo.euroxanty.com</a></td><td>198.18.0.122</td><td></td><td></td><td></td></tr>
+<tr data-alive="true"><td><a href="https://beta.euroxanty.com/" target="_blank" rel="noopener noreferrer">beta.euroxanty.com</a></td><td>198.18.0.111</td><td></td><td></td><td></td></tr>
+<tr data-alive="true"><td><a href="https://billing.euroxanty.com/" target="_blank" rel="noopener noreferrer">billing.euroxanty.com</a></td><td>198.18.0.112</td><td></td><td></td><td></td></tr>
+<tr data-alive="true"><td><a href="https://bitbucket.euroxanty.com/" target="_blank" rel="noopener noreferrer">bitbucket.euroxanty.com</a></td><td>198.18.0.247</td><td></td><td></td><td></td></tr>
+<tr data-alive="true"><td><a href="https://blog.euroxanty.com/" target="_blank" rel="noopener noreferrer">blog.euroxanty.com</a></td><td>198.18.0.217</td><td></td><td></td><td></td></tr>
+<tr data-alive="true"><td><a href="https://build.euroxanty.com/" target="_blank" rel="noopener noreferrer">build.euroxanty.com</a></td><td>198.18.0.177</td><td></td><td></td><td></td></tr>
+<tr data-alive="true"><td><a href="https://campaign.euroxanty.com/" target="_blank" rel="noopener noreferrer">campaign.euroxanty.com</a></td><td>198.18.0.236</td><td></td><td></td><td></td></tr>
+<tr data-alive="true"><td><a href="https://careers.euroxanty.com/" target="_blank" rel="noopener noreferrer">careers.euroxanty.com</a></td><td>198.18.0.253</td><td></td><td></td><td></td></tr>
+<tr data-alive="true"><td><a href="https://cart.euroxanty.com/" target="_blank" rel="noopener noreferrer">cart.euroxanty.com</a></td><td>198.18.0.125</td><td></td><td></td><td></td></tr>
+<tr data-alive="true"><td><a href="https://cdn.euroxanty.com/" target="_blank" rel="noopener noreferrer">cdn.euroxanty.com</a></td><td>198.18.0.235</td><td></td><td></td><td></td></tr>
+<tr data-alive="true"><td><a href="https://cdn1.euroxanty.com/" target="_blank" rel="noopener noreferrer">cdn1.euroxanty.com</a></td><td>198.18.0.108</td><td></td><td></td><td></td></tr>
+<tr data-alive="true"><td><a href="https://cdn2.euroxanty.com/" target="_blank" rel="noopener noreferrer">cdn2.euroxanty.com</a></td><td>198.18.0.190</td><td></td><td></td><td></td></tr>
+<tr data-alive="true"><td><a href="https://cert.euroxanty.com/" target="_blank" rel="noopener noreferrer">cert.euroxanty.com</a></td><td>198.18.0.161</td><td></td><td></td><td></td></tr>
+<tr data-alive="true"><td><a href="https://chat.euroxanty.com/" target="_blank" rel="noopener noreferrer">chat.euroxanty.com</a></td><td>198.18.1.7</td><td></td><td></td><td></td></tr>
+<tr data-alive="true"><td><a href="https://checkout.euroxanty.com/" target="_blank" rel="noopener noreferrer">checkout.euroxanty.com</a></td><td>198.18.0.192</td><td></td><td></td><td></td></tr>
+<tr data-alive="true"><td><a href="https://ci.euroxanty.com/" target="_blank" rel="noopener noreferrer">ci.euroxanty.com</a></td><td>198.18.0.163</td><td></td><td></td><td></td></tr>
+<tr data-alive="true"><td><a href="https://cloud.euroxanty.com/" target="_blank" rel="noopener noreferrer">cloud.euroxanty.com</a></td><td>198.18.1.26</td><td></td><td></td><td></td></tr>
+<tr data-alive="true"><td><a href="https://community.euroxanty.com/" target="_blank" rel="noopener noreferrer">community.euroxanty.com</a></td><td>198.18.0.119</td><td></td><td></td><td></td></tr>
+<tr data-alive="true"><td><a href="https://confluence.euroxanty.com/" target="_blank" rel="noopener noreferrer">confluence.euroxanty.com</a></td><td>198.18.0.226</td><td></td><td></td><td></td></tr>
+<tr data-alive="true"><td><a href="https://contact.euroxanty.com/" target="_blank" rel="noopener noreferrer">contact.euroxanty.com</a></td><td>198.18.0.169</td><td></td><td></td><td></td></tr>
+<tr data-alive="true"><td><a href="https://cpanel.euroxanty.com/" target="_blank" rel="noopener noreferrer">cpanel.euroxanty.com</a></td><td>198.18.0.216</td><td></td><td></td><td></td></tr>
+<tr data-alive="true"><td><a href="https://crm.euroxanty.com/" target="_blank" rel="noopener noreferrer">crm.euroxanty.com</a></td><td>198.18.0.91</td><td></td><td></td><td></td></tr>
+<tr data-alive="true"><td><a href="https://dashboard.euroxanty.com/" target="_blank" rel="noopener noreferrer">dashboard.euroxanty.com</a></td><td>198.18.0.53</td><td></td><td></td><td></td></tr>
+<tr data-alive="true"><td><a href="https://database.euroxanty.com/" target="_blank" rel="noopener noreferrer">database.euroxanty.com</a></td><td>198.18.0.62</td><td></td><td></td><td></td></tr>
+<tr data-alive="true"><td><a href="https://db.euroxanty.com/" target="_blank" rel="noopener noreferrer">db.euroxanty.com</a></td><td>198.18.1.8</td><td></td><td></td><td></td></tr>
+<tr data-alive="true"><td><a href="https://demo.euroxanty.com/" target="_blank" rel="noopener noreferrer">demo.euroxanty.com</a></td><td>198.18.0.85</td><td></td><td></td><td></td></tr>
+<tr data-alive="true"><td><a href="https://deploy.euroxanty.com/" target="_blank" rel="noopener noreferrer">deploy.euroxanty.com</a></td><td>198.18.1.25</td><td></td><td></td><td></td></tr>
+<tr data-alive="true"><td><a href="https://dev.euroxanty.com/" target="_blank" rel="noopener noreferrer">dev.euroxanty.com</a></td><td>198.18.0.179</td><td></td><td></td><td></td></tr>
+<tr data-alive="true"><td><a href="https://dev1.euroxanty.com/" target="_blank" rel="noopener noreferrer">dev1.euroxanty.com</a></td><td>198.18.1.27</td><td></td><td></td><td></td></tr>
+<tr data-alive="true"><td><a href="https://dev2.euroxanty.com/" target="_blank" rel="noopener noreferrer">dev2.euroxanty.com</a></td><td>198.18.1.16</td><td></td><td></td><td></td></tr>
+<tr data-alive="true"><td><a href="https://development.euroxanty.com/" target="_blank" rel="noopener noreferrer">development.euroxanty.com</a></td><td>198.18.0.90</td><td></td><td></td><td></td></tr>
+<tr data-alive="true"><td><a href="https://dns.euroxanty.com/" target="_blank" rel="noopener noreferrer">dns.euroxanty.com</a></td><td>198.18.1.6</td><td></td><td></td><td></td></tr>
+<tr data-alive="true"><td><a href="https://dns1.euroxanty.com/" target="_blank" rel="noopener noreferrer">dns1.euroxanty.com</a></td><td>198.18.0.244</td><td></td><td></td><td></td></tr>
+<tr data-alive="true"><td><a href="https://dns2.euroxanty.com/" target="_blank" rel="noopener noreferrer">dns2.euroxanty.com</a></td><td>198.18.0.56</td><td></td><td></td><td></td></tr>
+<tr data-alive="true"><td><a href="https://doc.euroxanty.com/" target="_blank" rel="noopener noreferrer">doc.euroxanty.com</a></td><td>198.18.0.189</td><td></td><td></td><td></td></tr>
+<tr data-alive="true"><td><a href="https://docs.euroxanty.com/" target="_blank" rel="noopener noreferrer">docs.euroxanty.com</a></td><td>198.18.0.239</td><td></td><td></td><td></td></tr>
+<tr data-alive="true"><td><a href="https://documentation.euroxanty.com/" target="_blank" rel="noopener noreferrer">documentation.euroxanty.com</a></td><td>198.18.0.252</td><td></td><td></td><td></td></tr>
+<tr data-alive="true"><td><a href="https://download.euroxanty.com/" target="_blank" rel="noopener noreferrer">download.euroxanty.com</a></td><td>198.18.0.229</td><td></td><td></td><td></td></tr>
+<tr data-alive="true"><td><a href="https://edge.euroxanty.com/" target="_blank" rel="noopener noreferrer">edge.euroxanty.com</a></td><td>198.18.0.197</td><td></td><td></td><td></td></tr>
+<tr data-alive="true"><td><a href="https://elastic.euroxanty.com/" target="_blank" rel="noopener noreferrer">elastic.euroxanty.com</a></td><td>198.18.0.129</td><td></td><td></td><td></td></tr>
+<tr data-alive="true"><td><a href="https://elasticsearch.euroxanty.com/" target="_blank" rel="noopener noreferrer">elasticsearch.euroxanty.com</a></td><td>198.18.1.14</td><td></td><td></td><td></td></tr>
+<tr data-alive="true"><td><a href="https://email.euroxanty.com/" target="_blank" rel="noopener noreferrer">email.euroxanty.com</a></td><td>198.18.1.9</td><td></td><td></td><td></td></tr>
+<tr data-alive="true"><td><a href="https://erp.euroxanty.com/" target="_blank" rel="noopener noreferrer">erp.euroxanty.com</a></td><td>198.18.0.211</td><td></td><td></td><td></td></tr>
+<tr data-alive="true"><td><a href="https://es.euroxanty.com/" target="_blank" rel="noopener noreferrer">es.euroxanty.com</a></td><td>198.18.0.114</td><td></td><td></td><td></td></tr>
+<tr data-alive="true"><td><a href="https://euroxanty.com/" target="_blank" rel="noopener noreferrer">euroxanty.com</a></td><td>198.18.0.66</td><td></td><td class="status-ok">200</td><td>Euroxanty - Venta al por mayor - Productos innovadores</td></tr>
+<tr data-alive="true"><td><a href="https://event.euroxanty.com/" target="_blank" rel="noopener noreferrer">event.euroxanty.com</a></td><td>198.18.0.176</td><td></td><td></td><td></td></tr>
+<tr data-alive="true"><td><a href="https://events.euroxanty.com/" target="_blank" rel="noopener noreferrer">events.euroxanty.com</a></td><td>198.18.0.209</td><td></td><td></td><td></td></tr>
+<tr data-alive="true"><td><a href="https://extranet.euroxanty.com/" target="_blank" rel="noopener noreferrer">extranet.euroxanty.com</a></td><td>198.18.0.78</td><td></td><td></td><td></td></tr>
+<tr data-alive="true"><td><a href="https://faq.euroxanty.com/" target="_blank" rel="noopener noreferrer">faq.euroxanty.com</a></td><td>198.18.0.230</td><td></td><td></td><td></td></tr>
+<tr data-alive="true"><td><a href="https://file.euroxanty.com/" target="_blank" rel="noopener noreferrer">file.euroxanty.com</a></td><td>198.18.0.101</td><td></td><td></td><td></td></tr>
+<tr data-alive="true"><td><a href="https://files.euroxanty.com/" target="_blank" rel="noopener noreferrer">files.euroxanty.com</a></td><td>198.18.0.174</td><td></td><td></td><td></td></tr>
+<tr data-alive="true"><td><a href="https://fileserver.euroxanty.com/" target="_blank" rel="noopener noreferrer">fileserver.euroxanty.com</a></td><td>198.18.1.3</td><td></td><td></td><td></td></tr>
+<tr data-alive="true"><td><a href="https://finance.euroxanty.com/" target="_blank" rel="noopener noreferrer">finance.euroxanty.com</a></td><td>198.18.0.182</td><td></td><td></td><td></td></tr>
+<tr data-alive="true"><td><a href="https://forum.euroxanty.com/" target="_blank" rel="noopener noreferrer">forum.euroxanty.com</a></td><td>198.18.0.67</td><td></td><td></td><td></td></tr>
+<tr data-alive="true"><td><a href="https://forums.euroxanty.com/" target="_blank" rel="noopener noreferrer">forums.euroxanty.com</a></td><td>198.18.1.24</td><td></td><td></td><td></td></tr>
+<tr data-alive="true"><td><a href="http://ftp.euroxanty.com/" target="_blank" rel="noopener noreferrer">ftp.euroxanty.com</a></td><td>198.18.0.222</td><td>euroxanty.com</td><td class="status-ok">200</td><td></td></tr>
+<tr data-alive="true"><td><a href="https://ftps.euroxanty.com/" target="_blank" rel="noopener noreferrer">ftps.euroxanty.com</a></td><td>198.18.0.231</td><td></td><td></td><td></td></tr>
+<tr data-alive="true"><td><a href="https://gateway.euroxanty.com/" target="_blank" rel="noopener noreferrer">gateway.euroxanty.com</a></td><td>198.18.0.126</td><td></td><td></td><td></td></tr>
+<tr data-alive="true"><td><a href="https://gcp.euroxanty.com/" target="_blank" rel="noopener noreferrer">gcp.euroxanty.com</a></td><td>198.18.0.207</td><td></td><td></td><td></td></tr>
+<tr data-alive="true"><td><a href="https://git.euroxanty.com/" target="_blank" rel="noopener noreferrer">git.euroxanty.com</a></td><td>198.18.1.5</td><td></td><td></td><td></td></tr>
+<tr data-alive="true"><td><a href="https://gitlab.euroxanty.com/" target="_blank" rel="noopener noreferrer">gitlab.euroxanty.com</a></td><td>198.18.1.13</td><td></td><td></td><td></td></tr>
+<tr data-alive="true"><td><a href="https://grafana.euroxanty.com/" target="_blank" rel="noopener noreferrer">grafana.euroxanty.com</a></td><td>198.18.1.20</td><td></td><td></td><td></td></tr>
+<tr data-alive="true"><td><a href="https://gw.euroxanty.com/" target="_blank" rel="noopener noreferrer">gw.euroxanty.com</a></td><td>198.18.0.96</td><td></td><td></td><td></td></tr>
+<tr data-alive="true"><td><a href="https://help.euroxanty.com/" target="_blank" rel="noopener noreferrer">help.euroxanty.com</a></td><td>198.18.0.47</td><td></td><td></td><td></td></tr>
+<tr data-alive="true"><td><a href="https://home.euroxanty.com/" target="_blank" rel="noopener noreferrer">home.euroxanty.com</a></td><td>198.18.0.196</td><td></td><td></td><td></td></tr>
+<tr data-alive="true"><td><a href="https://hr.euroxanty.com/" target="_blank" rel="noopener noreferrer">hr.euroxanty.com</a></td><td>198.18.0.246</td><td></td><td></td><td></td></tr>
+<tr data-alive="true"><td><a href="https://im.euroxanty.com/" target="_blank" rel="noopener noreferrer">im.euroxanty.com</a></td><td>198.18.0.167</td><td></td><td></td><td></td></tr>
+<tr data-alive="true"><td><a href="https://images.euroxanty.com/" target="_blank" rel="noopener noreferrer">images.euroxanty.com</a></td><td>198.18.0.88</td><td></td><td></td><td></td></tr>
+<tr data-alive="true"><td><a href="https://imap.euroxanty.com/" target="_blank" rel="noopener noreferrer">imap.euroxanty.com</a></td><td>198.18.0.223</td><td></td><td></td><td></td></tr>
+<tr data-alive="true"><td><a href="https://img.euroxanty.com/" target="_blank" rel="noopener noreferrer">img.euroxanty.com</a></td><td>198.18.0.152</td><td></td><td></td><td></td></tr>
+<tr data-alive="true"><td><a href="https://internal.euroxanty.com/" target="_blank" rel="noopener noreferrer">internal.euroxanty.com</a></td><td>198.18.0.117</td><td></td><td></td><td></td></tr>
+<tr data-alive="true"><td><a href="https://intranet.euroxanty.com/" target="_blank" rel="noopener noreferrer">intranet.euroxanty.com</a></td><td>198.18.0.57</td><td></td><td></td><td></td></tr>
+<tr data-alive="true"><td><a href="https://investor.euroxanty.com/" target="_blank" rel="noopener noreferrer">investor.euroxanty.com</a></td><td>198.18.0.149</td><td></td><td></td><td></td></tr>
+<tr data-alive="true"><td><a href="https://investors.euroxanty.com/" target="_blank" rel="noopener noreferrer">investors.euroxanty.com</a></td><td>198.18.0.153</td><td></td><td></td><td></td></tr>
+<tr data-alive="true"><td><a href="https://invoice.euroxanty.com/" target="_blank" rel="noopener noreferrer">invoice.euroxanty.com</a></td><td>198.18.0.157</td><td></td><td></td><td></td></tr>
+<tr data-alive="true"><td><a href="https://jenkins.euroxanty.com/" target="_blank" rel="noopener noreferrer">jenkins.euroxanty.com</a></td><td>198.18.0.201</td><td></td><td></td><td></td></tr>
+<tr data-alive="true"><td><a href="https://jira.euroxanty.com/" target="_blank" rel="noopener noreferrer">jira.euroxanty.com</a></td><td>198.18.1.12</td><td></td><td></td><td></td></tr>
+<tr data-alive="true"><td><a href="https://job.euroxanty.com/" target="_blank" rel="noopener noreferrer">job.euroxanty.com</a></td><td>198.18.0.251</td><td></td><td></td><td></td></tr>
+<tr data-alive="true"><td><a href="https://jobs.euroxanty.com/" target="_blank" rel="noopener noreferrer">jobs.euroxanty.com</a></td><td>198.18.0.106</td><td></td><td></td><td></td></tr>
+<tr data-alive="true"><td><a href="https://kb.euroxanty.com/" target="_blank" rel="noopener noreferrer">kb.euroxanty.com</a></td><td>198.18.0.138</td><td></td><td></td><td></td></tr>
+<tr data-alive="true"><td><a href="https://kibana.euroxanty.com/" target="_blank" rel="noopener noreferrer">kibana.euroxanty.com</a></td><td>198.18.0.150</td><td></td><td></td><td></td></tr>
+<tr data-alive="true"><td><a href="https://live.euroxanty.com/" target="_blank" rel="noopener noreferrer">live.euroxanty.com</a></td><td>198.18.0.202</td><td></td><td></td><td></td></tr>
+<tr data-alive="true"><td><a href="https://log.euroxanty.com/" target="_blank" rel="noopener noreferrer">log.euroxanty.com</a></td><td>198.18.0.213</td><td></td><td></td><td></td></tr>
+<tr data-alive="true"><td><a href="https://logging.euroxanty.com/" target="_blank" rel="noopener noreferrer">logging.euroxanty.com</a></td><td>198.18.0.65</td><td></td><td></td><td></td></tr>
+<tr data-alive="true"><td><a href="https://login.euroxanty.com/" target="_blank" rel="noopener noreferrer">login.euroxanty.com</a></td><td>198.18.0.181</td><td></td><td></td><td></td></tr>
+<tr data-alive="true"><td><a href="https://logs.euroxanty.com/" target="_blank" rel="noopener noreferrer">logs.euroxanty.com</a></td><td>198.18.0.240</td><td></td><td></td><td></td></tr>
+<tr data-alive="true"><td><a href="https://lync.euroxanty.com/" target="_blank" rel="noopener noreferrer">lync.euroxanty.com</a></td><td>198.18.0.134</td><td></td><td></td><td></td></tr>
+<tr data-alive="true"><td><a href="https://m.euroxanty.com/" target="_blank" rel="noopener noreferrer">m.euroxanty.com</a></td><td>198.18.0.237</td><td></td><td></td><td></td></tr>
+<tr data-alive="true"><td><a href="http://mail.euroxanty.com/" target="_blank" rel="noopener noreferrer">mail.euroxanty.com</a></td><td>198.18.0.171</td><td></td><td class="status-ok">200</td><td></td></tr>
+<tr data-alive="true"><td><a href="https://mail2.euroxanty.com/" target="_blank" rel="noopener noreferrer">mail2.euroxanty.com</a></td><td>198.18.0.55</td><td></td><td></td><td></td></tr>
+<tr data-alive="true"><td><a href="https://main.euroxanty.com/" target="_blank" rel="noopener noreferrer">main.euroxanty.com</a></td><td>198.18.0.110</td><td></td><td></td><td></td></tr>
+<tr data-alive="true"><td><a href="https://marketing.euroxanty.com/" target="_blank" rel="noopener noreferrer">marketing.euroxanty.com</a></td><td>198.18.0.59</td><td></td><td></td><td></td></tr>
+<tr data-alive="true"><td><a href="https://me.euroxanty.com/" target="_blank" rel="noopener noreferrer">me.euroxanty.com</a></td><td>198.18.0.102</td><td></td><td></td><td></td></tr>
+<tr data-alive="true"><td><a href="https://media.euroxanty.com/" target="_blank" rel="noopener noreferrer">media.euroxanty.com</a></td><td>198.18.0.255</td><td></td><td></td><td></td></tr>
+<tr data-alive="true"><td><a href="https://meet.euroxanty.com/" target="_blank" rel="noopener noreferrer">meet.euroxanty.com</a></td><td>198.18.0.77</td><td></td><td></td><td></td></tr>
+<tr data-alive="true"><td><a href="https://metrics.euroxanty.com/" target="_blank" rel="noopener noreferrer">metrics.euroxanty.com</a></td><td>198.18.0.248</td><td></td><td></td><td></td></tr>
+<tr data-alive="true"><td><a href="https://mobi.euroxanty.com/" target="_blank" rel="noopener noreferrer">mobi.euroxanty.com</a></td><td>198.18.0.50</td><td></td><td></td><td></td></tr>
+<tr data-alive="true"><td><a href="https://mobile.euroxanty.com/" target="_blank" rel="noopener noreferrer">mobile.euroxanty.com</a></td><td>198.18.0.159</td><td></td><td></td><td></td></tr>
+<tr data-alive="true"><td><a href="https://mongo.euroxanty.com/" target="_blank" rel="noopener noreferrer">mongo.euroxanty.com</a></td><td>198.18.0.173</td><td></td><td></td><td></td></tr>
+<tr data-alive="true"><td><a href="https://mongodb.euroxanty.com/" target="_blank" rel="noopener noreferrer">mongodb.euroxanty.com</a></td><td>198.18.0.194</td><td></td><td></td><td></td></tr>
+<tr data-alive="true"><td><a href="https://monitor.euroxanty.com/" target="_blank" rel="noopener noreferrer">monitor.euroxanty.com</a></td><td>198.18.0.218</td><td></td><td></td><td></td></tr>
+<tr data-alive="true"><td><a href="https://monitoring.euroxanty.com/" target="_blank" rel="noopener noreferrer">monitoring.euroxanty.com</a></td><td>198.18.0.115</td><td></td><td></td><td></td></tr>
+<tr data-alive="true"><td><a href="https://mx.euroxanty.com/" target="_blank" rel="noopener noreferrer">mx.euroxanty.com</a></td><td>198.18.0.227</td><td></td><td></td><td></td></tr>
+<tr data-alive="true"><td><a href="https://mx1.euroxanty.com/" target="_blank" rel="noopener noreferrer">mx1.euroxanty.com</a></td><td>198.18.0.104</td><td></td><td></td><td></td></tr>
+<tr data-alive="true"><td><a href="https://mx2.euroxanty.com/" target="_blank" rel="noopener noreferrer">mx2.euroxanty.com</a></td><td>198.18.0.183</td><td></td><td></td><td></td></tr>
+<tr data-alive="true"><td><a href="https://my.euroxanty.com/" target="_blank" rel="noopener noreferrer">my.euroxanty.com</a></td><td>198.18.1.19</td><td></td><td></td><td></td></tr>
+<tr data-alive="true"><td><a href="https://mysql.euroxanty.com/" target="_blank" rel="noopener noreferrer">mysql.euroxanty.com</a></td><td>198.18.0.100</td><td></td><td></td><td></td></tr>
+<tr data-alive="true"><td><a href="https://new.euroxanty.com/" target="_blank" rel="noopener noreferrer">new.euroxanty.com</a></td><td>198.18.0.87</td><td></td><td></td><td></td></tr>
+<tr data-alive="true"><td><a href="https://news.euroxanty.com/" target="_blank" rel="noopener noreferrer">news.euroxanty.com</a></td><td>198.18.0.113</td><td></td><td></td><td></td></tr>
+<tr data-alive="true"><td><a href="https://ns.euroxanty.com/" target="_blank" rel="noopener noreferrer">ns.euroxanty.com</a></td><td>198.18.0.70</td><td></td><td></td><td></td></tr>
+<tr data-alive="true"><td><a href="https://ns1.euroxanty.com/" target="_blank" rel="noopener noreferrer">ns1.euroxanty.com</a></td><td>198.18.0.154</td><td></td><td></td><td></td></tr>
+<tr data-alive="true"><td><a href="https://ns2.euroxanty.com/" target="_blank" rel="noopener noreferrer">ns2.euroxanty.com</a></td><td>198.18.0.221</td><td></td><td></td><td></td></tr>
+<tr data-alive="true"><td><a href="https://ns3.euroxanty.com/" target="_blank" rel="noopener noreferrer">ns3.euroxanty.com</a></td><td>198.18.0.84</td><td></td><td></td><td></td></tr>
+<tr data-alive="true"><td><a href="https://ns4.euroxanty.com/" target="_blank" rel="noopener noreferrer">ns4.euroxanty.com</a></td><td>198.18.0.249</td><td></td><td></td><td></td></tr>
+<tr data-alive="true"><td><a href="https://oauth.euroxanty.com/" target="_blank" rel="noopener noreferrer">oauth.euroxanty.com</a></td><td>198.18.1.28</td><td></td><td></td><td></td></tr>
+<tr data-alive="true"><td><a href="https://office.euroxanty.com/" target="_blank" rel="noopener noreferrer">office.euroxanty.com</a></td><td>198.18.0.54</td><td></td><td></td><td></td></tr>
+<tr data-alive="true"><td><a href="https://office365.euroxanty.com/" target="_blank" rel="noopener noreferrer">office365.euroxanty.com</a></td><td>198.18.1.23</td><td></td><td></td><td></td></tr>
+<tr data-alive="true"><td><a href="https://old.euroxanty.com/" target="_blank" rel="noopener noreferrer">old.euroxanty.com</a></td><td>198.18.0.193</td><td></td><td></td><td></td></tr>
+<tr data-alive="true"><td><a href="https://orders.euroxanty.com/" target="_blank" rel="noopener noreferrer">orders.euroxanty.com</a></td><td>198.18.0.49</td><td></td><td></td><td></td></tr>
+<tr data-alive="true"><td><a href="https://partner.euroxanty.com/" target="_blank" rel="noopener noreferrer">partner.euroxanty.com</a></td><td>198.18.0.206</td><td></td><td></td><td></td></tr>
+<tr data-alive="true"><td><a href="https://partners.euroxanty.com/" target="_blank" rel="noopener noreferrer">partners.euroxanty.com</a></td><td>198.18.1.21</td><td></td><td></td><td></td></tr>
+<tr data-alive="true"><td><a href="https://pay.euroxanty.com/" target="_blank" rel="noopener noreferrer">pay.euroxanty.com</a></td><td>198.18.0.123</td><td></td><td></td><td></td></tr>
+<tr data-alive="true"><td><a href="https://payment.euroxanty.com/" target="_blank" rel="noopener noreferrer">payment.euroxanty.com</a></td><td>198.18.0.203</td><td></td><td></td><td></td></tr>
+<tr data-alive="true"><td><a href="https://payments.euroxanty.com/" target="_blank" rel="noopener noreferrer">payments.euroxanty.com</a></td><td>198.18.0.172</td><td></td><td></td><td></td></tr>
+<tr data-alive="true"><td><a href="https://pbx.euroxanty.com/" target="_blank" rel="noopener noreferrer">pbx.euroxanty.com</a></td><td>198.18.0.136</td><td></td><td></td><td></td></tr>
+<tr data-alive="true"><td><a href="https://pixel.euroxanty.com/" target="_blank" rel="noopener noreferrer">pixel.euroxanty.com</a></td><td>198.18.0.73</td><td></td><td></td><td></td></tr>
+<tr data-alive="true"><td><a href="http://pop.euroxanty.com/" target="_blank" rel="noopener noreferrer">pop.euroxanty.com</a></td><td>198.18.0.162</td><td>mail.euroxanty.com</td><td class="status-ok">200</td><td></td></tr>
+<tr data-alive="true"><td><a href="https://pop3.euroxanty.com/" target="_blank" rel="noopener noreferrer">pop3.euroxanty.com</a></td><td>198.18.1.15</td><td></td><td></td><td></td></tr>
+<tr data-alive="true"><td><a href="https://portal.euroxanty.com/" target="_blank" rel="noopener noreferrer">portal.euroxanty.com</a></td><td>198.18.0.195</td><td></td><td></td><td></td></tr>
+<tr data-alive="true"><td><a href="https://postgres.euroxanty.com/" target="_blank" rel="noopener noreferrer">postgres.euroxanty.com</a></td><td>198.18.0.81</td><td></td><td></td><td></td></tr>
+<tr data-alive="true"><td><a href="https://pre-prod.euroxanty.com/" target="_blank" rel="noopener noreferrer">pre-prod.euroxanty.com</a></td><td>198.18.0.105</td><td></td><td></td><td></td></tr>
+<tr data-alive="true"><td><a href="https://preprod.euroxanty.com/" target="_blank" rel="noopener noreferrer">preprod.euroxanty.com</a></td><td>198.18.0.133</td><td></td><td></td><td></td></tr>
+<tr data-alive="true"><td><a href="https://press.euroxanty.com/" target="_blank" rel="noopener noreferrer">press.euroxanty.com</a></td><td>198.18.0.232</td><td></td><td></td><td></td></tr>
+<tr data-alive="true"><td><a href="https://preview.euroxanty.com/" target="_blank" rel="noopener noreferrer">preview.euroxanty.com</a></td><td>198.18.0.52</td><td></td><td></td><td></td></tr>
+<tr data-alive="true"><td><a href="https://private.euroxanty.com/" target="_blank" rel="noopener noreferrer">private.euroxanty.com</a></td><td>198.18.0.124</td><td></td><td></td><td></td></tr>
+<tr data-alive="true"><td><a href="https://prod.euroxanty.com/" target="_blank" rel="noopener noreferrer">prod.euroxanty.com</a></td><td>198.18.0.186</td><td></td><td></td><td></td></tr>
+<tr data-alive="true"><td><a href="https://production.euroxanty.com/" target="_blank" rel="noopener noreferrer">production.euroxanty.com</a></td><td>198.18.0.76</td><td></td><td></td><td></td></tr>
+<tr data-alive="true"><td><a href="https://profile.euroxanty.com/" target="_blank" rel="noopener noreferrer">profile.euroxanty.com</a></td><td>198.18.0.86</td><td></td><td></td><td></td></tr>
+<tr data-alive="true"><td><a href="https://prometheus.euroxanty.com/" target="_blank" rel="noopener noreferrer">prometheus.euroxanty.com</a></td><td>198.18.0.160</td><td></td><td></td><td></td></tr>
+<tr data-alive="true"><td><a href="https://promo.euroxanty.com/" target="_blank" rel="noopener noreferrer">promo.euroxanty.com</a></td><td>198.18.0.44</td><td></td><td></td><td></td></tr>
+<tr data-alive="true"><td><a href="https://proxy.euroxanty.com/" target="_blank" rel="noopener noreferrer">proxy.euroxanty.com</a></td><td>198.18.0.199</td><td></td><td></td><td></td></tr>
+<tr data-alive="true"><td><a href="https://public.euroxanty.com/" target="_blank" rel="noopener noreferrer">public.euroxanty.com</a></td><td>198.18.1.2</td><td></td><td></td><td></td></tr>
+<tr data-alive="true"><td><a href="https://qa.euroxanty.com/" target="_blank" rel="noopener noreferrer">qa.euroxanty.com</a></td><td>198.18.0.243</td><td></td><td></td><td></td></tr>
+<tr data-alive="true"><td><a href="https://rc.euroxanty.com/" target="_blank" rel="noopener noreferrer">rc.euroxanty.com</a></td><td>198.18.1.4</td><td></td><td></td><td></td></tr>
+<tr data-alive="true"><td><a href="https://rdp.euroxanty.com/" target="_blank" rel="noopener noreferrer">rdp.euroxanty.com</a></td><td>198.18.0.92</td><td></td><td></td><td></td></tr>
+<tr data-alive="true"><td><a href="https://redis.euroxanty.com/" target="_blank" rel="noopener noreferrer">redis.euroxanty.com</a></td><td>198.18.0.151</td><td></td><td></td><td></td></tr>
+<tr data-alive="true"><td><a href="https://register.euroxanty.com/" target="_blank" rel="noopener noreferrer">register.euroxanty.com</a></td><td>198.18.0.210</td><td></td><td></td><td></td></tr>
+<tr data-alive="true"><td><a href="https://remote.euroxanty.com/" target="_blank" rel="noopener noreferrer">remote.euroxanty.com</a></td><td>198.18.0.245</td><td></td><td></td><td></td></tr>
+<tr data-alive="true"><td><a href="https://reseller.euroxanty.com/" target="_blank" rel="noopener noreferrer">reseller.euroxanty.com</a></td><td>198.18.0.107</td><td></td><td></td><td></td></tr>
+<tr data-alive="true"><td><a href="https://root.euroxanty.com/" target="_blank" rel="noopener noreferrer">root.euroxanty.com</a></td><td>198.18.0.187</td><td></td><td></td><td></td></tr>
+<tr data-alive="true"><td><a href="https://router.euroxanty.com/" target="_blank" rel="noopener noreferrer">router.euroxanty.com</a></td><td>198.18.0.131</td><td></td><td></td><td></td></tr>
+<tr data-alive="true"><td><a href="https://rtc.euroxanty.com/" target="_blank" rel="noopener noreferrer">rtc.euroxanty.com</a></td><td>198.18.0.98</td><td></td><td></td><td></td></tr>
+<tr data-alive="true"><td><a href="https://s3.euroxanty.com/" target="_blank" rel="noopener noreferrer">s3.euroxanty.com</a></td><td>198.18.1.11</td><td></td><td></td><td></td></tr>
+<tr data-alive="true"><td><a href="https://sales.euroxanty.com/" target="_blank" rel="noopener noreferrer">sales.euroxanty.com</a></td><td>198.18.0.200</td><td></td><td></td><td></td></tr>
+<tr data-alive="true"><td><a href="https://sandbox.euroxanty.com/" target="_blank" rel="noopener noreferrer">sandbox.euroxanty.com</a></td><td>198.18.0.118</td><td></td><td></td><td></td></tr>
+<tr data-alive="true"><td><a href="https://search.euroxanty.com/" target="_blank" rel="noopener noreferrer">search.euroxanty.com</a></td><td>198.18.1.18</td><td></td><td></td><td></td></tr>
+<tr data-alive="true"><td><a href="https://secure.euroxanty.com/" target="_blank" rel="noopener noreferrer">secure.euroxanty.com</a></td><td>198.18.0.148</td><td></td><td></td><td></td></tr>
+<tr data-alive="true"><td><a href="https://security.euroxanty.com/" target="_blank" rel="noopener noreferrer">security.euroxanty.com</a></td><td>198.18.0.83</td><td></td><td></td><td></td></tr>
+<tr data-alive="true"><td><a href="https://sftp.euroxanty.com/" target="_blank" rel="noopener noreferrer">sftp.euroxanty.com</a></td><td>198.18.1.17</td><td></td><td></td><td></td></tr>
+<tr data-alive="true"><td><a href="https://shop.euroxanty.com/" target="_blank" rel="noopener noreferrer">shop.euroxanty.com</a></td><td>198.18.0.89</td><td></td><td></td><td></td></tr>
+<tr data-alive="true"><td><a href="https://signin.euroxanty.com/" target="_blank" rel="noopener noreferrer">signin.euroxanty.com</a></td><td>198.18.0.191</td><td></td><td></td><td></td></tr>
+<tr data-alive="true"><td><a href="https://signup.euroxanty.com/" target="_blank" rel="noopener noreferrer">signup.euroxanty.com</a></td><td>198.18.0.164</td><td></td><td></td><td></td></tr>
+<tr data-alive="true"><td><a href="https://sip.euroxanty.com/" target="_blank" rel="noopener noreferrer">sip.euroxanty.com</a></td><td>198.18.0.178</td><td></td><td></td><td></td></tr>
+<tr data-alive="true"><td><a href="https://sit.euroxanty.com/" target="_blank" rel="noopener noreferrer">sit.euroxanty.com</a></td><td>198.18.0.146</td><td></td><td></td><td></td></tr>
+<tr data-alive="true"><td><a href="http://smtp.euroxanty.com/" target="_blank" rel="noopener noreferrer">smtp.euroxanty.com</a></td><td>198.18.0.68</td><td>mail.euroxanty.com</td><td class="status-ok">200</td><td></td></tr>
+<tr data-alive="true"><td><a href="https://solr.euroxanty.com/" target="_blank" rel="noopener noreferrer">solr.euroxanty.com</a></td><td>198.18.0.135</td><td></td><td></td><td></td></tr>
+<tr data-alive="true"><td><a href="https://ssh.euroxanty.com/" target="_blank" rel="noopener noreferrer">ssh.euroxanty.com</a></td><td>198.18.0.242</td><td></td><td></td><td></td></tr>
+<tr data-alive="true"><td><a href="https://ssl.euroxanty.com/" target="_blank" rel="noopener noreferrer">ssl.euroxanty.com</a></td><td>198.18.0.116</td><td></td><td></td><td></td></tr>
+<tr data-alive="true"><td><a href="https://sso.euroxanty.com/" target="_blank" rel="noopener noreferrer">sso.euroxanty.com</a></td><td>198.18.0.121</td><td></td><td></td><td></td></tr>
+<tr data-alive="true"><td><a href="https://stage.euroxanty.com/" target="_blank" rel="noopener noreferrer">stage.euroxanty.com</a></td><td>198.18.0.61</td><td></td><td></td><td></td></tr>
+<tr data-alive="true"><td><a href="https://staging.euroxanty.com/" target="_blank" rel="noopener noreferrer">staging.euroxanty.com</a></td><td>198.18.0.185</td><td></td><td></td><td></td></tr>
+<tr data-alive="true"><td><a href="https://static.euroxanty.com/" target="_blank" rel="noopener noreferrer">static.euroxanty.com</a></td><td>198.18.0.224</td><td></td><td></td><td></td></tr>
+<tr data-alive="true"><td><a href="https://storage.euroxanty.com/" target="_blank" rel="noopener noreferrer">storage.euroxanty.com</a></td><td>198.18.0.166</td><td></td><td></td><td></td></tr>
+<tr data-alive="true"><td><a href="https://store.euroxanty.com/" target="_blank" rel="noopener noreferrer">store.euroxanty.com</a></td><td>198.18.0.132</td><td></td><td></td><td></td></tr>
+<tr data-alive="true"><td><a href="https://stream.euroxanty.com/" target="_blank" rel="noopener noreferrer">stream.euroxanty.com</a></td><td>198.18.0.142</td><td></td><td></td><td></td></tr>
+<tr data-alive="true"><td><a href="https://streaming.euroxanty.com/" target="_blank" rel="noopener noreferrer">streaming.euroxanty.com</a></td><td>198.18.0.48</td><td></td><td></td><td></td></tr>
+<tr data-alive="true"><td><a href="https://support.euroxanty.com/" target="_blank" rel="noopener noreferrer">support.euroxanty.com</a></td><td>198.18.0.156</td><td></td><td></td><td></td></tr>
+<tr data-alive="true"><td><a href="https://svn.euroxanty.com/" target="_blank" rel="noopener noreferrer">svn.euroxanty.com</a></td><td>198.18.0.79</td><td></td><td></td><td></td></tr>
+<tr data-alive="true"><td><a href="https://syslog.euroxanty.com/" target="_blank" rel="noopener noreferrer">syslog.euroxanty.com</a></td><td>198.18.0.45</td><td></td><td></td><td></td></tr>
+<tr data-alive="true"><td><a href="https://tag.euroxanty.com/" target="_blank" rel="noopener noreferrer">tag.euroxanty.com</a></td><td>198.18.0.168</td><td></td><td></td><td></td></tr>
+<tr data-alive="true"><td><a href="https://tagmanager.euroxanty.com/" target="_blank" rel="noopener noreferrer">tagmanager.euroxanty.com</a></td><td>198.18.0.212</td><td></td><td></td><td></td></tr>
+<tr data-alive="true"><td><a href="https://tags.euroxanty.com/" target="_blank" rel="noopener noreferrer">tags.euroxanty.com</a></td><td>198.18.0.144</td><td></td><td></td><td></td></tr>
+<tr data-alive="true"><td><a href="https://temp.euroxanty.com/" target="_blank" rel="noopener noreferrer">temp.euroxanty.com</a></td><td>198.18.0.103</td><td></td><td></td><td></td></tr>
+<tr data-alive="true"><td><a href="https://test.euroxanty.com/" target="_blank" rel="noopener noreferrer">test.euroxanty.com</a></td><td>198.18.0.158</td><td></td><td></td><td></td></tr>
+<tr data-alive="true"><td><a href="https://test1.euroxanty.com/" target="_blank" rel="noopener noreferrer">test1.euroxanty.com</a></td><td>198.18.0.99</td><td></td><td></td><td></td></tr>
+<tr data-alive="true"><td><a href="https://test2.euroxanty.com/" target="_blank" rel="noopener noreferrer">test2.euroxanty.com</a></td><td>198.18.0.140</td><td></td><td></td><td></td></tr>
+<tr data-alive="true"><td><a href="https://testing.euroxanty.com/" target="_blank" rel="noopener noreferrer">testing.euroxanty.com</a></td><td>198.18.0.170</td><td></td><td></td><td></td></tr>
+<tr data-alive="true"><td><a href="https://tmp.euroxanty.com/" target="_blank" rel="noopener noreferrer">tmp.euroxanty.com</a></td><td>198.18.0.228</td><td></td><td></td><td></td></tr>
+<tr data-alive="true"><td><a href="https://tracking.euroxanty.com/" target="_blank" rel="noopener noreferrer">tracking.euroxanty.com</a></td><td>198.18.0.143</td><td></td><td></td><td></td></tr>
+<tr data-alive="true"><td><a href="https://uat.euroxanty.com/" target="_blank" rel="noopener noreferrer">uat.euroxanty.com</a></td><td>198.18.0.204</td><td></td><td></td><td></td></tr>
+<tr data-alive="true"><td><a href="https://upload.euroxanty.com/" target="_blank" rel="noopener noreferrer">upload.euroxanty.com</a></td><td>198.18.0.139</td><td></td><td></td><td></td></tr>
+<tr data-alive="true"><td><a href="https://uploads.euroxanty.com/" target="_blank" rel="noopener noreferrer">uploads.euroxanty.com</a></td><td>198.18.0.69</td><td></td><td></td><td></td></tr>
+<tr data-alive="true"><td><a href="https://user.euroxanty.com/" target="_blank" rel="noopener noreferrer">user.euroxanty.com</a></td><td>198.18.1.0</td><td></td><td></td><td></td></tr>
+<tr data-alive="true"><td><a href="https://users.euroxanty.com/" target="_blank" rel="noopener noreferrer">users.euroxanty.com</a></td><td>198.18.0.71</td><td></td><td></td><td></td></tr>
+<tr data-alive="true"><td><a href="https://vendor.euroxanty.com/" target="_blank" rel="noopener noreferrer">vendor.euroxanty.com</a></td><td>198.18.0.80</td><td></td><td></td><td></td></tr>
+<tr data-alive="true"><td><a href="https://video.euroxanty.com/" target="_blank" rel="noopener noreferrer">video.euroxanty.com</a></td><td>198.18.0.219</td><td></td><td></td><td></td></tr>
+<tr data-alive="true"><td><a href="https://videos.euroxanty.com/" target="_blank" rel="noopener noreferrer">videos.euroxanty.com</a></td><td>198.18.1.29</td><td></td><td></td><td></td></tr>
+<tr data-alive="true"><td><a href="https://voip.euroxanty.com/" target="_blank" rel="noopener noreferrer">voip.euroxanty.com</a></td><td>198.18.0.63</td><td></td><td></td><td></td></tr>
+<tr data-alive="true"><td><a href="https://vpn.euroxanty.com/" target="_blank" rel="noopener noreferrer">vpn.euroxanty.com</a></td><td>198.18.0.254</td><td></td><td></td><td></td></tr>
+<tr data-alive="true"><td><a href="https://vpn1.euroxanty.com/" target="_blank" rel="noopener noreferrer">vpn1.euroxanty.com</a></td><td>198.18.0.109</td><td></td><td></td><td></td></tr>
+<tr data-alive="true"><td><a href="https://vpn2.euroxanty.com/" target="_blank" rel="noopener noreferrer">vpn2.euroxanty.com</a></td><td>198.18.0.220</td><td></td><td></td><td></td></tr>
+<tr data-alive="true"><td><a href="https://wap.euroxanty.com/" target="_blank" rel="noopener noreferrer">wap.euroxanty.com</a></td><td>198.18.0.94</td><td></td><td></td><td></td></tr>
+<tr data-alive="true"><td><a href="https://web.euroxanty.com/" target="_blank" rel="noopener noreferrer">web.euroxanty.com</a></td><td>198.18.0.93</td><td></td><td></td><td></td></tr>
+<tr data-alive="true"><td><a href="https://web1.euroxanty.com/" target="_blank" rel="noopener noreferrer">web1.euroxanty.com</a></td><td>198.18.0.64</td><td></td><td></td><td></td></tr>
+<tr data-alive="true"><td><a href="https://web2.euroxanty.com/" target="_blank" rel="noopener noreferrer">web2.euroxanty.com</a></td><td>198.18.0.46</td><td></td><td></td><td></td></tr>
+<tr data-alive="true"><td><a href="https://webdisk.euroxanty.com/" target="_blank" rel="noopener noreferrer">webdisk.euroxanty.com</a></td><td>198.18.0.184</td><td></td><td></td><td></td></tr>
+<tr data-alive="true"><td><a href="https://webinar.euroxanty.com/" target="_blank" rel="noopener noreferrer">webinar.euroxanty.com</a></td><td>198.18.0.127</td><td></td><td></td><td></td></tr>
+<tr data-alive="true"><td><a href="https://webmail.euroxanty.com/" target="_blank" rel="noopener noreferrer">webmail.euroxanty.com</a></td><td>198.18.1.22</td><td></td><td class="status-ok">200</td><td>Roundcube Webmail :: Welcome to Roundcube Webmail</td></tr>
+<tr data-alive="true"><td><a href="https://webmail2.euroxanty.com/" target="_blank" rel="noopener noreferrer">webmail2.euroxanty.com</a></td><td>198.18.0.147</td><td></td><td></td><td></td></tr>
+<tr data-alive="true"><td><a href="https://websocket.euroxanty.com/" target="_blank" rel="noopener noreferrer">websocket.euroxanty.com</a></td><td>198.18.0.175</td><td></td><td></td><td></td></tr>
+<tr data-alive="true"><td><a href="https://whm.euroxanty.com/" target="_blank" rel="noopener noreferrer">whm.euroxanty.com</a></td><td>198.18.0.58</td><td></td><td></td><td></td></tr>
+<tr data-alive="true"><td><a href="https://wiki.euroxanty.com/" target="_blank" rel="noopener noreferrer">wiki.euroxanty.com</a></td><td>198.18.0.141</td><td></td><td></td><td></td></tr>
+<tr data-alive="true"><td><a href="https://ws.euroxanty.com/" target="_blank" rel="noopener noreferrer">ws.euroxanty.com</a></td><td>198.18.0.238</td><td></td><td></td><td></td></tr>
+<tr data-alive="true"><td><a href="https://www.euroxanty.com/" target="_blank" rel="noopener noreferrer">www.euroxanty.com</a></td><td>198.18.0.214</td><td>euroxanty.com</td><td class="status-ok">200</td><td>Euroxanty - Venta al por mayor - Productos innovadores</td></tr>
+<tr data-alive="true"><td><a href="https://www1.euroxanty.com/" target="_blank" rel="noopener noreferrer">www1.euroxanty.com</a></td><td>198.18.0.75</td><td></td><td></td><td></td></tr>
+<tr data-alive="true"><td><a href="https://www2.euroxanty.com/" target="_blank" rel="noopener noreferrer">www2.euroxanty.com</a></td><td>198.18.0.241</td><td></td><td></td><td></td></tr>
+<tr data-alive="true"><td><a href="https://www3.euroxanty.com/" target="_blank" rel="noopener noreferrer">www3.euroxanty.com</a></td><td>198.18.0.180</td><td></td><td></td><td></td></tr>
+</tbody></table>
+<footer class="colophon">
+Generated by <a href="https://github.com/Akxan/SpyEyes" target="_blank" rel="noopener noreferrer">SpyEyes</a>
+ · OSINT Toolkit
+</footer>
+</body>
+</html>

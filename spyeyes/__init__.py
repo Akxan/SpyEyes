@@ -68,7 +68,7 @@ except ImportError:
 
 
 # 语义化版本号 —— 同步更新 docs/CHANGELOG.md 与 git tag
-__version__ = '1.6.3'
+__version__ = '1.6.4'
 
 
 # ====================================================================
@@ -6944,17 +6944,19 @@ window.addEventListener('resize', () => {{ applyCenterViewBox(); fitToView(); }}
 
 
 def _default_report_dir() -> str:
-    """v1.6.3:跨平台统一行为 — 当前工作目录下创建/使用 '下载' 子文件夹。
+    """v1.6.4:跨平台统一行为 — 当前工作目录下创建/使用 'Downloads' 子文件夹。
 
     设计变更原因:
     - v1.2.0 默认 ~/Downloads,在 Linux 服务器(无桌面环境)往往不存在
     - 不同平台落点不一致(macOS ~/Downloads, Linux ~/spyeyes-reports, etc.)
     - 用户反馈"在哪都不知道,不直观"
-    - 改成固定 <cwd>/下载/ — 你在哪跑命令,就在哪建文件夹,所见即所得
+    - 改成固定 <cwd>/Downloads/ — 你在哪跑命令,就在哪建文件夹,所见即所得
+    - v1.6.4:文件夹名从中文 '下载' 改回英文 'Downloads',
+      避免某些 shell / SSH / rsync / Windows CMD 对非 ASCII 路径的兼容问题
 
     优先级:
     1. SPYEYES_REPORTS_DIR(用户显式配置,服务器场景常用 /var/log/spyeyes 等)
-    2. <cwd>/下载/(默认,自动创建,跨平台一致)
+    2. <cwd>/Downloads/(默认,自动创建,跨平台一致)
     3. cwd 直接(若 mkdir 失败,极少见)
 
     不再缓存:每次 _default_report_dir() 调用都重新计算 cwd,
@@ -6966,7 +6968,7 @@ def _default_report_dir() -> str:
             return custom
         except OSError:
             pass
-    target = os.path.join(os.getcwd(), '下载')
+    target = os.path.join(os.getcwd(), 'Downloads')
     try:
         os.makedirs(target, exist_ok=True)
         return target
