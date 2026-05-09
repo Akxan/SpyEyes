@@ -68,7 +68,7 @@ except ImportError:
 
 
 # 语义化版本号 —— 同步更新 docs/CHANGELOG.md 与 git tag
-__version__ = '1.6.8'
+__version__ = '1.6.9'
 
 
 # ====================================================================
@@ -3116,15 +3116,17 @@ def enumerate_subdomains(domain: str, *, probe: bool = True,
 
 def _format_source_breakdown(data: dict) -> str:
     """v1.6.8:格式化所有源的状态字符串(报告 / 终端共用)。
+    v1.6.9:emoji ✅⊘❌ → ✓○✗(PDF 中文字体不支持 emoji,会乱码;✓○✗ 在 STSong-Light
+    及大多数 CJK 字体里都有,跨终端/HTML/PDF/Markdown 一致渲染)。
 
     用户反馈"为什么数据源数字一会 2 一会 3,看不到内部"。
     展示 ALL configured sources(包括返 0 的)+ 状态符号:
-      ✅ N      源成功返 N 个 hosts
-      ⊘ 空     源成功但返 0(API 限速 / 域无数据 / 没 key 等)
-      ❌ 错误    源抛异常(连接失败 / 超时 / etc)
+      ✓ N      源成功返 N 个 hosts
+      ○ 0      源成功但返 0(API 限速 / 域无数据 / 没 key 等)
+      ✗ 错误    源抛异常(连接失败 / 超时 / etc)
 
     输入:enumerate_subdomains() 输出 dict
-    输出:`✅ certspotter: 21  ⊘ crtsh: 0  ⊘ otx: 0  ❌ wayback (错误)  ✅ subfinder: 20`
+    输出:`✓ certspotter: 21  ○ crtsh: 0  ○ otx: 0  ✗ wayback (错误)  ✓ subfinder: 20`
          (单行紧凑,保留空格分隔以便长行 wrap 不切坏)
     """
     sources = data.get('sources') or {}
@@ -3136,13 +3138,13 @@ def _format_source_breakdown(data: dict) -> str:
     parts = []
     for name in all_names:
         if errors.get(name):
-            parts.append(f'❌ {name} (错误)')
+            parts.append(f'✗ {name} (错误)')
         else:
             n = sources.get(name, 0)
             if n > 0:
-                parts.append(f'✅ {name}: {n}')
+                parts.append(f'✓ {name}: {n}')
             else:
-                parts.append(f'⊘ {name}: 0')
+                parts.append(f'○ {name}: 0')
     return '  '.join(parts)
 
 

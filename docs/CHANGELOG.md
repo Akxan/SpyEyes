@@ -18,6 +18,50 @@ This project adheres to [Keep a Changelog](https://keepachangelog.com/en/1.1.0/)
 
 ---
 
+## [1.6.9] — 2026-05-09
+
+🐛 **修复 PDF 报告里 6 源状态行 emoji 乱码**(用户反馈截图)
+
+### 背景
+
+v1.6.8 引入"完整 6 源状态"用了 emoji `✅⊘❌`,在终端 / HTML 显示正常,但 PDF 用 `STSong-Light` 中文字体不支持 emoji 字符,reportlab 字体回退失败,渲染成随机汉字:
+
+```
+之前 PDF:  丅 certspotter: 21  丅 crtsh: 20  謁 hackertarget: 0  ...
+                                              ↑ 乱码
+```
+
+### 修复
+
+emoji 换成所有 CJK 字体都支持的 Unicode 文本符号:
+
+| 之前 | 现在 | 含义 |
+|---|---|---|
+| ✅ | **✓** (U+2713 CHECK MARK) | 源成功 |
+| ⊘ | **○** (U+25CB WHITE CIRCLE) | 源返空 |
+| ❌ | **✗** (U+2717 BALLOT X) | 源出错 |
+
+```
+现在 PDF:  ✓ certspotter: 21  ✓ crtsh: 20  ○ hackertarget: 0  ...
+                                              ↑ 正常显示
+```
+
+跨终端 / HTML / PDF / Markdown / TXT 全部一致渲染。
+
+### 注意
+
+PDF 里其它已有的 ✓✗⚠ 字符(SMTP 验证 / wildcard 警告等)早就在用,这版只补了 v1.6.8 新加的 source breakdown。
+
+### Tests / Lint
+
+无变化(只改字符,逻辑不动)。**488 全绿**。ruff 0 / mypy 0 / bandit 0。
+
+### Packaging
+
+- `__version__` 1.6.8 → 1.6.9
+
+---
+
 ## [1.6.8] — 2026-05-09
 
 ✨ **`~/.spyeyes/env` 自动加载 + 报告显示完整 6 源状态**(用户连续反馈)
