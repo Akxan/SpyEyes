@@ -527,7 +527,6 @@ SpyEyes/
 │   ├── ISSUE_TEMPLATE/         # bug / 功能 issue 模板
 │   ├── PULL_REQUEST_TEMPLATE.md
 │   └── dependabot.yml          # 自动依赖更新
-└── asset/                      # README 截图与社交预览图
 ```
 
 ---

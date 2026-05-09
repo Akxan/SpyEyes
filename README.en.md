@@ -426,7 +426,6 @@ SpyEyes/
 │   ├── ISSUE_TEMPLATE/         # Issue templates
 │   ├── PULL_REQUEST_TEMPLATE.md
 │   └── dependabot.yml          # Auto dependency updates
-└── asset/                      # README screenshots & social preview
 ```
 
 ---
