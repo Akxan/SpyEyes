@@ -1,0 +1,219 @@
+{
+  "domain": "akxan.com",
+  "sources": {
+    "otx": 0,
+    "certspotter": 21,
+    "hackertarget": 0,
+    "crtsh": 20,
+    "wayback": 2,
+    "subfinder": 20
+  },
+  "wildcard_suspect": false,
+  "subdomains": [
+    {
+      "host": "akxan.com",
+      "alive": true,
+      "a": [
+        "187.124.162.233"
+      ],
+      "aaaa": [],
+      "cname": null,
+      "http_status": 200,
+      "title": "Finder Logistics - Comparador de Envíos | Logística Inteligente",
+      "scheme": "https"
+    },
+    {
+      "host": "autodiscover.akxan.com",
+      "alive": true,
+      "a": [
+        "195.20.225.174"
+      ],
+      "aaaa": [],
+      "cname": "adsredir.ionos.info",
+      "http_status": 403,
+      "title": null,
+      "scheme": "http"
+    },
+    {
+      "host": "cpa.akxan.com",
+      "alive": true,
+      "a": [
+        "187.124.162.233"
+      ],
+      "aaaa": [],
+      "cname": null,
+      "http_status": 200,
+      "title": "CLI Proxy API Management Center",
+      "scheme": "https"
+    },
+    {
+      "host": "film.akxan.com",
+      "alive": true,
+      "a": [
+        "187.124.162.233"
+      ],
+      "aaaa": [],
+      "cname": null,
+      "http_status": 401,
+      "title": null,
+      "scheme": "https"
+    },
+    {
+      "host": "flow2api.akxan.com",
+      "alive": true,
+      "a": [
+        "187.124.162.233"
+      ],
+      "aaaa": [],
+      "cname": null,
+      "http_status": 200,
+      "title": "登录 - Flow2API",
+      "scheme": "https"
+    },
+    {
+      "host": "fox.akxan.com",
+      "alive": true,
+      "a": [
+        "187.124.162.233"
+      ],
+      "aaaa": [],
+      "cname": null,
+      "http_status": 200,
+      "title": "New API",
+      "scheme": "https"
+    },
+    {
+      "host": "free.akxan.com",
+      "alive": true,
+      "a": [
+        "187.124.162.233"
+      ],
+      "aaaa": [],
+      "cname": null,
+      "http_status": 200,
+      "title": "185.155.61.166 – Welcome",
+      "scheme": "https"
+    },
+    {
+      "host": "home.akxan.com",
+      "alive": true,
+      "a": [
+        "187.124.162.233"
+      ],
+      "aaaa": [],
+      "cname": null,
+      "http_status": 401,
+      "title": null,
+      "scheme": "https"
+    },
+    {
+      "host": "log.akxan.com",
+      "alive": true,
+      "a": [
+        "187.124.162.233"
+      ],
+      "aaaa": [],
+      "cname": null,
+      "http_status": 401,
+      "title": null,
+      "scheme": "https"
+    },
+    {
+      "host": "mcmap.akxan.com",
+      "alive": true,
+      "a": [
+        "187.124.162.233"
+      ],
+      "aaaa": [],
+      "cname": null,
+      "http_status": 200,
+      "title": "BlueMap",
+      "scheme": "https"
+    },
+    {
+      "host": "pdf.akxan.com",
+      "alive": true,
+      "a": [
+        "187.124.162.233"
+      ],
+      "aaaa": [],
+      "cname": null,
+      "http_status": 401,
+      "title": null,
+      "scheme": "https"
+    },
+    {
+      "host": "status.akxan.com",
+      "alive": true,
+      "a": [
+        "187.124.162.233"
+      ],
+      "aaaa": [],
+      "cname": null,
+      "http_status": 401,
+      "title": null,
+      "scheme": "https"
+    },
+    {
+      "host": "sub2api.akxan.com",
+      "alive": true,
+      "a": [
+        "187.124.162.233"
+      ],
+      "aaaa": [],
+      "cname": null,
+      "http_status": 200,
+      "title": "Matrix - AI API Gateway",
+      "scheme": "https"
+    },
+    {
+      "host": "terminal.akxan.com",
+      "alive": true,
+      "a": [
+        "187.124.162.233"
+      ],
+      "aaaa": [],
+      "cname": null,
+      "http_status": 401,
+      "title": null,
+      "scheme": "https"
+    },
+    {
+      "host": "video.akxan.com",
+      "alive": true,
+      "a": [
+        "187.124.162.233"
+      ],
+      "aaaa": [],
+      "cname": null,
+      "http_status": 200,
+      "title": "Video Downloader",
+      "scheme": "https"
+    },
+    {
+      "host": "www.akxan.com",
+      "alive": true,
+      "a": [
+        "187.124.162.233"
+      ],
+      "aaaa": [],
+      "cname": null,
+      "http_status": 200,
+      "title": "Finder Logistics - Comparador de Envíos | Logística Inteligente",
+      "scheme": "https"
+    }
+  ],
+  "_stats": {
+    "total": 259,
+    "alive": 16,
+    "probed": 16,
+    "bruteforce_added": 238,
+    "js_extracted": 0,
+    "errors": {}
+  },
+  "_filtered": {
+    "mode": "alive_only",
+    "hidden": 243,
+    "wildcard_suspect": false
+  }
+}

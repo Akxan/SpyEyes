@@ -18,6 +18,66 @@ This project adheres to [Keep a Changelog](https://keepachangelog.com/en/1.1.0/)
 
 ---
 
+## [1.6.7] — 2026-05-09
+
+✨ **HTTP probe 抓全部状态码 title + CNAME 完整 chain**(用户反馈 2 件)
+
+### 改动 1:`<title>` 不再跳过 4xx/5xx
+
+之前 `if 200 <= status < 400` 才提取,理由是"404 Not Found 是噪声"。
+但用户反馈截图(linux.do 全是 CF 403):**title 列空一片**,而真实情况是:
+
+| 状态码 | 之前 | 现在 | 信息价值 |
+|---|---|---|---|
+| 403 (Cloudflare 挑战) | 空 | `Just a moment...` | 知道被 WAF 挡了 |
+| 403 (其它 WAF) | 空 | `Attention Required!` | 同上 |
+| 404 | 空 | `Page Not Found` / 真站点 404 | 区分 nginx 默认 vs 真 404 |
+| 401 | 空 | `Sign in` / `Login` | 看到登录页存在 |
+| 500 | 空 | 错误信息 | 服务器实际情况 |
+
+实测:`ads.linux.do` 状态 403,title 现在显示 `Just a moment...`(Cloudflare 挑战页)。
+
+注:JS / HTML body host 提取(v1.4.9)仍只对 2xx/3xx 做 — CF 错误页不会含真实业务 host 引用,避免噪声进 extracted_hosts。
+
+### 改动 2:CNAME 完整 chain(最多 5 跳)
+
+之前只抓**第一级** CNAME。多级链路被吃:
+```
+www.x.com  CNAME  cdn1.x.com
+cdn1.x.com CNAME  cdn-real.cloudflare.net
+                  ↑ 看不到
+```
+
+现在递归跟到底,用 ` → ` 连接:
+```
+cname: cdn1.x.com → cdn-real.cloudflare.net
+```
+
+实测:
+```
+autodiscover.akxan.com  → adsredir.ionos.info  (单级,跟之前一样)
+www.github.com          → github.com           (单级)
+某些站                  → cdn1.x → cdn2.x → cdn-real.cf.net  (新支持)
+```
+
+防循环:最多 5 跳,seen set 自我检测。
+
+### Tests
+
+- `test_probe_extracts_title_for_4xx_v167` — 403 抓 title
+- `test_probe_extracts_title_for_404` — 404 抓 title
+- `test_probe_no_title_extracted_when_body_empty` — body 空时正确返 None
+
+替换之前 `test_probe_skips_title_for_4xx`(behavior 反了)。
+
+**481 全绿**(+2 新,−1 旧调整)。ruff 0 / mypy 0 / bandit 0。
+
+### Packaging
+
+- `__version__` 1.6.6 → 1.6.7
+
+---
+
 ## [1.6.6] — 2026-05-09
 
 ⚡ **域名邮箱挖掘提速 3-4× — HTTP probe 过滤 + 多 target 并行**(用户反馈)

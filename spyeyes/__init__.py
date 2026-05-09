@@ -68,7 +68,7 @@ except ImportError:
 
 
 # 语义化版本号 —— 同步更新 docs/CHANGELOG.md 与 git tag
-__version__ = '1.6.6'
+__version__ = '1.6.7'
 
 
 # ====================================================================
@@ -2702,7 +2702,9 @@ def _detect_wildcard_dns(domain: str, dns_timeout: float = SUBDOMAIN_DNS_TIMEOUT
 
 def _resolve_one_subdomain(host: str, dns_timeout: float = SUBDOMAIN_DNS_TIMEOUT) -> dict:
     """对单个 hostname 跑 A/AAAA/CNAME 三种查询,返回 dict.
-    alive=True 当且仅当至少有一种记录命中。任何 DNS 异常归到 alive=False。"""
+    alive=True 当且仅当至少有一种记录命中。任何 DNS 异常归到 alive=False。
+    v1.6.7:CNAME 跟踪完整 chain(防 CNAME → CNAME → A 多级链路只显示头一级)。
+    """
     rec: dict = {'host': host, 'alive': False, 'a': [], 'aaaa': [], 'cname': None}
     if not HAS_DNS:
         return rec
@@ -2716,11 +2718,31 @@ def _resolve_one_subdomain(host: str, dns_timeout: float = SUBDOMAIN_DNS_TIMEOUT
             rec['alive'] = True
         except Exception:
             pass
+    # v1.6.7:递归跟 CNAME chain(最多 5 级,防循环)
+    # 例:www.x.com → cdn1.x.com → cdn-real.cloudflare.net
+    # 输出格式:'cdn1.x.com → cdn-real.cloudflare.net'(箭头连接完整链路)
     try:
-        ans = resolver.resolve(host, 'CNAME')
-        cname = str(ans[0].target).rstrip('.') if ans else None
-        if cname:
-            rec['cname'] = cname
+        chain: list[str] = []
+        current = host
+        seen: set[str] = set()  # 防 CNAME 循环
+        for _ in range(5):  # 最多 5 跳
+            if current.lower() in seen:
+                break
+            seen.add(current.lower())
+            try:
+                ans = resolver.resolve(current, 'CNAME')
+            except Exception:
+                break
+            if not ans:
+                break
+            target = str(ans[0].target).rstrip('.')
+            if not target or target.lower() == current.lower():
+                break
+            chain.append(target)
+            current = target
+        if chain:
+            # 用 ' → ' 连接,首跳是从 host 出发,所以不要 host 自己
+            rec['cname'] = ' → '.join(chain)
             rec['alive'] = True
     except Exception:
         pass
@@ -2748,30 +2770,37 @@ def _probe_one_subdomain(host: str, timeout: float = SUBDOMAIN_HTTP_PROBE_TIMEOU
         try:
             out['scheme'] = scheme
             out['http_status'] = resp.status_code
-            # 只对 2xx/3xx 提取 title(4xx/5xx 标题通常是 "404 Not Found" 噪声)
-            if 200 <= resp.status_code < 400:
-                try:
-                    chunks = []
-                    remaining = SUBDOMAIN_PROBE_MAX_BODY
-                    while remaining > 0:
-                        chunk = resp.raw.read(remaining, decode_content=True)
-                        if not chunk:
-                            break
-                        chunks.append(chunk)
-                        remaining -= len(chunk)
-                    body = b''.join(chunks)
-                    m = _HTML_TITLE_RE.search(body)
-                    if m:
-                        title_bytes = m.group(1).strip()
-                        try:
-                            out['title'] = title_bytes.decode('utf-8', errors='replace').strip()[:120]
-                        except Exception:
-                            pass
-                    # v1.4.9:从 body 抽 hostname 引用(几乎免费 — body 已经在内存里)
-                    if parent_domain:
-                        out['extracted_hosts'] = _extract_hosts_from_body(body, parent_domain)
-                except (OSError, ValueError, requests.exceptions.RequestException):
-                    pass
+            # v1.6.7:所有状态码都提取 title — 用户反馈 Cloudflare 403 challenge
+            # 页面 title="Just a moment..." 是有用情报(知道被 WAF 挡了),不是噪声。
+            # 401/403/404/500 等的 title 同样有信息价值:
+            #   "Just a moment..."        ← Cloudflare WAF
+            #   "Attention Required!"     ← Cloudflare WAF
+            #   "Welcome to nginx!"       ← 默认页(未配置)
+            #   "Sign in"                 ← 401 但有登录页
+            #   "Page not found"          ← 真 404
+            try:
+                chunks = []
+                remaining = SUBDOMAIN_PROBE_MAX_BODY
+                while remaining > 0:
+                    chunk = resp.raw.read(remaining, decode_content=True)
+                    if not chunk:
+                        break
+                    chunks.append(chunk)
+                    remaining -= len(chunk)
+                body = b''.join(chunks)
+                m = _HTML_TITLE_RE.search(body)
+                if m:
+                    title_bytes = m.group(1).strip()
+                    try:
+                        out['title'] = title_bytes.decode('utf-8', errors='replace').strip()[:120]
+                    except Exception:
+                        pass
+                # v1.4.9:从 body 抽 hostname 引用(几乎免费 — body 已经在内存里)
+                # 仅对 2xx/3xx 抽,4xx/5xx 的 body 通常是 CF 错误页,无业务 host 引用
+                if parent_domain and 200 <= resp.status_code < 400:
+                    out['extracted_hosts'] = _extract_hosts_from_body(body, parent_domain)
+            except (OSError, ValueError, requests.exceptions.RequestException):
+                pass
             return out
         finally:
             resp.close()

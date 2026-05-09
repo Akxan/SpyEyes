@@ -2851,11 +2851,30 @@ class TestSubdomainProbe:
             out = gt._probe_one_subdomain('api.example.com')
         assert out['title'] == '中文标题'
 
-    def test_probe_skips_title_for_4xx(self):
+    def test_probe_extracts_title_for_4xx_v167(self):
+        """v1.6.7:4xx/5xx title 也提取(用户反馈 CF 'Just a moment...' 是有用情报)。"""
+        fake = MagicMock(status_code=403)
+        fake.raw.read.return_value = b'<html><head><title>Just a moment...</title></head></html>'
+        with patch.object(gt, 'safe_get', return_value=fake):
+            out = gt._probe_one_subdomain('admin.example.com')
+        assert out['http_status'] == 403
+        assert out['title'] == 'Just a moment...'
+
+    def test_probe_extracts_title_for_404(self):
+        """v1.6.7:404 也提取 title(可能是真 404 vs CF 拦截 vs 默认页,信息价值大)。"""
         fake = MagicMock(status_code=404)
+        fake.raw.read.return_value = b'<title>Page Not Found</title>'
+        with patch.object(gt, 'safe_get', return_value=fake):
+            out = gt._probe_one_subdomain('missing.example.com')
+        assert out['http_status'] == 404
+        assert out['title'] == 'Page Not Found'
+
+    def test_probe_no_title_extracted_when_body_empty(self):
+        """body 没 <title> 标签时 title 仍为 None(各状态码一致)。"""
+        fake = MagicMock(status_code=403)
+        fake.raw.read.return_value = b''
         with patch.object(gt, 'safe_get', return_value=fake):
             out = gt._probe_one_subdomain('api.example.com')
-        assert out['http_status'] == 404
         assert out['title'] is None
 
     def test_probe_https_fail_falls_back_to_http(self):
