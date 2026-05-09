@@ -68,7 +68,7 @@ except ImportError:
 
 
 # 语义化版本号 —— 同步更新 docs/CHANGELOG.md 与 git tag
-__version__ = '1.4.7'
+__version__ = '1.4.8'
 
 
 # ====================================================================
@@ -2366,14 +2366,80 @@ def _src_certspotter(domain: str) -> set[str]:
     return _clean_subdomain_candidates(hosts, domain)
 
 
+# v1.4.8:可选集成 ProjectDiscovery 的 subfinder(30+ 数据源,行业最强被动子域工具)
+# 设计:用户机器装了 subfinder 二进制 → SpyEyes 自动调用作为第 5 个源;
+#        没装 → silent skip,4 源照常工作。零强制依赖。
+# subfinder 自己管 chaos / SecurityTrails / Censys / Shodan 等付费 API key
+# (~/.config/subfinder/provider-config.yaml 或读 PDCP_API_KEY env var)
+SUBFINDER_TIMEOUT = 90  # 单次 subfinder 跑总超时(s),subfinder 自己也有 -timeout
+
+# 模块级缓存:每次 enumerate 不重复跑 which (~ms 但累积)
+_SUBFINDER_BIN: Optional[str] = None
+_SUBFINDER_CHECKED = False
+
+
+def _has_subfinder() -> Optional[str]:
+    """检测 subfinder 二进制路径,返 path 或 None。结果缓存到模块级。"""
+    global _SUBFINDER_BIN, _SUBFINDER_CHECKED
+    if not _SUBFINDER_CHECKED:
+        import shutil
+        _SUBFINDER_BIN = shutil.which('subfinder')
+        _SUBFINDER_CHECKED = True
+    return _SUBFINDER_BIN
+
+
+def _src_subfinder(domain: str) -> set[str]:
+    """v1.4.8:调用 ProjectDiscovery subfinder 二进制,聚合 30+ 数据源结果。
+    没装 subfinder 时返空 set(silent skip,不破坏 SpyEyes 4 源主流程)。
+
+    安装:
+      brew install subfinder
+      或 go install -v github.com/projectdiscovery/subfinder/v2/cmd/subfinder@latest
+
+    subfinder 自动读 ~/.config/subfinder/provider-config.yaml 与 env vars
+    (PDCP_API_KEY / VIRUSTOTAL_API_KEY 等)— SpyEyes 不参与认证。"""
+    bin_path = _has_subfinder()
+    if not bin_path:
+        return set()
+    import subprocess
+    try:
+        proc = subprocess.run(
+            [bin_path, '-d', domain, '-silent', '-json',
+             '-timeout', '30', '-max-time', '2'],  # max-time 单位:分钟
+            capture_output=True, text=True,
+            timeout=SUBFINDER_TIMEOUT,
+        )
+    except (subprocess.TimeoutExpired, OSError):
+        return set()
+    if proc.returncode != 0:
+        return set()
+    out: list = []
+    for line in proc.stdout.splitlines():
+        line = line.strip()
+        if not line:
+            continue
+        try:
+            rec = json.loads(line)
+        except json.JSONDecodeError:
+            # subfinder 老版本可能直接打 plain hostname,不是 JSON
+            out.append(line)
+            continue
+        if isinstance(rec, dict):
+            host = rec.get('host', '')
+            if isinstance(host, str) and host:
+                out.append(host)
+    # _clean_subdomain_candidates:跨域过滤 + 字符白名单 + 长度上限
+    return _clean_subdomain_candidates(out, domain)
+
+
 # v1.4.4:源映射表(测试可 monkeypatch 单个源;调整顺序不影响合并结果)
-# - 移除 threatcrowd(2024 年项目关闭,域名 www.threatcrowd.org 已无 DNS 记录)
-# - 加 certspotter(SSLMate 免费 CT 日志,替补 crt.sh 经常超时的情况)
+# v1.4.8:加 subfinder 第 5 源(可选 — 检测到二进制才用)
 SUBDOMAIN_SOURCES = {
     'crtsh':         _src_crtsh,
     'certspotter':   _src_certspotter,
     'hackertarget':  _src_hackertarget,
     'otx':           _src_otx,
+    'subfinder':     _src_subfinder,  # 30+ 源聚合,装了 subfinder 自动启用
 }
 
 

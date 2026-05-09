@@ -2259,6 +2259,65 @@ class TestSubdomainParsers:
         with patch.object(gt, 'safe_get', return_value=fake):
             assert gt._src_otx('example.com') == set()
 
+    def test_subfinder_no_binary_returns_empty(self, monkeypatch):
+        """v1.4.8:没装 subfinder 时 silent 返 empty set(不破坏主流程)。"""
+        monkeypatch.setattr(gt, '_SUBFINDER_BIN', None)
+        monkeypatch.setattr(gt, '_SUBFINDER_CHECKED', True)
+        result = gt._src_subfinder('example.com')
+        assert result == set()
+
+    def test_subfinder_parses_json_output(self, monkeypatch):
+        """v1.4.8:有 subfinder 时解析 JSON Lines 输出 + 跨域过滤。"""
+        monkeypatch.setattr(gt, '_SUBFINDER_BIN', '/usr/local/bin/subfinder')
+        monkeypatch.setattr(gt, '_SUBFINDER_CHECKED', True)
+        # subfinder -json 输出 JSONL 格式:每行一个 {"host": "..."} 对象
+        fake_output = (
+            '{"host":"api.example.com","input":"example.com","source":"crtsh"}\n'
+            '{"host":"mail.example.com","input":"example.com","source":"chaos"}\n'
+            '{"host":"evil.com","input":"example.com","source":"chaos"}\n'  # 跨域,应过滤
+            '\n'  # 空行
+            'invalid-not-json\n'  # 老版本可能直接 plain text
+        )
+
+        class FakeProc:
+            returncode = 0
+            stdout = fake_output
+            stderr = ''
+        monkeypatch.setattr('subprocess.run', lambda *a, **kw: FakeProc())
+        result = gt._src_subfinder('example.com')
+        # api / mail 通过,evil.com 跨域被过滤,invalid-not-json 通过 _clean(非合法 hostname 被拒)
+        assert 'api.example.com' in result
+        assert 'mail.example.com' in result
+        assert 'evil.com' not in result
+
+    def test_subfinder_timeout_returns_empty(self, monkeypatch):
+        """subfinder 超时时返空,不让单源拖垮整体。"""
+        import subprocess
+        monkeypatch.setattr(gt, '_SUBFINDER_BIN', '/usr/local/bin/subfinder')
+        monkeypatch.setattr(gt, '_SUBFINDER_CHECKED', True)
+
+        def fake_run(*a, **kw):
+            raise subprocess.TimeoutExpired(cmd='subfinder', timeout=90)
+        monkeypatch.setattr('subprocess.run', fake_run)
+        result = gt._src_subfinder('example.com')
+        assert result == set()
+
+    def test_subfinder_nonzero_exit_returns_empty(self, monkeypatch):
+        """subfinder 异常退出时返空。"""
+        monkeypatch.setattr(gt, '_SUBFINDER_BIN', '/usr/local/bin/subfinder')
+        monkeypatch.setattr(gt, '_SUBFINDER_CHECKED', True)
+
+        class FakeProc:
+            returncode = 1
+            stdout = ''
+            stderr = 'error: invalid domain'
+        monkeypatch.setattr('subprocess.run', lambda *a, **kw: FakeProc())
+        assert gt._src_subfinder('example.com') == set()
+
+    def test_subfinder_in_sources_dict(self):
+        """SUBDOMAIN_SOURCES 含 'subfinder' key(v1.4.8 加的第 5 源)。"""
+        assert 'subfinder' in gt.SUBDOMAIN_SOURCES
+
     def test_certspotter_parses_dns_names(self):
         """v1.4.4: CertSpotter 替代 ThreatCrowd 死站。"""
         fake = MagicMock(status_code=200)
@@ -2283,6 +2342,8 @@ class TestPassiveCollectSubdomains:
         monkeypatch.setitem(gt.SUBDOMAIN_SOURCES, 'otx', lambda d: set())
         monkeypatch.setitem(gt.SUBDOMAIN_SOURCES, 'certspotter',
                             lambda d: {'cdn.example.com'})
+        # v1.4.8:subfinder 也要 mock,否则装了 subfinder 的环境会跑真实查询
+        monkeypatch.setitem(gt.SUBDOMAIN_SOURCES, 'subfinder', lambda d: set())
         result = gt.passive_collect_subdomains('example.com')
         assert result['candidates'] == {'api.example.com', 'mail.example.com',
                                          'blog.example.com', 'cdn.example.com'}
@@ -2297,6 +2358,7 @@ class TestPassiveCollectSubdomains:
                             lambda d: {'good.example.com'})
         monkeypatch.setitem(gt.SUBDOMAIN_SOURCES, 'otx', lambda d: set())
         monkeypatch.setitem(gt.SUBDOMAIN_SOURCES, 'certspotter', lambda d: set())
+        monkeypatch.setitem(gt.SUBDOMAIN_SOURCES, 'subfinder', lambda d: set())
         result = gt.passive_collect_subdomains('example.com')
         assert 'good.example.com' in result['candidates']
         assert result['errors'].get('crtsh') is True

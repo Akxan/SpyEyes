@@ -18,6 +18,60 @@ This project adheres to [Keep a Changelog](https://keepachangelog.com/en/1.1.0/)
 
 ---
 
+## [1.4.8] — 2026-05-09
+
+✨ **可选集成 ProjectDiscovery `subfinder`**(自动检测 + 30+ 数据源接力)
+
+### Features
+
+- 新增 `_src_subfinder` 作为子域名第 5 个数据源:
+  - 模块加载时一次性 `shutil.which('subfinder')` 检测,缓存结果(无 subfinder 时零开销)
+  - 调 `subfinder -d <domain> -silent -json` JSON Lines 输出
+  - 每行 `{"host":"...","input":"...","source":"..."}` 解析,跨域条目自动过滤
+  - 30s 单源超时 + 90s 总超时硬限,失败 silent 返 `set()`(不污染其他源)
+  - 自动继承用户 `~/.config/subfinder/provider-config.yaml` 中的 30+ API key(virustotal、shodan、censys、binaryedge、chaos、bevigil、bufferover、dnsdumpster、digitalyama、fofa、fullhunt、hunter、leakix、netlas、quake、rsecloud、redhuntlabs、securitytrails、shodan-idb、whoisxmlapi、zoomeye 等)
+- `SUBDOMAIN_SOURCES` dict 加 `'subfinder': _src_subfinder`,与原 4 源(crtsh/certspotter/hackertarget/otx)并行执行
+- 自动检测 = 用户没装 subfinder 完全无感知,装了立即接力使用,无需任何配置代码改动
+
+### 安装方式(可选,推荐)
+
+```bash
+# macOS
+brew install subfinder
+
+# Linux
+go install -v github.com/projectdiscovery/subfinder/v2/cmd/subfinder@latest
+
+# 配置 ProjectDiscovery PDCP key 解锁更多源
+export PDCP_API_KEY="your-pdcp-key"
+```
+
+### 实测对比
+
+```
+=== 5 源全测 anthropic.com ===
+  crtsh         ->     0 hosts in   291ms (临时数据源问题)
+  certspotter   ->    50 hosts in   830ms
+  hackertarget  ->    50 hosts in   594ms
+  otx           ->     0 hosts in   475ms (临时)
+  subfinder     ->   207 hosts in  1751ms  ✨ 新增 — 4倍于其他源上限
+```
+
+### Tests
+
+- 加 5 个 subfinder 测试(共 422 全绿):
+  - `test_subfinder_no_binary_returns_empty` — 没装时静默返空
+  - `test_subfinder_parses_json_output` — JSON Lines 解析 + 跨域过滤
+  - `test_subfinder_timeout_returns_empty` — 超时不抛
+  - `test_subfinder_nonzero_exit_returns_empty` — 非零退出码不抛
+  - `test_subfinder_in_sources_dict` — 已注册到 SUBDOMAIN_SOURCES
+
+### Packaging
+
+- `__version__` 1.4.7 → 1.4.8
+
+---
+
 ## [1.4.7] — 2026-05-09
 
 ✨ **CertSpotter 支持 API key**(对齐 OTX 设计 — 免费注册即可解锁高 quota)

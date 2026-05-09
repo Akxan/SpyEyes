@@ -26,7 +26,7 @@ title: SpyEyes
   - Maigret-style permute（全排列 × 4 种分隔符 + `--method strict|all`）
   - 递归扫描挖关联账号
 - **🔍 WHOIS / 📨 MX / ✉️ 邮箱验证** — IDN 支持
-- **🌐 子域名枚举(v1.3.0)** — 被动多源(crt.sh + CertSpotter + HackerTarget + AlienVault OTX) + DNS + HTTP probe + Wildcard 检测
+- **🌐 子域名枚举(v1.3.0 / v1.4.8)** — 被动多源(crt.sh + CertSpotter + HackerTarget + AlienVault OTX) + **🚀 可选 subfinder 接力 30+ 源(v1.4.8)** + DNS + HTTP probe + Wildcard 检测
 - **📧 域名邮箱挖取(v1.4.0)** — theHarvester + Hunter.io 混合:CT 日志 + WHOIS + 深度爬虫 + 模式生成 + 可选 SMTP 验证
 - **📊 8 种 Editorial 风报告** — `JSON / Markdown / HTML / PDF / TXT / CSV / XMind / Graph`,Cormorant Garamond + JetBrains Mono 字体三件套(v1.4.x)
 - **🌍 完整中英双语** UI **+ 报告内容**(v1.2.0+)
