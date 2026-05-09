@@ -2509,13 +2509,17 @@ class TestSubdomainReports:
         # 含 markdown 表头
         assert '|' in md and '---' in md
 
-    def test_html_renders_anchor_for_alive(self, sample_data):
+    def test_html_renders_anchor_for_all_hosts(self, sample_data):
+        """v1.4.6:所有 host(alive/dead)都可点击(用户期望直接尝试访问 dead 子域)。"""
         html = gt._to_html('subdomain_example.com', sample_data)
         assert 'api.example.com' in html
-        # alive 子域应渲染为可点击 anchor
+        # alive 子域 anchor
         assert 'href="https://api.example.com/"' in html
-        # dead 子域不应有 href(就是文本)
-        assert 'href="https://old.example.com' not in html
+        # dead 子域也加 anchor(默认 https,用户可直接尝试)
+        assert 'href="https://old.example.com/"' in html
+        # alive/dead 用 data-alive 属性区分(CSS 左边框色调)
+        assert 'data-alive="true"' in html
+        assert 'data-alive="false"' in html
 
     def test_txt_renders(self, sample_data):
         txt = gt._to_txt('subdomain_example.com', sample_data)

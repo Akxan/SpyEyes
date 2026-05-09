@@ -18,6 +18,43 @@ This project adheres to [Keep a Changelog](https://keepachangelog.com/en/1.1.0/)
 
 ---
 
+## [1.4.6] — 2026-05-09
+
+✨ **HTML 报告交互性 + 可读性升级**(用户反馈)
+
+### Features
+
+- **🔝 表头粘性(sticky thead)** — 长列表(165+ 子域)滚动时表头始终可见
+  - `th{position:sticky;top:0;z-index:5}` + box-shadow 模拟"压在内容之上"层次感
+- **🔗 所有主机名都可点击**(包括 dead 子域)
+  - 之前仅 alive 子域有 href,dead 子域只是文本
+  - 现在所有 host 默认 `https://{host}/` 链接,用户可直接点击尝试访问
+  - alive 用 probe 时探测到的真实 scheme,dead 默认 https
+- **🟢 alive / 🔘 dead 视觉区分**:
+  - `tr[data-alive="true"]` 左边框 3px 暗绿 `#1f5837`
+  - `tr[data-alive="false"]` 左边框 3px 灰 `#c8c1ad` + 整行字体 `--muted` 弱化
+  - 一眼区分活跃和不活跃子域
+- **🎨 HTTP status 颜色编码**:
+  - 2xx:`--success` 暗绿(粗体)
+  - 3xx:`--link` 古典蓝
+  - 4xx:`--warn` 暗金
+  - 5xx:`--accent` 印章红
+- **行 hover 加强**:`box-shadow:inset 0 0 0 0.5px var(--ink)` 显示边框
+
+### Tests
+
+- `TestSubdomainReports::test_html_renders_anchor_for_alive` 改成
+  `test_html_renders_anchor_for_all_hosts` — 验证 alive + dead 都有 href
+  + `data-alive="true"/"false"` 属性
+- 417 测试全绿
+- ruff/mypy 全清
+
+### Packaging
+
+- `__version__` 1.4.5 → 1.4.6
+
+---
+
 ## [1.4.5] — 2026-05-09
 
 🐛 **HTML 报告大屏太窄 + 长主机名变阶梯式**(用户反馈)

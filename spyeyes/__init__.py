@@ -68,7 +68,7 @@ except ImportError:
 
 
 # 语义化版本号 —— 同步更新 docs/CHANGELOG.md 与 git tag
-__version__ = '1.4.5'
+__version__ = '1.4.6'
 
 
 # ====================================================================
@@ -4881,17 +4881,34 @@ def _to_html(prefix: str, data: Any) -> str:
         'font-family:var(--mono);font-size:0.85em;background:var(--surface);'
         'border-top:1.5px solid var(--ink);border-bottom:1.5px solid var(--ink)}',
         'thead tr{border-bottom:1px solid var(--ink)}',
+        # v1.4.6:sticky thead — 长列表滚动时表头始终可见
         'th{text-align:left;padding:0.85em 1em;font-family:var(--serif);'
         'font-weight:700;font-size:0.95em;letter-spacing:0.02em;color:var(--ink);'
-        'background:var(--soft);border-bottom:1px solid var(--ink);'
-        'white-space:nowrap}',
+        'background:var(--soft);border-bottom:1.5px solid var(--ink);'
+        'white-space:nowrap;'
+        'position:sticky;top:0;z-index:5;'
+        # 阴影模拟"压在内容之上"的层次感
+        'box-shadow:0 2px 0 0 var(--ink),0 4px 6px -2px rgba(10,10,12,0.1)}',
         'td{padding:0.7em 1em;border-bottom:1px solid #e8e3d6;vertical-align:top;'
         'word-break:normal;overflow-wrap:anywhere}',
         # 第一列(host/field)不断行,完整可读
-        'td:first-child{white-space:nowrap}',
+        'td:first-child{white-space:nowrap;font-weight:500}',
         '@media(max-width:900px){td:first-child{white-space:normal}}',
         'tr:nth-child(even) td{background:var(--row-alt)}',
-        'tr:hover td{background:var(--soft);transition:background 0.15s ease}',
+        # v1.4.6:alive/dead 视觉区分 — 左边框 3px 绿/灰
+        'tr[data-alive="true"] td:first-child{border-left:3px solid #1f5837;'
+        'padding-left:calc(1em - 3px)}',
+        'tr[data-alive="false"] td:first-child{border-left:3px solid #c8c1ad;'
+        'padding-left:calc(1em - 3px);color:var(--muted)}',
+        'tr[data-alive="false"] td{color:var(--muted)}',
+        # hover 加深 + 横向阴影
+        'tbody tr:hover td{background:var(--soft);transition:background 0.15s ease}',
+        'tbody tr:hover{box-shadow:inset 0 0 0 0.5px var(--ink)}',
+        # v1.4.6:HTTP status code 颜色编码 — 一眼识别 2xx/3xx/4xx/5xx
+        'td.status-ok{color:var(--success);font-weight:700}',
+        'td.status-redir{color:var(--link);font-weight:600}',
+        'td.status-warn{color:var(--warn);font-weight:600}',
+        'td.status-err{color:var(--accent);font-weight:700}',
         # Links + code
         'a{color:var(--link);text-decoration:underline;'
         'text-decoration-thickness:0.5px;text-underline-offset:0.22em;'
@@ -5126,17 +5143,30 @@ def _to_html(prefix: str, data: Any) -> str:
                 status_str = str(status) if status is not None else ''
                 title = s.get('title') or ''
                 host = s.get('host') or ''
-                # alive 子域 host 列加超链接(scheme 优先 https,fallback http)
-                if s.get('alive') and s.get('scheme'):
-                    href = f'{s["scheme"]}://{_html_escape(host)}/'
-                    host_html = f'<a href="{href}" target="_blank" rel="noopener noreferrer">{_html_escape(host)}</a>'
-                else:
-                    host_html = _html_escape(host)
+                alive = bool(s.get('alive'))
+                # v1.4.6:所有 host 都可点击 — alive 用真实 scheme(已 probe);
+                # dead 默认 https(用户能直接尝试访问)
+                scheme = s.get('scheme') or 'https'
+                href = f'{scheme}://{_html_escape(host)}/'
+                host_html = (f'<a href="{href}" target="_blank" rel="noopener noreferrer">'
+                             f'{_html_escape(host)}</a>')
+                # status 单元格:有数字时按 2xx/3xx/4xx/5xx 加颜色 class
+                status_class = ''
+                if status is not None:
+                    if 200 <= status < 300:
+                        status_class = ' class="status-ok"'
+                    elif 300 <= status < 400:
+                        status_class = ' class="status-redir"'
+                    elif 400 <= status < 500:
+                        status_class = ' class="status-warn"'
+                    else:
+                        status_class = ' class="status-err"'
                 parts.append(
-                    f'<tr><td>{host_html}</td>'
+                    f'<tr data-alive="{"true" if alive else "false"}">'
+                    f'<td>{host_html}</td>'
                     f'<td>{_html_escape(ips)}</td>'
                     f'<td>{_html_escape(s.get("cname") or "")}</td>'
-                    f'<td>{_html_escape(status_str)}</td>'
+                    f'<td{status_class}>{_html_escape(status_str)}</td>'
                     f'<td>{_html_escape(title)}</td></tr>'
                 )
             parts.append('</tbody></table>')
