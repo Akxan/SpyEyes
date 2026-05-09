@@ -68,7 +68,7 @@ except ImportError:
 
 
 # 语义化版本号 —— 同步更新 docs/CHANGELOG.md 与 git tag
-__version__ = '1.6.2'
+__version__ = '1.6.3'
 
 
 # ====================================================================
@@ -6943,33 +6943,35 @@ window.addEventListener('resize', () => {{ applyCenterViewBox(); fitToView(); }}
 '''
 
 
-_DEFAULT_REPORT_DIR_CACHE: Optional[str] = None
-
-
 def _default_report_dir() -> str:
-    """v1.2.0：默认报告保存目录（~/Downloads，跨平台）。
-    fallback 顺序：~/Downloads → ~/Download → ~/spyeyes-reports（自动创建） → cwd
-    v1.2.1 P2-3：模块级缓存，多格式连续保存循环里不重复 stat。"""
-    global _DEFAULT_REPORT_DIR_CACHE
-    if _DEFAULT_REPORT_DIR_CACHE is not None:
-        return _DEFAULT_REPORT_DIR_CACHE
-    candidates = [
-        os.path.expanduser('~/Downloads'),  # macOS / Linux / Windows 标准
-        os.path.expanduser('~/Download'),   # 部分 Linux 发行版
-    ]
-    for d in candidates:
-        if os.path.isdir(d):
-            _DEFAULT_REPORT_DIR_CACHE = d
-            return d
-    fallback = os.path.expanduser('~/spyeyes-reports')
+    """v1.6.3:跨平台统一行为 — 当前工作目录下创建/使用 '下载' 子文件夹。
+
+    设计变更原因:
+    - v1.2.0 默认 ~/Downloads,在 Linux 服务器(无桌面环境)往往不存在
+    - 不同平台落点不一致(macOS ~/Downloads, Linux ~/spyeyes-reports, etc.)
+    - 用户反馈"在哪都不知道,不直观"
+    - 改成固定 <cwd>/下载/ — 你在哪跑命令,就在哪建文件夹,所见即所得
+
+    优先级:
+    1. SPYEYES_REPORTS_DIR(用户显式配置,服务器场景常用 /var/log/spyeyes 等)
+    2. <cwd>/下载/(默认,自动创建,跨平台一致)
+    3. cwd 直接(若 mkdir 失败,极少见)
+
+    不再缓存:每次 _default_report_dir() 调用都重新计算 cwd,
+    支持用户在交互菜单内 cd 切换工作目录的场景(罕见但合理)。"""
+    custom = (os.environ.get('SPYEYES_REPORTS_DIR') or '').strip()
+    if custom:
+        try:
+            os.makedirs(custom, exist_ok=True)
+            return custom
+        except OSError:
+            pass
+    target = os.path.join(os.getcwd(), '下载')
     try:
-        os.makedirs(fallback, exist_ok=True)
-        _DEFAULT_REPORT_DIR_CACHE = fallback
-        return fallback
+        os.makedirs(target, exist_ok=True)
+        return target
     except OSError:
-        cwd = os.getcwd()
-        _DEFAULT_REPORT_DIR_CACHE = cwd
-        return cwd
+        return os.getcwd()
 
 
 def menu_loop(save_dir: Optional[str] = None) -> None:

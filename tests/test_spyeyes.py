@@ -735,6 +735,60 @@ class TestCliParser:
 # ------------------------------------------------------------------
 # _maybe_save 真写文件
 # ------------------------------------------------------------------
+class TestDefaultReportDir:
+    """v1.6.3:跨平台统一行为 — cwd/下载/ + SPYEYES_REPORTS_DIR 覆盖。"""
+
+    def test_default_creates_xiazai_in_cwd(self, monkeypatch, tmp_path):
+        """默认行为:在当前 cwd 下创建 '下载' 子目录。"""
+        monkeypatch.delenv('SPYEYES_REPORTS_DIR', raising=False)
+        monkeypatch.chdir(tmp_path)
+        result = gt._default_report_dir()
+        # 路径应是 cwd/下载
+        assert os.path.basename(result) == '下载'
+        # 目录已被自动创建
+        assert os.path.isdir(result)
+
+    def test_env_var_override(self, monkeypatch, tmp_path):
+        """SPYEYES_REPORTS_DIR=path 覆盖默认 cwd/下载/。"""
+        custom = tmp_path / 'my_reports'
+        monkeypatch.setenv('SPYEYES_REPORTS_DIR', str(custom))
+        result = gt._default_report_dir()
+        assert result == str(custom)
+        assert os.path.isdir(result)
+
+    def test_env_var_creates_dir_if_missing(self, monkeypatch, tmp_path):
+        """SPYEYES_REPORTS_DIR 指向不存在的路径 → 自动创建。"""
+        custom = tmp_path / 'deep' / 'nested' / 'reports'
+        monkeypatch.setenv('SPYEYES_REPORTS_DIR', str(custom))
+        result = gt._default_report_dir()
+        assert result == str(custom)
+        assert os.path.isdir(result)
+
+    def test_no_caching_picks_up_cwd_change(self, monkeypatch, tmp_path):
+        """v1.6.3:不再缓存 — 用户在交互菜单内 cd 后再保存能正确响应。"""
+        monkeypatch.delenv('SPYEYES_REPORTS_DIR', raising=False)
+        a = tmp_path / 'a'
+        b = tmp_path / 'b'
+        a.mkdir()
+        b.mkdir()
+        monkeypatch.chdir(a)
+        result_a = gt._default_report_dir()
+        monkeypatch.chdir(b)
+        result_b = gt._default_report_dir()
+        # 两次结果应该不同(对应不同 cwd)
+        assert result_a != result_b
+        assert os.path.dirname(result_a) == str(a)
+        assert os.path.dirname(result_b) == str(b)
+
+    def test_env_var_blank_falls_back_to_default(self, monkeypatch, tmp_path):
+        """空字符串的 env var 不应触发 override(防止 'export X=' 误用)。"""
+        monkeypatch.setenv('SPYEYES_REPORTS_DIR', '   ')  # 仅空白
+        monkeypatch.chdir(tmp_path)
+        result = gt._default_report_dir()
+        # 应走默认 cwd/下载/
+        assert os.path.basename(result) == '下载'
+
+
 class TestMaybeSave:
     def test_writes_json(self, tmp_path):
         gt._maybe_save(str(tmp_path), 'ip_8.8.8.8', {'a': 1, 'b': '中'})

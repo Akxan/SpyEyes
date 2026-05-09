@@ -18,6 +18,71 @@ This project adheres to [Keep a Changelog](https://keepachangelog.com/en/1.1.0/)
 
 ---
 
+## [1.6.3] — 2026-05-09
+
+✨ **报告默认保存目录跨平台统一 — `<cwd>/下载/`**(用户反馈)
+
+### 背景
+
+用户反馈:"如果项目装在 Linux 服务器,默认存到 ~/Downloads,但服务器上没这个文件夹"。
+
+之前(v1.2.0+)的优先级:`~/Downloads → ~/Download → ~/spyeyes-reports → cwd`,导致:
+- macOS / Windows 桌面用户:存到 `~/Downloads/` ✓
+- Linux 服务器用户:fallback 到 `~/spyeyes-reports/` — 不直观,用户不知道在哪
+- 不同平台体验不一致
+
+### 修复 — 统一行为
+
+**所有平台默认都用 `<cwd>/下载/`**:你在哪跑命令,就在哪建文件夹,所见即所得。
+
+```
+新优先级:
+1. SPYEYES_REPORTS_DIR (用户显式配置,如 /var/log/spyeyes)
+2. <cwd>/下载/ (默认,自动创建)
+3. <cwd> (兜底,极少见)
+```
+
+### 用户场景
+
+```bash
+# 普通使用 — 报告就在你跑命令的目录下的 下载/ 子文件夹
+cd ~/work
+spyeyes subdomain example.com --save report.html
+# → ~/work/下载/report.html
+
+# 服务器场景 — 用 env var 指定固定位置
+export SPYEYES_REPORTS_DIR=/var/log/spyeyes
+spyeyes ...
+# → /var/log/spyeyes/...
+
+# 也支持 systemd unit 里 Environment= 指定
+```
+
+### 移除的行为
+
+- 不再读 `~/Downloads` / `~/Download`(保持跨平台一致,而不是 OS 依赖)
+- 不再缓存 `_DEFAULT_REPORT_DIR_CACHE` — 用户在交互菜单里 `cd` 后再保存能正确响应新 cwd
+- 已存在的 `~/Downloads/` 上**不影响已保存的旧报告**,只影响新保存的默认路径
+
+### Tests
+
+- 5 个新测试(共 **473 全绿**):
+  - `test_default_creates_xiazai_in_cwd` — 默认行为
+  - `test_env_var_override` — `SPYEYES_REPORTS_DIR` 覆盖
+  - `test_env_var_creates_dir_if_missing` — 嵌套目录自动创建
+  - `test_no_caching_picks_up_cwd_change` — 不缓存,响应 cwd 变化
+  - `test_env_var_blank_falls_back_to_default` — 空字符串 env 不触发 override
+
+### Code Quality
+
+ruff 0 / mypy 0 / bandit 0
+
+### Packaging
+
+- `__version__` 1.6.2 → 1.6.3
+
+---
+
 ## [1.6.2] — 2026-05-09
 
 🐛 **Housekeeping + 修复 CI 6 连失败 + 全文档同步**
