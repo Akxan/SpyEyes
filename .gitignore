@@ -24,3 +24,14 @@ dist/
 
 # v1.1.0: tools/build_platforms.py 缓存目录
 .cache/
+
+# v1.6.4: 默认报告导出目录(不应提交用户数据)
+Downloads/
+下载/
+*.html
+*.pdf
+*.xmind
+*.graph.html
+# 但保留 docs/ 下的文档文件
+!docs/**/*.html
+!docs/**/*.pdf
