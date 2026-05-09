@@ -68,7 +68,7 @@ except ImportError:
 
 
 # 语义化版本号 —— 同步更新 docs/CHANGELOG.md 与 git tag
-__version__ = '1.6.5'
+__version__ = '1.6.6'
 
 
 # ====================================================================
@@ -3854,15 +3854,18 @@ def enumerate_domain_emails(domain: str, *,
         if include_subdomains and HAS_DNS:
             if show_progress:
                 _stage_log(f"\n {Color.Cy}{t('demails.stage_subdomain')}{Color.Reset}")
-            # v1.6.1:把子流程进度透传给用户(之前为了避免交织静默,但用户反馈"看着卡死")
-            # enumerate_subdomains 自己会打 4 阶段子标题,清晰且不混乱
-            sub_result = enumerate_subdomains(domain, probe=False,
+            # v1.6.6:probe=True 拿 HTTP 状态,后续过滤掉非 web 子域
+            # (mail/pop/smtp/dns 这种 DNS 解析但没 HTTP 服务的,爬了也是空)
+            # 之前 probe=False 时,linux.do 33 个子域全爬,大部分死站等超时,5+ 分钟
+            sub_result = enumerate_subdomains(domain, probe=True,
                                               show_progress=show_progress)
             if isinstance(sub_result, dict) and 'subdomains' in sub_result:
-                alive = [s['host'] for s in sub_result['subdomains']
-                         if s.get('alive')]
-                # 排除主域自己,加 alive 子域
-                for h in alive:
+                # v1.6.6:只取 HTTP 响应的(http_status not None = 真有 web 服务)
+                # 4xx/5xx 也算(服务器在,只是要认证) — 过滤掉的是连不上的纯 DNS 主机
+                http_alive = [s['host'] for s in sub_result['subdomains']
+                              if s.get('alive') and s.get('http_status') is not None]
+                # 排除主域自己,加 web-responsive 子域
+                for h in http_alive:
                     if h != domain and h not in targets_to_crawl:
                         targets_to_crawl.append(h)
             if show_progress:
@@ -3874,22 +3877,48 @@ def enumerate_domain_emails(domain: str, *,
         # 把 max_pages 平均分给每个目标
         per_target = max(10, max_pages // max(1, len(targets_to_crawl)))
         total_targets = len(targets_to_crawl)
-        for idx, target in enumerate(targets_to_crawl, 1):
-            # v1.6.1:多 target 时标明 [N/M] 进度,用户知道现在在哪一个
-            if show_progress and total_targets > 1:
-                _stage_log(f"\n   {Color.Cy}{t('demails.target_progress', idx=idx, total=total_targets, target=target)}{Color.Reset}")
-            crawl_result = _crawl_domain_for_emails(
+
+        # v1.6.6:多 target 并行爬(workers=3,平衡速度 vs 礼貌)
+        # 每个 target 内部仍 500ms 速率限制(单域不被 ban),但 N 个 target 之间并行
+        # linux.do 5+ min → ~1-2 min(3-4× 提速)
+        TARGET_PARALLEL_WORKERS = 3
+        crawl_results: dict = {}  # target → crawl_result(保持原有反馈格式)
+
+        def _crawl_one(target):
+            return target, _crawl_domain_for_emails(
                 target, max_pages=per_target, max_depth=max_depth,
                 workers=workers, obey_robots=obey_robots,
-                show_progress=show_progress)
-            for em in crawl_result.get('emails', set()):
-                _add(em, 'crawl', crawl_result.get('page_map', {}).get(em))
-            pages_crawled_total += crawl_result.get('pages_crawled', 0)
-            sitemap_found_any = sitemap_found_any or crawl_result.get('sitemap_found', False)
-            if show_progress:
-                _stage_log(f"   {Color.Gr}[{target}] "
-                           f"pages={crawl_result.get('pages_crawled', 0)} "
-                           f"emails={len(crawl_result.get('emails', set()))}{Color.Reset}")
+                show_progress=False)  # 内部 show_progress 关掉防多 target 输出交织
+
+        with ThreadPoolExecutor(max_workers=min(TARGET_PARALLEL_WORKERS, total_targets)) as ex:
+            futures = {ex.submit(_crawl_one, tgt): (idx + 1, tgt)
+                       for idx, tgt in enumerate(targets_to_crawl)}
+            done_count = 0
+            try:
+                for fut in as_completed(futures):
+                    idx, tgt = futures[fut]
+                    done_count += 1
+                    try:
+                        _, crawl_result = fut.result()
+                    except Exception as e:
+                        if show_progress:
+                            _stage_log(f"   {Color.Re}[{tgt}] error: {type(e).__name__}{Color.Reset}")
+                        continue
+                    crawl_results[tgt] = crawl_result
+                    for em in crawl_result.get('emails', set()):
+                        _add(em, 'crawl', crawl_result.get('page_map', {}).get(em))
+                    pages_crawled_total += crawl_result.get('pages_crawled', 0)
+                    sitemap_found_any = sitemap_found_any or crawl_result.get('sitemap_found', False)
+                    if show_progress:
+                        n_pages = crawl_result.get('pages_crawled', 0)
+                        n_emails = len(crawl_result.get('emails', set()))
+                        # 颜色:有结果 = 绿,空目标 = 蓝(信息性,不是错误)
+                        color = Color.Gr if n_emails else Color.Bl
+                        _stage_log(f"   {color}[{done_count}/{total_targets}] "
+                                   f"{tgt}  pages={n_pages} emails={n_emails}{Color.Reset}")
+            except KeyboardInterrupt:
+                ex.shutdown(wait=False, cancel_futures=True)
+                raise
 
     # 阶段 3:模式生成(opt-in)
     if guess_names:

@@ -18,6 +18,67 @@ This project adheres to [Keep a Changelog](https://keepachangelog.com/en/1.1.0/)
 
 ---
 
+## [1.6.6] — 2026-05-09
+
+⚡ **域名邮箱挖掘提速 3-4× — HTTP probe 过滤 + 多 target 并行**(用户反馈)
+
+### 背景
+
+用户截图显示 `linux.do` 跑 domain-emails 时,33 个 alive 子域大部分是 `pages=0 emails=0`(像 `pop.linux.do` / `smtp.linux.do` / `dns.linux.do`)。这些**根本没 HTTP 服务**,但代码挨个发请求等超时,5+ 分钟。
+
+### 优化(三件)
+
+#### 1. `enumerate_subdomains` 调用改 `probe=True`
+
+之前 `probe=False` 拿不到 HTTP 状态,33 个 DNS-alive 子域全爬。
+现在 `probe=True` + 过滤 `http_status is not None`:
+- linux.do: 33 个 alive → ~10 个 web-responsive
+- 4xx/5xx 也算(服务器在,只是要认证)
+- 纯 mail/DNS/SSH 主机自动跳过
+
+#### 2. 多 target 并行爬虫(`TARGET_PARALLEL_WORKERS = 3`)
+
+之前串行 `for target in targets`,每个等完才下一个。
+现在 ThreadPoolExecutor(workers=3):
+- 单 target 内部仍 500ms 速率限制(单域礼貌)
+- 多 target 之间并发 → 3× 吞吐
+- Ctrl+C 可中断
+
+#### 3. 进度反馈 — 内部 `show_progress=False`
+
+并行场景下多个 target 的进度条会输出交织变乱。所以单 target 内部静默,主流程在每个 target 完成后打一行总结:
+
+```
+[3/10] api.linux.do  pages=87 emails=12
+[5/10] cdn.linux.do  pages=23 emails=0
+[7/10] www.linux.do  pages=156 emails=8
+...
+```
+
+颜色编码:有邮箱 = 绿,空 = 蓝(信息性,不算错误)。
+
+### 实测
+
+| 场景 | v1.6.5 | v1.6.6 | 提速 |
+|---|---|---|---|
+| `linux.do` 33 alive(其中 ~10 真 web) | ~5.5 分钟 | ~1.5 分钟 | **~3.5×** |
+| 小域(< 5 alive) | ~30s | ~20s | ~1.5× |
+| 单域(`--no-include-subdomains`) | 不变 | 不变 | — |
+
+### Tests
+
+无新测试(行为是性能优化,既有测试覆盖核心逻辑)。**479 全绿**。
+
+### Code Quality
+
+ruff 0 / mypy 0 / bandit 0
+
+### Packaging
+
+- `__version__` 1.6.5 → 1.6.6
+
+---
+
 ## [1.6.5] — 2026-05-09
 
 🐛 **`--alive-only` 智能升级 — 在 wildcard DNS / 劫持环境下自动严格过滤**
