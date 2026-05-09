@@ -20,7 +20,97 @@ This project adheres to [Keep a Changelog](https://keepachangelog.com/en/1.1.0/)
 
 ## [1.4.4] — 2026-05-09
 
-🚨 **紧急修复 — 子域名查询大面积失效 + PDF 字符间距 + 封面冗余信息**
+🚨 **紧急修复 + 报告美化补完 — Editorial Investigation Brief 全套**
+
+### 🎨 Visual — XMind 重做层级展开
+
+用户反馈:之前 XMind 节点信息密度过高(host + 4 IP + status 一行),且 `<title>:`
+看着像 HTML 残留 bug。重做 subdomain 分支:
+
+- **host 节点只显示 host + status code**(不再塞 IP)
+- **IPv4 / IPv6 各占独立一层子节点**(`📡 IPv4 (N)` / `📡 IPv6 (N)`,各下挂 IP 列表)
+- **CNAME 单独一层**:`🔗 CNAME → ...`
+- **Title 改用 `📄 标题:` / `📄 Title:`**(不再用 `<title>:` 像 HTML bug)
+- **概要节点**`📊 共发现 N · 活跃 M · 来自 K 数据源`提前显示
+- alive `flag-green` ✓ / dead `task-start` ✗ 视觉分级清晰
+
+收起时简洁,展开看详细 — 真正利用 XMind 思维导图层级特性。
+
+### 🎨 Visual — Graph 改浅色
+
+用户反馈不要深色背景。Graph 改回 Editorial 风浅色 theme:
+
+- 背景:cream `#fafaf5`(替代之前的 dark `#0e0e12`)
+- 节点配色:**印章红 `#c8102e`**(主节点)+ **古典蓝 `#1d4ed8`**(命中)+ 暗灰(其它)
+- 节点 stroke 用 `surface white` + drop-shadow 替代 dark theme 的 glow
+- header 用 cream 半透明 + 5px 双线分隔(同 HTML 报告)
+- text stroke 用 cream outline 在浅色 svg 上对比好
+
+### 🎨 Visual — PDF 内页美化
+
+用户反馈"不能只加封面页就够了,第二页内容也要美化"。重做:
+
+- **Heading2** 字号 17pt,leading 22pt,spaceBefore 22pt(更明显的章节起点)
+- **Heading3** 字号 12pt,文字色用印章红 `#c8102e`(章节副标题感)
+- **`_pdf_table_style` 重做 — Editorial 报刊表格风**:
+  - 表头 cream `#e8e3d6` 浅底色 + 顶部 1.2pt 主线 + 底部 0.5pt 细线
+  - 末行底部 1.2pt 主线(报刊双线感)
+  - 数据行无垂直线(只留水平分隔 0.25pt)
+  - 斑马纹 cream/white 交替
+  - padding 8pt(表头)/ 6pt(数据),数据有呼吸感
+
+### 🎨 PDF 页脚字符间距 + 去封面冗余链接
+
+(详细见同次发布的早期 commit 段)
+
+### 🐛 Bug Fixes — 子域名查询(P0,**功能性故障**)
+
+用户报告"子域名查询都是 0",systematic-debugging 实测 4 个被动源真实状态:
+
+| 源 | 现状 | 处理 |
+|---|---|---|
+| **ThreatCrowd** | 域名 `www.threatcrowd.org` 已**无 DNS 记录**(网站死了) | **移除** |
+| **AlienVault OTX** | 匿名访问被限速 `429 Anonymous limited`(API 政策变了) | 加 `SPYEYES_OTX_API_KEY` env var 支持 |
+| **HackerTarget** | 匿名免费 quota 用完后返 `API count exceeded` | 不可控(用户侧) |
+| **crt.sh** | `.do` / 其它特殊 TLD 需要 25-30s 才返回,`SUBDOMAIN_SOURCE_TIMEOUT=15s` 不够 | timeout 加大到 45s |
+
+修复:
+- **删除 `_src_threatcrowd`**(死站)
+- **新增 `_src_certspotter`**(SSLMate CertSpotter API,免费 CT 日志,替补 crt.sh)
+  - 实测 linux.do 拉到 36 个候选(crt.sh 50 个 + certspotter 36 个 ≈ 60+ 独立子域)
+- **OTX 加 API key 支持**:`SPYEYES_OTX_API_KEY=YOUR_KEY` env var,
+  发 `X-OTX-API-KEY` header(免费注册 https://otx.alienvault.com)
+- `SUBDOMAIN_SOURCE_TIMEOUT` 15s → 45s
+
+实测 `linux.do` (`.do` TLD) **从 0 个 → 60+ 个子域**。
+
+### 🐛 Bug Fixes — PDF(P1,**视觉问题**)
+
+用户截图显示:
+1. **页脚 `SPYEYES▲ OSINT 调查工具` 字符间距过紧**
+   - 根因:之前用 `font_name`(STSong-Light 中文字体,Latin advance 偏窄)
+   - 修复:页脚 canvas 改用 `Helvetica`,纯英文 brand `SpyEyes  ·  OSINT Toolkit`(中英版统一)
+   - bonus:页脚加 query 作为 running header 居中
+2. **封面页冗余项目链接** `spyeyes ▲ github.com/Akxan/SpyEyes`(用户嫌弃)
+   - 修复:删除
+3. **PDF 生成失败 `'Canvas' object has no attribute 'setCharSpace'`**
+   - 根因:`setCharSpace` 是 reportlab textObject 方法不是 Canvas 直接方法
+   - 修复:删除该调用(Helvetica 间距已自然)
+
+### 🧪 Tests
+
+- **TestSubdomainParsers**:`test_threatcrowd_parses_subdomains` → 改成 `test_certspotter_parses_dns_names`(新源 + 跨域过滤验证)
+- **TestPassiveCollectSubdomains** / **TestEnumerateSubdomains** / **TestSubdomainStageProgress**:把 `'threatcrowd'` 引用全改为 `'certspotter'`
+- 417 测试全绿
+- ruff / mypy 全清
+
+### 📦 Packaging
+
+- `__version__` 1.4.3 → 1.4.4
+
+---
+
+## [1.4.4 早期 — 已合并到上方] — 2026-05-09
 
 ### 🐛 Bug Fixes — 子域名查询(P0,**功能性故障**)
 

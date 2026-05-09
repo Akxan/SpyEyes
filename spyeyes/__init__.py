@@ -4325,19 +4325,36 @@ def _pdf_para(raw: Any, style, bold: bool = False) -> Any:
 
 def _pdf_table_style(font_name: str, font_size: int = 9, *,
                      extra: Optional[list] = None) -> Any:
-    """统一表格样式:浅灰表头 + 网格 + 单元格 padding + 隔行斑马纹。
-    所有 _to_pdf 表格共用,保证视觉一致。"""
+    """v1.4.4:Editorial 调性表格 — 报刊版式风格。
+    - 表头:soft cream 底色(非纯白)+ 顶/底双线分隔
+    - 数据行:无垂直线(只留水平细线),斑马 cream/white
+    - padding 加大让数据呼吸"""
+    ink = _rl_colors.HexColor('#0a0a0c')
+    soft = _rl_colors.HexColor('#e8e3d6')
+    cream = _rl_colors.HexColor('#fafaf5')
     base = [
-        ('BACKGROUND', (0, 0), (-1, 0), _rl_colors.lightgrey),
         ('FONTNAME', (0, 0), (-1, -1), font_name),
         ('FONTSIZE', (0, 0), (-1, -1), font_size),
-        ('GRID', (0, 0), (-1, -1), 0.25, _rl_colors.grey),
+        # 表头:cream 浅底色,头部衬线感
+        ('BACKGROUND', (0, 0), (-1, 0), soft),
+        ('FONTSIZE', (0, 0), (-1, 0), font_size + 0.5),
+        # 顶/底主线(报刊双线感)
+        ('LINEABOVE', (0, 0), (-1, 0), 1.2, ink),
+        ('LINEBELOW', (0, 0), (-1, 0), 0.5, ink),
+        ('LINEBELOW', (0, -1), (-1, -1), 1.2, ink),
+        # 数据行间细分隔(无垂直线)
+        ('LINEBELOW', (0, 1), (-1, -2), 0.25, _rl_colors.HexColor('#c8c1ad')),
         ('VALIGN', (0, 0), (-1, -1), 'TOP'),
-        ('TOPPADDING', (0, 0), (-1, -1), 5),
-        ('BOTTOMPADDING', (0, 0), (-1, -1), 5),
-        ('LEFTPADDING', (0, 0), (-1, -1), 6),
-        ('RIGHTPADDING', (0, 0), (-1, -1), 6),
-        ('ROWBACKGROUNDS', (0, 1), (-1, -1), [None, _rl_colors.HexColor('#fafafa')]),
+        # padding 加大,让数据呼吸
+        ('TOPPADDING', (0, 0), (-1, 0), 8),
+        ('BOTTOMPADDING', (0, 0), (-1, 0), 8),
+        ('TOPPADDING', (0, 1), (-1, -1), 6),
+        ('BOTTOMPADDING', (0, 1), (-1, -1), 6),
+        ('LEFTPADDING', (0, 0), (-1, -1), 8),
+        ('RIGHTPADDING', (0, 0), (-1, -1), 8),
+        # 斑马纹:cream/white 交替
+        ('ROWBACKGROUNDS', (0, 1), (-1, -1),
+         [cream, _rl_colors.HexColor('#ffffff')]),
     ]
     if extra:
         base.extend(extra)
@@ -4410,12 +4427,17 @@ def _to_pdf(prefix: str, data: Any, out_path: str) -> Optional[str]:
         styles['Title'].leading = 38
         styles['Title'].fontSize = 32
         styles['Title'].spaceAfter = 0
-        styles['Heading2'].leading = 18
-        styles['Heading2'].fontSize = 15
-        styles['Heading3'].leading = 14
+        # v1.4.4:Heading2/3 美化 — 编辑信式衬线感 + accent 红 + 留白
+        styles['Heading2'].leading = 22
+        styles['Heading2'].fontSize = 17
+        styles['Heading2'].spaceBefore = 22
+        styles['Heading2'].spaceAfter = 10
+        styles['Heading2'].textColor = _rl_colors.HexColor('#0a0a0c')
+        styles['Heading3'].leading = 16
         styles['Heading3'].fontSize = 12
-        styles['Heading2'].spaceBefore = 12
-        styles['Heading3'].spaceBefore = 6
+        styles['Heading3'].spaceBefore = 12
+        styles['Heading3'].spaceAfter = 6
+        styles['Heading3'].textColor = _rl_colors.HexColor('#c8102e')
 
         # v1.4.2:封面页 — Editorial Investigation Brief 调性
         # 类似 HTML masthead:CONFIDENTIAL stamp + 大标题 + classification + 元数据 + 双线分隔
@@ -5621,27 +5643,52 @@ def _to_xmind(prefix: str, data: Any, out_path: str) -> Optional[str]:
                     markers=[group_marker],
                 ))
         elif cmd == 'subdomain' and isinstance(data, dict) and 'subdomains' in data:
+            # v1.4.4 重做:充分利用 XMind 层级 — host 节点只显 host,IP/CNAME/Title 各占一层子节点
+            # 这样收起时简洁(扫一眼 host),展开时详细
             alive_kids = []
             dead_kids = []
             for s in data.get('subdomains', []):
-                ips = ', '.join((s.get('a') or []) + (s.get('aaaa') or []))
-                detail = ips or (s.get('cname') or '')
+                host = s.get('host', '')
                 status = s.get('http_status')
-                if status:
-                    detail = f'{detail} [{status}]'.strip()
-                node_label = f'{s.get("host", "")} → {detail}' if detail else s.get('host', '')
+                # host 标题:简洁显示 host + 可选 status code(只一个数字)
+                if s.get('alive') and status:
+                    host_label = f'{host}  ·  HTTP {status}'
+                else:
+                    host_label = host
+                # alive 子域 host 可点击跳转
                 href = None
                 if s.get('alive') and s.get('scheme'):
-                    href = f'{s["scheme"]}://{s.get("host", "")}/'
+                    href = f'{s["scheme"]}://{host}/'
+                # 子节点:IPv4 / IPv6 / CNAME / Title 各一层
                 kids = []
-                if s.get('title'):
-                    kids.append(_topic(f'<title>: {s["title"]}',
-                                        markers=['symbol-info']))
+                a_records = s.get('a') or []
+                aaaa_records = s.get('aaaa') or []
+                if a_records:
+                    ipv4_kids = [_topic(ip) for ip in a_records]
+                    kids.append(_topic(
+                        f'📡 IPv4 ({len(a_records)})', ipv4_kids,
+                        markers=['symbol-tip'],
+                    ))
+                if aaaa_records:
+                    ipv6_kids = [_topic(ip) for ip in aaaa_records]
+                    kids.append(_topic(
+                        f'📡 IPv6 ({len(aaaa_records)})', ipv6_kids,
+                        markers=['symbol-tip'],
+                    ))
                 if s.get('cname'):
-                    kids.append(_topic(f'CNAME → {s["cname"]}',
-                                        markers=['symbol-info']))
-                # 状态码 → marker:2xx=task-done, 3xx=task-3quar,
-                # 4xx=flag-orange, 5xx=flag-red
+                    kids.append(_topic(
+                        f'🔗 CNAME → {s["cname"]}',
+                        markers=['symbol-info'],
+                    ))
+                title_text = s.get('title')
+                if title_text:
+                    # v1.4.4:不再用 `<title>:` 看起来像 HTML 残留,改成 "📄 Title:"
+                    title_label = ('📄 标题' if get_lang() == 'zh' else '📄 Title')
+                    kids.append(_topic(
+                        f'{title_label}: {title_text}',
+                        markers=['symbol-info'],
+                    ))
+                # 状态码 → marker
                 status_marker = 'task-done'
                 if status:
                     if 200 <= status < 300:
@@ -5652,13 +5699,21 @@ def _to_xmind(prefix: str, data: Any, out_path: str) -> Optional[str]:
                         status_marker = 'flag-orange'
                     elif status >= 500:
                         status_marker = 'flag-red'
-                topic = _topic(node_label, kids if kids else None, href=href,
+                topic = _topic(host_label, kids if kids else None, href=href,
                                markers=[status_marker if s.get('alive') else 'task-start'])
                 if s.get('alive'):
                     alive_kids.append(topic)
                 else:
                     dead_kids.append(topic)
             sub_topics = [meta_topic]
+            # 概要节点 — 给用户先看到统计
+            stats = data.get('_stats', {}) or {}
+            sources = data.get('sources', {}) or {}
+            sources_active = sum(1 for v in sources.values() if v > 0)
+            sub_topics.append(_topic(
+                f'📊 {t("subdomain.summary", total=stats.get("total", 0), alive=stats.get("alive", 0), sources=sources_active)}',
+                markers=['symbol-info'],
+            ))
             if data.get('wildcard_suspect'):
                 sub_topics.append(_topic(
                     f'⚠ {t("subdomain.wildcard_warn")}',
@@ -5666,13 +5721,13 @@ def _to_xmind(prefix: str, data: Any, out_path: str) -> Optional[str]:
                 ))
             if alive_kids:
                 sub_topics.append(_topic(
-                    f'{t("subdomain.alive_section")} ({len(alive_kids)})',
+                    f'✓ {t("subdomain.alive_section")} ({len(alive_kids)})',
                     alive_kids, markers=['flag-green'],
                 ))
             if dead_kids:
                 sub_topics.append(_topic(
-                    f'{t("subdomain.dead_section")} ({len(dead_kids)})',
-                    dead_kids, markers=['flag-gray' if False else 'task-start'],
+                    f'✗ {t("subdomain.dead_section")} ({len(dead_kids)})',
+                    dead_kids, markers=['task-start'],
                 ))
         elif isinstance(data, dict):
             sub_topics = [meta_topic]
@@ -5874,24 +5929,25 @@ def _to_graph_html(prefix: str, data: Any) -> str:
 <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@500;600&family=JetBrains+Mono:wght@400;500;700&family=Noto+Serif+SC:wght@500;700&display=swap" rel="stylesheet">
 <style>
 :root {{
-  --bg: #0e0e12;
-  --bg-grad: radial-gradient(ellipse at 30% 0%, #181822 0%, #0e0e12 60%, #08080c 100%);
-  --surface: #15151c;
-  --ink: #e8e6df;
-  --muted: #8b8676;
-  --rule: #2a2a35;
-  --accent: #d4af37;        /* 金色 — 主节点 */
-  --hit: #4a9eff;           /* 蓝 — 命中 */
-  --other: #6b6657;         /* 暗灰 — 其它 */
-  --link-color: rgba(212,175,55,0.18);
-  --link-hover: rgba(212,175,55,0.55);
+  /* v1.4.4:浅色 Editorial 主题(用户反馈不要深色)*/
+  --bg: #fafaf5;
+  --surface: #ffffff;
+  --ink: #0a0a0c;
+  --muted: #6b6657;
+  --rule: #0a0a0c;
+  --soft: #e8e3d6;
+  --accent: #c8102e;        /* 印章红 — 主节点 query */
+  --hit: #1d4ed8;           /* 古典蓝 — 命中 */
+  --other: #6b6657;         /* 暗灰 — 错误/其它 */
+  --link-color: rgba(10,10,12,0.18);
+  --link-hover: rgba(200,16,46,0.5);
   --serif: "Cormorant Garamond","Noto Serif SC",Georgia,serif;
   --mono: "JetBrains Mono",ui-monospace,Menlo,monospace;
 }}
 * {{ box-sizing: border-box; }}
 html, body {{ height: 100%; margin: 0; overflow: hidden; }}
 body {{
-  background: var(--bg-grad);
+  background: var(--bg);
   color: var(--ink);
   font-family: var(--mono);
   display: flex;
@@ -5899,16 +5955,17 @@ body {{
 }}
 .header {{
   padding: 1.2em 2em 1em;
-  background: linear-gradient(180deg,rgba(15,15,20,0.96),rgba(15,15,20,0.85) 70%,transparent);
-  border-bottom: 1px solid var(--rule);
+  background: rgba(250,250,245,0.96);
+  border-bottom: 5px double var(--ink);
   flex-shrink: 0;
-  backdrop-filter: blur(10px);
-  -webkit-backdrop-filter: blur(10px);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
   z-index: 10;
 }}
 .eyebrow {{
   font-family: var(--mono); font-size: 0.65em; letter-spacing: 0.4em;
   text-transform: uppercase; color: var(--accent); margin-bottom: 0.35em;
+  font-weight: 700;
 }}
 .header h2 {{
   font-family: var(--serif); font-weight: 500; font-size: 1.85em;
@@ -5916,14 +5973,14 @@ body {{
 }}
 .header h2 em {{
   font-style: italic; color: var(--accent); font-weight: 600;
-  text-decoration: underline; text-decoration-color: rgba(212,175,55,0.35);
+  text-decoration: underline; text-decoration-color: rgba(200,16,46,0.35);
   text-underline-offset: 0.18em; text-decoration-thickness: 1px;
 }}
 .meta-row {{
   font-family: var(--mono); color: var(--muted); margin: 0.6em 0 0;
   font-size: 0.78em; letter-spacing: 0.04em;
 }}
-.meta-row span {{ color: var(--ink); }}
+.meta-row span {{ color: var(--ink); font-weight: 500; }}
 .legend {{
   display: flex; gap: 1.5em; margin-top: 0.7em;
   font-family: var(--mono); font-size: 0.72em; color: var(--muted);
@@ -5932,23 +5989,26 @@ body {{
 .legend span {{ display: flex; align-items: center; gap: 0.4em; }}
 .legend i {{
   display: inline-block; width: 10px; height: 10px; border-radius: 50%;
-  box-shadow: 0 0 8px currentColor;
+  box-shadow: 0 0 0 1px rgba(0,0,0,0.08);
 }}
 .legend kbd {{
-  background: var(--surface); border: 1px solid var(--rule);
+  background: var(--soft); border: 1px solid var(--rule);
   padding: 1px 6px; font-size: 0.95em; border-radius: 2px;
-  color: var(--accent); font-family: var(--mono);
+  color: var(--ink); font-family: var(--mono); font-weight: 700;
 }}
 .node circle {{
   stroke: var(--surface); stroke-width: 1.5px;
-  filter: drop-shadow(0 0 6px currentColor);
-  transition: filter 0.2s ease;
+  filter: drop-shadow(0 1px 2px rgba(0,0,0,0.15));
+  transition: filter 0.2s ease, stroke-width 0.2s ease;
 }}
-.node:hover circle {{ filter: drop-shadow(0 0 14px currentColor); }}
+.node:hover circle {{
+  filter: drop-shadow(0 2px 6px rgba(0,0,0,0.25));
+  stroke-width: 2.5px;
+}}
 .node text {{
   font-family: var(--mono); font-size: 11px; font-weight: 500;
   pointer-events: none; fill: var(--ink);
-  paint-order: stroke; stroke: rgba(15,15,20,0.95); stroke-width: 3px;
+  paint-order: stroke; stroke: rgba(250,250,245,0.95); stroke-width: 3px;
   letter-spacing: 0.02em;
 }}
 .node[data-group="1"] text {{
@@ -5958,7 +6018,7 @@ body {{
 .link {{ stroke: var(--link-color); stroke-width: 1px; }}
 svg {{
   flex: 1 1 auto; width: 100%; cursor: grab; display: block;
-  background: transparent;
+  background: var(--bg);
 }}
 svg:active {{ cursor: grabbing; }}
 .colophon {{
@@ -5966,7 +6026,8 @@ svg:active {{ cursor: grabbing; }}
   font-family: var(--mono); font-size: 0.65em;
   color: var(--muted); letter-spacing: 0.15em;
   text-transform: uppercase; pointer-events: none;
-  text-shadow: 0 0 10px var(--bg);
+  background: rgba(250,250,245,0.7);
+  padding: 2px 6px; border-radius: 2px;
 }}
 </style>
 </head>
@@ -5988,7 +6049,7 @@ svg:active {{ cursor: grabbing; }}
 <script>
 const nodes = {nodes_json};
 const links = {links_json};
-const colors = {{1:'#d4af37', 2:'#4a9eff', 3:'#6b6657'}};
+const colors = {{1:'#c8102e', 2:'#1d4ed8', 3:'#6b6657'}};  /* 印章红/古典蓝/暗灰 — 浅色 theme 适配 */
 const initialRadius = {initial_radius};
 
 const svg = d3.select('svg');
