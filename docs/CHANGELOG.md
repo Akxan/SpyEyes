@@ -18,6 +18,81 @@ This project adheres to [Keep a Changelog](https://keepachangelog.com/en/1.1.0/)
 
 ---
 
+## [1.4.9] — 2026-05-09
+
+✨ **子域名收集三大新维度** — Wayback Machine + DNS 字典爆破 + JS/HTML host 提取
+
+### Features
+
+#### 1. Wayback Machine 历史归档源(自动启用)
+
+- 新加 `_src_wayback`,加入 `SUBDOMAIN_SOURCES` 第 6 源
+- 调 `web.archive.org/cdx/search/cdx?url=*.{domain}` CDX API,聚合 Internet Archive 自 1996 年起所有归档过的 URL
+- 用途:挖出**已下线但曾出现过**的子域(被动 DNS / CT 已过期不会留)
+- `limit=10000` 防大型域刷爆,`collapse=urlkey` 自动去重
+- 对 429 / 5xx / 超时 silent 返空,不污染其他源
+
+#### 2. DNS 字典爆破(opt-in)
+
+- 新加 `_generate_bruteforce_candidates(domain)` 生成器
+- 内置 ~220 个高命中率前缀字典(jhaddix top-1k 精选子集):
+  - 基础:`www / mail / ftp / smtp / pop / imap / api / app / admin / dev / staging / test / prod / qa / sandbox / beta`
+  - 服务:`vpn / git / jenkins / jira / grafana / kibana / prometheus / db / redis / mongo`
+  - 业务:`shop / store / pay / billing / login / signup / portal / partner / event`
+  - 地理 / 编号:`m / mobile / ws / cdn / cdn1 / cdn2 / web1 / web2 / dev1 / dev2`
+- 启用方式(三选一):
+  - CLI flag:`spyeyes subdomain example.com --bruteforce`
+  - 环境变量:`SPYEYES_BRUTEFORCE=1 spyeyes subdomain example.com`
+  - 交互菜单:第二个 prompt 选 `[2] 是`
+- **自定义字典**:`SPYEYES_DNS_WORDLIST=/path/to/big.txt` 覆盖内置(支持注释行 `#` + 空行,massdns/shuffledns 字典直接复用)
+- 字典 prefix 直接拼成 `<prefix>.<domain>` 加入 candidates,通过现有 stage 3 DNS 解析自动验证,死的自然过滤
+- `_stats.bruteforce_added` 字段统计字典新引入的 host 数
+
+#### 3. JS / HTML body host 提取(默认启用)
+
+- 修改 `_probe_one_subdomain` 接受 `parent_domain` 参数
+- HTTP probe 抓 `<title>` 时,顺带正则扫已读的 16KB body,提取 `*.parent_domain` 的 hostname 引用
+- 用例:
+  - 内联 script 中的 API endpoint:`fetch('https://api.example.com/v1/users')`
+  - 资源 src/href:`<script src="//cdn.example.com/lib.js">` / `<a href="https://blog.example.com/...">`
+  - SPA 网站硬编码的 backend 域
+- 提取后跑第二轮 DNS + probe(单轮即止,不递归扩张)
+- 截断到 `SUBDOMAIN_MAX_RESULTS` 防恶意页面塞几千个无关 host
+- `_HTML_HOSTNAME_RE` 正则 + 跨域过滤,自动剔除 `googletagmanager.com / attacker.com` 等外域引用
+- 关闭方式:`--no-js-extract`(几乎免费,默认开)
+- `_stats.js_extracted` 字段统计 JS 提取新发现的 host 数
+
+### CLI 改动
+
+新增 `subdomain` 子命令两个参数:
+```
+--bruteforce        Enable DNS dictionary bruteforce (~220 prefixes; SPYEYES_DNS_WORDLIST=path 覆盖)
+--no-js-extract     Skip JS/HTML body extraction (default: enabled)
+```
+
+### 实测对比(`anthropic.com`)
+
+| 配置 | 总 host 数 | alive | 时间 |
+|---|---|---|---|
+| v1.4.8(5 源) | 207 | ~50 | ~3s |
+| v1.4.9 默认(6 源 + JS 提取) | 207 + 内嵌引用 | ~55 | ~5s |
+| v1.4.9 `--bruteforce`(6 源 + 字典 + JS) | 207 + 220 字典 + 引用 | ~60 | ~12s |
+
+### Tests
+
+- 18 个新测试,共 **440 全绿**(0 红):
+  - `TestPassiveSources::test_wayback_*` × 4(parses / empty / rate-limit / in dict)
+  - `TestBruteforce` × 4(builtin / empty / custom wordlist / fallback)
+  - `TestJsExtract` × 5(inline / attribute / cross-domain / empty / OOM cap)
+  - `TestEnumerateSubdomains::test_bruteforce_*` × 3(flag / off / env var)
+  - `TestEnumerateSubdomains::test_js_extract_*` × 2(finds new / disabled)
+
+### Packaging
+
+- `__version__` 1.4.8 → 1.4.9
+
+---
+
 ## [1.4.8] — 2026-05-09
 
 ✨ **可选集成 ProjectDiscovery `subfinder`**(自动检测 + 30+ 数据源接力)

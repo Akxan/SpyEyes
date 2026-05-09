@@ -14,7 +14,7 @@
 [![Platforms](https://img.shields.io/badge/platforms-3164-orange.svg)](#-与同类工具对比)
 [![Reports](https://img.shields.io/badge/reports-8%20formats-9cf.svg)](#-报告格式8-种)
 [![Commands](https://img.shields.io/badge/commands-9-blueviolet.svg)](docs/TUTORIAL.md)
-[![Version](https://img.shields.io/badge/version-1.4.8-blueviolet.svg)](docs/CHANGELOG.md)
+[![Version](https://img.shields.io/badge/version-1.4.9-blueviolet.svg)](docs/CHANGELOG.md)
 [![Docs](https://img.shields.io/badge/docs-online-blue.svg)](https://akxan.github.io/SpyEyes/)
 [![Platform](https://img.shields.io/badge/platform-macOS%20%7C%20Linux%20%7C%20Windows%20%7C%20Termux-lightgrey)](#-安装)
 [![PRs Welcome](https://img.shields.io/badge/PRs-welcome-brightgreen.svg)](docs/CONTRIBUTING.md)
@@ -43,7 +43,7 @@
 
 - **🆕 v1.4.0:域名邮箱枚举** —— 类 theHarvester + Hunter.io 混合:crt.sh CT 日志 + WHOIS 联系人 + 深度爬虫(robots.txt + sitemap.xml + BFS 内部链接,默认 500 页/深度 5)+ 含 alive 子域 + 模式生成(`--guess "John Doe"`)+ 可选 SMTP 验证
 - **🆕 v1.4.x:Editorial Investigation Brief 报告美化** —— 调查档案/报刊调性,Cormorant Garamond + Crimson Pro + JetBrains Mono 三件套 + cream/ink/印章红配色;HTML sticky thead + alive/dead 视觉区分 + HTTP status 颜色编码;PDF 封面页 + 罗马数字章节;XMind 层级展开(IPv4/IPv6/CNAME/Title 各一层);Graph 浅色 + 印章红/古典蓝节点
-- **v1.3.0/1.4.8:子域名枚举** —— 被动多源(crt.sh + CertSpotter + HackerTarget + AlienVault OTX + **可选 subfinder 30+ 源**)并发 + DNS A/AAAA/CNAME 验证 + HTTP probe 抓 status/`<title>` + Wildcard DNS 探测 + 4 阶段实时反馈
+- **v1.3.0→1.4.9:子域名枚举** —— 6 被动源(crt.sh + CertSpotter + HackerTarget + OTX + **Wayback Machine** + 可选 subfinder 30+ 源)+ DNS 字典爆破(`--bruteforce` 内置 220 词 / `SPYEYES_DNS_WORDLIST` 大字典)+ JS/HTML body host 提取(默认开)+ DNS A/AAAA/CNAME 验证 + HTTP probe + Wildcard 探测
 - **3164 个用户名扫描平台**:48 中文圈 + 58 西语圈 + 91 成人/约会 + 733 论坛,Sherlock 级速度 ~20 秒(150 线程并发 + Session 池 + HEAD 优化 + ReDoS 防护)
 - **8 种报告格式** —— `JSON / Markdown / HTML / PDF / TXT / CSV / XMind / Graph (D3.js)`,全部跟随 UI 语言(中/英),全部 Editorial 风
 - **Maigret-style permute** + 递归扫描 `--recursive` + 多扫描模式 `--quick` / `--category`
@@ -100,9 +100,11 @@
 - MX 记录联合检查
 - 不发送邮件，不留痕迹
 
-### 🌐 子域名枚举（v1.3.0 / v1.4.8 🆕）
-- **被动多源**:`crt.sh` + CertSpotter + HackerTarget + AlienVault OTX 并发汇总
+### 🌐 子域名枚举（v1.3.0 → v1.4.9 🆕）
+- **被动多源(6 源)**:`crt.sh` + CertSpotter + HackerTarget + AlienVault OTX + **Wayback Machine(v1.4.9)** 并发汇总
 - **🚀 可选 subfinder 接力(v1.4.8)**:自动检测 `subfinder` 二进制,接力 30+ 数据源(virustotal / shodan / censys / chaos / fofa / quake / securitytrails 等);未装则零开销跳过
+- **🆕 DNS 字典爆破(v1.4.9,opt-in)**:内置 ~220 高命中前缀 + `SPYEYES_DNS_WORDLIST=/path` 自定义大字典,`--bruteforce` 启用
+- **🆕 JS / HTML host 提取(v1.4.9,默认开)**:从 probe 已抓的 16KB body 中正则扫硬编码 host 引用(`fetch('https://api.example.com/...')` 等),提取后再跑一轮 DNS 验证;`--no-js-extract` 关闭
 - **DNS 主动验证**:A / AAAA / CNAME(默认 30 worker)
 - **HTTP probe**:抓 status_code + `<title>`(`--no-probe` 关闭)
 - **Wildcard 检测**:32 字符随机前缀探测,标记不可信结果
@@ -203,9 +205,11 @@ python3 -m spyeyes mx gmail.com
 # 邮箱验证
 python3 -m spyeyes email someone@gmail.com
 
-# 子域名枚举(v1.3.0 新增)
-python3 -m spyeyes subdomain example.com               # 被动 + DNS + HTTP probe
-python3 -m spyeyes subdomain example.com --no-probe    # 仅 DNS,更快
+# 子域名枚举(v1.3.0 → v1.4.9)
+python3 -m spyeyes subdomain example.com               # 6 源被动 + DNS + HTTP probe + JS 提取(默认全开)
+python3 -m spyeyes subdomain example.com --bruteforce  # 加内置 220 字典爆破(更全)
+SPYEYES_DNS_WORDLIST=~/all.txt spyeyes subdomain example.com --bruteforce  # 自定义大字典
+python3 -m spyeyes subdomain example.com --no-js-extract --no-probe         # 仅纯被动,最快
 python3 -m spyeyes subdomain example.com --json | jq '.subdomains[] | select(.alive)'
 
 # 🆕 域名邮箱枚举(v1.4.0 新增)

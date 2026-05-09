@@ -2318,6 +2318,121 @@ class TestSubdomainParsers:
         """SUBDOMAIN_SOURCES 含 'subfinder' key(v1.4.8 加的第 5 源)。"""
         assert 'subfinder' in gt.SUBDOMAIN_SOURCES
 
+    def test_wayback_parses_cdx_response(self):
+        """v1.4.9:Wayback CDX JSON 响应抽 hostname。"""
+        fake = MagicMock(status_code=200)
+        # CDX 格式:第一行 header,后续每行 [original_url]
+        fake.json.return_value = [
+            ['original'],
+            ['https://api.example.com/v1/users'],
+            ['http://blog.example.com/post/1'],
+            ['https://www.example.com/'],
+            ['https://attacker.com/evil'],  # 跨域应过滤
+            ['malformed-no-scheme.example.com/x'],  # 无 scheme,_src_wayback 自动加 http://
+        ]
+        with patch.object(gt, 'safe_get', return_value=fake):
+            out = gt._src_wayback('example.com')
+        assert 'api.example.com' in out
+        assert 'blog.example.com' in out
+        assert 'www.example.com' in out
+        assert 'attacker.com' not in out
+
+    def test_wayback_handles_empty_response(self):
+        """空 CDX(只有 header 或 None)返空 set。"""
+        fake = MagicMock(status_code=200)
+        fake.json.return_value = [['original']]  # 仅 header,无数据
+        with patch.object(gt, 'safe_get', return_value=fake):
+            assert gt._src_wayback('example.com') == set()
+
+    def test_wayback_handles_rate_limit(self):
+        """Wayback 限速返非 200,silent 返空(不破坏其他源)。"""
+        fake = MagicMock(status_code=429)
+        with patch.object(gt, 'safe_get', return_value=fake):
+            assert gt._src_wayback('example.com') == set()
+
+    def test_wayback_in_sources_dict(self):
+        """SUBDOMAIN_SOURCES 含 'wayback'(v1.4.9 加的第 6 源)。"""
+        assert 'wayback' in gt.SUBDOMAIN_SOURCES
+
+
+class TestBruteforce:
+    """v1.4.9:DNS 字典爆破生成器。"""
+
+    def test_generates_candidates_from_builtin(self):
+        """内置词典(~220 词)生成 prefix.domain 候选。"""
+        out = gt._generate_bruteforce_candidates('example.com')
+        # 内置词典必然包含这几个高命中率前缀
+        assert 'www.example.com' in out
+        assert 'mail.example.com' in out
+        assert 'api.example.com' in out
+        assert 'admin.example.com' in out
+        # 全是合法子域,且至少有 200 个(内置词典规模)
+        assert len(out) >= 200
+        for h in out:
+            assert h.endswith('.example.com')
+
+    def test_empty_domain_returns_empty(self):
+        """空 domain 返空 set,不抛。"""
+        assert gt._generate_bruteforce_candidates('') == set()
+        assert gt._generate_bruteforce_candidates('   ') == set()
+
+    def test_custom_wordlist_overrides_builtin(self, monkeypatch, tmp_path):
+        """SPYEYES_DNS_WORDLIST=path 覆盖内置词典。"""
+        wl = tmp_path / 'mywords.txt'
+        wl.write_text('alpha\nbeta\n# this is comment\n\ngamma\n', encoding='utf-8')
+        monkeypatch.setenv('SPYEYES_DNS_WORDLIST', str(wl))
+        out = gt._generate_bruteforce_candidates('example.com')
+        assert out == {'alpha.example.com', 'beta.example.com', 'gamma.example.com'}
+
+    def test_custom_wordlist_missing_falls_back(self, monkeypatch):
+        """指定的字典文件不存在时 silent fall back 到内置词典。"""
+        monkeypatch.setenv('SPYEYES_DNS_WORDLIST', '/nonexistent/path/foo.txt')
+        out = gt._generate_bruteforce_candidates('example.com')
+        # 内置词典生效
+        assert 'www.example.com' in out
+        assert len(out) >= 200
+
+
+class TestJsExtract:
+    """v1.4.9:从 HTML/JS body 提取硬编码的子域名引用。"""
+
+    def test_extracts_inline_script_references(self):
+        body = (b'<html><body><script>'
+                b"fetch('https://api.example.com/v1/users');"
+                b"const cdn='https://cdn.example.com/lib.js';"
+                b'</script></body></html>')
+        out = gt._extract_hosts_from_body(body, 'example.com')
+        assert 'api.example.com' in out
+        assert 'cdn.example.com' in out
+
+    def test_extracts_attribute_references(self):
+        body = (b'<a href="//cdn.example.com/x">y</a>'
+                b'<img src="https://images.example.com/p.png">'
+                b'<link href="https://static.example.com/style.css">')
+        out = gt._extract_hosts_from_body(body, 'example.com')
+        assert {'cdn.example.com', 'images.example.com', 'static.example.com'} <= out
+
+    def test_filters_cross_domain_references(self):
+        body = (b'<a href="https://attacker.com/x">x</a>'
+                b'<script>fetch("https://gtag.googletagmanager.com/")</script>'
+                b'<img src="https://api.example.com/p.png">')
+        out = gt._extract_hosts_from_body(body, 'example.com')
+        assert out == {'api.example.com'}
+        assert 'attacker.com' not in out
+        assert 'gtag.googletagmanager.com' not in out
+
+    def test_empty_or_missing_inputs(self):
+        assert gt._extract_hosts_from_body(b'', 'example.com') == set()
+        assert gt._extract_hosts_from_body(b'<html></html>', '') == set()
+
+    def test_caps_at_5000_to_prevent_oom(self):
+        """大量重复 host 引用不会爆内存。"""
+        # 模拟一个有大量 hostname 的 body
+        body = (b'api.example.com ' * 6000)
+        out = gt._extract_hosts_from_body(body, 'example.com')
+        # 去重后只应有一个
+        assert out == {'api.example.com'}
+
     def test_certspotter_parses_dns_names(self):
         """v1.4.4: CertSpotter 替代 ThreatCrowd 死站。"""
         fake = MagicMock(status_code=200)
@@ -2344,6 +2459,8 @@ class TestPassiveCollectSubdomains:
                             lambda d: {'cdn.example.com'})
         # v1.4.8:subfinder 也要 mock,否则装了 subfinder 的环境会跑真实查询
         monkeypatch.setitem(gt.SUBDOMAIN_SOURCES, 'subfinder', lambda d: set())
+        # v1.4.9:wayback 也要 mock,否则会真实查 web.archive.org
+        monkeypatch.setitem(gt.SUBDOMAIN_SOURCES, 'wayback', lambda d: set())
         result = gt.passive_collect_subdomains('example.com')
         assert result['candidates'] == {'api.example.com', 'mail.example.com',
                                          'blog.example.com', 'cdn.example.com'}
@@ -2359,6 +2476,7 @@ class TestPassiveCollectSubdomains:
         monkeypatch.setitem(gt.SUBDOMAIN_SOURCES, 'otx', lambda d: set())
         monkeypatch.setitem(gt.SUBDOMAIN_SOURCES, 'certspotter', lambda d: set())
         monkeypatch.setitem(gt.SUBDOMAIN_SOURCES, 'subfinder', lambda d: set())
+        monkeypatch.setitem(gt.SUBDOMAIN_SOURCES, 'wayback', lambda d: set())
         result = gt.passive_collect_subdomains('example.com')
         assert 'good.example.com' in result['candidates']
         assert result['errors'].get('crtsh') is True
@@ -2388,8 +2506,10 @@ class TestEnumerateSubdomains:
                     'aaaa': [], 'cname': None}
         monkeypatch.setattr(gt, '_resolve_one_subdomain', fake_resolve)
 
-        def fake_probe(host, timeout=5.0):
-            return {'http_status': 200, 'title': 'Example', 'scheme': 'https'}
+        # v1.4.9:_probe_one_subdomain 加了 parent_domain 第 3 参数
+        def fake_probe(host, timeout=5.0, parent_domain=None):
+            return {'http_status': 200, 'title': 'Example', 'scheme': 'https',
+                    'extracted_hosts': set()}
         monkeypatch.setattr(gt, '_probe_one_subdomain', fake_probe)
 
         result = gt.enumerate_subdomains('example.com', show_progress=False)
@@ -2450,6 +2570,110 @@ class TestEnumerateSubdomains:
         })
         result = gt.enumerate_subdomains('example.com', probe=False, show_progress=False)
         assert result['_stats']['total'] == 3
+
+    def test_bruteforce_flag_injects_wordlist(self, monkeypatch):
+        """v1.4.9:--bruteforce 时把字典 prefix 加入 candidates。"""
+        if not gt.HAS_DNS:
+            pytest.skip('dns 依赖未安装')
+        # 被动源返空,bruteforce 必须独立贡献候选
+        monkeypatch.setattr(gt, 'passive_collect_subdomains', lambda d, **kw: {
+            'candidates': set(), 'sources': {}, 'errors': {},
+        })
+        monkeypatch.setattr(gt, '_detect_wildcard_dns', lambda d, dns_timeout=3.0: False)
+        # 用小 wordlist 替代内置 220 词,加速测试
+        monkeypatch.setattr(gt, '_load_bruteforce_wordlist', lambda: ('foo', 'bar'))
+        resolved_hosts = []
+        def fake_resolve(host, dns_timeout=3.0):
+            resolved_hosts.append(host)
+            return {'host': host, 'alive': False, 'a': [], 'aaaa': [], 'cname': None}
+        monkeypatch.setattr(gt, '_resolve_one_subdomain', fake_resolve)
+        result = gt.enumerate_subdomains('example.com', probe=False,
+                                          bruteforce=True, show_progress=False)
+        # bruteforce 把 foo.example.com / bar.example.com 加进 candidates
+        assert {'foo.example.com', 'bar.example.com'} <= set(resolved_hosts)
+        assert result['_stats']['bruteforce_added'] == 2
+
+    def test_bruteforce_off_by_default(self, monkeypatch):
+        """默认 bruteforce=False,不引入字典候选。"""
+        if not gt.HAS_DNS:
+            pytest.skip('dns 依赖未安装')
+        monkeypatch.setattr(gt, 'passive_collect_subdomains', lambda d, **kw: {
+            'candidates': {'api.example.com'}, 'sources': {'crtsh': 1}, 'errors': {},
+        })
+        monkeypatch.setattr(gt, '_detect_wildcard_dns', lambda d, dns_timeout=3.0: False)
+        # 防止误调用 bruteforce 字典
+        monkeypatch.setattr(gt, '_load_bruteforce_wordlist',
+                            lambda: pytest.fail('bruteforce wordlist 不应被加载'))
+        monkeypatch.setattr(gt, '_resolve_one_subdomain', lambda host, dns_timeout=3.0: {
+            'host': host, 'alive': False, 'a': [], 'aaaa': [], 'cname': None
+        })
+        result = gt.enumerate_subdomains('example.com', probe=False, show_progress=False)
+        assert result['_stats']['bruteforce_added'] == 0
+
+    def test_bruteforce_env_var_enables(self, monkeypatch):
+        """SPYEYES_BRUTEFORCE=1 等价于 --bruteforce flag。"""
+        if not gt.HAS_DNS:
+            pytest.skip('dns 依赖未安装')
+        monkeypatch.setenv('SPYEYES_BRUTEFORCE', '1')
+        monkeypatch.setattr(gt, 'passive_collect_subdomains', lambda d, **kw: {
+            'candidates': set(), 'sources': {}, 'errors': {},
+        })
+        monkeypatch.setattr(gt, '_detect_wildcard_dns', lambda d, dns_timeout=3.0: False)
+        monkeypatch.setattr(gt, '_load_bruteforce_wordlist', lambda: ('test',))
+        monkeypatch.setattr(gt, '_resolve_one_subdomain', lambda host, dns_timeout=3.0: {
+            'host': host, 'alive': False, 'a': [], 'aaaa': [], 'cname': None
+        })
+        result = gt.enumerate_subdomains('example.com', probe=False, show_progress=False)
+        assert result['_stats']['bruteforce_added'] == 1
+
+    def test_js_extract_finds_new_hosts(self, monkeypatch):
+        """v1.4.9:js_extract=True 时从 probe body 抽 host,二轮 DNS 验证。"""
+        if not gt.HAS_DNS:
+            pytest.skip('dns 依赖未安装')
+        monkeypatch.setattr(gt, 'passive_collect_subdomains', lambda d, **kw: {
+            'candidates': {'www.example.com'}, 'sources': {'crtsh': 1}, 'errors': {},
+        })
+        monkeypatch.setattr(gt, '_detect_wildcard_dns', lambda d, dns_timeout=3.0: False)
+        monkeypatch.setattr(gt, '_resolve_one_subdomain', lambda host, dns_timeout=3.0: {
+            'host': host, 'alive': True, 'a': ['1.2.3.4'], 'aaaa': [], 'cname': None
+        })
+        # probe www → 返发现 api.example.com / cdn.example.com
+        # probe api / cdn → 返空(防递归)
+        def fake_probe(host, timeout=5.0, parent_domain=None):
+            extracted = set()
+            if host == 'www.example.com' and parent_domain == 'example.com':
+                extracted = {'api.example.com', 'cdn.example.com'}
+            return {'http_status': 200, 'title': host, 'scheme': 'https',
+                    'extracted_hosts': extracted}
+        monkeypatch.setattr(gt, '_probe_one_subdomain', fake_probe)
+        result = gt.enumerate_subdomains('example.com', show_progress=False)
+        hosts = {s['host'] for s in result['subdomains']}
+        # api / cdn 通过 JS 提取被发现并验证
+        assert {'www.example.com', 'api.example.com', 'cdn.example.com'} <= hosts
+        assert result['_stats']['js_extracted'] == 2
+
+    def test_js_extract_disabled_with_flag(self, monkeypatch):
+        """js_extract=False 时不传 parent_domain 给 probe,不做二轮。"""
+        if not gt.HAS_DNS:
+            pytest.skip('dns 依赖未安装')
+        monkeypatch.setattr(gt, 'passive_collect_subdomains', lambda d, **kw: {
+            'candidates': {'www.example.com'}, 'sources': {'crtsh': 1}, 'errors': {},
+        })
+        monkeypatch.setattr(gt, '_detect_wildcard_dns', lambda d, dns_timeout=3.0: False)
+        monkeypatch.setattr(gt, '_resolve_one_subdomain', lambda host, dns_timeout=3.0: {
+            'host': host, 'alive': True, 'a': ['1.2.3.4'], 'aaaa': [], 'cname': None
+        })
+        captured = {'parent': 'unset'}
+        def fake_probe(host, timeout=5.0, parent_domain=None):
+            captured['parent'] = parent_domain
+            return {'http_status': 200, 'title': host, 'scheme': 'https',
+                    'extracted_hosts': set()}
+        monkeypatch.setattr(gt, '_probe_one_subdomain', fake_probe)
+        result = gt.enumerate_subdomains('example.com', js_extract=False,
+                                          show_progress=False)
+        # js_extract=False 时,parent_domain 显式传 None → probe 不触发提取
+        assert captured['parent'] is None
+        assert result['_stats']['js_extracted'] == 0
 
 
 class TestSubdomainProbe:

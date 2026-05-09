@@ -14,7 +14,7 @@
 [![Platforms](https://img.shields.io/badge/platforms-3164-orange.svg)](#-comparison-with-similar-tools)
 [![Reports](https://img.shields.io/badge/reports-8%20formats-9cf.svg)](#-report-formats-8-types)
 [![Commands](https://img.shields.io/badge/commands-9-blueviolet.svg)](docs/TUTORIAL.md)
-[![Version](https://img.shields.io/badge/version-1.4.8-blueviolet.svg)](docs/CHANGELOG.md)
+[![Version](https://img.shields.io/badge/version-1.4.9-blueviolet.svg)](docs/CHANGELOG.md)
 [![Docs](https://img.shields.io/badge/docs-online-blue.svg)](https://akxan.github.io/SpyEyes/)
 [![Platform](https://img.shields.io/badge/platform-macOS%20%7C%20Linux%20%7C%20Windows%20%7C%20Termux-lightgrey)](#-installation)
 [![PRs Welcome](https://img.shields.io/badge/PRs-welcome-brightgreen.svg)](docs/CONTRIBUTING.md)
@@ -43,7 +43,7 @@ Designed for **security researchers, penetration testers, SOC analysts, threat h
 
 - **🆕 v1.4.0: Domain email harvest** — theHarvester + Hunter.io hybrid: crt.sh CT logs + WHOIS contacts + deep crawler (robots.txt + sitemap.xml + BFS internal links, default 500 pages / depth 5) + alive subdomain inclusion + pattern generation (`--guess "John Doe"`) + optional SMTP verification
 - **🆕 v1.4.x: Editorial Investigation Brief styling** — investigation-dossier aesthetics: Cormorant Garamond + Crimson Pro + JetBrains Mono triplet + cream/ink/seal-red palette; HTML sticky thead + alive/dead visual differentiation + HTTP status color-coding; PDF cover page + roman numeral chapters; XMind hierarchy expansion (IPv4/IPv6/CNAME/Title each as own layer); Graph light theme + seal-red/classical-blue nodes
-- **v1.3.0/1.4.8: Subdomain enumeration** — passive multi-source (crt.sh + CertSpotter + HackerTarget + AlienVault OTX + **optional subfinder w/ 30+ sources**) concurrent + DNS A/AAAA/CNAME validation + HTTP probe + wildcard detection + 4-stage live progress
+- **v1.3.0→1.4.9: Subdomain enumeration** — 6 passive sources (crt.sh + CertSpotter + HackerTarget + OTX + **Wayback Machine** + optional subfinder w/ 30+ sources) + DNS dictionary bruteforce (`--bruteforce`, built-in 220 words / `SPYEYES_DNS_WORDLIST` for custom) + JS/HTML body host extraction (default on) + DNS A/AAAA/CNAME validation + HTTP probe + wildcard detection
 - **3164 username-scan platforms**: 48 Chinese-region + 58 Spanish-region + 91 adult/dating + 733 forums; Sherlock-class speed ~20s (150-thread + Session pool + HEAD optimization + ReDoS guard)
 - **8 report formats** — `JSON / Markdown / HTML / PDF / TXT / CSV / XMind / Graph (D3.js)`, all follow UI language (zh/en), all Editorial-styled
 - **Maigret-style permute** + recursive scan `--recursive` + multi mode `--quick` / `--category`
@@ -100,9 +100,11 @@ Designed for **security researchers, penetration testers, SOC analysts, threat h
 - MX record validation (no test emails sent)
 - Privacy-respecting: zero traces
 
-### 🌐 Subdomain Enumeration (v1.3.0 / v1.4.8 🆕)
-- **Passive multi-source**: `crt.sh` + CertSpotter + HackerTarget + AlienVault OTX, concurrent
+### 🌐 Subdomain Enumeration (v1.3.0 → v1.4.9 🆕)
+- **Passive multi-source (6 sources)**: `crt.sh` + CertSpotter + HackerTarget + AlienVault OTX + **Wayback Machine (v1.4.9)** in concurrent fan-out
 - **🚀 Optional subfinder relay (v1.4.8)**: auto-detects `subfinder` binary and relays to 30+ sources (virustotal / shodan / censys / chaos / fofa / quake / securitytrails ...); zero overhead if not installed
+- **🆕 DNS dictionary bruteforce (v1.4.9, opt-in)**: built-in ~220 high-hit prefixes + `SPYEYES_DNS_WORDLIST=/path` for custom big wordlists; `--bruteforce` to enable
+- **🆕 JS / HTML host extraction (v1.4.9, default on)**: regex-scans the already-fetched 16KB probe body for hardcoded host references (e.g. `fetch('https://api.example.com/...')`), then re-resolves found hosts; `--no-js-extract` to disable
 - **DNS validation**: A / AAAA / CNAME (default 30 workers)
 - **HTTP probe**: status_code + `<title>` (`--no-probe` to skip)
 - **Wildcard detection**: 32-char random prefix probe; flags unreliable results

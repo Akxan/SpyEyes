@@ -68,7 +68,7 @@ except ImportError:
 
 
 # 语义化版本号 —— 同步更新 docs/CHANGELOG.md 与 git tag
-__version__ = '1.4.8'
+__version__ = '1.4.9'
 
 
 # ====================================================================
@@ -330,16 +330,18 @@ TRANSLATIONS: dict = {
         'subdomain.col_status':       'HTTP',
         'subdomain.col_title':        'Title',
         # v1.3.3:阶段进度反馈,告诉用户每一步在做什么(消除"卡顿期")
-        'subdomain.stage_passive':    'Stage 1/4: Fetching passive sources (crt.sh / HackerTarget / OTX / ThreatCrowd) ...',
+        'subdomain.stage_passive':    'Stage 1/4: Fetching passive sources (crt.sh / CertSpotter / HackerTarget / OTX / Wayback / subfinder) ...',
         'subdomain.stage_wildcard':   'Stage 2/4: Detecting wildcard DNS ...',
         'subdomain.stage_dns':        'Stage 3/4: Resolving {n} candidates via DNS ...',
         'subdomain.stage_probe':      'Stage 4/4: HTTP-probing {n} alive subdomains ...',
+        'subdomain.stage_js_extract': 'Stage 4b: JS-extract pass — verifying {n} new hosts found in HTML bodies ...',
         'subdomain.source_done':      '[{name:>13}] {n:>4} candidates',
         'subdomain.source_err':       '[{name:>13}] error: {err}',
         'subdomain.wildcard_yes':     'wildcard detected — results may be unreliable',
         'subdomain.wildcard_no':      'no wildcard',
         'prompt.input_subdomain':     'Enter target domain (e.g. example.com): ',
         'prompt.subdomain_probe':     'Run HTTP probe to fetch <title>?\n   [ 1 ] Yes (default)  [ 2 ] No\n  Choose [1/2, default 1] : ',
+        'prompt.subdomain_bruteforce': 'Enable DNS dictionary bruteforce? (~220 prefixes, +5-15s)\n   [ 1 ] No (default, passive only)  [ 2 ] Yes (more thorough)\n  Choose [1/2, default 1] : ',
         # v1.4.0 — Domain emails enumeration
         'section.demails':            'Domain Email Enumeration',
         'demails.title':              'Domain emails: {domain}',
@@ -596,16 +598,18 @@ TRANSLATIONS: dict = {
         'subdomain.col_status':       'HTTP',
         'subdomain.col_title':        '标题',
         # v1.3.3:阶段进度反馈,告诉用户每一步在做什么(消除"卡顿期")
-        'subdomain.stage_passive':    '阶段 1/4:拉取被动数据源(crt.sh / HackerTarget / OTX / ThreatCrowd)...',
+        'subdomain.stage_passive':    '阶段 1/4:拉取被动数据源(crt.sh / CertSpotter / HackerTarget / OTX / Wayback / subfinder)...',
         'subdomain.stage_wildcard':   '阶段 2/4:通配符 DNS 检测 ...',
         'subdomain.stage_dns':        '阶段 3/4:DNS 解析 {n} 个候选 ...',
         'subdomain.stage_probe':      '阶段 4/4:HTTP probe {n} 个活跃子域 ...',
+        'subdomain.stage_js_extract': '阶段 4b:JS 解析 — 验证从页面 body 抽出的 {n} 个新 host ...',
         'subdomain.source_done':      '[{name:>13}] {n:>4} 个候选',
         'subdomain.source_err':       '[{name:>13}] 错误:{err}',
         'subdomain.wildcard_yes':     '检测到通配符 — 结果可信度降低',
         'subdomain.wildcard_no':      '无通配符',
         'prompt.input_subdomain':     '请输入目标域名（如 example.com）：',
         'prompt.subdomain_probe':     '是否抓 HTTP <title> 信息？\n   [ 1 ] 是（默认）  [ 2 ] 否\n  请选择 [1/2，默认 1] : ',
+        'prompt.subdomain_bruteforce': '是否启用 DNS 字典爆破？(~220 个前缀，+5-15 秒)\n   [ 1 ] 否（默认，仅被动源）  [ 2 ] 是（更全面）\n  请选择 [1/2，默认 1] : ',
         # v1.4.0 —— 域名邮箱枚举
         'section.demails':            '域名邮箱枚举',
         'demails.title':              '域名邮箱:{domain}',
@@ -2366,6 +2370,41 @@ def _src_certspotter(domain: str) -> set[str]:
     return _clean_subdomain_candidates(hosts, domain)
 
 
+def _src_wayback(domain: str) -> set[str]:
+    """v1.4.9:Web Archive(Wayback Machine) CDX API。
+    https://web.archive.org/cdx/search/cdx?url=*.{domain}&output=json&fl=original&collapse=urlkey
+    返回 [["original"], [url1], [url2], ...] — 历史归档过的所有 URL,从中抽 hostname。
+    特点:覆盖时间长(Internet Archive 自 1996),能挖出已下线但曾出现过的子域。"""
+    url = (f'https://web.archive.org/cdx/search/cdx?url=*.{domain}'
+           f'&output=json&fl=original&collapse=urlkey&limit=10000')
+    resp = safe_get(url, timeout=SUBDOMAIN_SOURCE_TIMEOUT, connect_timeout=10.0)
+    if resp is None or resp.status_code != 200:
+        return set()
+    try:
+        data = resp.json()
+    except (ValueError, requests.exceptions.RequestException):
+        return set()
+    if not isinstance(data, list) or len(data) < 2:
+        return set()
+    import urllib.parse
+    hosts: list[str] = []
+    for row in data[1:]:  # 第一行是 header ["original"]
+        if not isinstance(row, list) or not row:
+            continue
+        u = row[0]
+        if not isinstance(u, str) or not u:
+            continue
+        if '://' not in u:
+            u = 'http://' + u
+        try:
+            host = urllib.parse.urlsplit(u).hostname
+        except (ValueError, AttributeError):
+            continue
+        if host:
+            hosts.append(host)
+    return _clean_subdomain_candidates(hosts, domain)
+
+
 # v1.4.8:可选集成 ProjectDiscovery 的 subfinder(30+ 数据源,行业最强被动子域工具)
 # 设计:用户机器装了 subfinder 二进制 → SpyEyes 自动调用作为第 5 个源;
 #        没装 → silent skip,4 源照常工作。零强制依赖。
@@ -2439,8 +2478,116 @@ SUBDOMAIN_SOURCES = {
     'certspotter':   _src_certspotter,
     'hackertarget':  _src_hackertarget,
     'otx':           _src_otx,
+    'wayback':       _src_wayback,    # v1.4.9:Web Archive 历史归档(可挖已下线子域)
     'subfinder':     _src_subfinder,  # 30+ 源聚合,装了 subfinder 自动启用
 }
+
+
+# v1.4.9:DNS 字典爆破(opt-in via --bruteforce 或 SPYEYES_BRUTEFORCE=1)
+# ~220 个高命中率前缀(jhaddix top 1k 的精选子集)。用户可设
+# SPYEYES_DNS_WORDLIST=/path/to/big.txt 覆盖(massdns / shuffledns 用的大字典)。
+_SUBDOMAIN_BUILTIN_WORDLIST: tuple = (
+    'www', 'www1', 'www2', 'www3', 'mail', 'mail2', 'webmail', 'webmail2',
+    'smtp', 'pop', 'pop3', 'imap', 'autodiscover', 'email', 'mx', 'mx1', 'mx2',
+    'ns', 'ns1', 'ns2', 'ns3', 'ns4', 'dns', 'dns1', 'dns2',
+    'admin', 'administrator', 'dashboard', 'cpanel', 'whm', 'webdisk',
+    'api', 'api1', 'api2', 'api-dev', 'api-staging', 'api-prod', 'api-test',
+    'app', 'apps', 'application', 'mobile', 'm', 'wap', 'mobi',
+    'static', 'cdn', 'cdn1', 'cdn2', 'assets', 'media', 'images', 'img',
+    'video', 'videos', 'stream', 'streaming', 'live',
+    'dev', 'development', 'dev1', 'dev2', 'staging', 'stage',
+    'test', 'testing', 'test1', 'test2', 'qa', 'sandbox', 'demo', 'beta',
+    'alpha', 'preview', 'preprod', 'pre-prod', 'prod', 'production',
+    'rc', 'uat', 'sit',
+    'blog', 'news', 'forum', 'forums', 'community',
+    'help', 'support', 'kb', 'docs', 'doc', 'documentation', 'wiki', 'faq',
+    'shop', 'store', 'cart', 'checkout', 'pay', 'payment', 'payments',
+    'billing', 'invoice', 'orders',
+    'login', 'signin', 'signup', 'register', 'auth', 'sso', 'oauth',
+    'account', 'accounts', 'profile', 'user', 'users', 'my', 'me',
+    'portal', 'gateway', 'proxy', 'router', 'edge', 'gw',
+    'vpn', 'vpn1', 'vpn2', 'remote', 'rdp', 'ssh',
+    'git', 'gitlab', 'svn', 'jenkins', 'ci', 'build', 'deploy',
+    'jira', 'confluence', 'bamboo', 'bitbucket',
+    'monitor', 'monitoring', 'metrics', 'grafana', 'kibana', 'prometheus',
+    'log', 'logs', 'logging', 'syslog',
+    'db', 'database', 'mysql', 'postgres', 'redis', 'mongo', 'mongodb',
+    'es', 'elastic', 'elasticsearch', 'solr', 'search',
+    'crm', 'erp', 'hr', 'finance', 'sales', 'marketing',
+    'public', 'private', 'internal', 'intranet', 'extranet',
+    'old', 'new', 'temp', 'tmp', 'backup', 'bak',
+    'office', 'office365', 'lync', 'sip', 'voip', 'pbx',
+    'cloud', 'aws', 'azure', 'gcp', 's3', 'storage', 'files', 'file',
+    'download', 'upload', 'uploads', 'fileserver',
+    'ws', 'websocket', 'rtc', 'meet', 'chat', 'im',
+    'analytics', 'tracking', 'pixel', 'tag', 'tags', 'tagmanager',
+    'ads', 'ad', 'campaign', 'promo',
+    'partner', 'partners', 'vendor', 'reseller',
+    'event', 'events', 'webinar',
+    'job', 'jobs', 'careers',
+    'about', 'contact', 'press', 'investor', 'investors',
+    'home', 'root', 'main',
+    'secure', 'security', 'cert', 'ssl',
+    'web', 'web1', 'web2',
+    'ftp', 'ftps', 'sftp',
+)
+
+
+def _load_bruteforce_wordlist() -> tuple:
+    """加载用户字典(`SPYEYES_DNS_WORDLIST=/path`)或内置 ~220 词字典。
+    用户字典每行一个前缀,空行 / `#` 注释行忽略;若加载失败 silent fall back 到内置字典。"""
+    custom_path = (os.environ.get('SPYEYES_DNS_WORDLIST') or '').strip()
+    if custom_path:
+        try:
+            with open(custom_path, 'r', encoding='utf-8', errors='ignore') as f:
+                words = []
+                for line in f:
+                    w = line.strip()
+                    if not w or w.startswith('#'):
+                        continue
+                    words.append(w)
+                if words:
+                    return tuple(words)
+        except OSError:
+            pass
+    return _SUBDOMAIN_BUILTIN_WORDLIST
+
+
+def _generate_bruteforce_candidates(domain: str) -> set[str]:
+    """v1.4.9:从内置 / 用户字典生成 `<prefix>.<domain>` 候选列表。
+    返回的是候选 hostname set(尚未做 DNS 验证),后续主流程的 stage 3 DNS resolve 自动验证。"""
+    domain = (domain or '').lower().strip().rstrip('.')
+    if not domain:
+        return set()
+    words = _load_bruteforce_wordlist()
+    raw = [f'{w}.{domain}' for w in words]
+    return _clean_subdomain_candidates(raw, domain)
+
+
+# v1.4.9:JS / HTML 提取 — 在 alive 子域 HTTP probe 时,扫 body 中的 hostname 引用
+# 例:`fetch('https://api.example.com/...')` / `<script src="//cdn.example.com/...">`
+# 提取后再走一轮 DNS 验证,挖出页面上硬编码但被动源没收录的子域。
+_HTML_HOSTNAME_RE = re.compile(rb'(?:[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?\.)+'
+                                rb'[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?',
+                                re.IGNORECASE)
+
+
+def _extract_hosts_from_body(body: bytes, parent_domain: str) -> set[str]:
+    """v1.4.9:从 HTML/JS body 中正则提取 `*.parent_domain` 的 hostname。
+    body 已经是 16KB 截断的(SUBDOMAIN_PROBE_MAX_BODY),正则扫描成本极低。
+    跨域 hostname 自动过滤(parent_domain 校验在 _clean_subdomain_candidates 中做)。"""
+    if not body or not parent_domain:
+        return set()
+    hosts: list[str] = []
+    for m in _HTML_HOSTNAME_RE.finditer(body):
+        try:
+            h = m.group(0).decode('ascii', errors='replace').lower()
+        except (UnicodeDecodeError, AttributeError):
+            continue
+        hosts.append(h)
+        if len(hosts) > 5000:  # 防恶意页面把内存压垮
+            break
+    return _clean_subdomain_candidates(hosts, parent_domain)
 
 
 def _stage_log(msg: str) -> None:
@@ -2522,10 +2669,14 @@ def _resolve_one_subdomain(host: str, dns_timeout: float = SUBDOMAIN_DNS_TIMEOUT
     return rec
 
 
-def _probe_one_subdomain(host: str, timeout: float = SUBDOMAIN_HTTP_PROBE_TIMEOUT) -> dict:
+def _probe_one_subdomain(host: str, timeout: float = SUBDOMAIN_HTTP_PROBE_TIMEOUT,
+                         parent_domain: Optional[str] = None) -> dict:
     """对 alive 子域抓 HTTP status + <title>。先试 https,失败回退 http。
-    复用 _get_session 连接池;stream 早停只读 16KB 提取 title。"""
-    out: dict = {'http_status': None, 'title': None, 'scheme': None}
+    复用 _get_session 连接池;stream 早停只读 16KB 提取 title。
+    v1.4.9:若传 parent_domain,顺带从 body 提取 `*.parent_domain` 的 hostname 引用,
+    返回 'extracted_hosts' 字段(主流程会再 DNS 验证找出新子域)。"""
+    out: dict = {'http_status': None, 'title': None, 'scheme': None,
+                 'extracted_hosts': set()}
     for scheme in ('https', 'http'):
         url = f'{scheme}://{host}/'
         resp = safe_get(url, timeout=timeout, stream=True, allow_redirects=True)
@@ -2553,6 +2704,9 @@ def _probe_one_subdomain(host: str, timeout: float = SUBDOMAIN_HTTP_PROBE_TIMEOU
                             out['title'] = title_bytes.decode('utf-8', errors='replace').strip()[:120]
                         except Exception:
                             pass
+                    # v1.4.9:从 body 抽 hostname 引用(几乎免费 — body 已经在内存里)
+                    if parent_domain:
+                        out['extracted_hosts'] = _extract_hosts_from_body(body, parent_domain)
                 except (OSError, ValueError, requests.exceptions.RequestException):
                     pass
             return out
@@ -2565,6 +2719,8 @@ def enumerate_subdomains(domain: str, *, probe: bool = True,
                         max_workers: int = SUBDOMAIN_DEFAULT_WORKERS,
                         dns_timeout: float = SUBDOMAIN_DNS_TIMEOUT,
                         probe_timeout: float = SUBDOMAIN_HTTP_PROBE_TIMEOUT,
+                        bruteforce: bool = False,
+                        js_extract: bool = True,
                         show_progress: bool = True) -> dict:
     """子域名枚举主入口。
 
@@ -2601,6 +2757,19 @@ def enumerate_subdomains(domain: str, *, probe: bool = True,
         _stage_log(f"\n {Color.Cy}{t('subdomain.stage_passive')}{Color.Reset}")
     passive = passive_collect_subdomains(domain, show_progress=show_progress)
     candidates = passive['candidates']
+
+    # v1.4.9:DNS 字典爆破(opt-in)— 把字典 prefix 直接拼成 candidates,
+    # 让 stage 3 的 DNS 解析自动验证,死的自然过滤掉。
+    bruteforce_count = 0
+    if bruteforce or os.environ.get('SPYEYES_BRUTEFORCE') == '1':
+        bf_cands = _generate_bruteforce_candidates(domain)
+        # 仅统计"新引入"的(已经在 passive 里的不算 bruteforce 贡献)
+        new_bf = bf_cands - candidates
+        bruteforce_count = len(new_bf)
+        candidates = candidates | bf_cands
+        if show_progress:
+            _stage_log(f"   {Color.Bl}[{'bruteforce':>13}] {len(bf_cands):>4} candidates"
+                       f" ({bruteforce_count} new){Color.Reset}")
 
     # 2) wildcard 探测(独立,失败不阻塞主流程)
     if show_progress:
@@ -2647,24 +2816,88 @@ def enumerate_subdomains(domain: str, *, probe: bool = True,
 
     # 4) HTTP probe(仅 alive,除非 wildcard 全标记不可信)
     probed = 0
+    extracted_total: set[str] = set()
     if probe:
         alive_recs = [r for r in resolved if r.get('alive')]
         if show_progress and alive_recs:
             _stage_log(f"\n {Color.Cy}{t('subdomain.stage_probe', n=len(alive_recs))}{Color.Reset}")
+        # v1.4.9:js_extract=True 时把 parent_domain 传给 probe,从 body 抽硬编码 host
+        probe_parent = domain if js_extract else None
         with ThreadPoolExecutor(max_workers=max_workers) as ex:
-            futures = {ex.submit(_probe_one_subdomain, r['host'], probe_timeout): r
+            futures = {ex.submit(_probe_one_subdomain, r['host'], probe_timeout,
+                                 probe_parent): r
                        for r in alive_recs}
             try:
                 for fut in as_completed(futures):
                     rec = futures[fut]
                     try:
-                        rec.update(fut.result())
+                        result = fut.result()
                     except Exception:
                         rec['http_status'] = None
+                        probed += 1
+                        continue
+                    extracted = result.pop('extracted_hosts', set()) or set()
+                    rec.update(result)
+                    if extracted:
+                        extracted_total |= extracted
                     probed += 1
             except KeyboardInterrupt:
                 ex.shutdown(wait=False, cancel_futures=True)
                 raise
+
+    # v1.4.9:JS 提取的第二轮 — 对 body 中发现的"已知列表外"新 host 做 DNS+probe
+    # 单轮即止(不递归),避免对话窗口里跑出爆炸式扩张。
+    js_extracted_count = 0
+    if probe and js_extract and extracted_total:
+        known_hosts = {r['host'] for r in resolved}
+        new_hosts = extracted_total - known_hosts
+        # 截断到 MAX,避免恶意 / SPA 大页面引入几千个无关 host
+        if len(new_hosts) > SUBDOMAIN_MAX_RESULTS:
+            new_hosts = set(sorted(new_hosts)[:SUBDOMAIN_MAX_RESULTS])
+        if new_hosts:
+            if show_progress:
+                _stage_log(f"\n {Color.Cy}{t('subdomain.stage_js_extract', n=len(new_hosts))}{Color.Reset}")
+            extra_resolved: list = []
+            with ThreadPoolExecutor(max_workers=max_workers) as ex:
+                futures = {ex.submit(_resolve_one_subdomain, h, dns_timeout): h
+                           for h in new_hosts}
+                try:
+                    for fut in as_completed(futures):
+                        try:
+                            rec = fut.result()
+                        except Exception:
+                            rec = {'host': futures[fut], 'alive': False,
+                                   'a': [], 'aaaa': [], 'cname': None}
+                        rec['source_hint'] = 'js_extract'
+                        extra_resolved.append(rec)
+                except KeyboardInterrupt:
+                    ex.shutdown(wait=False, cancel_futures=True)
+                    raise
+            # 对 alive 的 extracted host 跑 probe(不再递归提取 — 单轮即止)
+            extra_alive = [r for r in extra_resolved if r.get('alive')]
+            if extra_alive:
+                with ThreadPoolExecutor(max_workers=max_workers) as ex:
+                    futures = {ex.submit(_probe_one_subdomain, r['host'],
+                                         probe_timeout, None): r
+                               for r in extra_alive}
+                    try:
+                        for fut in as_completed(futures):
+                            rec = futures[fut]
+                            try:
+                                result = fut.result()
+                            except Exception:
+                                rec['http_status'] = None
+                                probed += 1
+                                continue
+                            result.pop('extracted_hosts', None)
+                            rec.update(result)
+                            probed += 1
+                    except KeyboardInterrupt:
+                        ex.shutdown(wait=False, cancel_futures=True)
+                        raise
+            resolved.extend(extra_resolved)
+            js_extracted_count = len(extra_resolved)
+
     # 默认填空(报告生成器不要做存在性检查)
     for r in resolved:
         r.setdefault('http_status', None)
@@ -2682,6 +2915,8 @@ def enumerate_subdomains(domain: str, *, probe: bool = True,
             'total': len(resolved),
             'alive': alive_count,
             'probed': probed,
+            'bruteforce_added': bruteforce_count,
+            'js_extracted': js_extracted_count,
             'errors': passive.get('errors', {}),
         },
     }
@@ -3985,7 +4220,13 @@ def handle_choice(choice: int, save_dir: Optional[str] = None) -> None:
         except (EOFError, KeyboardInterrupt):
             probe_ans = ''
         probe = probe_ans != '2'
-        result = enumerate_subdomains(domain, probe=probe)
+        # v1.4.9:询问 bruteforce(默认关 — 多数用户只想要被动结果)
+        try:
+            bf_ans = input(f"\n {Color.Wh}{t('prompt.subdomain_bruteforce')}{Color.Gr}").strip()
+        except (EOFError, KeyboardInterrupt):
+            bf_ans = ''
+        bruteforce = bf_ans == '2'
+        result = enumerate_subdomains(domain, probe=probe, bruteforce=bruteforce)
         print_subdomains(result)
         _interactive_save_prompt(f'subdomain_{domain}', result, save_dir)
     elif choice == 9:
@@ -6452,6 +6693,14 @@ def build_parser() -> argparse.ArgumentParser:
                     help=f'HTTP probe timeout per host (default: {SUBDOMAIN_HTTP_PROBE_TIMEOUT}s)')
     sp.add_argument('--alive-only', action='store_true', dest='alive_only',
                     help='In CLI output, hide subdomains that did not resolve')
+    # v1.4.9:DNS 字典爆破(opt-in,~220 内置词典 / 用户 SPYEYES_DNS_WORDLIST 覆盖)
+    sp.add_argument('--bruteforce', action='store_true', dest='bruteforce',
+                    help='Enable DNS dictionary bruteforce (~220 built-in prefixes;'
+                         ' set SPYEYES_DNS_WORDLIST=/path to use custom wordlist)')
+    # v1.4.9:JS / HTML body host 提取(默认开,几乎免费 — body 已在内存里)
+    sp.add_argument('--no-js-extract', action='store_true', dest='no_js_extract',
+                    help='Skip JS/HTML body extraction of additional hostnames'
+                         ' (default: enabled, scans probe response bodies for *.<domain>)')
 
     # v1.4.0: 域名邮箱枚举(OSINT email harvest)
     sp = sub.add_parser('domain-emails', parents=[common],
@@ -6646,6 +6895,8 @@ def run_cli(args: argparse.Namespace) -> int:
             probe=probe,
             max_workers=args.workers,
             probe_timeout=args.timeout,
+            bruteforce=getattr(args, 'bruteforce', False),
+            js_extract=not getattr(args, 'no_js_extract', False),
             show_progress=not args.json,
         )
         save_prefix = f'subdomain_{args.domain}'
