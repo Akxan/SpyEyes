@@ -53,7 +53,7 @@ git clone https://github.com/Akxan/SpyEyes.git
 cd SpyEyes
 python3 -m venv .venv && source .venv/bin/activate
 pip install -r requirements.txt
-python3 -m spyeyes --version    # spyeyes 1.6.10
+python3 -m spyeyes --version    # spyeyes 1.6.11
 ```
 
 立即体验:

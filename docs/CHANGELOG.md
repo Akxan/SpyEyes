@@ -18,6 +18,74 @@ This project adheres to [Keep a Changelog](https://keepachangelog.com/en/1.1.0/)
 
 ---
 
+## [1.6.11] — 2026-05-09
+
+⚡ **域名邮箱深度爬取修复"看着卡死"+ 实际提速 2×**(用户反馈)
+
+### 背景
+
+用户截图显示 domain-emails 跑到 "阶段 3/4:深度爬取 2 个目标" 后**完全静默**,1+ 分钟感觉卡死。
+
+实际不是卡死,是两个原因叠加:
+
+1. **`max_pages=500` 太大** — 2 target × 250 页 × 500ms 速率 = **理论最低 4 分钟**
+2. **v1.6.6 多 target 并行时,内部 `show_progress=False`** — 期间没有任何反馈
+
+### 修复 1:降低默认 max_pages
+
+```
+DOMAIN_EMAIL_DEFAULT_MAX_PAGES:  500 → 200
+DOMAIN_EMAIL_PER_TARGET_CAP:    新增 100(单 target 最多 100 页)
+```
+
+实践:典型企业域 contact / about / team 等高邮箱密度页 < 100 页。
+长尾页面邮箱密度急剧降到几乎 0,纯花时间不出货。
+
+效果:
+- 1 target:200 页(原 500)→ 速率限制部分 100s → 50s
+- 2 target:各 100 页 → ~50s × 2 并行 ≈ 50s(整体 4 分钟 → 1 分钟)
+
+### 修复 2:并行 target 也保留进度反馈
+
+之前 v1.6.6 为防输出交织把内部 `show_progress=False`。改成:
+- 用 `\n` 替代 `\r`(并行时 `\r` 互相覆盖)
+- 加 `[target]` 前缀让用户知道是哪个 target 的进度
+- 加 `_DEMAIL_PROGRESS_LOCK` 互斥写 stderr,行不会切碎
+- 频率从每 10 → 20 页(降噪声)
+
+效果:
+```
+之前(silent 1+ 分钟):
+  阶段 3/4:深度爬取 2 个目标 ...
+  (1+ 分钟无任何输出 ← 用户以为卡死)
+
+现在:
+  阶段 3/4:深度爬取 2 个目标 ...
+     [api.example.com] pages=20/100 emails=3 queue=45
+     [www.example.com] pages=20/100 emails=2 queue=23
+     [api.example.com] pages=40/100 emails=5 queue=67
+     [www.example.com] pages=40/100 emails=4 queue=12
+     ...
+```
+
+### 用户可覆盖
+
+如果你需要更深度的爬取(论文研究 / 大型站):
+
+```bash
+spyeyes domain-emails example.com --max-pages 500
+```
+
+### Tests / Lint
+
+无变化(只调常量)。**488 全绿**。ruff 0 / mypy 0 / bandit 0。
+
+### Packaging
+
+- `__version__` 1.6.10 → 1.6.11
+
+---
+
 ## [1.6.10] — 2026-05-09
 
 🐛 **PDF 西文带变音符字符渲染修复**(用户反馈截图)

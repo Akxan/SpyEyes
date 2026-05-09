@@ -68,7 +68,7 @@ except ImportError:
 
 
 # 语义化版本号 —— 同步更新 docs/CHANGELOG.md 与 git tag
-__version__ = '1.6.10'
+__version__ = '1.6.11'
 
 
 # ====================================================================
@@ -3278,13 +3278,20 @@ def diff_subdomain_results(old: dict, new: dict) -> dict:
 #   4. 模式生成 `--guess "John Doe,Jane Smith"`(姓名 → firstname.lastname@domain 等)
 #   5. SMTP HELO/RCPT 验证(`--verify-smtp`,带强 disclaimer)
 
-DOMAIN_EMAIL_DEFAULT_MAX_PAGES = 500
+DOMAIN_EMAIL_DEFAULT_MAX_PAGES = 200      # v1.6.11:500→200(用户反馈"卡 5 分钟")
+                                          # 实践:典型企业域 contact/about/team 等高邮箱密度页 < 100 页
+                                          # 更大 budget 长尾 page 邮箱密度急剧降到几乎 0,纯花时间
+DOMAIN_EMAIL_PER_TARGET_CAP = 100         # v1.6.11:单个 target 最多 100 页(防 2 target 时各拿 100 共 200)
 DOMAIN_EMAIL_DEFAULT_DEPTH = 5
 DOMAIN_EMAIL_DEFAULT_WORKERS = 5
 DOMAIN_EMAIL_RATE_LIMIT_MS = 500          # 单域请求间最少 500ms 防被反爬墙拉黑
 DOMAIN_EMAIL_PAGE_TIMEOUT = 10.0
 DOMAIN_EMAIL_MAX_BODY = 256 * 1024        # 单页只读前 256KB(防大页面拖慢)
 DOMAIN_EMAIL_TOTAL_TIMEOUT = 300.0        # 总超时 5 分钟,防跑飞
+DOMAIN_EMAIL_PROGRESS_EVERY = 20          # v1.6.11:每 20 页打一行进度(平衡信噪比)
+
+# v1.6.11:并行多 target 爬虫时,各 target 写 stderr 进度需要互斥避免行交织
+_DEMAIL_PROGRESS_LOCK = threading.Lock()
 DOMAIN_EMAIL_PRIORITY_PATHS = (
     '/', '/contact', '/contact-us', '/about', '/about-us', '/team',
     '/imprint', '/legal', '/privacy', '/support', '/help', '/jobs',
@@ -3780,13 +3787,16 @@ def _crawl_domain_for_emails(domain: str, *,
             if email not in found_emails:
                 found_emails.add(email)
                 page_emails[email] = url
-        # 进度反馈(每 10 页输出一次)
-        if show_progress and pages_crawled % 10 == 0 and sys.stderr.isatty():
-            sys.stderr.write(
-                f"\r   [crawl] pages={pages_crawled}/{max_pages} "
-                f"emails={len(found_emails)} queue={len(queue)}     "
-            )
-            sys.stderr.flush()
+        # v1.6.11:进度反馈改用 \n + target 前缀(支持并行多 target 不交织)
+        # 频率从每 10 → 20 页(降噪声),且不再用 \r(并行时 \r 会被其它 target 覆盖)
+        if (show_progress and pages_crawled % DOMAIN_EMAIL_PROGRESS_EVERY == 0
+                and sys.stderr.isatty()):
+            with _DEMAIL_PROGRESS_LOCK:
+                sys.stderr.write(
+                    f"   [{target}] pages={pages_crawled}/{max_pages} "
+                    f"emails={len(found_emails)} queue={len(queue)}\n"
+                )
+                sys.stderr.flush()
         # 深度未到则提取内部链接入队
         if depth < max_depth:
             for m in _HREF_RE.finditer(body):
@@ -3990,21 +4000,25 @@ def enumerate_domain_emails(domain: str, *,
 
         if show_progress:
             _stage_log(f"\n {Color.Cy}{t('demails.stage_crawl', n=len(targets_to_crawl))}{Color.Reset}")
-        # 把 max_pages 平均分给每个目标
-        per_target = max(10, max_pages // max(1, len(targets_to_crawl)))
+        # v1.6.11:per_target 加 PER_TARGET_CAP 上限(防 2 target 时各拿 250 共 500)
+        # 之前 500 / 2 = 250 × 2 = 500 页 × 500ms 速率 = 4 分钟最低
+        # 现在 min(100, 200/2) = 100 × 2 = 200 页 × 500ms = 100 秒,体感快很多
+        per_target = max(10, min(DOMAIN_EMAIL_PER_TARGET_CAP,
+                                  max_pages // max(1, len(targets_to_crawl))))
         total_targets = len(targets_to_crawl)
 
         # v1.6.6:多 target 并行爬(workers=3,平衡速度 vs 礼貌)
-        # 每个 target 内部仍 500ms 速率限制(单域不被 ban),但 N 个 target 之间并行
-        # linux.do 5+ min → ~1-2 min(3-4× 提速)
+        # v1.6.11:并行时仍保留进度反馈(用 [target] 前缀防交织,不再 silent)
         TARGET_PARALLEL_WORKERS = 3
-        crawl_results: dict = {}  # target → crawl_result(保持原有反馈格式)
+        crawl_results: dict = {}
 
         def _crawl_one(target):
+            # v1.6.11:show_progress 透传 — 内部用 [target] 前缀的非 \r 行,
+            # 多线程交织也不会乱(加上 _stderr_lock 保护原子写)
             return target, _crawl_domain_for_emails(
                 target, max_pages=per_target, max_depth=max_depth,
                 workers=workers, obey_robots=obey_robots,
-                show_progress=False)  # 内部 show_progress 关掉防多 target 输出交织
+                show_progress=show_progress)
 
         with ThreadPoolExecutor(max_workers=min(TARGET_PARALLEL_WORKERS, total_targets)) as ex:
             futures = {ex.submit(_crawl_one, tgt): (idx + 1, tgt)
