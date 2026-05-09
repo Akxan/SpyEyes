@@ -735,6 +735,110 @@ class TestCliParser:
 # ------------------------------------------------------------------
 # _maybe_save 真写文件
 # ------------------------------------------------------------------
+class TestFilterAliveOnly:
+    """v1.6.5:智能 alive-only 过滤,wildcard 时自动严格防 DNS 劫持。"""
+
+    def test_no_wildcard_keeps_all_alive(self):
+        """正常场景(wildcard_suspect=False):所有 alive 留下。"""
+        data = {
+            'domain': 'example.com',
+            'wildcard_suspect': False,
+            'subdomains': [
+                {'host': 'a.example.com', 'alive': True, 'cname': None,
+                 'http_status': None, 'title': None},  # 只 DNS,无 HTTP
+                {'host': 'b.example.com', 'alive': True, 'cname': None,
+                 'http_status': 200, 'title': 'OK'},
+                {'host': 'c.example.com', 'alive': False, 'cname': None,
+                 'http_status': None},
+            ],
+        }
+        out = gt._filter_alive_only(data)
+        assert out['_filtered']['mode'] == 'alive_only'
+        assert out['_filtered']['wildcard_suspect'] is False
+        hosts = {s['host'] for s in out['subdomains']}
+        assert hosts == {'a.example.com', 'b.example.com'}  # c 被过滤(alive=False)
+
+    def test_wildcard_uses_strict_mode(self):
+        """wildcard 场景:仅保留 HTTP 响应或真 CNAME 的 host。"""
+        data = {
+            'domain': 'akxan.com',
+            'wildcard_suspect': True,
+            'subdomains': [
+                # 真站点 — HTTP 响应
+                {'host': 'akxan.com', 'alive': True, 'cname': None,
+                 'http_status': 200, 'title': 'Real'},
+                # 真站点 — 有 CNAME
+                {'host': 'cdn.akxan.com', 'alive': True,
+                 'cname': 'd123.cloudfront.net.',
+                 'http_status': None, 'title': None},
+                # 劫持的 fake — DNS 但无 HTTP 响应
+                {'host': 'about.akxan.com', 'alive': True, 'cname': None,
+                 'http_status': None, 'title': None},
+                {'host': 'admin.akxan.com', 'alive': True, 'cname': None,
+                 'http_status': None, 'title': None},
+            ],
+        }
+        out = gt._filter_alive_only(data)
+        assert out['_filtered']['mode'] == 'alive_only_strict'
+        assert out['_filtered']['wildcard_suspect'] is True
+        assert out['_filtered']['hidden'] == 2  # about / admin 都被过滤
+        hosts = {s['host'] for s in out['subdomains']}
+        assert hosts == {'akxan.com', 'cdn.akxan.com'}
+
+    def test_wildcard_keeps_4xx_5xx_responses(self):
+        """wildcard 场景下,即使 HTTP 4xx/5xx 也算"真实站点"(只要有响应)。"""
+        data = {
+            'domain': 'example.com',
+            'wildcard_suspect': True,
+            'subdomains': [
+                # 401 / 403 也保留 — 服务器在,只是要认证
+                {'host': 'admin.example.com', 'alive': True, 'cname': None,
+                 'http_status': 401, 'title': None},
+                {'host': 'private.example.com', 'alive': True, 'cname': None,
+                 'http_status': 403, 'title': None},
+                {'host': 'broken.example.com', 'alive': True, 'cname': None,
+                 'http_status': None, 'title': None},  # 假
+            ],
+        }
+        out = gt._filter_alive_only(data)
+        hosts = {s['host'] for s in out['subdomains']}
+        assert hosts == {'admin.example.com', 'private.example.com'}
+
+    def test_alive_false_always_filtered(self):
+        """无论 wildcard 与否,alive=False 永远被过滤。"""
+        for wc in (True, False):
+            data = {
+                'wildcard_suspect': wc,
+                'subdomains': [
+                    {'host': 'dead.example.com', 'alive': False,
+                     'http_status': 200, 'cname': 'real.example.com'},
+                    # 即使 http_status=200(残留)+ cname,alive=False 还是要过滤
+                ],
+            }
+            out = gt._filter_alive_only(data)
+            assert out['subdomains'] == []
+
+    def test_invalid_input_returns_unchanged(self):
+        """非 dict / 缺 subdomains key 时不报错,原样返回。"""
+        assert gt._filter_alive_only('not a dict') == 'not a dict'
+        assert gt._filter_alive_only({}) == {}
+        assert gt._filter_alive_only({'foo': 'bar'}) == {'foo': 'bar'}
+
+    def test_filtered_metadata_count_correct(self):
+        """_filtered.hidden 应等于 原 subdomains 数 - 留下的数。"""
+        data = {
+            'wildcard_suspect': False,
+            'subdomains': [
+                {'host': f'h{i}.x.com', 'alive': i % 2 == 0,
+                 'http_status': None, 'cname': None}
+                for i in range(10)
+            ],
+        }
+        out = gt._filter_alive_only(data)
+        assert len(out['subdomains']) == 5  # 偶数 i = alive
+        assert out['_filtered']['hidden'] == 5
+
+
 class TestDefaultReportDir:
     """v1.6.4:跨平台统一行为 — cwd/Downloads/ + SPYEYES_REPORTS_DIR 覆盖。"""
 

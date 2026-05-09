@@ -18,6 +18,73 @@ This project adheres to [Keep a Changelog](https://keepachangelog.com/en/1.1.0/)
 
 ---
 
+## [1.6.5] — 2026-05-09
+
+🐛 **`--alive-only` 智能升级 — 在 wildcard DNS / 劫持环境下自动严格过滤**
+
+### 背景
+
+用户截图显示 `akxan.com` 报告中 259 个"alive"子域,但实际只有 1 个真实站点。原因:用户机器开了 WARP / VPN / 公司代理拦截 DNS,所有 `*.akxan.com` 查询都被劫持到 `198.18.1.x`(TEST-NET-2),导致每个查询都"DNS 解析成功"→ alive=True。
+
+之前 `--alive-only` 的过滤标准只看 `alive`(DNS 解析),无法识别这种 fake "活"。
+
+### 修复
+
+抽出 `_filter_alive_only(data)` 助手函数,**自动根据 wildcard 检测结果切换过滤标准**:
+
+| 场景 | 过滤标准 | mode 字段 |
+|---|---|---|
+| `wildcard_suspect=False`(正常) | `alive=True` | `alive_only` |
+| `wildcard_suspect=True`(劫持/wildcard) | `alive=True AND (HTTP 响应 OR 真实 CNAME)` | `alive_only_strict` |
+
+**为什么严格模式用 HTTP 响应或 CNAME:**
+- 劫持的 fake IP 不会有真实 web 服务响应 → HTTP probe 必然失败
+- 真实 CNAME 是 wildcard 不会伪造的强证据(链路真实)
+- HTTP 4xx/5xx 也算真实站点(401/403 = 服务器在,只是要认证)
+
+### 实测对比(用户的 akxan.com 截图场景)
+
+| | v1.6.4 | v1.6.5 |
+|---|---|---|
+| 报告显示子域数 | 259(全是 fake) | ~1-2(只剩真实 akxan.com) |
+| 用户体验 | "为什么没过滤?" | 报告整洁,wildcard 警告依旧显示 |
+
+### 三处统一接入
+
+CLI handler / 交互菜单 / `_run_subdomain_batch` 都从内联过滤代码切到调用 `_filter_alive_only(data)`,DRY + 行为一致。
+
+### `_filtered` 元数据扩展
+
+```json
+{
+  "_filtered": {
+    "mode": "alive_only_strict",   // 之前只有 'alive_only'
+    "hidden": 257,
+    "wildcard_suspect": true        // 新字段,报告生成器可显示警告
+  }
+}
+```
+
+### Tests
+
+- 6 个新测试 `TestFilterAliveOnly`(共 **479 全绿**):
+  - `test_no_wildcard_keeps_all_alive` — 正常场景行为不变
+  - `test_wildcard_uses_strict_mode` — 严格模式过滤 fake hosts
+  - `test_wildcard_keeps_4xx_5xx_responses` — 401/403 算真实
+  - `test_alive_false_always_filtered` — 双场景一致
+  - `test_invalid_input_returns_unchanged` — 容错
+  - `test_filtered_metadata_count_correct` — 计数准确
+
+### Code Quality
+
+ruff 0 / mypy 0 / bandit 0
+
+### Packaging
+
+- `__version__` 1.6.4 → 1.6.5
+
+---
+
 ## [1.6.4] — 2026-05-09
 
 🐛 **报告默认目录改回英文 `Downloads/`**(用户反馈)

@@ -68,7 +68,7 @@ except ImportError:
 
 
 # 语义化版本号 —— 同步更新 docs/CHANGELOG.md 与 git tag
-__version__ = '1.6.4'
+__version__ = '1.6.5'
 
 
 # ====================================================================
@@ -3032,6 +3032,50 @@ def enumerate_subdomains(domain: str, *, probe: bool = True,
 # 输入:两份 enumerate_subdomains 的 JSON 输出
 # 输出:{added: [...], removed: [...], changed: [{host, before, after, changes}], unchanged_count}
 
+def _filter_alive_only(data: dict) -> dict:
+    """v1.6.5:智能 --alive-only 过滤,自动应对 wildcard DNS / DNS 劫持场景。
+
+    背景:
+    用户反馈在 wildcard DNS / 公司 WARP / VPN 劫持环境下,即使开了 --alive-only
+    报告里仍然全是 fake host(都"解析"到劫持 IP 198.18.x.x)。
+
+    根因:
+    `alive` 字段只看 DNS 是否返 A/AAAA,不看 IP 真不真。劫持环境下任何字符串都"alive"。
+
+    设计:
+    - 正常情况(wildcard_suspect=False):alive = DNS 有 A/AAAA 记录
+    - wildcard 命中:升级严格模式 — DNS + (HTTP 探测响应 OR 真实 CNAME)
+      理由:劫持的 fake IP 不会响应 HTTP;真实 CNAME 是 wildcard 不会伪造的强证据
+
+    返回原 dict 的浅拷贝(subdomains 替换 + 加 _filtered 元数据)。
+    """
+    if not isinstance(data, dict) or 'subdomains' not in data:
+        return data
+    subs = data.get('subdomains') or []
+    if not isinstance(subs, list):
+        return data
+    wildcard = bool(data.get('wildcard_suspect'))
+    if wildcard:
+        # 严格:DNS 解析 + (HTTP 响应 OR 真实 CNAME)
+        # http_status is not None 表示 probe 阶段拿到了响应(不一定 2xx,
+        # 401/403 也算"真实站点"); CNAME 非空字符串表示 DNS 链路真实
+        def _passes(s: dict) -> bool:
+            if not isinstance(s, dict) or not s.get('alive'):
+                return False
+            has_http = s.get('http_status') is not None
+            has_cname = bool(s.get('cname'))
+            return has_http or has_cname
+        filtered = [s for s in subs if _passes(s)]
+        mode = 'alive_only_strict'
+    else:
+        filtered = [s for s in subs if isinstance(s, dict) and s.get('alive')]
+        mode = 'alive_only'
+    return {**data, 'subdomains': filtered,
+            '_filtered': {'mode': mode,
+                          'hidden': len(subs) - len(filtered),
+                          'wildcard_suspect': wildcard}}
+
+
 def diff_subdomain_results(old: dict, new: dict) -> dict:
     """对比两次子域扫描结果。返回 added/removed/changed 三组 + 元数据。
 
@@ -4654,18 +4698,14 @@ def handle_choice(choice: int, save_dir: Optional[str] = None) -> None:
         result = enumerate_subdomains(domain, probe=probe, bruteforce=bruteforce)
         print_subdomains(result)
         # v1.4.10:保存前询问是否过滤 dead 子域(默认是 — 用户反馈报告太挤)
+        # v1.6.5:用 _filter_alive_only,wildcard 时自动严格(防 DNS 劫持)
         try:
             ao_ans = input(f"\n {Color.Wh}{t('prompt.subdomain_alive_only')}{Color.Gr}").strip()
         except (EOFError, KeyboardInterrupt):
             ao_ans = ''
         save_data = result
-        if ao_ans != '2' and isinstance(result, dict) and 'subdomains' in result:
-            original_count = len(result['subdomains'])
-            save_data = {**result,
-                         'subdomains': [s for s in result['subdomains'] if s.get('alive')],
-                         '_filtered': {'mode': 'alive_only',
-                                       'hidden': original_count - sum(
-                                           1 for s in result['subdomains'] if s.get('alive'))}}
+        if ao_ans != '2':
+            save_data = _filter_alive_only(result)
         _interactive_save_prompt(f'subdomain_{domain}', save_data, save_dir)
     elif choice == 9:
         # v1.4.0: 域名邮箱枚举
@@ -7242,12 +7282,9 @@ def _run_subdomain_batch(args: argparse.Namespace) -> int:
         except KeyboardInterrupt:
             sys.stderr.write(f" {Color.Re}用户中断,已完成 {idx-1}/{len(domains)}\n{Color.Reset}")
             break
-        if (getattr(args, 'alive_only', False)
-                and isinstance(data, dict) and 'subdomains' in data):
-            original = len(data['subdomains'])
-            data['subdomains'] = [s for s in data['subdomains'] if s.get('alive')]
-            data['_filtered'] = {'mode': 'alive_only',
-                                 'hidden': original - len(data['subdomains'])}
+        if getattr(args, 'alive_only', False):
+            # v1.6.5:同样用智能过滤(wildcard 时自动严格)
+            data = _filter_alive_only(data)
         stats = (data.get('_stats') or {}) if isinstance(data, dict) else {}
         summary.append({
             'domain': domain,
@@ -7448,14 +7485,9 @@ def run_cli(args: argparse.Namespace) -> int:
         )
         save_prefix = f'subdomain_{args.domain}'
         # v1.4.10:--alive-only 现在影响 CLI / JSON / 导出报告全部
-        # (之前仅终端;用户反馈"导出报告里 dead 子域占位太多")
-        # _stats 保持原始 total/alive 数,加 _filtered 字段供报告显示"已过滤 N 个 dead"
-        if (getattr(args, 'alive_only', False)
-                and isinstance(data, dict) and 'subdomains' in data):
-            original_count = len(data['subdomains'])
-            data['subdomains'] = [s for s in data['subdomains'] if s.get('alive')]
-            data['_filtered'] = {'mode': 'alive_only',
-                                 'hidden': original_count - len(data['subdomains'])}
+        # v1.6.5:wildcard 检测时自动用严格过滤(防 DNS 劫持 fake "alive")
+        if getattr(args, 'alive_only', False):
+            data = _filter_alive_only(data)
         if args.json:
             _emit_json(data)
         else:
