@@ -18,6 +18,34 @@ This project adheres to [Keep a Changelog](https://keepachangelog.com/en/1.1.0/)
 
 ---
 
+## [1.4.5] — 2026-05-09
+
+🐛 **HTML 报告大屏太窄 + 长主机名变阶梯式**(用户反馈)
+
+### Bug Fix
+
+用户截图显示 baidu.com 报告中 `abot.pos.baidu.com`(19 字符)被压成 3 行阶梯,
+2K 大屏左右大量留白浪费。
+
+修复:
+- **`max-width` 920px → 1280px**(给桌面足够空间)
+- **`td:first-child{white-space:nowrap}`** — host 列永远完整一行,不再阶梯式
+- **`@media(max-width:1340px){body{max-width:none;margin:2em 4em 3em}}`** — 窄屏让出 max-width 限制
+- **`@media(max-width:900px){td:first-child{white-space:normal}}`** — 移动端允许 host 换行避免横向溢出
+- 移动端 `@media(max-width:720px)` margin 收紧到 `1em` + padding 收紧到 `0 1em 2em`
+- `td` 加 `overflow-wrap:anywhere` 让 IPv6 等极长串可断
+
+### 测试
+
+- 417 测试全绿
+- ruff/mypy 全清
+
+### Packaging
+
+- `__version__` 1.4.4 → 1.4.5
+
+---
+
 ## [1.4.4] — 2026-05-09
 
 🚨 **紧急修复 + 报告美化补完 — Editorial Investigation Brief 全套**

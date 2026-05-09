@@ -68,7 +68,7 @@ except ImportError:
 
 
 # 语义化版本号 —— 同步更新 docs/CHANGELOG.md 与 git tag
-__version__ = '1.4.4'
+__version__ = '1.4.5'
 
 
 # ====================================================================
@@ -4838,10 +4838,11 @@ def _to_html(prefix: str, data: Any) -> str:
         '*{box-sizing:border-box}',
         'html,body{margin:0;padding:0}',
         'body{background:var(--bg);color:var(--ink);font-family:var(--body);'
-        'font-size:17px;line-height:1.7;max-width:920px;margin:3em auto;'
+        'font-size:17px;line-height:1.7;max-width:1280px;margin:3em auto;'
         'padding:0 3em 4em;letter-spacing:0.005em;'
         '-webkit-font-smoothing:antialiased;text-rendering:optimizeLegibility}',
-        '@media(max-width:720px){body{padding:0 1.5em 3em;font-size:15px}}',
+        '@media(max-width:1340px){body{max-width:none;margin:2em 4em 3em}}',
+        '@media(max-width:720px){body{margin:1em;padding:0 1em 2em;font-size:15px}}',
         # Masthead 报刊头
         '.masthead{border-top:5px double var(--ink);border-bottom:5px double var(--ink);'
         'padding:1.6em 0 1.4em;margin-bottom:2.5em;text-align:center;position:relative}',
@@ -4873,16 +4874,22 @@ def _to_html(prefix: str, data: Any) -> str:
         'h3,h3.cat{font-family:var(--serif);font-weight:600;font-size:1.3em;'
         'margin:1.8em 0 0.7em;padding-left:0.7em;border-left:3px solid var(--accent);'
         'color:var(--ink);letter-spacing:-0.005em}',
-        # Tables
+        # Tables — Editorial 报刊风:1.5px 双线 frame + zebra + hover
+        # v1.4.5 修复:max-width 920→1280 + td:first-child nowrap 让长 hostname 完整一行,
+        # 不再变 3 行阶梯。窄屏时(max-width:900px)允许 wrap 避免横向溢出
         'table{border-collapse:collapse;width:100%;margin:1em 0 1.5em;'
         'font-family:var(--mono);font-size:0.85em;background:var(--surface);'
         'border-top:1.5px solid var(--ink);border-bottom:1.5px solid var(--ink)}',
         'thead tr{border-bottom:1px solid var(--ink)}',
         'th{text-align:left;padding:0.85em 1em;font-family:var(--serif);'
         'font-weight:700;font-size:0.95em;letter-spacing:0.02em;color:var(--ink);'
-        'background:var(--soft);border-bottom:1px solid var(--ink)}',
+        'background:var(--soft);border-bottom:1px solid var(--ink);'
+        'white-space:nowrap}',
         'td{padding:0.7em 1em;border-bottom:1px solid #e8e3d6;vertical-align:top;'
-        'word-break:break-word}',
+        'word-break:normal;overflow-wrap:anywhere}',
+        # 第一列(host/field)不断行,完整可读
+        'td:first-child{white-space:nowrap}',
+        '@media(max-width:900px){td:first-child{white-space:normal}}',
         'tr:nth-child(even) td{background:var(--row-alt)}',
         'tr:hover td{background:var(--soft);transition:background 0.15s ease}',
         # Links + code
