@@ -18,6 +18,44 @@ This project adheres to [Keep a Changelog](https://keepachangelog.com/en/1.1.0/)
 
 ---
 
+## [1.6.2] — 2026-05-09
+
+🐛 **Housekeeping + 修复 CI 6 连失败 + 全文档同步**
+
+### 修复 CI(6 次连续失败的根本原因)
+
+发现自 v1.4.9 起最近 6 次 GitHub Actions CI 全部失败。根因:
+
+`TestSubdomainProgressFeedback` 类的 3 个测试只 mock 了 4 个旧源(crtsh / hackertarget / otx / certspotter),没 mock v1.4.8 加的 `subfinder` 和 v1.4.9 加的 `wayback`。CI 环境跑真实 wayback CDX API → 等 30s+ → 被 pytest-timeout 杀。
+
+修复:用 `for name in gt.SUBDOMAIN_SOURCES: setitem(... lambda d: set())` 把所有源默认 stub 成空,然后只 override 需要返值的源。本地 + CI 都立即过。
+
+### 全文档同步到 v1.6.2
+
+之前 docs 大量 v1.4.6 / v1.4.9 stale 引用:
+
+- README.md 徽章:tests 417→468, commands 9→10, version 1.4.9→1.6.2
+- README.en.md 同步
+- README 功能列表加 v1.5.0 (Diff/Batch) + v1.6.0 (邮箱 6 源) + v1.6.1 (进度审计)
+- 工具对比表加 Diff/Batch 列
+- TUTORIAL.md 加 ⑩ Diff + 批量章节
+- docs/index.md(GitHub Pages 首页)全文重写到 v1.6.2
+
+### GitHub repo 元数据同步
+
+- 描述从"v1.4.6 / 9 commands / 417 tests"更新到"v1.6.2 / 10 commands / 468 tests / Diff / Batch / 6 free email sources"
+- Topics 调整到 20(GitHub 上限):删 bilingual / pdf-report / certificate-transparency,加 dns-bruteforce / wayback-machine / batch-scan / diff-tool
+
+### Tests
+
+468 全绿(本地 + CI 都过 — CI 修复后首次绿)。
+
+### Packaging
+
+- `__version__` 1.6.1 → 1.6.2
+
+---
+
 ## [1.6.1] — 2026-05-09
 
 🐛 **进度条 100% 全功能审计 — 修复 3 处遗漏(用户反馈)**

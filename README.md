@@ -4,17 +4,17 @@
 
 ### OSINT 信息查询工具中文增强版
 
-**一站式查询 IP · 电话 · 用户名 · 域名 WHOIS · MX 记录 · 邮箱 · 子域名 · 域名邮箱**
+**一站式查询 IP · 电话 · 用户名 · 域名 WHOIS · MX 记录 · 邮箱 · 子域名 · 域名邮箱 · Diff 监控 · 批量扫描**
 
 [![CI](https://github.com/Akxan/SpyEyes/actions/workflows/ci.yml/badge.svg)](https://github.com/Akxan/SpyEyes/actions/workflows/ci.yml)
 [![codecov](https://codecov.io/gh/Akxan/SpyEyes/branch/main/graph/badge.svg)](https://codecov.io/gh/Akxan/SpyEyes)
 [![License: Apache 2.0](https://img.shields.io/badge/License-Apache_2.0-blue.svg)](https://opensource.org/licenses/Apache-2.0)
 [![Python](https://img.shields.io/badge/Python-3.10%2B-blue.svg?logo=python&logoColor=white)](https://www.python.org/)
-[![Tests](https://img.shields.io/badge/tests-417%20passed-success.svg)](tests/)
+[![Tests](https://img.shields.io/badge/tests-468%20passed-success.svg)](tests/)
 [![Platforms](https://img.shields.io/badge/platforms-3164-orange.svg)](#-与同类工具对比)
 [![Reports](https://img.shields.io/badge/reports-8%20formats-9cf.svg)](#-报告格式8-种)
-[![Commands](https://img.shields.io/badge/commands-9-blueviolet.svg)](docs/TUTORIAL.md)
-[![Version](https://img.shields.io/badge/version-1.4.9-blueviolet.svg)](docs/CHANGELOG.md)
+[![Commands](https://img.shields.io/badge/commands-10-blueviolet.svg)](docs/TUTORIAL.md)
+[![Version](https://img.shields.io/badge/version-1.6.2-blueviolet.svg)](docs/CHANGELOG.md)
 [![Docs](https://img.shields.io/badge/docs-online-blue.svg)](https://akxan.github.io/SpyEyes/)
 [![Platform](https://img.shields.io/badge/platform-macOS%20%7C%20Linux%20%7C%20Windows%20%7C%20Termux-lightgrey)](#-安装)
 [![PRs Welcome](https://img.shields.io/badge/PRs-welcome-brightgreen.svg)](docs/CONTRIBUTING.md)
@@ -35,21 +35,23 @@
 
 ## 📖 项目简介
 
-**SpyEyes** 是一款用 Python 编写的命令行 **OSINT（开源情报）信息收集工具**，专为中文用户深度优化。**9 大核心能力**:IP 追踪、电话号码解析、用户名扫描(**3164 个平台 / 中英双语**)、域名 WHOIS / MX 查询、邮箱有效性验证、**子域名枚举**(被动多源 + DNS + HTTP probe)、**域名邮箱枚举**(crt.sh + WHOIS + 深度爬虫 + 模式生成 + SMTP 验证)、**用户名变形 / 递归扫描** / **8 种 Editorial 风报告**。
+**SpyEyes** 是一款用 Python 编写的命令行 **OSINT(开源情报)信息收集工具**,专为中文用户深度优化。**10 大核心能力**:IP 追踪 / 电话号码解析 / 用户名扫描(**3164 个平台 / 中英双语**)/ 域名 WHOIS / MX 查询 / 邮箱有效性验证 / **子域名枚举**(6 被动源 + 字典爆破 + JS 提取)/ **域名邮箱挖掘**(6 源全免费并发 + 深度爬虫)/ **Diff 监控**(对比两次扫描)/ **批量域名输入**(`--batch`)/ **8 种 Editorial 风报告**。
 
 适合 **网络安全研究人员、渗透测试工程师、SOC 分析师、技术调查员、红队蓝队成员、CTF 玩家** 以及任何对开源情报感兴趣的开发者使用。
 
 ### 💎 项目亮点
 
-- **🆕 v1.4.0:域名邮箱枚举** —— 类 theHarvester + Hunter.io 混合:crt.sh CT 日志 + WHOIS 联系人 + 深度爬虫(robots.txt + sitemap.xml + BFS 内部链接,默认 500 页/深度 5)+ 含 alive 子域 + 模式生成(`--guess "John Doe"`)+ 可选 SMTP 验证
-- **🆕 v1.4.x:Editorial Investigation Brief 报告美化** —— 调查档案/报刊调性,Cormorant Garamond + Crimson Pro + JetBrains Mono 三件套 + cream/ink/印章红配色;HTML sticky thead + alive/dead 视觉区分 + HTTP status 颜色编码;PDF 封面页 + 罗马数字章节;XMind 层级展开(IPv4/IPv6/CNAME/Title 各一层);Graph 浅色 + 印章红/古典蓝节点
-- **v1.3.0→1.4.9:子域名枚举** —— 6 被动源(crt.sh + CertSpotter + HackerTarget + OTX + **Wayback Machine** + 可选 subfinder 30+ 源)+ DNS 字典爆破(`--bruteforce` 内置 220 词 / `SPYEYES_DNS_WORDLIST` 大字典)+ JS/HTML body host 提取(默认开)+ DNS A/AAAA/CNAME 验证 + HTTP probe + Wildcard 探测
-- **3164 个用户名扫描平台**:48 中文圈 + 58 西语圈 + 91 成人/约会 + 733 论坛,Sherlock 级速度 ~20 秒(150 线程并发 + Session 池 + HEAD 优化 + ReDoS 防护)
-- **8 种报告格式** —— `JSON / Markdown / HTML / PDF / TXT / CSV / XMind / Graph (D3.js)`,全部跟随 UI 语言(中/英),全部 Editorial 风
+- **🆕 v1.6.0:域名邮箱 6 源全并发** — Bing SERP + DuckDuckGo + Wayback Machine + GitHub commits + crt.sh + WHOIS,**完全免费 + 无需注册**;并发执行总耗时 ≈ 最慢源(2-3× 提速);对比 theHarvester / Photon / EmailFinder 等同类工具,免费层最强 + 报告格式最丰富
+- **🆕 v1.5.0:Diff 模式 + 批量域名** — `spyeyes diff old.json new.json` 对比两次扫描挖出新增 / 消失 / 变更的子域(OSINT 监控刚需);`--batch domains.txt --batch-save-dir reports/` 批量扫描每个域独立报告
+- **🆕 v1.4.x:子域名 7 维度收集** — 6 被动源(crt.sh / CertSpotter / HackerTarget / OTX / **Wayback Machine** / 可选 subfinder 30+ 源)+ DNS 字典爆破(220 词内置 / `SPYEYES_DNS_WORDLIST` 自定义)+ JS/HTML body host 提取 + DNS A/AAAA/CNAME 验证 + HTTP probe + Wildcard 检测
+- **🆕 Editorial Investigation Brief 报告美化** — 调查档案/报刊调性:Cormorant Garamond + Crimson Pro + JetBrains Mono 三件套 + cream/ink/印章红配色;HTML sticky thead + alive/dead 视觉区分 + HTTP status 颜色编码;PDF 封面页 + 罗马数字章节;XMind 层级展开;Graph D3.js 力导向图
+- **3164 个用户名扫描平台**:48 中文圈 + 58 西语圈 + 91 成人/约会 + 733 论坛,Sherlock 级速度 ~20 秒(150 线程并发 + Session 池 + ReDoS 防护)
 - **Maigret-style permute** + 递归扫描 `--recursive` + 多扫描模式 `--quick` / `--category`
+- **8 种报告格式** —— `JSON / Markdown / HTML / PDF / TXT / CSV / XMind / Graph (D3.js)`,全部跟随 UI 语言(中/英)
 - **WAF 检测**:Cloudflare / AWS WAF / PerimeterX / DataDome / Akamai 等高精度指纹
 - **完整中英双语**:交互菜单 / CLI 参数 / 错误信息 / **报告内容**全部双语
-- **417 个 pytest 测试**:5 路审计全清(ruff / mypy / bandit / pytest / agent),CI 跨 macOS/Linux/Windows × Python 3.10–3.14
+- **🆕 v1.6.1:进度条 100% 全功能审计** — 12 核心函数 + 12 被动源逐一审计,所有耗时操作均有阶段反馈(用户反馈"看着不卡了")
+- **468 个 pytest 测试**:4 工具全清(ruff 0 / mypy 0 / bandit 0 / pytest 全绿),CI 跨 macOS/Linux/Windows × Python 3.10–3.14
 
 ---
 
@@ -100,7 +102,7 @@
 - MX 记录联合检查
 - 不发送邮件，不留痕迹
 
-### 🌐 子域名枚举（v1.3.0 → v1.4.9 🆕）
+### 🌐 子域名枚举(v1.3.0 → v1.6.1 🆕)
 - **被动多源(6 源)**:`crt.sh` + CertSpotter + HackerTarget + AlienVault OTX + **Wayback Machine(v1.4.9)** 并发汇总
 - **🚀 可选 subfinder 接力(v1.4.8)**:自动检测 `subfinder` 二进制,接力 30+ 数据源(virustotal / shodan / censys / chaos / fofa / quake / securitytrails 等);未装则零开销跳过
 - **🆕 DNS 字典爆破(v1.4.9,opt-in)**:内置 ~220 高命中前缀 + `SPYEYES_DNS_WORDLIST=/path` 自定义大字典,`--bruteforce` 启用
@@ -110,12 +112,18 @@
 - **Wildcard 检测**:32 字符随机前缀探测,标记不可信结果
 - 8 种报告全支持(HTML 中 alive 子域可点击跳转)
 
+### 📊 OSINT 监控 / 批量(v1.5.0 🆕)
+- **Diff 模式**:`spyeyes diff old.json new.json` — 对比两次扫描挖**新增 / 消失 / 变更**的子域(IP/HTTP状态/title)
+- **批量域名输入**:`spyeyes subdomain --batch domains.txt --batch-save-dir reports/` — 每个域独立报告,Ctrl+C 可中断不丢
+- **`--alive-only` 全局**:CLI / JSON / 8 种导出报告全过滤,只保留可达子域
+
 ### 🚀 通用增强
-- **CLI 参数模式**：可脚本化批量调用
-- **JSON 输出**：与 jq / 任意工具流水线集成
-- **结果保存**：`--save DIR` 自动落盘
-- **彩色终端**：自动检测 TTY
-- **跨平台**：macOS / Linux / Windows / Termux
+- **CLI 参数模式**:可脚本化批量调用
+- **JSON 输出**:与 jq / 任意工具流水线集成
+- **结果保存**:`--save DIR` 自动落盘
+- **进度反馈 100% 覆盖**(v1.6.1):所有 > 2 秒操作都有实时进度
+- **彩色终端**:自动检测 TTY
+- **跨平台**:macOS / Linux / Windows / Termux
 
 </td>
 </tr>
@@ -125,19 +133,20 @@
 
 ## 🆚 与同类工具对比
 
-| 工具 | IP | 电话 | 用户名 | WHOIS | MX | 邮箱 | 子域名 | 域名邮箱 | 中文优先 |
-|---|:---:|:---:|:---:|:---:|:---:|:---:|:---:|:---:|:---:|
-| [Sherlock](https://github.com/sherlock-project/sherlock) | ❌ | ❌ | ✅ (400+) | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ |
-| [Maigret](https://github.com/soxoj/maigret) | ❌ | ❌ | ✅ (3000+) | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ |
-| [holehe](https://github.com/megadose/holehe) | ❌ | ❌ | ❌ | ❌ | ❌ | ✅ | ❌ | ❌ | ❌ |
-| [theHarvester](https://github.com/laramies/theHarvester) | ✅ | ❌ | ❌ | ✅ | ❌ | ✅ | ✅ | ✅ | ❌ |
-| [Subfinder](https://github.com/projectdiscovery/subfinder) | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ✅ | ❌ | ❌ |
-| [Recon-ng](https://github.com/lanmaster53/recon-ng) | ✅ | ❌ | ✅ | ✅ | ✅ | ✅ | ✅ | ❌ | ❌ |
-| **SpyEyes** | ✅ | ✅ | ✅ **(3164)** | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
+| 工具 | IP | 电话 | 用户名 | WHOIS | MX | 邮箱 | 子域名 | 域名邮箱 | Diff监控 | 批量 | 报告格式 | 中文 |
+|---|:---:|:---:|:---:|:---:|:---:|:---:|:---:|:---:|:---:|:---:|:---:|:---:|
+| [Sherlock](https://github.com/sherlock-project/sherlock) | ❌ | ❌ | ✅ (400+) | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | 1 | ❌ |
+| [Maigret](https://github.com/soxoj/maigret) | ❌ | ❌ | ✅ (3000+) | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | 1-2 | ❌ |
+| [holehe](https://github.com/megadose/holehe) | ❌ | ❌ | ❌ | ❌ | ❌ | ✅ | ❌ | ❌ | ❌ | ❌ | 1 | ❌ |
+| [theHarvester](https://github.com/laramies/theHarvester) | ✅ | ❌ | ❌ | ✅ | ❌ | ✅ | ✅ | ✅(部分商业) | ❌ | ❌ | 1-2 | ❌ |
+| [Subfinder](https://github.com/projectdiscovery/subfinder) | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ✅ | ❌ | ❌ | ✅ | 1 | ❌ |
+| [Recon-ng](https://github.com/lanmaster53/recon-ng) | ✅ | ❌ | ✅ | ✅ | ✅ | ✅ | ✅ | ❌ | ❌ | ❌ | 1 | ❌ |
+| **SpyEyes** | ✅ | ✅ | ✅ **(3164)** | ✅ | ✅ | ✅ | ✅ **(7 维度)** | ✅ **(6 源全免费)** | ✅ | ✅ | **8** | ✅ |
 
-> 💡 **定位说明**：SpyEyes **不是**为了在用户名扫描深度上跟 Sherlock 卷，而是做**轻量级一站式中文工具**。
+> 💡 **定位说明**:SpyEyes **不是**为了在用户名扫描深度上跟 Sherlock 卷,而是做**轻量级一站式 + 中文优先 + 报告丰富**的 OSINT 工具。
 > - 只查用户名 → Sherlock / Maigret 更专业
-> - 想一个工具搞定 6 类查询且全中文 → **SpyEyes 就是为你准备的**
+> - 邮箱挖掘要 30+ 商业 API → theHarvester 更全
+> - 但要**免费层最强 + 8 种报告 + 中文 UI + 一站式 10 个命令** → **SpyEyes 就是为你准备的**
 
 ---
 
@@ -205,17 +214,27 @@ python3 -m spyeyes mx gmail.com
 # 邮箱验证
 python3 -m spyeyes email someone@gmail.com
 
-# 子域名枚举(v1.3.0 → v1.4.9)
-python3 -m spyeyes subdomain example.com               # 6 源被动 + DNS + HTTP probe + JS 提取(默认全开)
-python3 -m spyeyes subdomain example.com --bruteforce  # 加内置 220 字典爆破(更全)
-SPYEYES_DNS_WORDLIST=~/all.txt spyeyes subdomain example.com --bruteforce  # 自定义大字典
-python3 -m spyeyes subdomain example.com --no-js-extract --no-probe         # 仅纯被动,最快
+# 子域名枚举(v1.3.0 → v1.6.1)
+python3 -m spyeyes subdomain example.com                                     # 6 源被动 + DNS + HTTP probe + JS 提取(默认全开)
+python3 -m spyeyes subdomain example.com --bruteforce                        # 加内置 220 字典爆破(更全)
+SPYEYES_DNS_WORDLIST=~/all.txt spyeyes subdomain example.com --bruteforce    # 自定义大字典
+python3 -m spyeyes subdomain example.com --alive-only --save report.html     # 只保留活跃子域(报告整洁)
+python3 -m spyeyes subdomain example.com --no-js-extract --no-probe          # 仅纯被动,最快
 python3 -m spyeyes subdomain example.com --json | jq '.subdomains[] | select(.alive)'
 
-# 🆕 域名邮箱枚举(v1.4.0 新增)
-python3 -m spyeyes domain-emails example.com           # 多源 OSINT + 深度爬虫(默认 500 页)
+# 🆕 v1.5.0:批量域名扫描
+python3 -m spyeyes subdomain --batch domains.txt --batch-save-dir reports/ --alive-only
+# domains.txt 每行一个域;# 注释 + 空行自动跳过;每个域独立 HTML 报告
+
+# 🆕 v1.5.0:Diff 模式 — OSINT 持续监控
+python3 -m spyeyes subdomain example.com --json > monday.json
+python3 -m spyeyes subdomain example.com --json > friday.json   # 几天后再扫
+python3 -m spyeyes diff monday.json friday.json --save diff.html   # 新增/消失/变更子域
+
+# 🆕 v1.6.0:域名邮箱挖掘(6 源全并发,免费无注册)
+python3 -m spyeyes domain-emails example.com           # crt.sh + WHOIS + Bing + DDG + Wayback + GitHub 全并发
 python3 -m spyeyes domain-emails example.com --guess "John Doe,Jane Smith"   # 加模式生成
-python3 -m spyeyes domain-emails example.com --no-crawl   # 仅被动(crt.sh + WHOIS),最快
+python3 -m spyeyes domain-emails example.com --no-crawl   # 仅被动 6 源,最快
 
 # 查看历史记录（~/.spyeyes/history.jsonl 自动累积）
 python3 -m spyeyes history --limit 20            # 最近 20 条

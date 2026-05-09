@@ -10,11 +10,11 @@
 [![codecov](https://codecov.io/gh/Akxan/SpyEyes/branch/main/graph/badge.svg)](https://codecov.io/gh/Akxan/SpyEyes)
 [![License: Apache 2.0](https://img.shields.io/badge/License-Apache_2.0-blue.svg)](https://opensource.org/licenses/Apache-2.0)
 [![Python](https://img.shields.io/badge/Python-3.10%2B-blue.svg?logo=python&logoColor=white)](https://www.python.org/)
-[![Tests](https://img.shields.io/badge/tests-417%20passed-success.svg)](tests/)
+[![Tests](https://img.shields.io/badge/tests-468%20passed-success.svg)](tests/)
 [![Platforms](https://img.shields.io/badge/platforms-3164-orange.svg)](#-comparison-with-similar-tools)
 [![Reports](https://img.shields.io/badge/reports-8%20formats-9cf.svg)](#-report-formats-8-types)
-[![Commands](https://img.shields.io/badge/commands-9-blueviolet.svg)](docs/TUTORIAL.md)
-[![Version](https://img.shields.io/badge/version-1.4.9-blueviolet.svg)](docs/CHANGELOG.md)
+[![Commands](https://img.shields.io/badge/commands-10-blueviolet.svg)](docs/TUTORIAL.md)
+[![Version](https://img.shields.io/badge/version-1.6.2-blueviolet.svg)](docs/CHANGELOG.md)
 [![Docs](https://img.shields.io/badge/docs-online-blue.svg)](https://akxan.github.io/SpyEyes/)
 [![Platform](https://img.shields.io/badge/platform-macOS%20%7C%20Linux%20%7C%20Windows%20%7C%20Termux-lightgrey)](#-installation)
 [![PRs Welcome](https://img.shields.io/badge/PRs-welcome-brightgreen.svg)](docs/CONTRIBUTING.md)
@@ -35,21 +35,23 @@
 
 ## 📖 About
 
-**SpyEyes** is a Python-based command-line **OSINT (Open-Source Intelligence) toolkit**, deeply optimized for Chinese-speaking users. **9 core capabilities**: IP tracking, phone parsing, username scanning across **3164 platforms**, domain WHOIS / MX lookups, email validation, **subdomain enumeration** (passive multi-source + DNS + HTTP probe), **domain email harvesting** (crt.sh + WHOIS + deep crawl + pattern generation + SMTP verification), username permutations / recursive scan, **8 Editorial-style report formats**.
+**SpyEyes** is a Python-based command-line **OSINT (Open-Source Intelligence) toolkit**, deeply optimized for Chinese-speaking users. **10 core capabilities**: IP / Phone / Username (3164 platforms) / WHOIS / MX / Email / **Subdomain enum** (6 sources + bruteforce + JS extract) / **Domain email harvest** (6 sources concurrent, all free) / **Diff monitoring** / **Batch input** / **8 Editorial-style report formats**.
 
 Designed for **security researchers, penetration testers, SOC analysts, threat hunters, red/blue teamers, CTF players** and anyone curious about open-source intelligence.
 
 ### 💎 Highlights
 
-- **🆕 v1.4.0: Domain email harvest** — theHarvester + Hunter.io hybrid: crt.sh CT logs + WHOIS contacts + deep crawler (robots.txt + sitemap.xml + BFS internal links, default 500 pages / depth 5) + alive subdomain inclusion + pattern generation (`--guess "John Doe"`) + optional SMTP verification
-- **🆕 v1.4.x: Editorial Investigation Brief styling** — investigation-dossier aesthetics: Cormorant Garamond + Crimson Pro + JetBrains Mono triplet + cream/ink/seal-red palette; HTML sticky thead + alive/dead visual differentiation + HTTP status color-coding; PDF cover page + roman numeral chapters; XMind hierarchy expansion (IPv4/IPv6/CNAME/Title each as own layer); Graph light theme + seal-red/classical-blue nodes
-- **v1.3.0→1.4.9: Subdomain enumeration** — 6 passive sources (crt.sh + CertSpotter + HackerTarget + OTX + **Wayback Machine** + optional subfinder w/ 30+ sources) + DNS dictionary bruteforce (`--bruteforce`, built-in 220 words / `SPYEYES_DNS_WORDLIST` for custom) + JS/HTML body host extraction (default on) + DNS A/AAAA/CNAME validation + HTTP probe + wildcard detection
-- **3164 username-scan platforms**: 48 Chinese-region + 58 Spanish-region + 91 adult/dating + 733 forums; Sherlock-class speed ~20s (150-thread + Session pool + HEAD optimization + ReDoS guard)
-- **8 report formats** — `JSON / Markdown / HTML / PDF / TXT / CSV / XMind / Graph (D3.js)`, all follow UI language (zh/en), all Editorial-styled
+- **🆕 v1.6.0: Domain email — 6 sources concurrent, all free** — Bing SERP + DuckDuckGo + Wayback Machine + GitHub commits + crt.sh + WHOIS, **completely free + no registration**; concurrent execution (~2-3× faster than sequential); compared to theHarvester/Photon/EmailFinder, free-tier strongest + most report formats
+- **🆕 v1.5.0: Diff mode + batch input** — `spyeyes diff old.json new.json` to find added/removed/changed subdomains (essential for OSINT monitoring); `--batch domains.txt --batch-save-dir reports/` for batch scan with per-domain reports
+- **🆕 v1.4.x: Subdomain — 7 collection dimensions** — 6 passive sources (crt.sh / CertSpotter / HackerTarget / OTX / **Wayback Machine** / optional subfinder w/ 30+) + DNS dictionary bruteforce (built-in 220 words / `SPYEYES_DNS_WORDLIST` for custom) + JS/HTML body host extraction + DNS A/AAAA/CNAME validation + HTTP probe + wildcard detection
+- **🆕 Editorial Investigation Brief styling** — Cormorant Garamond + Crimson Pro + JetBrains Mono triplet + cream/ink/seal-red palette; HTML sticky thead + alive/dead visual differentiation + HTTP status color-coding; PDF cover page + roman numeral chapters
+- **3164 username-scan platforms**: 48 Chinese-region + 58 Spanish-region + 91 adult/dating + 733 forums; Sherlock-class speed ~20s
 - **Maigret-style permute** + recursive scan `--recursive` + multi mode `--quick` / `--category`
-- **WAF detection**: Cloudflare / AWS WAF / PerimeterX / DataDome / Akamai high-precision fingerprints
+- **8 report formats** — `JSON / Markdown / HTML / PDF / TXT / CSV / XMind / Graph (D3.js)`, all bilingual (zh/en)
+- **WAF detection**: Cloudflare / AWS WAF / PerimeterX / DataDome / Akamai
 - **Full bilingual**: interactive menu / CLI / errors / **report content** all in zh+en
-- **417 pytest tests**: 5-pronged audit clean (ruff / mypy / bandit / pytest / agent), CI on macOS/Linux/Windows × Python 3.10–3.14
+- **🆕 v1.6.1: 100% progress feedback audit** — every operation > 2s has stage feedback (no more "looks frozen")
+- **468 pytest tests**: 4-tool audit clean (ruff 0 / mypy 0 / bandit 0 / pytest), CI on macOS/Linux/Windows × Python 3.10–3.14
 
 ---
 
@@ -100,7 +102,7 @@ Designed for **security researchers, penetration testers, SOC analysts, threat h
 - MX record validation (no test emails sent)
 - Privacy-respecting: zero traces
 
-### 🌐 Subdomain Enumeration (v1.3.0 → v1.4.9 🆕)
+### 🌐 Subdomain Enumeration (v1.3.0 → v1.6.1 🆕)
 - **Passive multi-source (6 sources)**: `crt.sh` + CertSpotter + HackerTarget + AlienVault OTX + **Wayback Machine (v1.4.9)** in concurrent fan-out
 - **🚀 Optional subfinder relay (v1.4.8)**: auto-detects `subfinder` binary and relays to 30+ sources (virustotal / shodan / censys / chaos / fofa / quake / securitytrails ...); zero overhead if not installed
 - **🆕 DNS dictionary bruteforce (v1.4.9, opt-in)**: built-in ~220 high-hit prefixes + `SPYEYES_DNS_WORDLIST=/path` for custom big wordlists; `--bruteforce` to enable
@@ -110,10 +112,16 @@ Designed for **security researchers, penetration testers, SOC analysts, threat h
 - **Wildcard detection**: 32-char random prefix probe; flags unreliable results
 - All 8 report formats supported (HTML clickable links for alive subs)
 
+### 📊 OSINT Monitoring / Batch (v1.5.0 🆕)
+- **Diff mode**: `spyeyes diff old.json new.json` — find **added / removed / changed** subdomains across two scans (essential for continuous monitoring)
+- **Batch domain input**: `spyeyes subdomain --batch domains.txt --batch-save-dir reports/` — per-domain reports, Ctrl+C interruptible
+- **`--alive-only` everywhere**: filters CLI / JSON / all 8 export formats
+
 ### 🚀 General Enhancements
-- **CLI args mode**: scriptable, batchable
+- **CLI args mode**: scriptable
 - **JSON output**: pipe-friendly with jq
 - **Result saving**: `--save DIR` auto-persistence
+- **100% progress feedback** (v1.6.1): every >2s operation has live progress
 - **Color terminal**: auto TTY detection
 - **Cross-platform**: macOS / Linux / Windows / Termux
 
@@ -125,16 +133,17 @@ Designed for **security researchers, penetration testers, SOC analysts, threat h
 
 ## 🆚 Comparison with similar tools
 
-| Tool | IP | Phone | Username | WHOIS | MX | Email | Chinese-first |
-|---|:---:|:---:|:---:|:---:|:---:|:---:|:---:|
-| [Sherlock](https://github.com/sherlock-project/sherlock) | ❌ | ❌ | ✅ (400+) | ❌ | ❌ | ❌ | ❌ |
-| [Maigret](https://github.com/soxoj/maigret) | ❌ | ❌ | ✅ (3000+) | ❌ | ❌ | ❌ | ❌ |
-| [holehe](https://github.com/megadose/holehe) | ❌ | ❌ | ❌ | ❌ | ❌ | ✅ | ❌ |
-| [theHarvester](https://github.com/laramies/theHarvester) | ✅ | ❌ | ❌ | ✅ | ❌ | ✅ | ❌ |
-| [Recon-ng](https://github.com/lanmaster53/recon-ng) | ✅ | ❌ | ✅ | ✅ | ✅ | ✅ | ❌ |
-| **SpyEyes** | ✅ | ✅ | ✅ **(3164)** | ✅ | ✅ | ✅ | ✅ |
+| Tool | IP | Phone | Username | WHOIS | MX | Email | Subdomain | Domain Emails | Diff | Batch | Reports | Chinese |
+|---|:---:|:---:|:---:|:---:|:---:|:---:|:---:|:---:|:---:|:---:|:---:|:---:|
+| [Sherlock](https://github.com/sherlock-project/sherlock) | ❌ | ❌ | ✅ (400+) | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | 1 | ❌ |
+| [Maigret](https://github.com/soxoj/maigret) | ❌ | ❌ | ✅ (3000+) | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | 1-2 | ❌ |
+| [holehe](https://github.com/megadose/holehe) | ❌ | ❌ | ❌ | ❌ | ❌ | ✅ | ❌ | ❌ | ❌ | ❌ | 1 | ❌ |
+| [theHarvester](https://github.com/laramies/theHarvester) | ✅ | ❌ | ❌ | ✅ | ❌ | ✅ | ✅ | ✅ (some paid) | ❌ | ❌ | 1-2 | ❌ |
+| [Subfinder](https://github.com/projectdiscovery/subfinder) | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ✅ | ❌ | ❌ | ✅ | 1 | ❌ |
+| [Recon-ng](https://github.com/lanmaster53/recon-ng) | ✅ | ❌ | ✅ | ✅ | ✅ | ✅ | ✅ | ❌ | ❌ | ❌ | 1 | ❌ |
+| **SpyEyes** | ✅ | ✅ | ✅ **(3164)** | ✅ | ✅ | ✅ | ✅ **(7 dim)** | ✅ **(6 free)** | ✅ | ✅ | **8** | ✅ |
 
-> 💡 **Positioning**: SpyEyes is **not** trying to outdo Sherlock in username-scan depth. It's a **lightweight all-in-one Chinese-first toolkit**. For pure username OSINT, Sherlock/Maigret are deeper. For one tool covering 6 lookup types with full Chinese localization, SpyEyes is unmatched.
+> 💡 **Positioning**: SpyEyes is **not** trying to outdo Sherlock in username-scan depth. It's a **lightweight all-in-one + Chinese-first + report-rich** OSINT toolkit. For pure username OSINT, Sherlock/Maigret are deeper. For one tool covering 10 commands with 8 export formats and full bilingual UI, SpyEyes is unmatched in the free tier.
 
 ---
 
@@ -202,15 +211,27 @@ python3 -m spyeyes mx gmail.com
 # Email validation
 python3 -m spyeyes email someone@gmail.com
 
-# Subdomain enumeration (v1.3.0)
-python3 -m spyeyes subdomain example.com               # passive + DNS + HTTP probe
-python3 -m spyeyes subdomain example.com --no-probe    # DNS only, faster
+# Subdomain enumeration (v1.3.0 → v1.6.1)
+python3 -m spyeyes subdomain example.com                                     # 6 sources passive + DNS + HTTP probe + JS extract (default all on)
+python3 -m spyeyes subdomain example.com --bruteforce                        # add built-in 220-word dict bruteforce
+SPYEYES_DNS_WORDLIST=~/all.txt spyeyes subdomain example.com --bruteforce    # custom big wordlist
+python3 -m spyeyes subdomain example.com --alive-only --save report.html     # only alive subs (cleaner report)
+python3 -m spyeyes subdomain example.com --no-js-extract --no-probe          # passive only, fastest
 python3 -m spyeyes subdomain example.com --json | jq '.subdomains[] | select(.alive)'
 
-# 🆕 Domain email harvest (v1.4.0)
-python3 -m spyeyes domain-emails example.com           # multi-source OSINT + deep crawl (default 500 pages)
+# 🆕 v1.5.0: Batch domain scan
+python3 -m spyeyes subdomain --batch domains.txt --batch-save-dir reports/ --alive-only
+# domains.txt: one domain per line; # comments + blank lines skipped; per-domain HTML report
+
+# 🆕 v1.5.0: Diff mode — OSINT continuous monitoring
+python3 -m spyeyes subdomain example.com --json > monday.json
+python3 -m spyeyes subdomain example.com --json > friday.json   # rescan days later
+python3 -m spyeyes diff monday.json friday.json --save diff.html   # added / removed / changed subdomains
+
+# 🆕 v1.6.0: Domain email harvest (6 sources concurrent, all free)
+python3 -m spyeyes domain-emails example.com           # crt.sh + WHOIS + Bing + DDG + Wayback + GitHub all concurrent
 python3 -m spyeyes domain-emails example.com --guess "John Doe,Jane Smith"   # + pattern generation
-python3 -m spyeyes domain-emails example.com --no-crawl   # passive only (crt.sh + WHOIS), fastest
+python3 -m spyeyes domain-emails example.com --no-crawl   # 6 passive sources only, fastest
 
 # JSON + save
 python3 -m spyeyes ip 8.8.8.8 --json --save results/

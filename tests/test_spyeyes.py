@@ -3348,28 +3348,30 @@ class TestSubdomainStageProgress:
     def test_passive_collect_emits_per_source_lines(self, monkeypatch, capsys):
         """每个源完成后立即输出一行到 stderr。"""
         monkeypatch.setattr('sys.stderr.isatty', lambda: True)
+        # 修复 CI:必须 mock 全部源,否则 wayback/subfinder 跑真实网络在 CI 超时
+        for name in gt.SUBDOMAIN_SOURCES:
+            monkeypatch.setitem(gt.SUBDOMAIN_SOURCES, name, lambda d: set())
         monkeypatch.setitem(gt.SUBDOMAIN_SOURCES, 'crtsh',
                             lambda d: {'a.example.com', 'b.example.com'})
-        monkeypatch.setitem(gt.SUBDOMAIN_SOURCES, 'hackertarget', lambda d: set())
-        monkeypatch.setitem(gt.SUBDOMAIN_SOURCES, 'otx', lambda d: set())
-        monkeypatch.setitem(gt.SUBDOMAIN_SOURCES, 'certspotter', lambda d: set())
         gt.passive_collect_subdomains('example.com', show_progress=True)
         err = capsys.readouterr().err
         # 每个源都应该有一行(成功的显示候选数,空的显示 0)
         assert 'crtsh' in err
         assert 'hackertarget' in err
         assert 'otx' in err
-        assert 'certspotter' in err  # v1.4.4: 替代 threatcrowd 死站
+        assert 'certspotter' in err
+        assert 'wayback' in err     # v1.4.9 新增源
+        assert 'subfinder' in err   # v1.4.8 新增源
         # crtsh 应显示 2 个候选(数字)
         assert '2' in err
 
     def test_passive_collect_silent_when_progress_off(self, monkeypatch, capsys):
         """show_progress=False 时不写 stderr(测试场景需要)。"""
         monkeypatch.setattr('sys.stderr.isatty', lambda: True)
+        # 修复 CI:必须 mock 全部源
+        for name in gt.SUBDOMAIN_SOURCES:
+            monkeypatch.setitem(gt.SUBDOMAIN_SOURCES, name, lambda d: set())
         monkeypatch.setitem(gt.SUBDOMAIN_SOURCES, 'crtsh', lambda d: {'a.example.com'})
-        monkeypatch.setitem(gt.SUBDOMAIN_SOURCES, 'hackertarget', lambda d: set())
-        monkeypatch.setitem(gt.SUBDOMAIN_SOURCES, 'otx', lambda d: set())
-        monkeypatch.setitem(gt.SUBDOMAIN_SOURCES, 'certspotter', lambda d: set())
         gt.passive_collect_subdomains('example.com', show_progress=False)
         err = capsys.readouterr().err
         assert 'crtsh' not in err
@@ -3377,14 +3379,15 @@ class TestSubdomainStageProgress:
     def test_passive_collect_errors_show_up(self, monkeypatch, capsys):
         """单源抛异常 → 在 stderr 显示 error 行 + 继续其它源。"""
         monkeypatch.setattr('sys.stderr.isatty', lambda: True)
+        # 修复 CI:必须 mock 全部源(否则 wayback/subfinder 跑真实网络)
+        for name in gt.SUBDOMAIN_SOURCES:
+            monkeypatch.setitem(gt.SUBDOMAIN_SOURCES, name, lambda d: set())
 
         def boom(d):
             raise RuntimeError('rate limit')
         monkeypatch.setitem(gt.SUBDOMAIN_SOURCES, 'crtsh', boom)
         monkeypatch.setitem(gt.SUBDOMAIN_SOURCES, 'hackertarget',
                             lambda d: {'good.example.com'})
-        monkeypatch.setitem(gt.SUBDOMAIN_SOURCES, 'otx', lambda d: set())
-        monkeypatch.setitem(gt.SUBDOMAIN_SOURCES, 'certspotter', lambda d: set())
         result = gt.passive_collect_subdomains('example.com', show_progress=True)
         err = capsys.readouterr().err
         assert 'crtsh' in err
