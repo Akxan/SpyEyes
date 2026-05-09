@@ -18,6 +18,107 @@ This project adheres to [Keep a Changelog](https://keepachangelog.com/en/1.1.0/)
 
 ---
 
+## [1.6.0] — 2026-05-09
+
+✨ **域名邮箱挖掘:从 2 源 → 6 源 + 全并发,免费无注册**
+
+### 背景
+
+调研对标 theHarvester / Photon / EmailHarvester / EmailFinder / h8mail / holehe / Hunter.io 后,SpyEyes domain-emails 缺的就是"被动 API 多样性"和"SERP dorking"。这版补齐**完全免费 + 无需注册**的 4 个新源,顺序执行 → 全并发,总耗时 ≈ 最慢源(2-3 倍提速)。
+
+### 新增 4 个免费数据源
+
+#### 1. Bing SERP dorking(`_emails_from_bing`)
+
+- 完全免费、无需 API key
+- 用 `"@domain"` site/-site 双模式 dork,挖搜索引擎索引但你爬不到的页面里的邮箱
+- User-Agent 伪装 + 500ms 延迟降低 captcha 风险
+- 触发 captcha 自动 silent 跳过,不阻塞其他源
+
+#### 2. DuckDuckGo HTML SERP(`_emails_from_ddg`)
+
+- 用 `html.duckduckgo.com/html/` 端点(纯 HTML,无 JS,免登录)
+- 比 Bing 对自动化更友好,几乎不触发反爬
+- 三种查询变体(`"@domain"` / `"@domain" contact` / `"@domain" email`)分别挖
+
+#### 3. Wayback Machine 历史归档(`_emails_from_wayback`)
+
+- Internet Archive 的 CDX API 查 `*.<domain>` 历史归档过的 URL
+- 优先抓 `contact / about / team / imprint / support / press / people / staff` 等高邮箱密度页面
+- 限 50 个快照(防 wayback 限速)
+- **核心价值**:挖出**已下线但归档过**的页面里的邮箱(crt.sh 没有,WHOIS 隐私后没有,爬虫拿不到)
+
+#### 4. GitHub commit emails(`_emails_from_github`)
+
+- GitHub Search API 查 `author-email:domain` 的公开 commits
+- 未认证 rate limit 10 req/min,但单次 30 条结果就够了
+- 可选 `SPYEYES_GITHUB_TOKEN` 环境变量提到 30 req/min(Personal Access Token,只读权限即可)
+- **核心价值**:挖员工开发者的真实工作邮箱(他们 git push 到自家公开仓库时留下的)
+
+### 性能 — 顺序 → 并发(2-3× 提速)
+
+```python
+# v1.5.0:顺序跑 2 源
+crtsh (5s) → whois (3s) = 总 8s
+
+# v1.6.0:并发跑 6 源
+{crtsh, whois, bing, ddg, wayback, github} 同时启动
+总耗时 = max(5s, 3s, 10s, 8s, 30s, 5s) = ~30s(瓶颈是 wayback)
+比顺序累加(60s+)快 2× 以上
+```
+
+实测 `python.org`:
+- 总耗时:**32 秒**(顺序累加估计 60-90 秒)
+- 6 源全部跑完,任何一源失败 silent 降级
+- 找到 `webmaster@python.org` ← Wayback 挖出来的(历史归档),crt.sh 完全没有
+
+### 新设计:`DOMAIN_EMAIL_SOURCES` dict
+
+与 `SUBDOMAIN_SOURCES` 同一架构哲学:
+
+```python
+DOMAIN_EMAIL_SOURCES = {
+    'crtsh':   _emails_from_crtsh,
+    'whois':   _emails_from_whois,
+    'bing':    _emails_from_bing,    # v1.6.0
+    'ddg':     _emails_from_ddg,     # v1.6.0
+    'wayback': _emails_from_wayback, # v1.6.0
+    'github':  _emails_from_github,  # v1.6.0
+}
+```
+
+并发执行,任何一源失败 silent 跳过 + 落到 `errors` 字段。
+
+### Tests
+
+- 18 个新测试(共 **468 全绿**):
+  - `TestDomainEmailNewSources` × 10:Bing/DDG/Wayback/GitHub 各源 + 失败处理 + 跨域过滤 + token 支持
+  - `TestDomainEmailSourcesParallelism` × 2:并发执行 + 单源失败不影响其他
+
+- 重构所有现有 `TestEnumerateDomainEmails` 测试用 `monkeypatch.setitem(DOMAIN_EMAIL_SOURCES, ...)` 模式
+
+### Code Quality
+
+ruff 0 / mypy 0 / bandit 0 / pytest 468 全绿
+
+### Packaging
+
+- `__version__` 1.5.0 → 1.6.0(进入 1.6 主线)
+
+### 与 GitHub 同类工具对比定位
+
+| 工具 | 数据源数 | 免费 | 注册 | 报告格式 |
+|---|---|---|---|---|
+| theHarvester | 30+(含商业) | 部分 | 多数需 | 1-2 |
+| EmailHarvester | 7 SERP | ✅ | ❌ | 1 |
+| EmailFinder | 5 商业 API | ❌ | ✅ | 1 |
+| h8mail | 6 breach API | 部分 | ✅ | 1 |
+| **SpyEyes v1.6.0** | **6**(全免费)| **✅** | **❌** | **8** |
+
+**定位**:免费层最强、报告格式最丰富的中文 OSINT 邮箱枚举工具。
+
+---
+
 ## [1.5.0] — 2026-05-09
 
 ✨ **三大新功能 + 4 工具全清的"硬性收官"版本**

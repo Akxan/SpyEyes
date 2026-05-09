@@ -68,7 +68,7 @@ except ImportError:
 
 
 # 语义化版本号 —— 同步更新 docs/CHANGELOG.md 与 git tag
-__version__ = '1.5.0'
+__version__ = '1.6.0'
 
 
 # ====================================================================
@@ -3207,6 +3207,191 @@ def _emails_from_whois(domain: str) -> set[str]:
     return found
 
 
+def _emails_from_bing(domain: str) -> set[str]:
+    """v1.6.0:Bing SERP dorking — 完全免费、无需 token。
+    用 `\"@domain\" site:domain` 在搜索引擎结果页(SERP)抽邮箱。
+    Bing 对自动化检测较 Google 宽松,User-Agent 伪装即可。
+
+    限制:
+    - Bing 偶发返 captcha → 静默返空(不阻塞主流程)
+    - 单次最多 50 结果(2 页 × 25)
+    - 加 ~500ms 延迟降低被 ban 概率
+    """
+    found: set[str] = set()
+    headers = {
+        'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) '
+                      'AppleWebKit/537.36 (KHTML, like Gecko) '
+                      'Chrome/120.0.0.0 Safari/537.36',
+        'Accept-Language': 'en-US,en;q=0.9',
+    }
+    # 两个查询模式分别拿不同邮箱(尽量不重复)
+    import urllib.parse as _urlparse
+    queries = [
+        f'"@{domain}" site:{domain}',
+        f'"@{domain}" -site:{domain}',  # 域外页面(博客/论坛)提到的
+    ]
+    for q in queries:
+        for offset in (1, 11):  # 第 1-10 + 11-20 条结果
+            url = (f'https://www.bing.com/search?q={_urlparse.quote(q)}'
+                   f'&first={offset}&count=10&FORM=PERE')
+            resp = safe_get(url, timeout=15.0, connect_timeout=5.0,
+                            headers=headers)
+            if resp is None or resp.status_code != 200:
+                break  # captcha / rate limit → 跳过本 query 剩余页
+            text = (resp.text or '')[:DOMAIN_EMAIL_MAX_BODY]
+            new_found = _extract_emails_from_text(text, domain)
+            if not new_found:
+                break  # 结果页没新邮箱,后续页也大概率没,提早退出
+            found |= new_found
+            time.sleep(0.5)  # 礼貌延迟
+    return found
+
+
+def _emails_from_ddg(domain: str) -> set[str]:
+    """v1.6.0:DuckDuckGo HTML SERP dorking — 完全免费、无 token、对自动化最友好。
+    `html.duckduckgo.com/html/?q=...` 返回纯 HTML 无 JS,直接 regex 解析。"""
+    found: set[str] = set()
+    headers = {
+        'User-Agent': 'Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 '
+                      '(KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+    }
+    import urllib.parse as _urlparse
+    queries = [
+        f'"@{domain}"',
+        f'"@{domain}" contact',
+        f'"@{domain}" email',
+    ]
+    for q in queries:
+        url = f'https://html.duckduckgo.com/html/?q={_urlparse.quote(q)}'
+        resp = safe_get(url, timeout=15.0, connect_timeout=5.0,
+                        headers=headers)
+        if resp is None or resp.status_code != 200:
+            continue
+        text = (resp.text or '')[:DOMAIN_EMAIL_MAX_BODY]
+        found |= _extract_emails_from_text(text, domain)
+        time.sleep(0.4)
+    return found
+
+
+def _emails_from_wayback(domain: str) -> set[str]:
+    """v1.6.0:Wayback Machine 历史归档 — 挖出已下线但归档的页面里的邮箱。
+    流程:
+    1. CDX API 拿历史归档过的 URL 列表(限 200 条)
+    2. 对部分 URL 拉 Wayback 快照(`/web/<timestamp>id_/<url>`)
+    3. 从快照 HTML 抽邮箱
+
+    限制:
+    - 只抓 50 个 URL(避免触发 wayback 限速)
+    - 每页 8s 超时
+    """
+    cdx_url = (f'https://web.archive.org/cdx/search/cdx?url={domain}'
+               f'&output=json&fl=timestamp,original&filter=mimetype:text/html'
+               f'&filter=statuscode:200&collapse=urlkey&limit=200')
+    resp = safe_get(cdx_url, timeout=30.0, connect_timeout=10.0)
+    if resp is None or resp.status_code != 200:
+        return set()
+    try:
+        data = resp.json()
+    except (ValueError, requests.exceptions.RequestException):
+        return set()
+    if not isinstance(data, list) or len(data) < 2:
+        return set()
+    # 优先抓"看起来是 contact / about / team 页"的(高邮箱密度)
+    candidates: list = []
+    priority_kws = ('contact', 'about', 'team', 'imprint', 'support',
+                     'help', 'press', 'people', 'staff')
+    for row in data[1:]:
+        if not isinstance(row, list) or len(row) < 2:
+            continue
+        ts, orig = row[0], row[1]
+        if not isinstance(orig, str):
+            continue
+        url_lower = orig.lower()
+        priority = any(kw in url_lower for kw in priority_kws)
+        candidates.append((priority, ts, orig))
+    # 优先页放前面
+    candidates.sort(key=lambda x: not x[0])
+    candidates = candidates[:50]
+    found: set[str] = set()
+    for _, ts, orig in candidates:
+        snap_url = f'https://web.archive.org/web/{ts}id_/{orig}'
+        snap_resp = safe_get(snap_url, timeout=8.0, connect_timeout=4.0)
+        if snap_resp is None or snap_resp.status_code != 200:
+            continue
+        body = (snap_resp.text or '')[:DOMAIN_EMAIL_MAX_BODY]
+        found |= _extract_emails_from_text(body, domain)
+        if len(found) >= 50:  # 邮箱够多就停
+            break
+    return found
+
+
+def _emails_from_github(domain: str) -> set[str]:
+    """v1.6.0:GitHub commit emails 挖掘 — 完全免费、无需 token(走未认证 API)。
+    流程:
+    1. 调 GitHub Search API 查 author-email 含 domain 的 commits
+    2. 拿到 commit URL → 转 .patch 端点拿 author email
+    3. regex 提邮箱
+
+    限制:
+    - 未认证 rate limit:10 req/min(GitHub Search API)
+    - SpyEyes 未存 token → 严格按 rate limit 仅拿前 30 条结果
+    - 用户可设 SPYEYES_GITHUB_TOKEN 环境变量提升到 30 req/min(可选)
+    """
+    found: set[str] = set()
+    api_url = (f'https://api.github.com/search/commits?q=author-email:{domain}'
+               f'&per_page=30&sort=committer-date&order=desc')
+    headers = {
+        # commits 搜索曾需 cloak-preview header,现已 stable 但兼容旧版仍接受
+        'Accept': 'application/vnd.github.cloak-preview+json',
+        'User-Agent': 'SpyEyes-OSINT/1.6.0',
+    }
+    # 可选:用户配置了 GITHUB token 时附上(rate limit 大幅提升)
+    gh_token = (os.environ.get('SPYEYES_GITHUB_TOKEN') or '').strip()
+    if gh_token:
+        headers['Authorization'] = f'Bearer {gh_token}'
+    resp = safe_get(api_url, timeout=20.0, connect_timeout=5.0, headers=headers)
+    if resp is None or resp.status_code != 200:
+        return set()
+    try:
+        data = resp.json()
+    except (ValueError, requests.exceptions.RequestException):
+        return set()
+    if not isinstance(data, dict):
+        return set()
+    items = data.get('items') or []
+    if not isinstance(items, list):
+        return set()
+    for item in items[:30]:
+        if not isinstance(item, dict):
+            continue
+        # commit author 的 email 直接在 commit.author.email 字段
+        commit = item.get('commit') or {}
+        if isinstance(commit, dict):
+            author = commit.get('author') or {}
+            if isinstance(author, dict):
+                email = author.get('email')
+                if isinstance(email, str) and _is_email_relevant(email, domain):
+                    found.add(email.lower().strip())
+            committer = commit.get('committer') or {}
+            if isinstance(committer, dict):
+                email = committer.get('email')
+                if isinstance(email, str) and _is_email_relevant(email, domain):
+                    found.add(email.lower().strip())
+    return found
+
+
+# v1.6.0:邮箱被动数据源映射表 — 与 SUBDOMAIN_SOURCES 同一设计哲学
+# 全并发拉取,任何一源失败 silent 降级,不影响其他源
+DOMAIN_EMAIL_SOURCES: dict = {
+    'crtsh':   _emails_from_crtsh,
+    'whois':   _emails_from_whois,
+    'bing':    _emails_from_bing,
+    'ddg':     _emails_from_ddg,
+    'wayback': _emails_from_wayback,
+    'github':  _emails_from_github,
+}
+
+
 def _fetch_robots_txt(scheme: str, host: str) -> tuple[set[str], list[str]]:
     """拉取 robots.txt,返回 (sitemap urls, disallow paths)。
     失败时返回空,不影响主流程。"""
@@ -3559,25 +3744,30 @@ def enumerate_domain_emails(domain: str, *,
         if page and not rec['page']:
             rec['page'] = page
 
-    # 阶段 1:被动数据源
+    # 阶段 1:被动数据源 — v1.6.0:全 6 源并发(crt.sh/whois/bing/ddg/wayback/github)
+    # 总耗时 ≈ 最慢源(通常 wayback 30s),而非顺序累加(老版 ~120s)
     if show_progress:
         _stage_log(f"\n {Color.Cy}{t('demails.stage_passive')}{Color.Reset}")
-    try:
-        for e in _emails_from_crtsh(domain):
-            _add(e, 'crtsh')
-    except Exception:
-        pass
-    if show_progress:
-        n_crt = sum(1 for v in by_email.values() if 'crtsh' in v['sources'])
-        _stage_log(f"   {Color.Gr}[crtsh] {n_crt} {t('demails.found_emails')}{Color.Reset}")
-    try:
-        for e in _emails_from_whois(domain):
-            _add(e, 'whois')
-    except Exception:
-        pass
-    if show_progress:
-        n_w = sum(1 for v in by_email.values() if 'whois' in v['sources'])
-        _stage_log(f"   {Color.Gr}[whois] {n_w} {t('demails.found_emails')}{Color.Reset}")
+    source_errors: dict = {}
+    with ThreadPoolExecutor(max_workers=len(DOMAIN_EMAIL_SOURCES)) as ex:
+        future_to_name = {ex.submit(fn, domain): name
+                          for name, fn in DOMAIN_EMAIL_SOURCES.items()}
+        for fut in as_completed(future_to_name):
+            name = future_to_name[fut]
+            try:
+                emails = fut.result()
+            except Exception as e:
+                source_errors[name] = type(e).__name__
+                if show_progress:
+                    _stage_log(f"   {Color.Re}[{name:>8}] error: "
+                               f"{type(e).__name__}{Color.Reset}")
+                continue
+            for em in emails:
+                _add(em, name)
+            if show_progress:
+                color = Color.Gr if emails else Color.Bl
+                _stage_log(f"   {color}[{name:>8}] {len(emails)} "
+                           f"{t('demails.found_emails')}{Color.Reset}")
 
     # 阶段 2:深度爬取
     pages_crawled_total = 0

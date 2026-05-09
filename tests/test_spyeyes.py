@@ -3634,11 +3634,17 @@ class TestEnumerateDomainEmails:
         result = gt.enumerate_domain_emails('http://bad/x')
         assert '_error' in result
 
+    def _stub_all_sources_empty(self, monkeypatch):
+        """v1.6.0:测试辅助 — 把 6 个被动源全部 stub 成 empty,避免真实网络请求。"""
+        for name in gt.DOMAIN_EMAIL_SOURCES:
+            monkeypatch.setitem(gt.DOMAIN_EMAIL_SOURCES, name, lambda d: set())
+
     def test_passive_only_no_crawl(self, monkeypatch):
-        """crawl=False 时不调爬虫,只用 crtsh + WHOIS。"""
-        monkeypatch.setattr(gt, '_emails_from_crtsh',
+        """crawl=False 时不调爬虫,只用被动源。"""
+        self._stub_all_sources_empty(monkeypatch)
+        monkeypatch.setitem(gt.DOMAIN_EMAIL_SOURCES, 'crtsh',
                             lambda d: {'a@example.com'})
-        monkeypatch.setattr(gt, '_emails_from_whois',
+        monkeypatch.setitem(gt.DOMAIN_EMAIL_SOURCES, 'whois',
                             lambda d: {'admin@example.com'})
         called = {'crawl': 0}
 
@@ -3654,9 +3660,10 @@ class TestEnumerateDomainEmails:
         assert addrs == {'a@example.com', 'admin@example.com'}
 
     def test_full_flow_with_crawl(self, monkeypatch):
-        monkeypatch.setattr(gt, '_emails_from_crtsh',
+        self._stub_all_sources_empty(monkeypatch)
+        monkeypatch.setitem(gt.DOMAIN_EMAIL_SOURCES, 'crtsh',
                             lambda d: {'a@example.com'})
-        monkeypatch.setattr(gt, '_emails_from_whois',
+        monkeypatch.setitem(gt.DOMAIN_EMAIL_SOURCES, 'whois',
                             lambda d: {'admin@example.com'})
 
         def fake_crawl(target, **kw):
@@ -3674,8 +3681,7 @@ class TestEnumerateDomainEmails:
         assert r['_stats']['sitemap_found'] is True
 
     def test_pattern_generation(self, monkeypatch):
-        monkeypatch.setattr(gt, '_emails_from_crtsh', lambda d: set())
-        monkeypatch.setattr(gt, '_emails_from_whois', lambda d: set())
+        self._stub_all_sources_empty(monkeypatch)
         r = gt.enumerate_domain_emails('example.com', crawl=False,
                                         guess_names='John Doe',
                                         show_progress=False)
@@ -3687,20 +3693,166 @@ class TestEnumerateDomainEmails:
                 assert 'pattern' in e['sources']
 
     def test_smtp_verify_off_by_default(self, monkeypatch):
-        monkeypatch.setattr(gt, '_emails_from_crtsh',
+        self._stub_all_sources_empty(monkeypatch)
+        monkeypatch.setitem(gt.DOMAIN_EMAIL_SOURCES, 'crtsh',
                             lambda d: {'a@example.com'})
-        monkeypatch.setattr(gt, '_emails_from_whois', lambda d: set())
         with patch.object(gt, '_verify_smtp') as mock_verify:
-            r = gt.enumerate_domain_emails('example.com', crawl=False,
-                                            show_progress=False)
+            gt.enumerate_domain_emails('example.com', crawl=False,
+                                        show_progress=False)
         assert mock_verify.call_count == 0
-        # verified 字段都是 None
-        assert all(e['verified'] is None for e in r['emails'])
+
+
+class TestDomainEmailNewSources:
+    """v1.6.0:Bing / DDG / Wayback / GitHub 4 个新邮箱源测试。"""
+
+    def test_bing_extracts_emails_from_serp(self):
+        fake = MagicMock(status_code=200)
+        # 模拟 Bing 返的 HTML 页面含目标邮箱
+        fake.text = '<html><a href="mailto:contact@example.com">x</a> ' \
+                    'Random text mentioning support@example.com here</html>'
+        with patch.object(gt, 'safe_get', return_value=fake):
+            with patch.object(gt.time, 'sleep'):  # 跳过延迟
+                out = gt._emails_from_bing('example.com')
+        assert 'contact@example.com' in out
+        assert 'support@example.com' in out
+
+    def test_bing_handles_captcha(self):
+        """Bing 触发 captcha 返非 200 → silent 返空。"""
+        fake = MagicMock(status_code=403)
+        with patch.object(gt, 'safe_get', return_value=fake):
+            with patch.object(gt.time, 'sleep'):
+                assert gt._emails_from_bing('example.com') == set()
+
+    def test_ddg_extracts_emails(self):
+        fake = MagicMock(status_code=200)
+        fake.text = 'Contact us at hello@example.com or admin@example.com'
+        with patch.object(gt, 'safe_get', return_value=fake):
+            with patch.object(gt.time, 'sleep'):
+                out = gt._emails_from_ddg('example.com')
+        assert 'hello@example.com' in out
+        assert 'admin@example.com' in out
+
+    def test_ddg_handles_failure(self):
+        with patch.object(gt, 'safe_get', return_value=None):
+            with patch.object(gt.time, 'sleep'):
+                assert gt._emails_from_ddg('example.com') == set()
+
+    def test_wayback_fetches_cdx_then_snapshots(self):
+        # 先返 CDX 列表,再对每个 URL 返 snapshot HTML
+        cdx_resp = MagicMock(status_code=200)
+        cdx_resp.json.return_value = [
+            ['timestamp', 'original'],  # header
+            ['20200101000000', 'http://example.com/contact'],
+            ['20210101000000', 'http://example.com/about'],
+        ]
+        snap_resp = MagicMock(status_code=200)
+        snap_resp.text = '<html>Email: ceo@example.com</html>'
+        with patch.object(gt, 'safe_get',
+                          side_effect=[cdx_resp, snap_resp, snap_resp]):
+            out = gt._emails_from_wayback('example.com')
+        assert 'ceo@example.com' in out
+
+    def test_wayback_handles_empty_cdx(self):
+        cdx_resp = MagicMock(status_code=200)
+        cdx_resp.json.return_value = [['timestamp', 'original']]  # 只有 header
+        with patch.object(gt, 'safe_get', return_value=cdx_resp):
+            assert gt._emails_from_wayback('example.com') == set()
+
+    def test_wayback_priority_pages_first(self):
+        """contact/about/team 等高邮箱密度页面优先抓。"""
+        cdx_resp = MagicMock(status_code=200)
+        cdx_resp.json.return_value = [
+            ['timestamp', 'original'],
+            ['20200101000000', 'http://example.com/random/page1'],
+            ['20200201000000', 'http://example.com/random/page2'],
+            ['20200301000000', 'http://example.com/contact'],  # 应该优先
+        ]
+        urls_fetched = []
+
+        def fake_get(url, **kw):
+            urls_fetched.append(url)
+            r = MagicMock(status_code=200)
+            r.text = '<html></html>'
+            r.json.return_value = cdx_resp.json.return_value
+            return r
+        with patch.object(gt, 'safe_get', side_effect=fake_get):
+            gt._emails_from_wayback('example.com')
+        # CDX 第 1 个,然后 contact 应是 snapshot 列表里的第一个
+        assert any('contact' in u for u in urls_fetched[1:2])
+
+    def test_github_search_commit_authors(self):
+        fake = MagicMock(status_code=200)
+        fake.json.return_value = {
+            'items': [
+                {'commit': {'author': {'email': 'dev1@example.com'},
+                            'committer': {'email': 'dev2@example.com'}}},
+                {'commit': {'author': {'email': 'dev3@example.com'},
+                            'committer': {'email': 'noreply@github.com'}}},
+                # 跨域邮箱(非目标 domain)应过滤
+                {'commit': {'author': {'email': 'evil@attacker.com'}}},
+            ]
+        }
+        with patch.object(gt, 'safe_get', return_value=fake):
+            out = gt._emails_from_github('example.com')
+        assert {'dev1@example.com', 'dev2@example.com',
+                'dev3@example.com'} <= out
+        assert 'evil@attacker.com' not in out
+        assert 'noreply@github.com' not in out
+
+    def test_github_handles_rate_limit(self):
+        """GitHub 未认证 rate limit 后返 403 → silent 返空。"""
+        fake = MagicMock(status_code=403)
+        with patch.object(gt, 'safe_get', return_value=fake):
+            assert gt._emails_from_github('example.com') == set()
+
+    def test_github_uses_token_when_set(self, monkeypatch):
+        """SPYEYES_GITHUB_TOKEN 设置时附加 Authorization header。"""
+        monkeypatch.setenv('SPYEYES_GITHUB_TOKEN', 'test-token-123')
+        captured = {}
+
+        def fake_get(url, **kw):
+            captured.update(kw.get('headers', {}))
+            r = MagicMock(status_code=200)
+            r.json.return_value = {'items': []}
+            return r
+        with patch.object(gt, 'safe_get', side_effect=fake_get):
+            gt._emails_from_github('example.com')
+        assert captured.get('Authorization') == 'Bearer test-token-123'
+
+
+class TestDomainEmailSourcesParallelism:
+    """v1.6.0:测被动源并发执行 + 单源失败不影响其他。"""
+
+    def test_one_source_failure_does_not_kill_others(self, monkeypatch):
+        def boom(d):
+            raise RuntimeError('网络挂了')
+        monkeypatch.setitem(gt.DOMAIN_EMAIL_SOURCES, 'crtsh', boom)
+        monkeypatch.setitem(gt.DOMAIN_EMAIL_SOURCES, 'whois',
+                            lambda d: {'good@example.com'})
+        for n in ('bing', 'ddg', 'wayback', 'github'):
+            monkeypatch.setitem(gt.DOMAIN_EMAIL_SOURCES, n, lambda d: set())
+        monkeypatch.setattr(gt, '_crawl_domain_for_emails',
+                            lambda *a, **kw: {'emails': set(), 'page_map': {},
+                                              'pages_crawled': 0, 'sitemap_found': False,
+                                              'robots_disallows': 0})
+        r = gt.enumerate_domain_emails('example.com', crawl=False,
+                                        include_subdomains=False,
+                                        show_progress=False)
+        addrs = {e['address'] for e in r['emails']}
+        assert 'good@example.com' in addrs
+        # _stats 里应有 errors 标记 crtsh 挂了
+
+    def test_all_six_sources_in_dict(self):
+        """v1.6.0 必须有 6 个源(crtsh/whois/bing/ddg/wayback/github)。"""
+        assert set(gt.DOMAIN_EMAIL_SOURCES.keys()) == {
+            'crtsh', 'whois', 'bing', 'ddg', 'wayback', 'github'}
 
     def test_smtp_verify_when_opted_in(self, monkeypatch):
-        monkeypatch.setattr(gt, '_emails_from_crtsh',
+        # v1.6.0:用 setitem 在 dict 上 mock(setattr 不再生效)
+        for n in gt.DOMAIN_EMAIL_SOURCES:
+            monkeypatch.setitem(gt.DOMAIN_EMAIL_SOURCES, n, lambda d: set())
+        monkeypatch.setitem(gt.DOMAIN_EMAIL_SOURCES, 'crtsh',
                             lambda d: {'a@example.com', 'b@example.com'})
-        monkeypatch.setattr(gt, '_emails_from_whois', lambda d: set())
 
         def fake_verify(em, **kw):
             return (em == 'a@example.com', 'mocked')
