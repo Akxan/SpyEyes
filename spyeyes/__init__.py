@@ -68,7 +68,7 @@ except ImportError:
 
 
 # 语义化版本号 —— 同步更新 docs/CHANGELOG.md 与 git tag
-__version__ = '1.4.9'
+__version__ = '1.4.10'
 
 
 # ====================================================================
@@ -342,6 +342,7 @@ TRANSLATIONS: dict = {
         'prompt.input_subdomain':     'Enter target domain (e.g. example.com): ',
         'prompt.subdomain_probe':     'Run HTTP probe to fetch <title>?\n   [ 1 ] Yes (default)  [ 2 ] No\n  Choose [1/2, default 1] : ',
         'prompt.subdomain_bruteforce': 'Enable DNS dictionary bruteforce? (~220 prefixes, +5-15s)\n   [ 1 ] No (default, passive only)  [ 2 ] Yes (more thorough)\n  Choose [1/2, default 1] : ',
+        'prompt.subdomain_alive_only': 'Hide dead subdomains in the saved report?\n   [ 1 ] Yes (default, cleaner)  [ 2 ] No (include all, full data)\n  Choose [1/2, default 1] : ',
         # v1.4.0 — Domain emails enumeration
         'section.demails':            'Domain Email Enumeration',
         'demails.title':              'Domain emails: {domain}',
@@ -610,6 +611,7 @@ TRANSLATIONS: dict = {
         'prompt.input_subdomain':     '请输入目标域名（如 example.com）：',
         'prompt.subdomain_probe':     '是否抓 HTTP <title> 信息？\n   [ 1 ] 是（默认）  [ 2 ] 否\n  请选择 [1/2，默认 1] : ',
         'prompt.subdomain_bruteforce': '是否启用 DNS 字典爆破？(~220 个前缀，+5-15 秒)\n   [ 1 ] 否（默认，仅被动源）  [ 2 ] 是（更全面）\n  请选择 [1/2，默认 1] : ',
+        'prompt.subdomain_alive_only': '保存报告时是否隐藏不可达子域？\n   [ 1 ] 是（默认，报告更简洁）  [ 2 ] 否（保留全部，含未解析）\n  请选择 [1/2，默认 1] : ',
         # v1.4.0 —— 域名邮箱枚举
         'section.demails':            '域名邮箱枚举',
         'demails.title':              '域名邮箱:{domain}',
@@ -4228,7 +4230,20 @@ def handle_choice(choice: int, save_dir: Optional[str] = None) -> None:
         bruteforce = bf_ans == '2'
         result = enumerate_subdomains(domain, probe=probe, bruteforce=bruteforce)
         print_subdomains(result)
-        _interactive_save_prompt(f'subdomain_{domain}', result, save_dir)
+        # v1.4.10:保存前询问是否过滤 dead 子域(默认是 — 用户反馈报告太挤)
+        try:
+            ao_ans = input(f"\n {Color.Wh}{t('prompt.subdomain_alive_only')}{Color.Gr}").strip()
+        except (EOFError, KeyboardInterrupt):
+            ao_ans = ''
+        save_data = result
+        if ao_ans != '2' and isinstance(result, dict) and 'subdomains' in result:
+            original_count = len(result['subdomains'])
+            save_data = {**result,
+                         'subdomains': [s for s in result['subdomains'] if s.get('alive')],
+                         '_filtered': {'mode': 'alive_only',
+                                       'hidden': original_count - sum(
+                                           1 for s in result['subdomains'] if s.get('alive'))}}
+        _interactive_save_prompt(f'subdomain_{domain}', save_data, save_dir)
     elif choice == 9:
         # v1.4.0: 域名邮箱枚举
         domain = _ask_input('prompt.input_demails')
@@ -6692,7 +6707,9 @@ def build_parser() -> argparse.ArgumentParser:
     sp.add_argument('--timeout', type=float, default=SUBDOMAIN_HTTP_PROBE_TIMEOUT,
                     help=f'HTTP probe timeout per host (default: {SUBDOMAIN_HTTP_PROBE_TIMEOUT}s)')
     sp.add_argument('--alive-only', action='store_true', dest='alive_only',
-                    help='In CLI output, hide subdomains that did not resolve')
+                    help='Hide dead subdomains in CLI output AND saved reports'
+                         ' (HTML/PDF/JSON/CSV/etc.). Useful when bruteforce produces'
+                         ' many dead candidates and the report becomes cluttered.')
     # v1.4.9:DNS 字典爆破(opt-in,~220 内置词典 / 用户 SPYEYES_DNS_WORDLIST 覆盖)
     sp.add_argument('--bruteforce', action='store_true', dest='bruteforce',
                     help='Enable DNS dictionary bruteforce (~220 built-in prefixes;'
@@ -6900,14 +6917,19 @@ def run_cli(args: argparse.Namespace) -> int:
             show_progress=not args.json,
         )
         save_prefix = f'subdomain_{args.domain}'
+        # v1.4.10:--alive-only 现在影响 CLI / JSON / 导出报告全部
+        # (之前仅终端;用户反馈"导出报告里 dead 子域占位太多")
+        # _stats 保持原始 total/alive 数,加 _filtered 字段供报告显示"已过滤 N 个 dead"
+        if (getattr(args, 'alive_only', False)
+                and isinstance(data, dict) and 'subdomains' in data):
+            original_count = len(data['subdomains'])
+            data['subdomains'] = [s for s in data['subdomains'] if s.get('alive')]
+            data['_filtered'] = {'mode': 'alive_only',
+                                 'hidden': original_count - len(data['subdomains'])}
         if args.json:
             _emit_json(data)
         else:
-            # --alive-only 仅影响终端打印,不影响 JSON / 报告(完整数据更有价值)
-            display = data
-            if getattr(args, 'alive_only', False) and isinstance(data, dict) and 'subdomains' in data:
-                display = {**data, 'subdomains': [s for s in data['subdomains'] if s.get('alive')]}
-            print_subdomains(display)
+            print_subdomains(data)
     elif cmd == 'history':
         entries = read_history(limit=args.limit, search=getattr(args, 'search', None))
         if args.json:

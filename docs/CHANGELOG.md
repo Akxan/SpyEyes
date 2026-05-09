@@ -18,6 +18,45 @@ This project adheres to [Keep a Changelog](https://keepachangelog.com/en/1.1.0/)
 
 ---
 
+## [1.4.10] — 2026-05-09
+
+✨ **`--alive-only` 现在也过滤导出报告**(用户反馈:bruteforce 后 dead 子域占满 HTML/PDF)
+
+### Fixes / UX
+
+之前 `--alive-only` flag 只影响终端打印,**导出的 HTML / PDF / JSON / CSV 报告仍含 dead 子域**(那时设计是"完整数据更有价值")。但 v1.4.9 加 bruteforce 后,小域名(如个人博客 `akxan.com`)的报告里 200+ dead 子域占满几屏,用户反馈"看着太卡而且占地方"。
+
+**改动**:
+- `--alive-only` 现在过滤 **CLI / JSON / 8 种导出报告全部**
+- 数据 `_stats.total` 和 `_stats.alive` 保持原始值(让用户知道完整宇宙)
+- 新增 `_filtered: {mode: 'alive_only', hidden: N}` 元数据字段(报告生成器可显示"已隐藏 N 个 dead 子域")
+- 交互菜单(选项 `[8] 子域名枚举`)在保存前**额外加一问** "是否隐藏不可达子域?",默认是
+
+### CLI
+
+```bash
+# 现在三种使用全部过滤 dead:
+spyeyes subdomain example.com --alive-only --save report.html  # 报告中只有 alive
+spyeyes subdomain example.com --alive-only --save report.pdf
+spyeyes subdomain example.com --alive-only --json | jq '.subdomains'
+
+# 不传 --alive-only 时保持原行为(完整数据)
+```
+
+### Tests
+
+- 8 个 `TestSubdomainCli` 测试(+3 新):
+  - `test_alive_only_filters_json_output` — JSON 含 alive,带 `_filtered` 元数据,`_stats` 保留原值
+  - `test_alive_only_filters_saved_report` — HTML 写出文件中**确实**没 dead 子域
+  - `test_alive_only_disabled_keeps_full_data` — 不传 flag 时向后兼容
+- **共 443 全绿**
+
+### Packaging
+
+- `__version__` 1.4.9 → 1.4.10
+
+---
+
 ## [1.4.9] — 2026-05-09
 
 ✨ **子域名收集三大新维度** — Wayback Machine + DNS 字典爆破 + JS/HTML host 提取

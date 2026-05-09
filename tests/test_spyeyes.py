@@ -2765,6 +2765,102 @@ class TestSubdomainCli:
         assert data['domain'] == 'example.com'
         assert len(data['subdomains']) == 1
 
+    def test_alive_only_filters_json_output(self, monkeypatch, capsys, tmp_path):
+        """v1.4.10:--alive-only 现在也过滤 JSON 输出(之前仅终端)。"""
+        monkeypatch.setattr(gt, 'HISTORY_FILE', str(tmp_path / 'h.jsonl'))
+        monkeypatch.setattr(gt, 'CONFIG_DIR', str(tmp_path))
+        # 1 alive + 2 dead
+        fake_result = {
+            'domain': 'example.com',
+            'sources': {'crtsh': 3}, 'wildcard_suspect': False,
+            'subdomains': [
+                {'host': 'api.example.com', 'alive': True,
+                 'a': ['1.2.3.4'], 'aaaa': [], 'cname': None,
+                 'http_status': 200, 'title': 'API', 'scheme': 'https'},
+                {'host': 'dead1.example.com', 'alive': False,
+                 'a': [], 'aaaa': [], 'cname': None,
+                 'http_status': None, 'title': None, 'scheme': None},
+                {'host': 'dead2.example.com', 'alive': False,
+                 'a': [], 'aaaa': [], 'cname': None,
+                 'http_status': None, 'title': None, 'scheme': None},
+            ],
+            '_stats': {'total': 3, 'alive': 1, 'probed': 1, 'errors': {}},
+        }
+        monkeypatch.setattr(gt, 'enumerate_subdomains', lambda *a, **kw: fake_result)
+        import argparse
+        args = argparse.Namespace(command='subdomain', domain='example.com',
+                                   no_probe=False, workers=30, timeout=5.0,
+                                   alive_only=True, json=True, save=None)
+        rc = gt.run_cli(args)
+        assert rc == 0
+        data = json.loads(capsys.readouterr().out)
+        assert len(data['subdomains']) == 1
+        assert data['subdomains'][0]['host'] == 'api.example.com'
+        # _filtered 元数据告知报告生成器"过滤了 2 条"
+        assert data['_filtered']['mode'] == 'alive_only'
+        assert data['_filtered']['hidden'] == 2
+        # _stats 保持原始 total/alive(让用户知道全集)
+        assert data['_stats']['total'] == 3
+        assert data['_stats']['alive'] == 1
+
+    def test_alive_only_filters_saved_report(self, monkeypatch, tmp_path):
+        """v1.4.10:--alive-only 也影响 --save 写出的报告(关键修复)。"""
+        monkeypatch.setattr(gt, 'HISTORY_FILE', str(tmp_path / 'h.jsonl'))
+        monkeypatch.setattr(gt, 'CONFIG_DIR', str(tmp_path))
+        fake_result = {
+            'domain': 'example.com', 'sources': {'crtsh': 2},
+            'wildcard_suspect': False,
+            'subdomains': [
+                {'host': 'api.example.com', 'alive': True, 'a': ['1.2.3.4'],
+                 'aaaa': [], 'cname': None, 'http_status': 200,
+                 'title': 'API', 'scheme': 'https'},
+                {'host': 'dead.example.com', 'alive': False, 'a': [],
+                 'aaaa': [], 'cname': None, 'http_status': None,
+                 'title': None, 'scheme': None},
+            ],
+            '_stats': {'total': 2, 'alive': 1, 'probed': 1, 'errors': {}},
+        }
+        monkeypatch.setattr(gt, 'enumerate_subdomains', lambda *a, **kw: fake_result)
+        save_path = str(tmp_path / 'r.html')
+        import argparse
+        args = argparse.Namespace(command='subdomain', domain='example.com',
+                                   no_probe=False, workers=30, timeout=5.0,
+                                   alive_only=True, json=False, save=save_path)
+        rc = gt.run_cli(args)
+        assert rc == 0
+        html = open(save_path, encoding='utf-8').read()
+        assert 'api.example.com' in html
+        # dead 子域不应出现在保存的 HTML 报告里
+        assert 'dead.example.com' not in html
+
+    def test_alive_only_disabled_keeps_full_data(self, monkeypatch, capsys, tmp_path):
+        """没传 --alive-only 时,JSON 输出含全部 subdomains(向后兼容)。"""
+        monkeypatch.setattr(gt, 'HISTORY_FILE', str(tmp_path / 'h.jsonl'))
+        monkeypatch.setattr(gt, 'CONFIG_DIR', str(tmp_path))
+        fake_result = {
+            'domain': 'example.com', 'sources': {'crtsh': 2},
+            'wildcard_suspect': False,
+            'subdomains': [
+                {'host': 'api.example.com', 'alive': True, 'a': ['1.2.3.4'],
+                 'aaaa': [], 'cname': None, 'http_status': 200,
+                 'title': 'API', 'scheme': 'https'},
+                {'host': 'dead.example.com', 'alive': False, 'a': [],
+                 'aaaa': [], 'cname': None, 'http_status': None,
+                 'title': None, 'scheme': None},
+            ],
+            '_stats': {'total': 2, 'alive': 1, 'probed': 1, 'errors': {}},
+        }
+        monkeypatch.setattr(gt, 'enumerate_subdomains', lambda *a, **kw: fake_result)
+        import argparse
+        args = argparse.Namespace(command='subdomain', domain='example.com',
+                                   no_probe=False, workers=30, timeout=5.0,
+                                   alive_only=False, json=True, save=None)
+        rc = gt.run_cli(args)
+        assert rc == 0
+        data = json.loads(capsys.readouterr().out)
+        assert len(data['subdomains']) == 2
+        assert '_filtered' not in data
+
 
 class TestSubdomainReports:
     """8 种报告生成器在 subdomain 数据上不崩 + 关键内容存在。"""
