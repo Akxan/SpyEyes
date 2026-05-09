@@ -5,9 +5,9 @@ title: SpyEyes
 
 # 🔍 SpyEyes
 
-**OSINT 信息查询工具中文增强版** · One-shot lookup for IP · Phone · Username · WHOIS · MX · Email
+**OSINT 信息查询工具中文增强版** · One-shot toolkit · 9 commands · IP · Phone · Username · WHOIS · MX · Email · Subdomain · Domain Emails
 
-> 一站式查询 IP / 电话 / 用户名 (3164 平台) / 域名 WHOIS / MX 记录 / 邮箱有效性 · 8 种本地化报告格式
+> 一站式 OSINT:IP / 电话 / 用户名(3164 平台)/ WHOIS / MX / 邮箱 / **子域名枚举** / **域名邮箱挖取** · 8 种 Editorial 风报告
 
 [**📖 详细教程 / Tutorial**](TUTORIAL.html) · [**📝 更新日志 / Changelog**](CHANGELOG.html) · [**🤝 贡献指南 / Contributing**](CONTRIBUTING.html) · [**🔒 安全策略 / Security**](SECURITY.html)
 
@@ -26,17 +26,21 @@ title: SpyEyes
   - Maigret-style permute（全排列 × 4 种分隔符 + `--method strict|all`）
   - 递归扫描挖关联账号
 - **🔍 WHOIS / 📨 MX / ✉️ 邮箱验证** — IDN 支持
-- **📊 8 种报告格式** — `JSON / Markdown / HTML / PDF / TXT / CSV / XMind / Graph (D3.js)`
-- **🌍 完整中英双语** UI **+ 报告内容** （v1.2.0+）
+- **🌐 子域名枚举(v1.3.0)** — 被动多源(crt.sh + CertSpotter + HackerTarget + AlienVault OTX) + DNS + HTTP probe + Wildcard 检测
+- **📧 域名邮箱挖取(v1.4.0)** — theHarvester + Hunter.io 混合:CT 日志 + WHOIS + 深度爬虫 + 模式生成 + 可选 SMTP 验证
+- **📊 8 种 Editorial 风报告** — `JSON / Markdown / HTML / PDF / TXT / CSV / XMind / Graph`,Cormorant Garamond + JetBrains Mono 字体三件套(v1.4.x)
+- **🌍 完整中英双语** UI **+ 报告内容**(v1.2.0+)
 
 ## 🔒 安全防护
 
-经 **18 轮独立 fresh-eyes 盲审**收敛到「无真 bug」状态：
+经多轮独立 fresh-eyes 盲审收敛到「无真 bug」状态:
 
 - SSRF / ReDoS / Domain 注入 / Username 注入 / Markdown 注入 / HTML XSS / CSV 公式注入防护
-- WAF 高精度指纹检测（Cloudflare / AWS WAF / PerimeterX / DataDome / Akamai）
-- 隐私选项：`SPYEYES_NO_HISTORY=1` 完全禁用历史
-- 306 个 pytest 测试，0 红 / ruff / mypy / bandit 全清
+- WAF 高精度指纹检测(Cloudflare / AWS WAF / PerimeterX / DataDome / Akamai)
+- 子域名爬虫 robots.txt 默认遵守 + 单域 500ms 速率限制
+- SMTP 验证 opt-in + 强 disclaimer
+- 隐私选项:`SPYEYES_NO_HISTORY=1` 完全禁用历史
+- **417 个 pytest 测试**,0 红 / ruff / mypy / bandit 全清,CI 跨 macOS/Linux/Windows × Python 3.10–3.14
 
 ## 🚀 快速开始
 
@@ -48,19 +52,30 @@ pip install -r requirements.txt
 python3 -m spyeyes --version    # spyeyes 1.2.0
 ```
 
-立即体验：
+立即体验:
 
 ```bash
-python3 -m spyeyes ip 8.8.8.8                 # IP 追踪
-python3 -m spyeyes phone +8613800138000       # 电话解析
-python3 -m spyeyes user torvalds              # 3164 平台扫描（150 线程）
-python3 -m spyeyes user torvalds --save report.html       # HTML 报告
-python3 -m spyeyes user torvalds --save report.graph.html # D3.js 力导向图
+python3 -m spyeyes ip 8.8.8.8                          # IP 追踪
+python3 -m spyeyes phone +8613800138000                # 电话解析
+python3 -m spyeyes user torvalds                       # 3164 平台扫描(150 线程)
+python3 -m spyeyes whois example.com                   # WHOIS
+python3 -m spyeyes mx 中国.cn                          # IDN 域名 MX
+python3 -m spyeyes email user@中国.cn                  # IDN 邮箱
+
+# 🆕 v1.3.0 子域名枚举
+python3 -m spyeyes subdomain example.com               # 被动 + DNS + HTTP probe
+
+# 🆕 v1.4.0 域名邮箱挖取
+python3 -m spyeyes domain-emails example.com           # 多源 + 深度爬虫
+python3 -m spyeyes domain-emails example.com --guess "John Doe"
+
+# 8 种报告格式(全 Editorial 风,中英双语)
+python3 -m spyeyes user torvalds --save report.html       # HTML(sticky thead + 颜色编码)
+python3 -m spyeyes user torvalds --save report.pdf        # PDF(封面页 + 罗马数字章节)
 python3 -m spyeyes user torvalds --save report.xmind      # XMind 思维导图
-python3 -m spyeyes whois example.com          # WHOIS
-python3 -m spyeyes mx 中国.cn                 # IDN 域名 MX
-python3 -m spyeyes email user@中国.cn         # IDN email
-SPYEYES_NO_HISTORY=1 python3 -m spyeyes ...   # 禁用历史（隐私模式）
+python3 -m spyeyes user torvalds --save report.graph.html # D3.js 力导向图
+
+SPYEYES_NO_HISTORY=1 python3 -m spyeyes ...   # 禁用历史(隐私模式)
 ```
 
 完整文档见 [详细教程](TUTORIAL.html)。
