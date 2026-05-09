@@ -10,7 +10,7 @@
 [![codecov](https://codecov.io/gh/Akxan/SpyEyes/branch/main/graph/badge.svg)](https://codecov.io/gh/Akxan/SpyEyes)
 [![License: Apache 2.0](https://img.shields.io/badge/License-Apache_2.0-blue.svg)](https://opensource.org/licenses/Apache-2.0)
 [![Python](https://img.shields.io/badge/Python-3.10%2B-blue.svg?logo=python&logoColor=white)](https://www.python.org/)
-[![Tests](https://img.shields.io/badge/tests-468%20passed-success.svg)](tests/)
+[![Tests](https://img.shields.io/badge/tests-488%20passed-success.svg)](tests/)
 [![Platforms](https://img.shields.io/badge/platforms-3164-orange.svg)](#-与同类工具对比)
 [![Reports](https://img.shields.io/badge/reports-8%20formats-9cf.svg)](#-报告格式8-种)
 [![Commands](https://img.shields.io/badge/commands-10-blueviolet.svg)](docs/TUTORIAL.md)
@@ -41,17 +41,21 @@
 
 ### 💎 项目亮点
 
-- **🆕 v1.6.0:域名邮箱 6 源全并发** — Bing SERP + DuckDuckGo + Wayback Machine + GitHub commits + crt.sh + WHOIS,**完全免费 + 无需注册**;并发执行总耗时 ≈ 最慢源(2-3× 提速);对比 theHarvester / Photon / EmailFinder 等同类工具,免费层最强 + 报告格式最丰富
-- **🆕 v1.5.0:Diff 模式 + 批量域名** — `spyeyes diff old.json new.json` 对比两次扫描挖出新增 / 消失 / 变更的子域(OSINT 监控刚需);`--batch domains.txt --batch-save-dir reports/` 批量扫描每个域独立报告
-- **🆕 v1.4.x:子域名 7 维度收集** — 6 被动源(crt.sh / CertSpotter / HackerTarget / OTX / **Wayback Machine** / 可选 subfinder 30+ 源)+ DNS 字典爆破(220 词内置 / `SPYEYES_DNS_WORDLIST` 自定义)+ JS/HTML body host 提取 + DNS A/AAAA/CNAME 验证 + HTTP probe + Wildcard 检测
-- **🆕 Editorial Investigation Brief 报告美化** — 调查档案/报刊调性:Cormorant Garamond + Crimson Pro + JetBrains Mono 三件套 + cream/ink/印章红配色;HTML sticky thead + alive/dead 视觉区分 + HTTP status 颜色编码;PDF 封面页 + 罗马数字章节;XMind 层级展开;Graph D3.js 力导向图
+- **🆕 v1.6.8:`~/.spyeyes/env` 自动加载 API keys + 报告显示完整 6 源状态** — KEY=VALUE 格式简单文件代替 LaunchAgent / shell 配置;报告里每个源 ✅/⊘/❌ 状态一目了然
+- **🆕 v1.6.6:域名邮箱挖掘提速 3-4×** — HTTP probe 过滤非 web 子域 + 多 target 并行 BFS 爬虫(linux.do 5.5 分钟 → 1.5 分钟)
+- **🆕 v1.6.5:`--alive-only` 智能严格** — wildcard / DNS 劫持环境下自动加 HTTP 响应过滤,防止 fake "活"假象
+- **🆕 v1.6.0:域名邮箱 6 源全并发** — Bing SERP + DuckDuckGo + Wayback Machine + GitHub commits + crt.sh + WHOIS,**完全免费 + 无需注册**;对比 theHarvester / Photon / EmailFinder,免费层最强
+- **🆕 v1.5.0:Diff 模式 + 批量域名** — `spyeyes diff old.json new.json` OSINT 持续监控;`--batch domains.txt` 批量扫描
+- **🆕 v1.4.x → v1.6.x:子域名 7 维度收集** — 6 被动源(crt.sh / CertSpotter / HackerTarget / OTX / **Wayback Machine** / 可选 subfinder 30+ 源)+ DNS 字典爆破 + JS/HTML body host 提取(支持 4xx/5xx title + CNAME 完整 chain)+ DNS A/AAAA/CNAME 验证 + HTTP probe + Wildcard 检测
+- **🆕 Editorial Investigation Brief 报告美化** — 调查档案/报刊调性 Cormorant Garamond + Crimson Pro + JetBrains Mono;HTML sticky thead + alive/dead 视觉区分 + HTTP status 颜色;PDF 封面页 + 罗马数字章节;XMind 层级展开;Graph D3.js 力导向图
 - **3164 个用户名扫描平台**:48 中文圈 + 58 西语圈 + 91 成人/约会 + 733 论坛,Sherlock 级速度 ~20 秒(150 线程并发 + Session 池 + ReDoS 防护)
-- **Maigret-style permute** + 递归扫描 `--recursive` + 多扫描模式 `--quick` / `--category`
-- **8 种报告格式** —— `JSON / Markdown / HTML / PDF / TXT / CSV / XMind / Graph (D3.js)`,全部跟随 UI 语言(中/英)
+- **Maigret-style permute** + 递归扫描 `--recursive`(完整进度反馈)+ 多扫描模式 `--quick` / `--category`
+- **8 种报告格式** — `JSON / Markdown / HTML / PDF / TXT / CSV / XMind / Graph (D3.js)`,全部跟随 UI 语言(中/英)
 - **WAF 检测**:Cloudflare / AWS WAF / PerimeterX / DataDome / Akamai 等高精度指纹
 - **完整中英双语**:交互菜单 / CLI 参数 / 错误信息 / **报告内容**全部双语
-- **🆕 v1.6.1:进度条 100% 全功能审计** — 12 核心函数 + 12 被动源逐一审计,所有耗时操作均有阶段反馈(用户反馈"看着不卡了")
-- **468 个 pytest 测试**:4 工具全清(ruff 0 / mypy 0 / bandit 0 / pytest 全绿),CI 跨 macOS/Linux/Windows × Python 3.10–3.14
+- **🆕 v1.6.1:进度条 100% 全功能审计** — 所有耗时操作都有实时反馈,告别"看着卡死"
+- **🆕 v1.6.3:跨平台报告目录统一** — 所有平台都默认 `<cwd>/Downloads/`,所见即所得;`SPYEYES_REPORTS_DIR=path` 自定义
+- **488 个 pytest 测试**:4 工具全清(ruff 0 / mypy 0 / bandit 0 / pytest 全绿),CI 跨 macOS/Linux/Windows × Python 3.10–3.14
 
 ---
 
@@ -317,6 +321,44 @@ cd SpyEyes
 python -m venv .venv
 .venv\Scripts\activate
 pip install -r requirements.txt
+```
+
+---
+
+## 🔑 API key 配置(可选,免费,提升数据完整性)
+
+SpyEyes 默认用 6 个免费源(无需任何 key 也能跑),但配置以下 keys 能显著提升命中率和稳定性。
+
+### 推荐方式:`~/.spyeyes/env` 文件(v1.6.8+)
+
+```bash
+mkdir -p ~/.spyeyes
+cat > ~/.spyeyes/env << 'EOF'
+# AlienVault OTX(免费,https://otx.alienvault.com/settings)
+SPYEYES_OTX_API_KEY=your_otx_key
+
+# SSLMate CertSpotter(免费,https://sslmate.com/account/api_credentials)
+SPYEYES_CERTSPOTTER_API_KEY=your_certspotter_key
+
+# ProjectDiscovery PDCP(免费,subfinder 用)
+PDCP_API_KEY=your_pdcp_key
+
+# 可选:GitHub commit search 提速(免费 PAT,只读权限)
+SPYEYES_GITHUB_TOKEN=ghp_your_token
+
+# 可选:固定报告目录(默认 <cwd>/Downloads/)
+SPYEYES_REPORTS_DIR=/var/log/spyeyes
+EOF
+chmod 600 ~/.spyeyes/env
+```
+
+模块加载时自动读取,跨平台一致(macOS/Linux/Windows),`shell export` 优先。
+
+### 替代方式:shell `~/.zshrc` / `~/.bashrc`
+
+```bash
+echo 'export SPYEYES_OTX_API_KEY=your_key' >> ~/.zshrc
+source ~/.zshrc
 ```
 
 ---

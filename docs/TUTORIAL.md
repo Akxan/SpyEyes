@@ -134,6 +134,87 @@ python -m spyeyes
 
 ---
 
+## API key 配置(可选,免费)
+
+SpyEyes 默认 6 个免费源**无需任何 key 也能跑**,但配置 keys 后:
+- ⬆️ 命中率提升 30-50%
+- ⬆️ 速率限制大幅放宽(免费层 50/天 → 500/天)
+- ⬆️ subfinder 解锁更多源
+
+### 推荐方式:`~/.spyeyes/env` 文件(v1.6.8+)
+
+模块加载时自动读,跨平台一致(macOS/Linux/Windows),`shell export` 优先,改完即时生效。
+
+```bash
+mkdir -p ~/.spyeyes
+cat > ~/.spyeyes/env << 'EOF'
+# ~~~~~ AlienVault OTX ~~~~~
+# 免费注册:https://otx.alienvault.com/settings
+# 用途:子域名 + 邮箱被动 DNS 查询,quota 显著放宽
+SPYEYES_OTX_API_KEY=your_otx_key_here
+
+# ~~~~~ SSLMate CertSpotter ~~~~~
+# 免费注册:https://sslmate.com/account/api_credentials
+# 用途:CT 日志(SSL 证书)子域查询,免费层 100/h → 注册后宽很多
+SPYEYES_CERTSPOTTER_API_KEY=your_certspotter_key_here
+
+# ~~~~~ ProjectDiscovery PDCP(免费)~~~~~
+# 注册:https://cloud.projectdiscovery.io
+# 用途:subfinder 自动读,解锁更多源(virustotal/shodan/censys 等)
+PDCP_API_KEY=your_pdcp_key_here
+
+# ~~~~~ GitHub PAT(可选,只读)~~~~~
+# 创建:https://github.com/settings/tokens
+# 用途:GitHub commit search 提速 rate limit(10/min → 30/min)
+SPYEYES_GITHUB_TOKEN=ghp_your_pat_here
+
+# ~~~~~ 实时电话运营商(可选,付费 API)~~~~~
+# 提供商:numverify(https://numverify.com,免费 100/月)
+# SPYEYES_PHONE_API_KEY=numverify:your_numverify_key
+
+# ~~~~~ 自定义 DNS 字典爆破词典 ~~~~~
+# 默认 220 内置;massdns/shuffledns 大字典直接复用
+# SPYEYES_DNS_WORDLIST=/path/to/all.txt
+
+# ~~~~~ 固定报告目录(可选)~~~~~
+# 默认 <cwd>/Downloads/;服务器场景常用 /var/log/spyeyes
+# SPYEYES_REPORTS_DIR=/var/log/spyeyes
+EOF
+
+# 锁权限(只本用户可读)
+chmod 600 ~/.spyeyes/env
+```
+
+### 替代方式:shell 配置文件
+
+如果你已经有 `~/.zshrc` / `~/.bashrc`,也可以直接 `export`:
+
+```bash
+# 写到 ~/.zshrc(zsh)或 ~/.bashrc(bash)
+export SPYEYES_OTX_API_KEY=your_key
+export SPYEYES_CERTSPOTTER_API_KEY=your_key
+export PDCP_API_KEY=your_key
+
+# 立即生效
+source ~/.zshrc
+```
+
+注意:VS Code 终端需要重启才能读到新加的 env vars。
+
+### 验证 key 已加载
+
+```bash
+.venv/bin/python -c "
+import os, spyeyes
+keys = ['SPYEYES_OTX_API_KEY', 'SPYEYES_CERTSPOTTER_API_KEY', 'PDCP_API_KEY']
+for k in keys:
+    v = os.environ.get(k, '')
+    print(f'{k}: {\"✅ 已加载\" if v else \"❌ 未配置\"}')
+"
+```
+
+---
+
 ## 启动与菜单导航
 
 ### 首次启动 —— 选择语言

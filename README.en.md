@@ -10,7 +10,7 @@
 [![codecov](https://codecov.io/gh/Akxan/SpyEyes/branch/main/graph/badge.svg)](https://codecov.io/gh/Akxan/SpyEyes)
 [![License: Apache 2.0](https://img.shields.io/badge/License-Apache_2.0-blue.svg)](https://opensource.org/licenses/Apache-2.0)
 [![Python](https://img.shields.io/badge/Python-3.10%2B-blue.svg?logo=python&logoColor=white)](https://www.python.org/)
-[![Tests](https://img.shields.io/badge/tests-468%20passed-success.svg)](tests/)
+[![Tests](https://img.shields.io/badge/tests-488%20passed-success.svg)](tests/)
 [![Platforms](https://img.shields.io/badge/platforms-3164-orange.svg)](#-comparison-with-similar-tools)
 [![Reports](https://img.shields.io/badge/reports-8%20formats-9cf.svg)](#-report-formats-8-types)
 [![Commands](https://img.shields.io/badge/commands-10-blueviolet.svg)](docs/TUTORIAL.md)
@@ -41,17 +41,21 @@ Designed for **security researchers, penetration testers, SOC analysts, threat h
 
 ### 💎 Highlights
 
-- **🆕 v1.6.0: Domain email — 6 sources concurrent, all free** — Bing SERP + DuckDuckGo + Wayback Machine + GitHub commits + crt.sh + WHOIS, **completely free + no registration**; concurrent execution (~2-3× faster than sequential); compared to theHarvester/Photon/EmailFinder, free-tier strongest + most report formats
-- **🆕 v1.5.0: Diff mode + batch input** — `spyeyes diff old.json new.json` to find added/removed/changed subdomains (essential for OSINT monitoring); `--batch domains.txt --batch-save-dir reports/` for batch scan with per-domain reports
-- **🆕 v1.4.x: Subdomain — 7 collection dimensions** — 6 passive sources (crt.sh / CertSpotter / HackerTarget / OTX / **Wayback Machine** / optional subfinder w/ 30+) + DNS dictionary bruteforce (built-in 220 words / `SPYEYES_DNS_WORDLIST` for custom) + JS/HTML body host extraction + DNS A/AAAA/CNAME validation + HTTP probe + wildcard detection
-- **🆕 Editorial Investigation Brief styling** — Cormorant Garamond + Crimson Pro + JetBrains Mono triplet + cream/ink/seal-red palette; HTML sticky thead + alive/dead visual differentiation + HTTP status color-coding; PDF cover page + roman numeral chapters
+- **🆕 v1.6.8: `~/.spyeyes/env` autoload + full 6-source status in reports** — KEY=VALUE file replacing LaunchAgent / shell config; each source's ✅/⊘/❌ status visible at a glance
+- **🆕 v1.6.6: Domain email harvest 3-4× speedup** — HTTP probe filter + parallel BFS crawler (linux.do 5.5min → 1.5min)
+- **🆕 v1.6.5: Smart `--alive-only`** — auto-strict mode under wildcard / DNS hijack to filter fake "alive" hosts
+- **🆕 v1.6.0: Domain email — 6 sources concurrent, all free** — Bing SERP + DuckDuckGo + Wayback + GitHub commits + crt.sh + WHOIS; vs theHarvester/Photon/EmailFinder, **strongest free tier**
+- **🆕 v1.5.0: Diff + batch** — `spyeyes diff old.json new.json` for OSINT monitoring; `--batch domains.txt`
+- **🆕 v1.4.x → 1.6.x: Subdomain — 7 collection dimensions** — 6 passive sources (crt.sh / CertSpotter / HackerTarget / OTX / **Wayback** / optional subfinder w/ 30+) + DNS dictionary bruteforce + JS/HTML body host extraction (4xx/5xx title support + full CNAME chain) + DNS validation + HTTP probe + wildcard detection
+- **🆕 Editorial Investigation Brief styling** — Cormorant Garamond + Crimson Pro + JetBrains Mono triplet + cream/ink/seal-red palette
 - **3164 username-scan platforms**: 48 Chinese-region + 58 Spanish-region + 91 adult/dating + 733 forums; Sherlock-class speed ~20s
-- **Maigret-style permute** + recursive scan `--recursive` + multi mode `--quick` / `--category`
-- **8 report formats** — `JSON / Markdown / HTML / PDF / TXT / CSV / XMind / Graph (D3.js)`, all bilingual (zh/en)
+- **Maigret-style permute** + recursive scan `--recursive` (with full progress) + multi mode `--quick` / `--category`
+- **8 report formats** — `JSON / Markdown / HTML / PDF / TXT / CSV / XMind / Graph (D3.js)`, all bilingual
 - **WAF detection**: Cloudflare / AWS WAF / PerimeterX / DataDome / Akamai
 - **Full bilingual**: interactive menu / CLI / errors / **report content** all in zh+en
-- **🆕 v1.6.1: 100% progress feedback audit** — every operation > 2s has stage feedback (no more "looks frozen")
-- **468 pytest tests**: 4-tool audit clean (ruff 0 / mypy 0 / bandit 0 / pytest), CI on macOS/Linux/Windows × Python 3.10–3.14
+- **🆕 v1.6.1: 100% progress feedback** — every >2s operation has live progress
+- **🆕 v1.6.3: Cross-platform report dir** — all platforms default to `<cwd>/Downloads/`; `SPYEYES_REPORTS_DIR=path` for custom
+- **488 pytest tests**: 4-tool audit clean (ruff 0 / mypy 0 / bandit 0 / pytest), CI on macOS/Linux/Windows × Python 3.10–3.14
 
 ---
 

@@ -26,12 +26,14 @@ title: SpyEyes
   - Maigret-style permute(全排列 × 4 种分隔符 + `--method strict|all`)
   - 递归扫描挖关联账号(深度 ≤ 2,完整进度反馈)
 - **🔍 WHOIS / 📨 MX / ✉️ 邮箱验证** — IDN 支持
-- **🌐 子域名枚举 (v1.3.0 → v1.6.1)** — 6 被动源(crt.sh + CertSpotter + HackerTarget + OTX + **Wayback Machine**)+ **🚀 可选 subfinder 30+ 源** + **DNS 字典爆破** + **JS/HTML host 提取** + DNS + HTTP probe + Wildcard 检测
-- **📧 域名邮箱挖掘 (v1.4.0 → v1.6.0)** — **6 源全并发,完全免费无需注册**:Bing SERP + DuckDuckGo + Wayback + GitHub commits + crt.sh + WHOIS;深度爬虫(robots.txt + sitemap + BFS)+ 模式生成 + 可选 SMTP 验证
+- **🌐 子域名枚举 (v1.3.0 → v1.6.8)** — 6 被动源(crt.sh + CertSpotter + HackerTarget + OTX + **Wayback Machine**)+ **🚀 可选 subfinder 30+ 源** + **DNS 字典爆破** + **JS/HTML host 提取(支持 4xx/5xx title + CNAME 完整 chain)** + DNS + HTTP probe + Wildcard 检测 + **wildcard 严格模式**(v1.6.5 防 DNS 劫持 fake "活")
+- **📧 域名邮箱挖掘 (v1.4.0 → v1.6.6)** — **6 源全并发,完全免费无需注册**:Bing SERP + DuckDuckGo + Wayback + GitHub commits + crt.sh + WHOIS;**HTTP 过滤 + 多 target 并行 BFS 爬虫(3-4× 提速,v1.6.6)**;深度爬虫 + 模式生成 + 可选 SMTP 验证
 - **📊 Diff 模式 + 批量(v1.5.0)** — `spyeyes diff old.json new.json` OSINT 持续监控;`--batch domains.txt` 批量扫描每个域独立报告
-- **📊 8 种 Editorial 风报告** — `JSON / Markdown / HTML / PDF / TXT / CSV / XMind / Graph`,Cormorant Garamond + JetBrains Mono 三件套
+- **🔑 API key 配置(v1.6.8)** — `~/.spyeyes/env` 跨平台自动加载;OTX / CertSpotter / PDCP / GitHub PAT 等都支持;shell export 优先
+- **📊 8 种 Editorial 风报告** — `JSON / Markdown / HTML / PDF / TXT / CSV / XMind / Graph`,Cormorant Garamond + JetBrains Mono 三件套;**报告显示完整 6 源状态 ✅/⊘/❌**(v1.6.8)
 - **🌍 完整中英双语** UI **+ 报告内容**
 - **📈 100% 进度反馈(v1.6.1)** — 所有 > 2 秒操作均有阶段反馈,告别"看着卡死"
+- **📁 跨平台报告目录(v1.6.3+)** — 所有平台都默认 `<cwd>/Downloads/`,`SPYEYES_REPORTS_DIR` 自定义
 
 ## 🔒 安全防护
 
@@ -42,7 +44,7 @@ title: SpyEyes
 - 子域名爬虫 robots.txt 默认遵守 + 单域 500ms 速率限制
 - SMTP 验证 opt-in + 强 disclaimer
 - 隐私选项:`SPYEYES_NO_HISTORY=1` 完全禁用历史
-- **468 个 pytest 测试**,0 红 / **ruff 0 / mypy 0 / bandit 0** 全清,CI 跨 macOS/Linux/Windows × Python 3.10–3.14
+- **488 个 pytest 测试**,0 红 / **ruff 0 / mypy 0 / bandit 0** 全清,CI 跨 macOS/Linux/Windows × Python 3.10–3.14
 
 ## 🚀 快速开始
 
