@@ -68,7 +68,7 @@ except ImportError:
 
 
 # 语义化版本号 —— 同步更新 docs/CHANGELOG.md 与 git tag
-__version__ = '1.4.10'
+__version__ = '1.4.11'
 
 
 # ====================================================================
@@ -2232,8 +2232,9 @@ def email_validate(email: str) -> dict:
 #   - 所有用户输入字段经 _normalize_domain 校验(沿用 whois/mx 同套防御)
 SUBDOMAIN_MAX_RESULTS = 2000           # 输出上限,防被动源刷出几万条压垮内存/网络
 SUBDOMAIN_DEFAULT_WORKERS = 30         # DNS 并发线程数(系统 resolver 不喜欢过高并发)
+SUBDOMAIN_HTTP_WORKERS = 80            # v1.4.11:HTTP probe 用更高并发(I/O bound,~3 倍速)
 SUBDOMAIN_DNS_TIMEOUT = 3.0            # 单条 DNS 查询超时
-SUBDOMAIN_HTTP_PROBE_TIMEOUT = 5.0     # 单条 HTTP probe 超时
+SUBDOMAIN_HTTP_PROBE_TIMEOUT = 4.0     # v1.4.11:5s → 4s(连不上的快点失败)
 SUBDOMAIN_PROBE_MAX_BODY = 16384       # probe 抓取 body 上限(只为提取 <title>)
 SUBDOMAIN_SOURCE_TIMEOUT = 45.0        # v1.4.4:单源被动 API 拉取超时(crt.sh 对 .do 等 TLD 慢,15s 不够)
 
@@ -2676,12 +2677,17 @@ def _probe_one_subdomain(host: str, timeout: float = SUBDOMAIN_HTTP_PROBE_TIMEOU
     """对 alive 子域抓 HTTP status + <title>。先试 https,失败回退 http。
     复用 _get_session 连接池;stream 早停只读 16KB 提取 title。
     v1.4.9:若传 parent_domain,顺带从 body 提取 `*.parent_domain` 的 hostname 引用,
-    返回 'extracted_hosts' 字段(主流程会再 DNS 验证找出新子域)。"""
+    返回 'extracted_hosts' 字段(主流程会再 DNS 验证找出新子域)。
+    v1.4.11:connect_timeout 拆出 (默认 2s) — 死站快速失败,大幅提升整体速度。"""
     out: dict = {'http_status': None, 'title': None, 'scheme': None,
                  'extracted_hosts': set()}
+    # v1.4.11:连接超时单独控制(2s),读取超时仍是 timeout(4s)
+    # 死站:TCP RST 立刻或 2s 内超时 → 早失败 + 切 http 重试,总 ≤ 4s 而非 ≤ 8s
+    connect_to = min(2.0, timeout)
     for scheme in ('https', 'http'):
         url = f'{scheme}://{host}/'
-        resp = safe_get(url, timeout=timeout, stream=True, allow_redirects=True)
+        resp = safe_get(url, timeout=timeout, connect_timeout=connect_to,
+                        stream=True, allow_redirects=True)
         if resp is None:
             continue
         try:
@@ -2818,14 +2824,17 @@ def enumerate_subdomains(domain: str, *, probe: bool = True,
 
     # 4) HTTP probe(仅 alive,除非 wildcard 全标记不可信)
     probed = 0
+    responsive = 0  # v1.4.11:HTTP 真返了状态码的(不是 None)— 用作进度条 found_count
     extracted_total: set[str] = set()
+    # v1.4.11:HTTP probe 是 I/O bound,可用更高并发(80 vs DNS 的 30)
+    http_workers = max(max_workers, SUBDOMAIN_HTTP_WORKERS)
     if probe:
         alive_recs = [r for r in resolved if r.get('alive')]
         if show_progress and alive_recs:
             _stage_log(f"\n {Color.Cy}{t('subdomain.stage_probe', n=len(alive_recs))}{Color.Reset}")
         # v1.4.9:js_extract=True 时把 parent_domain 传给 probe,从 body 抽硬编码 host
         probe_parent = domain if js_extract else None
-        with ThreadPoolExecutor(max_workers=max_workers) as ex:
+        with ThreadPoolExecutor(max_workers=http_workers) as ex:
             futures = {ex.submit(_probe_one_subdomain, r['host'], probe_timeout,
                                  probe_parent): r
                        for r in alive_recs}
@@ -2837,15 +2846,26 @@ def enumerate_subdomains(domain: str, *, probe: bool = True,
                     except Exception:
                         rec['http_status'] = None
                         probed += 1
+                        if show_progress:
+                            _print_scan_progress(probed, len(alive_recs), responsive)
                         continue
                     extracted = result.pop('extracted_hosts', set()) or set()
                     rec.update(result)
                     if extracted:
                         extracted_total |= extracted
                     probed += 1
+                    if rec.get('http_status') is not None:
+                        responsive += 1
+                    # v1.4.11:HTTP probe 实时进度(之前没有,baidu 1203 个时看着像卡了)
+                    if show_progress:
+                        _print_scan_progress(probed, len(alive_recs), responsive)
             except KeyboardInterrupt:
                 ex.shutdown(wait=False, cancel_futures=True)
+                if show_progress:
+                    _clear_progress_line()
                 raise
+        if show_progress and alive_recs:
+            _clear_progress_line()
 
     # v1.4.9:JS 提取的第二轮 — 对 body 中发现的"已知列表外"新 host 做 DNS+probe
     # 单轮即止(不递归),避免对话窗口里跑出爆炸式扩张。
@@ -2860,6 +2880,8 @@ def enumerate_subdomains(domain: str, *, probe: bool = True,
             if show_progress:
                 _stage_log(f"\n {Color.Cy}{t('subdomain.stage_js_extract', n=len(new_hosts))}{Color.Reset}")
             extra_resolved: list = []
+            extra_done = 0
+            extra_alive_count = 0
             with ThreadPoolExecutor(max_workers=max_workers) as ex:
                 futures = {ex.submit(_resolve_one_subdomain, h, dns_timeout): h
                            for h in new_hosts}
@@ -2872,13 +2894,25 @@ def enumerate_subdomains(domain: str, *, probe: bool = True,
                                    'a': [], 'aaaa': [], 'cname': None}
                         rec['source_hint'] = 'js_extract'
                         extra_resolved.append(rec)
+                        extra_done += 1
+                        if rec.get('alive'):
+                            extra_alive_count += 1
+                        # v1.4.11:JS 提取阶段 DNS 解析进度
+                        if show_progress:
+                            _print_scan_progress(extra_done, len(new_hosts), extra_alive_count)
                 except KeyboardInterrupt:
                     ex.shutdown(wait=False, cancel_futures=True)
+                    if show_progress:
+                        _clear_progress_line()
                     raise
+            if show_progress:
+                _clear_progress_line()
             # 对 alive 的 extracted host 跑 probe(不再递归提取 — 单轮即止)
             extra_alive = [r for r in extra_resolved if r.get('alive')]
             if extra_alive:
-                with ThreadPoolExecutor(max_workers=max_workers) as ex:
+                extra_probe_done = 0
+                extra_responsive = 0
+                with ThreadPoolExecutor(max_workers=http_workers) as ex:
                     futures = {ex.submit(_probe_one_subdomain, r['host'],
                                          probe_timeout, None): r
                                for r in extra_alive}
@@ -2890,13 +2924,25 @@ def enumerate_subdomains(domain: str, *, probe: bool = True,
                             except Exception:
                                 rec['http_status'] = None
                                 probed += 1
+                                extra_probe_done += 1
+                                if show_progress:
+                                    _print_scan_progress(extra_probe_done, len(extra_alive), extra_responsive)
                                 continue
                             result.pop('extracted_hosts', None)
                             rec.update(result)
                             probed += 1
+                            extra_probe_done += 1
+                            if rec.get('http_status') is not None:
+                                extra_responsive += 1
+                            if show_progress:
+                                _print_scan_progress(extra_probe_done, len(extra_alive), extra_responsive)
                     except KeyboardInterrupt:
                         ex.shutdown(wait=False, cancel_futures=True)
+                        if show_progress:
+                            _clear_progress_line()
                         raise
+                if show_progress:
+                    _clear_progress_line()
             resolved.extend(extra_resolved)
             js_extracted_count = len(extra_resolved)
 

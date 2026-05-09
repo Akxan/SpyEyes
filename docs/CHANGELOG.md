@@ -18,6 +18,69 @@ This project adheres to [Keep a Changelog](https://keepachangelog.com/en/1.1.0/)
 
 ---
 
+## [1.4.11] — 2026-05-09
+
+✨ **HTTP probe 阶段进度条 + 提速 ~3×**(用户反馈"baidu.com 卡死不动")
+
+### 背景
+
+用户对大型域(baidu.com,1200+ 活跃子域)反馈"阶段 4/4 看不到进度,以为卡了"。实际是在跑,但阶段 4(HTTP probe)和 4b(JS extract)**没有进度反馈**,体感像死机。
+
+### Fixes
+
+#### 进度条 — 阶段 4 / 4b 都加上
+
+之前只有阶段 3(DNS 解析)有进度条;阶段 4(HTTP probe)和 v1.4.9 加的 4b(JS extract 第二轮 DNS+probe)都是干等。现在:
+
+- 阶段 4:`█████░░░░░░ 350/1203 (29.1%) 找到: 287` 实时刷新
+- 阶段 4b DNS:`█████████░░ 80/94 (85.1%) 找到: 23`
+- 阶段 4b probe:`██████░░░░ 15/23 (65.2%) 找到: 12`
+
+#### 提速 — 三处合一,实测 ~3× 加速
+
+| 改动 | 之前 | 现在 |
+|---|---|---|
+| HTTP probe worker 池 | 30(与 DNS 共享) | **80**(独立池,I/O bound 可高并发) |
+| HTTP 总超时 | 5s | **4s** |
+| HTTP connect 超时 | 与读超时共用 5s(死站要 5s 才放弃) | **拆出 2s**(死站 2s 即放弃) |
+
+死站快速失败的效果(以 1203 个 host、含 30% 死站为例):
+
+```
+v1.4.10:  1203 / 30 workers × 5s = ~200s 最坏
+v1.4.11:  1203 / 80 workers × 4s = ~60s 最坏 (含 2s connect 早失败)
+                                    实测约 80s(含 stage 4b 二轮)
+```
+
+### 实测(`baidu.com`,完整流程 + JS 提取)
+
+| 项 | v1.4.10 | v1.4.11 |
+|---|---|---|
+| 总耗时 | ~3 分钟 + 看着像卡死 | ~2 分钟 + 实时进度条 |
+| 阶段 4 是否显示进度 | ❌ | ✅ |
+| 体感 | "卡了?要不要 Ctrl+C?" | "在跑,89/1290 已 probe" |
+
+### 配置
+
+新增模块级常量(高级用户可改):
+
+```python
+SUBDOMAIN_HTTP_WORKERS = 80   # v1.4.11:HTTP probe 独立 worker 池
+SUBDOMAIN_HTTP_PROBE_TIMEOUT = 4.0  # v1.4.11: 5.0 → 4.0
+```
+
+CLI 用户仍可 `--workers N --timeout S` 覆盖(`--workers` 现在仅控 DNS,HTTP probe 自动用 max(N, 80))。
+
+### Tests
+
+443 全绿(无新功能,仅性能/UX 改进,不需要新测试)。
+
+### Packaging
+
+- `__version__` 1.4.10 → 1.4.11
+
+---
+
 ## [1.4.10] — 2026-05-09
 
 ✨ **`--alive-only` 现在也过滤导出报告**(用户反馈:bruteforce 后 dead 子域占满 HTML/PDF)
