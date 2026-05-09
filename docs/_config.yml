@@ -3,8 +3,8 @@
 # 启用后访问: https://akxan.github.io/SpyEyes/
 
 title: SpyEyes
-description: All-in-One OSINT Toolkit · 9 commands · 3164 platforms · subdomain & email enumeration · 8 Editorial report formats · zh+en bilingual
-theme: jekyll-theme-cayman
+description: All-in-One OSINT Toolkit · 10 commands · 3164 platforms · Subdomain (7 dim) + Email (6 free sources) + Diff + Batch · 8 Editorial reports · zh+en bilingual · v1.6.12
+theme: jekyll-theme-hacker
 
 # 仓库信息
 repository: Akxan/SpyEyes
