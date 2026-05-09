@@ -475,6 +475,7 @@ Found a security issue? Please report responsibly via [SECURITY.md](docs/SECURIT
 
 ## 🙏 Acknowledgments
 
+- 🌟 **[LINUX DO Community](https://linux.do)** — Open-source Chinese tech community; this project actively participates in and recognizes the community
 - 🌟 **[Google libphonenumber](https://github.com/google/libphonenumber)** — industry-standard phone number library
 - 🌟 **[ipwho.is](https://ipwho.is/)** — free, stable, info-rich IP geolocation API
 - 🌟 **[ipify.org](https://www.ipify.org/)** — clean public IP lookup service

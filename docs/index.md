@@ -94,4 +94,4 @@ SPYEYES_NO_HISTORY=1 python3 -m spyeyes ...   # 禁用历史(隐私模式)
 
 ---
 
-**License**: Apache 2.0 · **Author**: [Akxan](https://github.com/Akxan)
+**License**: Apache 2.0 · **Author**: [Akxan](https://github.com/Akxan) · **社区**: [LINUX DO](https://linux.do)
