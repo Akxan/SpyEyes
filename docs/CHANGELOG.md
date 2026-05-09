@@ -18,6 +18,53 @@ This project adheres to [Keep a Changelog](https://keepachangelog.com/en/1.1.0/)
 
 ---
 
+## [1.6.13] — 2026-05-09
+
+🐛 **修复 CSV 在 Excel/Numbers 打开中文乱码**(用户反馈截图)
+
+### 背景
+
+用户截图反馈 CSV 报告在 Excel 打开:中文表头 `主机名`/`标题` 显示成 `涓绘満銉`/`鏍囬`,列宽溢出。
+
+### 根因
+
+经典 Excel 不认 UTF-8 CSV:
+- SpyEyes 写 `encoding='utf-8'`(标准)
+- Excel/Numbers 打开默认按 **GBK / 系统编码**解析
+- 字节被错误解释 → 全乱码
+
+### 修复
+
+CSV 文件头加 **UTF-8 BOM**(`EF BB BF`),Excel/Numbers 看到 BOM 立刻识别 UTF-8:
+
+```python
+# 之前
+encoding='utf-8'
+
+# 现在 v1.6.13
+encoding='utf-8-sig'   # 自动写 BOM 头
+```
+
+### 验证
+
+```bash
+$ xxd report.csv | head -1
+00000000: efbb bfe5 ad97 e6ae b5 2c e580 bc0a ...
+        ↑ UTF-8 BOM    ↑ "字段,值"(中文)
+```
+
+Excel macOS / Excel Windows / Numbers / WPS / LibreOffice / Google Sheets 全部识别。
+
+### Tests / Lint
+
+无新测试(改一个 encoding 参数)。**488 全绿**。ruff 0 / mypy 0 / bandit 0。
+
+### Packaging
+
+- `__version__` 1.6.12 → 1.6.13
+
+---
+
 ## [1.6.12] — 2026-05-09
 
 ✨ **交互菜单 `[9] 域名邮箱` 加爬取深度选项**(用户反馈)

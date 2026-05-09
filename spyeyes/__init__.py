@@ -68,7 +68,7 @@ except ImportError:
 
 
 # 语义化版本号 —— 同步更新 docs/CHANGELOG.md 与 git tag
-__version__ = '1.6.12'
+__version__ = '1.6.13'
 
 
 # ====================================================================
@@ -4982,8 +4982,11 @@ def _maybe_save(target: Optional[str], prefix: str, data: Any) -> None:
                 with open(target, 'w', encoding='utf-8') as f:
                     f.write(_to_txt(prefix, data))
             elif is_csv_file:
-                # newline='' 让 csv 模块自己控行尾，避免 Windows 多余 \r
-                with open(target, 'w', encoding='utf-8', newline='') as f:
+                # newline='' 让 csv 模块自己控行尾,避免 Windows 多余 \r
+                # v1.6.13:加 UTF-8 BOM(﻿)解决 Excel/Numbers 中文乱码问题
+                # Excel 默认按 GBK/系统编码解析 UTF-8 字节会乱码,看到 BOM 才正确识别
+                # 用 'utf-8-sig' 编码自动写入 BOM
+                with open(target, 'w', encoding='utf-8-sig', newline='') as f:
                     f.write(_to_csv(prefix, data))
             elif is_xmind_file:
                 err = _to_xmind(prefix, data, target)
