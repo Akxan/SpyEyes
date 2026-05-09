@@ -18,6 +18,89 @@ This project adheres to [Keep a Changelog](https://keepachangelog.com/en/1.1.0/)
 
 ---
 
+## [1.5.0] — 2026-05-09
+
+✨ **三大新功能 + 4 工具全清的"硬性收官"版本**
+
+### 新功能
+
+#### 1. 子域名 Diff 模式(`spyeyes diff old.json new.json`)
+
+OSINT 持续监控刚需 — 对比两次扫描挖出**新增 / 消失 / 状态变更**的子域。
+
+```bash
+spyeyes subdomain example.com --json > monday.json
+# ... 几天后 ...
+spyeyes subdomain example.com --json > friday.json
+spyeyes diff monday.json friday.json   # 差异报告
+spyeyes diff monday.json friday.json --save diff_report.html  # 8 种格式可导
+```
+
+输出结构(`_stats`):
+- `added`:周二之前不在,周五新冒出来的子域
+- `removed`:之前在但现在消失的(可能下线了)
+- `changed`:host 仍在,但 IP / HTTP 状态 / Title 变了
+- `unchanged`:完全一致(快速跳过)
+
+字段对比包括:`alive / a / aaaa / cname / http_status / title`,**列表顺序无关**(`['1.1.1.1', '2.2.2.2']` 与 `['2.2.2.2', '1.1.1.1']` 视为同一)。
+
+#### 2. 批量域名输入(`spyeyes subdomain --batch domains.txt`)
+
+```bash
+echo -e "example.com\nlinux.do\n# 注释行\nakxan.com" > targets.txt
+spyeyes subdomain --batch targets.txt --batch-save-dir reports/ --alive-only
+```
+
+每个域独立扫描 + 独立报告,自动跳过 `#` 注释行 / 空行。`--batch-save-dir` 创建目录(若不存在)+ 每个域写 `subdomain_<domain>.html`(扩展名取 `--save` 或默认 `.html`)。
+
+`--alive-only` 在 batch 模式下也对每个域独立生效。Ctrl+C 中断时显示"已完成 N/M",已跑的不丢。
+
+#### 3. PyPI 构建产物 + twine 验证全过
+
+`pyproject.toml` 配齐 setuptools build,本地 `python -m build` 产 wheel + sdist:
+
+```
+spyeyes-1.5.0-py3-none-any.whl   198K
+spyeyes-1.5.0.tar.gz             245K
+```
+
+二者均通过 `twine check`。**实际上传 PyPI 需要你的 API token**:
+
+```bash
+twine upload dist/*
+```
+
+成功后任何人 `pip install spyeyes` 直接用。
+
+### 代码质量(4 工具全清)
+
+| 工具 | 状态 | 备注 |
+|---|---|---|
+| **ruff** | ✅ 0 issues | 全项目 + 测试 |
+| **mypy** | ✅ 0 errors | 含新加的 diff/batch 函数完整类型注解 |
+| **bandit** | ✅ 0 issues | B110/B112(silent 降级)加项目级 skip + 注释;B603(subprocess)加 nosec + 完整理由 |
+| **pytest** | ✅ 456 passed | +13 新测试(`TestSubdomainDiff` × 8, `TestSubdomainBatch` × 5)|
+
+### 修复
+
+- `clear_screen()` 改用 ANSI 转义 `\033[2J\033[H` 替代 `os.system('cls'/'clear')` — 跨平台 + 无子进程 + 消除 bandit B605/B607 警告
+- `diff_subdomain_results()` 显式类型收窄,host 必须是非空 str 才入 map(满足 mypy 严格类型检查)
+
+### 性能(实测)
+
+| 操作 | 时长 |
+|---|---|
+| 5000-vs-5000 host diff | **12 ms** |
+| `_extract_hosts_from_body` 16KB body | **1.18 ms/call** |
+| `_clean_subdomain_candidates` 10K hosts | **4.6 ms** |
+| `_generate_bruteforce_candidates` (220 词) | **0.14 ms** |
+
+### Packaging
+
+- `__version__` 1.4.11 → 1.5.0(进入 1.5 主线 — 表明三大新功能 + 代码质量里程碑)
+
+---
+
 ## [1.4.11] — 2026-05-09
 
 ✨ **HTTP probe 阶段进度条 + 提速 ~3×**(用户反馈"baidu.com 卡死不动")

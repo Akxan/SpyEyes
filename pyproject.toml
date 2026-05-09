@@ -23,7 +23,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "spyeyes"
-version = "1.4.11"  # 同步：spyeyes/__init__.py __version__ + docs/CHANGELOG.md + git tag
+version = "1.5.0"  # 同步：spyeyes/__init__.py __version__ + docs/CHANGELOG.md + git tag
 description = "All-in-One OSINT toolkit (bilingual zh/en) — IP / Phone / Username (3164 platforms) / WHOIS / MX / Email / Subdomain enumeration + Permutations / Recursive / 8 report formats (HTML / PDF / XMind / Graph ...)"
 readme = "README.md"
 requires-python = ">=3.10"
@@ -99,3 +99,11 @@ target-version = "py310"
 [tool.mypy]
 python_version = "3.10"
 ignore_missing_imports = true
+
+[tool.bandit]
+# 跳过 B110 (try/except/pass) 和 B112 (try/except/continue) —
+# SpyEyes 设计哲学是 OSINT 源/网络异常 silent 降级:任何单源失败 / DNS 超时
+# / body 解码错误 / 单页爬取错误,都被刻意吞掉以保证主流程继续
+# (见 SUBDOMAIN_SOURCES 设计:"任何一源挂掉,其它源继续工作")。
+# 这是有意识的架构决策,不是疏忽,所以跳过这两类规则而非逐行加 nosec。
+skips = ["B110", "B112"]

@@ -2862,6 +2862,198 @@ class TestSubdomainCli:
         assert '_filtered' not in data
 
 
+class TestSubdomainDiff:
+    """v1.5.0:子域名 diff 模式 — 对比两次扫描挖出新增/消失/变更。"""
+
+    def _make(self, subs):
+        return {'domain': 'example.com', 'subdomains': subs,
+                '_stats': {'total': len(subs), 'alive': sum(1 for s in subs if s.get('alive'))}}
+
+    def test_added_only(self):
+        old = self._make([{'host': 'a.example.com', 'alive': True, 'a': ['1.1.1.1']}])
+        new = self._make([
+            {'host': 'a.example.com', 'alive': True, 'a': ['1.1.1.1']},
+            {'host': 'b.example.com', 'alive': True, 'a': ['2.2.2.2']},
+        ])
+        d = gt.diff_subdomain_results(old, new)
+        assert d['_stats']['added'] == 1
+        assert d['_stats']['removed'] == 0
+        assert d['_stats']['changed'] == 0
+        assert d['added'][0]['host'] == 'b.example.com'
+
+    def test_removed_only(self):
+        old = self._make([
+            {'host': 'a.example.com', 'alive': True, 'a': ['1.1.1.1']},
+            {'host': 'gone.example.com', 'alive': True, 'a': ['9.9.9.9']},
+        ])
+        new = self._make([{'host': 'a.example.com', 'alive': True, 'a': ['1.1.1.1']}])
+        d = gt.diff_subdomain_results(old, new)
+        assert d['_stats']['removed'] == 1
+        assert d['removed'][0]['host'] == 'gone.example.com'
+
+    def test_changed_ip(self):
+        old = self._make([{'host': 'a.example.com', 'alive': True, 'a': ['1.1.1.1']}])
+        new = self._make([{'host': 'a.example.com', 'alive': True, 'a': ['2.2.2.2']}])
+        d = gt.diff_subdomain_results(old, new)
+        assert d['_stats']['changed'] == 1
+        c = d['changed'][0]
+        assert c['host'] == 'a.example.com'
+        assert 'a' in c['changes']
+        assert c['changes']['a'] == {'before': ['1.1.1.1'], 'after': ['2.2.2.2']}
+
+    def test_changed_http_status(self):
+        old = self._make([{'host': 'a.example.com', 'alive': True, 'a': ['1.1.1.1'],
+                            'http_status': 200, 'title': 'Old'}])
+        new = self._make([{'host': 'a.example.com', 'alive': True, 'a': ['1.1.1.1'],
+                            'http_status': 401, 'title': 'Old'}])
+        d = gt.diff_subdomain_results(old, new)
+        assert d['_stats']['changed'] == 1
+        assert 'http_status' in d['changed'][0]['changes']
+
+    def test_unchanged_skipped(self):
+        same = [{'host': 'a.example.com', 'alive': True, 'a': ['1.1.1.1'],
+                 'aaaa': [], 'cname': None, 'http_status': 200, 'title': 'X'}]
+        d = gt.diff_subdomain_results(self._make(same), self._make(same))
+        assert d['_stats']['changed'] == 0
+        assert d['_stats']['unchanged'] == 1
+
+    def test_list_order_independence(self):
+        """A 记录列表顺序不同但内容一致 → 不算变更。"""
+        old = self._make([{'host': 'a.example.com', 'alive': True,
+                            'a': ['1.1.1.1', '2.2.2.2']}])
+        new = self._make([{'host': 'a.example.com', 'alive': True,
+                            'a': ['2.2.2.2', '1.1.1.1']}])
+        d = gt.diff_subdomain_results(old, new)
+        assert d['_stats']['changed'] == 0
+
+    def test_invalid_inputs(self):
+        d = gt.diff_subdomain_results('not-a-dict', {})
+        assert '_error' in d
+
+    def test_diff_cli_subcommand(self, monkeypatch, tmp_path, capsys):
+        """CLI:spyeyes diff old.json new.json"""
+        old_file = tmp_path / 'old.json'
+        new_file = tmp_path / 'new.json'
+        old_file.write_text(json.dumps(self._make([
+            {'host': 'a.example.com', 'alive': True, 'a': ['1.1.1.1']}])))
+        new_file.write_text(json.dumps(self._make([
+            {'host': 'a.example.com', 'alive': True, 'a': ['1.1.1.1']},
+            {'host': 'b.example.com', 'alive': True, 'a': ['2.2.2.2']}])))
+        monkeypatch.setattr(gt, 'HISTORY_FILE', str(tmp_path / 'h.jsonl'))
+        monkeypatch.setattr(gt, 'CONFIG_DIR', str(tmp_path))
+        import argparse
+        args = argparse.Namespace(command='diff', old=str(old_file), new=str(new_file),
+                                   json=True, save=None)
+        rc = gt.run_cli(args)
+        assert rc == 0
+        out = json.loads(capsys.readouterr().out)
+        assert out['_stats']['added'] == 1
+        assert out['_stats']['removed'] == 0
+
+
+class TestSubdomainBatch:
+    """v1.5.0:--batch domains.txt 批量扫描。"""
+
+    def test_batch_reads_domains_skips_comments(self, monkeypatch, tmp_path):
+        """空行 / # 注释行被忽略,有效域名传给 enumerate_subdomains。"""
+        wl = tmp_path / 'd.txt'
+        wl.write_text('# 注释行\nexample.com\n\n   \n# another\nlinux.do\n', encoding='utf-8')
+        captured: list = []
+        monkeypatch.setattr(gt, 'enumerate_subdomains',
+                            lambda d, **kw: captured.append(d) or {
+                                'domain': d, 'subdomains': [],
+                                '_stats': {'total': 0, 'alive': 0}})
+        monkeypatch.setattr(gt, 'HISTORY_FILE', str(tmp_path / 'h.jsonl'))
+        monkeypatch.setattr(gt, 'CONFIG_DIR', str(tmp_path))
+        import argparse
+        args = argparse.Namespace(command='subdomain', domain=None,
+                                   batch_file=str(wl), batch_save_dir=None,
+                                   no_probe=True, workers=30, timeout=4.0,
+                                   alive_only=False, bruteforce=False,
+                                   no_js_extract=True, json=False, save=None)
+        rc = gt.run_cli(args)
+        assert rc == 0
+        assert captured == ['example.com', 'linux.do']
+
+    def test_batch_writes_per_domain_files(self, monkeypatch, tmp_path):
+        """--batch-save-dir 时每个 domain 写一份独立报告。"""
+        wl = tmp_path / 'd.txt'
+        wl.write_text('a.com\nb.com\n', encoding='utf-8')
+        save_dir = tmp_path / 'out'
+        monkeypatch.setattr(gt, 'enumerate_subdomains', lambda d, **kw: {
+            'domain': d,
+            'subdomains': [{'host': f'www.{d}', 'alive': True,
+                            'a': ['1.2.3.4'], 'aaaa': [], 'cname': None,
+                            'http_status': 200, 'title': d, 'scheme': 'https'}],
+            '_stats': {'total': 1, 'alive': 1, 'probed': 1},
+            'sources': {}, 'wildcard_suspect': False,
+        })
+        monkeypatch.setattr(gt, 'HISTORY_FILE', str(tmp_path / 'h.jsonl'))
+        monkeypatch.setattr(gt, 'CONFIG_DIR', str(tmp_path))
+        import argparse
+        args = argparse.Namespace(command='subdomain', domain=None,
+                                   batch_file=str(wl), batch_save_dir=str(save_dir),
+                                   no_probe=False, workers=30, timeout=4.0,
+                                   alive_only=False, bruteforce=False,
+                                   no_js_extract=True, json=False, save=None)
+        rc = gt.run_cli(args)
+        assert rc == 0
+        files = sorted(p.name for p in save_dir.iterdir())
+        assert files == ['subdomain_a.com.html', 'subdomain_b.com.html']
+
+    def test_batch_missing_file_returns_error(self, monkeypatch, tmp_path):
+        monkeypatch.setattr(gt, 'HISTORY_FILE', str(tmp_path / 'h.jsonl'))
+        monkeypatch.setattr(gt, 'CONFIG_DIR', str(tmp_path))
+        import argparse
+        args = argparse.Namespace(command='subdomain', domain=None,
+                                   batch_file='/nonexistent/foo.txt',
+                                   batch_save_dir=None,
+                                   no_probe=True, workers=30, timeout=4.0,
+                                   alive_only=False, bruteforce=False,
+                                   no_js_extract=True, json=False, save=None)
+        rc = gt.run_cli(args)
+        assert rc == 2
+
+    def test_batch_empty_file_returns_error(self, tmp_path, monkeypatch):
+        wl = tmp_path / 'empty.txt'
+        wl.write_text('# 全是注释\n# 没有实际 domain\n\n', encoding='utf-8')
+        monkeypatch.setattr(gt, 'HISTORY_FILE', str(tmp_path / 'h.jsonl'))
+        monkeypatch.setattr(gt, 'CONFIG_DIR', str(tmp_path))
+        import argparse
+        args = argparse.Namespace(command='subdomain', domain=None,
+                                   batch_file=str(wl), batch_save_dir=None,
+                                   no_probe=True, workers=30, timeout=4.0,
+                                   alive_only=False, bruteforce=False,
+                                   no_js_extract=True, json=False, save=None)
+        rc = gt.run_cli(args)
+        assert rc == 2
+
+    def test_batch_alive_only_filters_each_domain(self, monkeypatch, tmp_path):
+        """--alive-only 在 batch 模式下也对每个 domain 过滤。"""
+        wl = tmp_path / 'd.txt'
+        wl.write_text('a.com\n', encoding='utf-8')
+        monkeypatch.setattr(gt, 'enumerate_subdomains', lambda d, **kw: {
+            'domain': d, 'subdomains': [
+                {'host': f'a.{d}', 'alive': True, 'a': ['1.1.1.1']},
+                {'host': f'b.{d}', 'alive': False, 'a': []}],
+            '_stats': {'total': 2, 'alive': 1}, 'sources': {},
+        })
+        save_dir = tmp_path / 'out'
+        monkeypatch.setattr(gt, 'HISTORY_FILE', str(tmp_path / 'h.jsonl'))
+        monkeypatch.setattr(gt, 'CONFIG_DIR', str(tmp_path))
+        import argparse
+        args = argparse.Namespace(command='subdomain', domain=None,
+                                   batch_file=str(wl), batch_save_dir=str(save_dir),
+                                   no_probe=False, workers=30, timeout=4.0,
+                                   alive_only=True, bruteforce=False,
+                                   no_js_extract=True, json=False, save=None)
+        rc = gt.run_cli(args)
+        assert rc == 0
+        html = (save_dir / 'subdomain_a.com.html').read_text(encoding='utf-8')
+        assert 'a.a.com' in html  # alive 留下
+        assert 'b.a.com' not in html  # dead 被过滤
+
+
 class TestSubdomainReports:
     """8 种报告生成器在 subdomain 数据上不崩 + 关键内容存在。"""
 

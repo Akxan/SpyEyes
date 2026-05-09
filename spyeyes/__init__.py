@@ -68,7 +68,7 @@ except ImportError:
 
 
 # 语义化版本号 —— 同步更新 docs/CHANGELOG.md 与 git tag
-__version__ = '1.4.11'
+__version__ = '1.5.0'
 
 
 # ====================================================================
@@ -330,6 +330,15 @@ TRANSLATIONS: dict = {
         'subdomain.col_status':       'HTTP',
         'subdomain.col_title':        'Title',
         # v1.3.3:阶段进度反馈,告诉用户每一步在做什么(消除"卡顿期")
+        # v1.5.0 — Subdomain diff
+        'diff.title':                 'Subdomain diff: {domain}',
+        'diff.summary':               'Added {added} · Removed {removed} · Changed {changed} · Unchanged {unchanged}',
+        'diff.section_added':         '+ Added subdomains ({n})',
+        'diff.section_removed':       '- Removed subdomains ({n})',
+        'diff.section_changed':       '~ Changed subdomains ({n})',
+        'diff.no_changes':            'No changes detected — both scans are identical',
+        'diff.err_load':              'Failed to load JSON: {path}',
+        'diff.err_invalid':           'Invalid input — both files must be enumerate_subdomains() JSON output',
         'subdomain.stage_passive':    'Stage 1/4: Fetching passive sources (crt.sh / CertSpotter / HackerTarget / OTX / Wayback / subfinder) ...',
         'subdomain.stage_wildcard':   'Stage 2/4: Detecting wildcard DNS ...',
         'subdomain.stage_dns':        'Stage 3/4: Resolving {n} candidates via DNS ...',
@@ -599,6 +608,15 @@ TRANSLATIONS: dict = {
         'subdomain.col_status':       'HTTP',
         'subdomain.col_title':        '标题',
         # v1.3.3:阶段进度反馈,告诉用户每一步在做什么(消除"卡顿期")
+        # v1.5.0 — 子域名 diff
+        'diff.title':                 '子域名 diff:{domain}',
+        'diff.summary':               '新增 {added} 个 · 消失 {removed} 个 · 变更 {changed} 个 · 不变 {unchanged} 个',
+        'diff.section_added':         '+ 新增子域 ({n} 个)',
+        'diff.section_removed':       '- 消失子域 ({n} 个)',
+        'diff.section_changed':       '~ 变更子域 ({n} 个)',
+        'diff.no_changes':            '无变化 — 两次扫描完全一致',
+        'diff.err_load':              '加载 JSON 失败:{path}',
+        'diff.err_invalid':           '输入无效 — 两份文件必须是 enumerate_subdomains() 的 JSON 输出',
         'subdomain.stage_passive':    '阶段 1/4:拉取被动数据源(crt.sh / CertSpotter / HackerTarget / OTX / Wayback / subfinder)...',
         'subdomain.stage_wildcard':   '阶段 2/4:通配符 DNS 检测 ...',
         'subdomain.stage_dns':        '阶段 3/4:DNS 解析 {n} 个候选 ...',
@@ -972,10 +990,11 @@ def print_field(label: str, value: Any, *, width: int = 20, indent: str = ' ') -
 
 
 def clear_screen() -> None:
-    if os.name == 'nt':
-        os.system('cls')
-    elif os.environ.get('TERM'):
-        os.system('clear')
+    """v1.5.0:用 ANSI 转义替代 os.system('cls'/'clear') —
+    跨平台 + 无子进程开销(Windows 10+ 默认支持 ANSI)。"""
+    if sys.stdout.isatty():
+        sys.stdout.write('\033[2J\033[H')
+        sys.stdout.flush()
 
 
 # ====================================================================
@@ -2443,13 +2462,16 @@ def _src_subfinder(domain: str) -> set[str]:
     bin_path = _has_subfinder()
     if not bin_path:
         return set()
-    import subprocess
+    # subfinder 是用户主动安装的可信工具,bin_path 来自 shutil.which
+    # (仅返 PATH 内可执行文件),domain 已 _normalize_domain 校验,
+    # 参数全是字面量,shell=False(默认)。安全。
+    import subprocess  # nosec B404
     try:
-        proc = subprocess.run(
+        proc = subprocess.run(  # nosec B603
             [bin_path, '-d', domain, '-silent', '-json',
              '-timeout', '30', '-max-time', '2'],  # max-time 单位:分钟
             capture_output=True, text=True,
-            timeout=SUBFINDER_TIMEOUT,
+            timeout=SUBFINDER_TIMEOUT, shell=False,
         )
     except (subprocess.TimeoutExpired, OSError):
         return set()
@@ -2966,6 +2988,87 @@ def enumerate_subdomains(domain: str, *, probe: bool = True,
             'bruteforce_added': bruteforce_count,
             'js_extracted': js_extracted_count,
             'errors': passive.get('errors', {}),
+        },
+    }
+
+
+# ====================================================================
+# v1.5.0: 子域名 Diff 模式 — 对比两次扫描,挖出新增/消失/状态变更
+# ====================================================================
+# 用例:OSINT 持续监控 — 周一跑一次保存 JSON,周五再跑一次,diff 出新冒出来的子域
+# 输入:两份 enumerate_subdomains 的 JSON 输出
+# 输出:{added: [...], removed: [...], changed: [{host, before, after, changes}], unchanged_count}
+
+def diff_subdomain_results(old: dict, new: dict) -> dict:
+    """对比两次子域扫描结果。返回 added/removed/changed 三组 + 元数据。
+
+    added:   new 里有但 old 里没有的 host
+    removed: old 里有但 new 里没有的 host
+    changed: 两边都有,但 alive / a / aaaa / cname / http_status / title 有变化
+    unchanged_count:  两边完全一致的 host 数
+
+    每个 changed 条目含具体变化字段,便于报告生成器突出显示。
+    """
+    if not isinstance(old, dict) or not isinstance(new, dict):
+        return {'_error': 'invalid input — both must be enumerate_subdomains() output'}
+    old_subs = old.get('subdomains') or []
+    new_subs = new.get('subdomains') or []
+    # 显式类型收窄(满足 mypy):host 必须是非空 str 才入 map
+    old_map: dict[str, dict] = {}
+    for s in old_subs:
+        if isinstance(s, dict):
+            h = s.get('host')
+            if isinstance(h, str) and h:
+                old_map[h] = s
+    new_map: dict[str, dict] = {}
+    for s in new_subs:
+        if isinstance(s, dict):
+            h = s.get('host')
+            if isinstance(h, str) and h:
+                new_map[h] = s
+
+    added = sorted([new_map[h] for h in new_map if h not in old_map],
+                   key=lambda r: r.get('host', ''))
+    removed = sorted([old_map[h] for h in old_map if h not in new_map],
+                     key=lambda r: r.get('host', ''))
+
+    changed: list = []
+    unchanged_count = 0
+    # 对两边都有的 host,逐字段比较
+    common_hosts = sorted(set(old_map) & set(new_map))
+    tracked_fields = ('alive', 'a', 'aaaa', 'cname', 'http_status', 'title')
+    for host in common_hosts:
+        before = old_map[host]
+        after = new_map[host]
+        diffs: dict = {}
+        for f in tracked_fields:
+            b_val = before.get(f)
+            a_val = after.get(f)
+            # 列表比较前先归一化(顺序无关)
+            if isinstance(b_val, list) and isinstance(a_val, list):
+                if sorted(b_val) != sorted(a_val):
+                    diffs[f] = {'before': b_val, 'after': a_val}
+            elif b_val != a_val:
+                diffs[f] = {'before': b_val, 'after': a_val}
+        if diffs:
+            changed.append({'host': host, 'changes': diffs,
+                            'before': {f: before.get(f) for f in tracked_fields},
+                            'after': {f: after.get(f) for f in tracked_fields}})
+        else:
+            unchanged_count += 1
+
+    return {
+        'domain': new.get('domain') or old.get('domain') or '',
+        'added': added,
+        'removed': removed,
+        'changed': changed,
+        '_stats': {
+            'added': len(added),
+            'removed': len(removed),
+            'changed': len(changed),
+            'unchanged': unchanged_count,
+            'total_old': len(old_subs),
+            'total_new': len(new_subs),
         },
     }
 
@@ -3892,6 +3995,51 @@ def print_domain_emails(data: dict) -> None:
                 page_str = f"  {Color.Bl}{e['page'][:60]}{Color.Reset}"
             print(f" {Color.Wh}[ {Color.Gr}+ {Color.Wh}] {addr:45} {Color.Mage}({srcs_str}){Color.Reset}{v_str}{page_str}")
         print()
+
+
+def print_subdomain_diff(data: dict) -> None:
+    """v1.5.0:终端打印 Diff 结果。三组分块 + 颜色编码:绿=新增,红=消失,黄=变更。"""
+    if isinstance(data, dict) and data.get('_error'):
+        print(f"\n {Color.Re}{data['_error']}{Color.Reset}\n")
+        return
+    _print_section_header('section.subdomain')
+    print()
+    domain = data.get('domain', '')
+    stats = data.get('_stats', {}) or {}
+    print(f" {Color.Wh}{t('diff.title', domain=domain)}{Color.Reset}")
+    print(f" {Color.Wh}{t('diff.summary', added=stats.get('added', 0), removed=stats.get('removed', 0), changed=stats.get('changed', 0), unchanged=stats.get('unchanged', 0))}{Color.Reset}")
+    print()
+    added = data.get('added') or []
+    removed = data.get('removed') or []
+    changed = data.get('changed') or []
+    if added:
+        print(f" {Color.Gr}{t('diff.section_added', n=len(added))}{Color.Reset}")
+        for s in added:
+            ip = (s.get('a') or s.get('aaaa') or [None])[0]
+            status = s.get('http_status')
+            status_str = f"HTTP {status}" if status else ''
+            print(f"   {Color.Gr}+ {s.get('host', ''):45} {Color.Wh}{(ip or '-'):20} {Color.Cy}{status_str}{Color.Reset}")
+        print()
+    if removed:
+        print(f" {Color.Re}{t('diff.section_removed', n=len(removed))}{Color.Reset}")
+        for s in removed:
+            ip = (s.get('a') or s.get('aaaa') or [None])[0]
+            print(f"   {Color.Re}- {s.get('host', ''):45} {Color.Wh}{(ip or '-'):20}{Color.Reset}")
+        print()
+    if changed:
+        print(f" {Color.Ye}{t('diff.section_changed', n=len(changed))}{Color.Reset}")
+        for c in changed:
+            host = c.get('host', '')
+            chg = c.get('changes', {})
+            fields = ', '.join(chg.keys())
+            print(f"   {Color.Ye}~ {host:45} {Color.Wh}变更字段: {Color.Mage}{fields}{Color.Reset}")
+            for field, vals in chg.items():
+                b = vals.get('before')
+                a = vals.get('after')
+                print(f"     {Color.Bl}{field}{Color.Reset}: {Color.Re}{b}{Color.Reset} → {Color.Gr}{a}{Color.Reset}")
+        print()
+    if not added and not removed and not changed:
+        print(f" {Color.Gr}{t('diff.no_changes')}{Color.Reset}\n")
 
 
 def print_subdomains(data: dict) -> None:
@@ -6745,7 +6893,16 @@ def build_parser() -> argparse.ArgumentParser:
     # v1.3.0: 子域名枚举
     sp = sub.add_parser('subdomain', parents=[common],
                         help='Enumerate subdomains / 子域名枚举 (v1.3.0)')
-    sp.add_argument('domain', help='Target domain (e.g. example.com)')
+    # v1.5.0:domain 改 nargs='?',允许只用 --batch 而不传 domain
+    sp.add_argument('domain', nargs='?', help='Target domain (e.g. example.com)')
+    # v1.5.0:批量域名输入 — 每行一个域名,逐个跑独立报告
+    sp.add_argument('--batch', dest='batch_file',
+                    help='File with one domain per line (# comments + blank lines ignored).'
+                         ' Each domain runs independently; combine with --batch-save-dir'
+                         ' to write per-domain reports.')
+    sp.add_argument('--batch-save-dir', dest='batch_save_dir',
+                    help='Directory to write per-domain reports when --batch is used'
+                         ' (extension from --save, e.g. .html). Default: print to stdout only.')
     sp.add_argument('--no-probe', action='store_true', dest='no_probe',
                     help='Skip HTTP probe (faster, only DNS resolution)')
     sp.add_argument('--workers', type=_positive_int, default=SUBDOMAIN_DEFAULT_WORKERS,
@@ -6792,7 +6949,94 @@ def build_parser() -> argparse.ArgumentParser:
     sp.add_argument('--limit', type=_positive_int, default=20,
                     help='Max entries to show, must be >= 1 (default: 20, max 200)')
     sp.add_argument('--search', help='Filter by query substring')
+
+    # v1.5.0:Diff 模式 — 对比两次子域扫描 JSON
+    sp = sub.add_parser('diff', parents=[common],
+                        help='Compare two subdomain scan JSON files / 对比两次子域扫描 (v1.5.0)')
+    sp.add_argument('old', help='Old scan JSON file (e.g. monday.json)')
+    sp.add_argument('new', help='New scan JSON file (e.g. friday.json)')
     return parser
+
+
+def _run_subdomain_batch(args: argparse.Namespace) -> int:
+    """v1.5.0:批量子域扫描。从 --batch FILE 读 domain 列表,逐个跑独立报告。
+    输出:每个 domain 的 _stats 摘要打到 stderr;若 --batch-save-dir 指定,
+    每个 domain 单独写报告(扩展名取 --save 的);否则只打印进度。"""
+    path = args.batch_file
+    save_dir = getattr(args, 'batch_save_dir', None)
+    save_ext = None
+    if args.save:
+        # 从 --save 推断扩展名
+        m = re.search(r'\.([a-z]+(?:\.[a-z]+)?)$', args.save.lower())
+        save_ext = m.group(1) if m else 'html'
+    elif save_dir:
+        save_ext = 'html'  # 默认 HTML 报告
+    try:
+        with open(path, 'r', encoding='utf-8') as f:
+            raw_lines = f.readlines()
+    except OSError as e:
+        sys.stderr.write(f"--batch: 无法读取文件 {path}: {e}\n")
+        return 2
+    domains: list[str] = []
+    for line in raw_lines:
+        line = line.strip()
+        if not line or line.startswith('#'):
+            continue
+        domains.append(line)
+    if not domains:
+        sys.stderr.write(f"--batch: 文件 {path} 中没有有效域名\n")
+        return 2
+    if save_dir:
+        try:
+            os.makedirs(save_dir, exist_ok=True)
+        except OSError as e:
+            sys.stderr.write(f"--batch: 无法创建保存目录 {save_dir}: {e}\n")
+            return 2
+    sys.stderr.write(f"\n {Color.Cy}== 批量扫描 {len(domains)} 个域名 ==\n{Color.Reset}")
+    summary: list = []
+    probe = not getattr(args, 'no_probe', False)
+    for idx, domain in enumerate(domains, 1):
+        sys.stderr.write(f"\n {Color.Wh}[{idx}/{len(domains)}] 扫描 {Color.Gr}{domain}{Color.Reset}\n")
+        try:
+            data = enumerate_subdomains(
+                domain, probe=probe,
+                max_workers=args.workers,
+                probe_timeout=args.timeout,
+                bruteforce=getattr(args, 'bruteforce', False),
+                js_extract=not getattr(args, 'no_js_extract', False),
+                show_progress=not args.json,
+            )
+        except KeyboardInterrupt:
+            sys.stderr.write(f" {Color.Re}用户中断,已完成 {idx-1}/{len(domains)}\n{Color.Reset}")
+            break
+        if (getattr(args, 'alive_only', False)
+                and isinstance(data, dict) and 'subdomains' in data):
+            original = len(data['subdomains'])
+            data['subdomains'] = [s for s in data['subdomains'] if s.get('alive')]
+            data['_filtered'] = {'mode': 'alive_only',
+                                 'hidden': original - len(data['subdomains'])}
+        stats = (data.get('_stats') or {}) if isinstance(data, dict) else {}
+        summary.append({
+            'domain': domain,
+            'total': stats.get('total', 0),
+            'alive': stats.get('alive', 0),
+            'error': data.get('_error') if isinstance(data, dict) else None,
+        })
+        # 写文件(若 save_dir 给定)
+        if save_dir and isinstance(data, dict) and not data.get('_error'):
+            safe_name = re.sub(r'[^a-zA-Z0-9._-]', '_', domain)
+            out_path = os.path.join(save_dir, f'subdomain_{safe_name}.{save_ext}')
+            _maybe_save(out_path, 'subdomain', data)
+        # 写历史(批量也记录)
+        _record_history('subdomain', argparse.Namespace(domain=domain), data)
+    # 总结
+    sys.stderr.write(f"\n {Color.Cy}== 批量扫描完成 ==\n{Color.Reset}")
+    for r in summary:
+        marker = f"{Color.Re}✗{Color.Reset}" if r['error'] else f"{Color.Gr}✓{Color.Reset}"
+        sys.stderr.write(f"  {marker} {r['domain']:30}  total={r['total']:5}  alive={r['alive']:5}\n")
+    if args.json:
+        _emit_json({'batch_summary': summary, 'count': len(summary)})
+    return 0
 
 
 def run_cli(args: argparse.Namespace) -> int:
@@ -6952,6 +7196,13 @@ def run_cli(args: argparse.Namespace) -> int:
             print_domain_emails(data)
     elif cmd == 'subdomain':
         # v1.3.0: 子域名枚举
+        # v1.5.0:支持 --batch domains.txt 批量
+        batch_file = getattr(args, 'batch_file', None)
+        if batch_file:
+            return _run_subdomain_batch(args)
+        if not args.domain:
+            sys.stderr.write("subdomain: domain or --batch is required\n")
+            return 2
         probe = not getattr(args, 'no_probe', False)
         data = enumerate_subdomains(
             args.domain,
@@ -6985,6 +7236,32 @@ def run_cli(args: argparse.Namespace) -> int:
         # `--save` 在 history 子命令也生效（之前早 return 0 静默丢失）
         if args.save:
             _maybe_save(args.save, 'history', entries)
+        return 0
+    elif cmd == 'diff':
+        # v1.5.0:对比两次子域扫描 JSON
+        try:
+            with open(args.old, 'r', encoding='utf-8') as f:
+                old = json.load(f)
+        except (OSError, ValueError) as e:
+            sys.stderr.write(f"{t('diff.err_load', path=args.old)}: {e}\n")
+            return 2
+        try:
+            with open(args.new, 'r', encoding='utf-8') as f:
+                new = json.load(f)
+        except (OSError, ValueError) as e:
+            sys.stderr.write(f"{t('diff.err_load', path=args.new)}: {e}\n")
+            return 2
+        data = diff_subdomain_results(old, new)
+        if isinstance(data, dict) and data.get('_error'):
+            sys.stderr.write(f"{t('diff.err_invalid')}\n")
+            return 2
+        save_prefix = f"diff_{(data.get('domain') or 'subdomain')}"
+        if args.json:
+            _emit_json(data)
+        else:
+            print_subdomain_diff(data)
+        if args.save:
+            _maybe_save(args.save, 'diff', data)
         return 0
     else:
         return 2
