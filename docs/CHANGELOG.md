@@ -18,6 +18,69 @@ This project adheres to [Keep a Changelog](https://keepachangelog.com/en/1.1.0/)
 
 ---
 
+## [1.6.1] — 2026-05-09
+
+🐛 **进度条 100% 全功能审计 — 修复 3 处遗漏(用户反馈)**
+
+### 背景
+
+用户连续两次提问"是否所有功能每一步都加了进度条",要求 100% 仔细检查不许有遗漏。我对 12 个核心函数 + 6+6 个被动源逐一审计,发现 **3 处真实遗漏**:
+
+### 修复 #1:domain-emails 阶段 2 子域名扫描静默
+
+调 `enumerate_subdomains(show_progress=False)` 静默 1-2 分钟。改为透传 `show_progress`,子流程 4 阶段进度直接给用户看。
+
+### 修复 #2:recursive_track_username profile 抓取阶段静默
+
+递归扫描挖关联用户名时,会抓 8 个 profile 页面(每页 5s timeout,最坏 40s),期间完全静默。用户以为卡了。
+
+加 3 层进度反馈:
+- 进入新深度时:`深度 1/2:扫描用户名 'akxan_dev' ...`
+- 抓 profile 阶段:`[fetch] 3/8 (当前已发现 2 个新候选)` 实时刷新
+- 抓取完成后:`抽出 5 个新用户名:akxan, akxan_dev, akxan2, ...`
+
+### 修复 #3:domain-emails 多 target 爬虫缺 [N/M] 标记
+
+`include_subdomains=True` 时若找到 5 个 alive 子域,会逐个爬,但用户看不到"现在在第几个 target"。加 `[3/5] 爬取目标:api.example.com` 标记。
+
+### 全功能进度审计结果(完整清单)
+
+✅ 已齐全(无修):
+
+- IP / Phone / WHOIS / MX / Email — 单次操作不需要
+- track_username 主扫描 — _print_scan_progress
+- enumerate_subdomains 全 5 阶段 — v1.4.11 时已加
+- enumerate_domain_emails 阶段 1 (6 源并发) — 每源完成 log
+- enumerate_domain_emails 阶段 3 (爬虫) — 每 10 页
+- enumerate_domain_emails 阶段 4 (SMTP) — 每邮箱实时
+- _run_subdomain_batch — `[N/M] 扫描 X` 标记
+- diff_subdomain_results — 12ms 不需要
+- 单源 _src_* 内部循环 — 不应单独打,与并发 log 交织混乱
+
+❌ 修复(本版):
+
+- recursive_track_username profile 抓取静默 → 加 3 层反馈
+- domain-emails 阶段 2 子域名静默 → 透传 show_progress
+- domain-emails 多 target 爬取缺序号 → 加 `[N/M]`
+
+### 新增 i18n key(中英双语)
+
+- `recursive.stage_scan` — 深度 N/M 扫描
+- `recursive.stage_fetch` — 抓 N 个 profile
+- `recursive.found_new` — 当前已发现 N 个
+- `recursive.candidates_found` — 抽出 N 个新用户名
+- `demails.target_progress` — `[N/M] 爬取目标:host`
+
+### Tests
+
+468 全绿(改动仅在进度反馈,核心逻辑未动,既有测试覆盖)。
+
+### Packaging
+
+- `__version__` 1.6.0 → 1.6.1
+
+---
+
 ## [1.6.0] — 2026-05-09
 
 ✨ **域名邮箱挖掘:从 2 源 → 6 源 + 全并发,免费无注册**

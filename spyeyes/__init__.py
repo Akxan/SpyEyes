@@ -68,7 +68,7 @@ except ImportError:
 
 
 # 语义化版本号 —— 同步更新 docs/CHANGELOG.md 与 git tag
-__version__ = '1.6.0'
+__version__ = '1.6.1'
 
 
 # ====================================================================
@@ -330,6 +330,11 @@ TRANSLATIONS: dict = {
         'subdomain.col_status':       'HTTP',
         'subdomain.col_title':        'Title',
         # v1.3.3:阶段进度反馈,告诉用户每一步在做什么(消除"卡顿期")
+        # v1.6.1 — Recursive scan progress
+        'recursive.stage_scan':       'Depth {depth}/{max}: scanning username \'{name}\' ...',
+        'recursive.stage_fetch':      'Fetching {n} profile pages to extract related usernames ...',
+        'recursive.found_new':        'found {n} new candidates so far',
+        'recursive.candidates_found': 'Extracted {n} new usernames: {names}',
         # v1.5.0 — Subdomain diff
         'diff.title':                 'Subdomain diff: {domain}',
         'diff.summary':               'Added {added} · Removed {removed} · Changed {changed} · Unchanged {unchanged}',
@@ -364,6 +369,7 @@ TRANSLATIONS: dict = {
         'demails.stage_passive':      'Stage 1/4: Passive sources (crt.sh CT logs + WHOIS contacts) ...',
         'demails.stage_subdomain':    'Stage 2/4: Discovering alive subdomains to crawl ...',
         'demails.stage_crawl':        'Stage 3/4: Deep-crawling {n} target(s) (robots.txt + sitemap.xml + BFS) ...',
+        'demails.target_progress':    '[{idx}/{total}] Crawling target: {target}',
         'demails.stage_guess':        'Stage 3.5/4: Generating pattern emails from provided names ...',
         'demails.stage_smtp':         'Stage 4/4: SMTP verification of {n} candidates (HIGH-PROFILE) ...',
         'demails.smtp_warn':          'SMTP verification connects to target MX servers — only run on domains you own or have authorization to test',
@@ -608,6 +614,11 @@ TRANSLATIONS: dict = {
         'subdomain.col_status':       'HTTP',
         'subdomain.col_title':        '标题',
         # v1.3.3:阶段进度反馈,告诉用户每一步在做什么(消除"卡顿期")
+        # v1.6.1 — 递归扫描进度
+        'recursive.stage_scan':       '深度 {depth}/{max}：扫描用户名 \'{name}\' ...',
+        'recursive.stage_fetch':      '抓取 {n} 个 profile 页面以提取关联用户名 ...',
+        'recursive.found_new':        '当前已发现 {n} 个新候选',
+        'recursive.candidates_found': '抽出 {n} 个新用户名：{names}',
         # v1.5.0 — 子域名 diff
         'diff.title':                 '子域名 diff:{domain}',
         'diff.summary':               '新增 {added} 个 · 消失 {removed} 个 · 变更 {changed} 个 · 不变 {unchanged} 个',
@@ -642,6 +653,7 @@ TRANSLATIONS: dict = {
         'demails.stage_passive':      '阶段 1/4:被动数据源(crt.sh CT 日志 + WHOIS 联系人)...',
         'demails.stage_subdomain':    '阶段 2/4:发现可爬取的活跃子域名 ...',
         'demails.stage_crawl':        '阶段 3/4:深度爬取 {n} 个目标(robots.txt + sitemap.xml + BFS)...',
+        'demails.target_progress':    '[{idx}/{total}] 爬取目标:{target}',
         'demails.stage_guess':        '阶段 3.5/4:从提供的姓名生成模式邮箱 ...',
         'demails.stage_smtp':         '阶段 4/4:SMTP 验证 {n} 个候选(高调动作)...',
         'demails.smtp_warn':          'SMTP 验证会连接目标 MX 服务器 — 仅对自己拥有或获得授权的域使用',
@@ -2040,6 +2052,9 @@ def recursive_track_username(username: str, *, max_depth: int = 2,
         if not key or key in visited:
             continue
         visited.add(key)
+        # v1.6.1:递归层级反馈(用户开多深度时知道现在在哪一层)
+        if show_progress:
+            _stage_log(f"\n {Color.Cy}{t('recursive.stage_scan', depth=depth, max=max_depth, name=name)}{Color.Reset}")
         result = track_username(name, max_workers=max_workers, timeout=timeout,
                                 show_progress=show_progress, categories=categories)
         if '_error' in result:
@@ -2054,22 +2069,40 @@ def recursive_track_username(username: str, *, max_depth: int = 2,
         # 仅在还没到最大深度时抓取页面继续展开
         if depth >= max_depth:
             continue
+        # v1.6.1:profile 抓取阶段加进度反馈(之前 silent 40s,用户以为卡了)
+        fetch_count = min(len(found_urls), RECURSIVE_FETCH_LIMIT)
+        if fetch_count > 0 and show_progress:
+            _stage_log(f"   {Color.Bl}{t('recursive.stage_fetch', n=fetch_count)}{Color.Reset}")
         new_candidates: list[str] = []
+        fetched_done = 0
         for url in found_urls[:RECURSIVE_FETCH_LIMIT]:
             try:
                 resp = safe_get(url, timeout=timeout, method='GET')
                 # 仅抓 first 64KB 防大页面拖慢
                 body = (resp.text or '')[:65536] if resp is not None else ''
             except Exception:
-                continue
+                body = ''
             extracted = _extract_usernames_from_text(body, visited)
             for u in extracted:
                 if u not in new_candidates:
                     new_candidates.append(u)
                 if len(new_candidates) >= RECURSIVE_MAX_NEW_PER_DEPTH:
                     break
+            fetched_done += 1
+            # v1.6.1:每抓一页打一行,用户知道在第几页
+            if show_progress and sys.stderr.isatty():
+                sys.stderr.write(
+                    f"\r   [fetch] {fetched_done}/{fetch_count} "
+                    f"({t('recursive.found_new', n=len(new_candidates))})       "
+                )
+                sys.stderr.flush()
             if len(new_candidates) >= RECURSIVE_MAX_NEW_PER_DEPTH:
                 break
+        if show_progress and sys.stderr.isatty():
+            sys.stderr.write('\r' + ' ' * 80 + '\r')
+            sys.stderr.flush()
+        if show_progress and new_candidates:
+            _stage_log(f"   {Color.Gr}{t('recursive.candidates_found', n=len(new_candidates), names=', '.join(new_candidates))}{Color.Reset}")
         for u in new_candidates:
             queue.append((depth + 1, u))
 
@@ -3777,8 +3810,10 @@ def enumerate_domain_emails(domain: str, *,
         if include_subdomains and HAS_DNS:
             if show_progress:
                 _stage_log(f"\n {Color.Cy}{t('demails.stage_subdomain')}{Color.Reset}")
+            # v1.6.1:把子流程进度透传给用户(之前为了避免交织静默,但用户反馈"看着卡死")
+            # enumerate_subdomains 自己会打 4 阶段子标题,清晰且不混乱
             sub_result = enumerate_subdomains(domain, probe=False,
-                                              show_progress=False)
+                                              show_progress=show_progress)
             if isinstance(sub_result, dict) and 'subdomains' in sub_result:
                 alive = [s['host'] for s in sub_result['subdomains']
                          if s.get('alive')]
@@ -3794,7 +3829,11 @@ def enumerate_domain_emails(domain: str, *,
             _stage_log(f"\n {Color.Cy}{t('demails.stage_crawl', n=len(targets_to_crawl))}{Color.Reset}")
         # 把 max_pages 平均分给每个目标
         per_target = max(10, max_pages // max(1, len(targets_to_crawl)))
-        for target in targets_to_crawl:
+        total_targets = len(targets_to_crawl)
+        for idx, target in enumerate(targets_to_crawl, 1):
+            # v1.6.1:多 target 时标明 [N/M] 进度,用户知道现在在哪一个
+            if show_progress and total_targets > 1:
+                _stage_log(f"\n   {Color.Cy}{t('demails.target_progress', idx=idx, total=total_targets, target=target)}{Color.Reset}")
             crawl_result = _crawl_domain_for_emails(
                 target, max_pages=per_target, max_depth=max_depth,
                 workers=workers, obey_robots=obey_robots,
