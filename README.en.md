@@ -42,7 +42,7 @@ Designed for **security researchers, penetration testers, SOC analysts, threat h
 ### 💎 Highlights
 
 - **🆕 v1.6.8: `~/.spyeyes/env` autoload + full 6-source status in reports** — KEY=VALUE file replacing LaunchAgent / shell config; each source's ✅/⊘/❌ status visible at a glance
-- **🆕 v1.6.6: Domain email harvest 3-4× speedup** — HTTP probe filter + parallel BFS crawler (linux.do 5.5min → 1.5min)
+- **🆕 v1.6.6: Domain email harvest 3-4× speedup** — HTTP probe filter + parallel BFS crawler (typical large site 5.5min → 1.5min)
 - **🆕 v1.6.5: Smart `--alive-only`** — auto-strict mode under wildcard / DNS hijack to filter fake "alive" hosts
 - **🆕 v1.6.0: Domain email — 6 sources concurrent, all free** — Bing SERP + DuckDuckGo + Wayback + GitHub commits + crt.sh + WHOIS; vs theHarvester/Photon/EmailFinder, **strongest free tier**
 - **🆕 v1.5.0: Diff + batch** — `spyeyes diff old.json new.json` for OSINT monitoring; `--batch domains.txt`

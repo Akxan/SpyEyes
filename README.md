@@ -42,7 +42,7 @@
 ### 💎 项目亮点
 
 - **🆕 v1.6.8:`~/.spyeyes/env` 自动加载 API keys + 报告显示完整 6 源状态** — KEY=VALUE 格式简单文件代替 LaunchAgent / shell 配置;报告里每个源 ✅/⊘/❌ 状态一目了然
-- **🆕 v1.6.6:域名邮箱挖掘提速 3-4×** — HTTP probe 过滤非 web 子域 + 多 target 并行 BFS 爬虫(linux.do 5.5 分钟 → 1.5 分钟)
+- **🆕 v1.6.6:域名邮箱挖掘提速 3-4×** — HTTP probe 过滤非 web 子域 + 多 target 并行 BFS 爬虫(典型大型站点 5.5 分钟 → 1.5 分钟)
 - **🆕 v1.6.5:`--alive-only` 智能严格** — wildcard / DNS 劫持环境下自动加 HTTP 响应过滤,防止 fake "活"假象
 - **🆕 v1.6.0:域名邮箱 6 源全并发** — Bing SERP + DuckDuckGo + Wayback Machine + GitHub commits + crt.sh + WHOIS,**完全免费 + 无需注册**;对比 theHarvester / Photon / EmailFinder,免费层最强
 - **🆕 v1.5.0:Diff 模式 + 批量域名** — `spyeyes diff old.json new.json` OSINT 持续监控;`--batch domains.txt` 批量扫描
