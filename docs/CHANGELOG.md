@@ -1870,7 +1870,6 @@ export SPYEYES_PHONE_API_KEY="numverify:..." # 可选实时 HLR 电话运营商
 
 - 删除已无引用的 i18n 键：`menu.permute` / `prompt.permute_input` / `prompt.permute_scan` / `prompt.save_as`
 - CHANGELOG `[Unreleased]` 段中的 "XMind 思维导图报告输出" 已实现，从 roadmap 移除
-- `.github/release-notes-v1.0.0.md` → `docs/releases/v1.0.0.md`（CHANGELOG 已含完整内容，归档单文件版本）
 - `_default_report_dir()` 加模块级缓存，多格式连续保存循环不再重复 stat
 - CI 测试矩阵加 Python 3.14（lint job 也升 3.13 → 3.14；Codecov 上传跟随升级）
 
