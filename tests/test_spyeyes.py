@@ -3210,7 +3210,7 @@ class TestSubdomainBatch:
     def test_batch_reads_domains_skips_comments(self, monkeypatch, tmp_path):
         """空行 / # 注释行被忽略,有效域名传给 enumerate_subdomains。"""
         wl = tmp_path / 'd.txt'
-        wl.write_text('# 注释行\nexample.com\n\n   \n# another\nlinux.do\n', encoding='utf-8')
+        wl.write_text('# 注释行\nexample.com\n\n   \n# another\nexample.org\n', encoding='utf-8')
         captured: list = []
         monkeypatch.setattr(gt, 'enumerate_subdomains',
                             lambda d, **kw: captured.append(d) or {
@@ -3226,7 +3226,7 @@ class TestSubdomainBatch:
                                    no_js_extract=True, json=False, save=None)
         rc = gt.run_cli(args)
         assert rc == 0
-        assert captured == ['example.com', 'linux.do']
+        assert captured == ['example.com', 'example.org']
 
     def test_batch_writes_per_domain_files(self, monkeypatch, tmp_path):
         """--batch-save-dir 时每个 domain 写一份独立报告。"""

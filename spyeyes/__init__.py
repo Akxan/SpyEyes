@@ -3984,7 +3984,7 @@ def enumerate_domain_emails(domain: str, *,
                 _stage_log(f"\n {Color.Cy}{t('demails.stage_subdomain')}{Color.Reset}")
             # v1.6.6:probe=True 拿 HTTP 状态,后续过滤掉非 web 子域
             # (mail/pop/smtp/dns 这种 DNS 解析但没 HTTP 服务的,爬了也是空)
-            # 之前 probe=False 时,linux.do 33 个子域全爬,大部分死站等超时,5+ 分钟
+            # 之前 probe=False 时,example.org 33 个子域全爬,大部分死站等超时,5+ 分钟
             sub_result = enumerate_subdomains(domain, probe=True,
                                               show_progress=show_progress)
             if isinstance(sub_result, dict) and 'subdomains' in sub_result:

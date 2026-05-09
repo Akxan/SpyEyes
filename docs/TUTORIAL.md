@@ -855,7 +855,7 @@ python3 -m spyeyes diff old.json new.json --json | jq '.added'
 cat > targets.txt <<EOF
 # 注释行被忽略
 example.com
-linux.do
+example.org
 
 akxan.com
 EOF
@@ -866,16 +866,16 @@ python3 -m spyeyes subdomain --batch targets.txt --batch-save-dir reports/ --ali
 # 输出
 # == 批量扫描 3 个域名 ==
 # [1/3] 扫描 example.com  ...
-# [2/3] 扫描 linux.do  ...
+# [2/3] 扫描 example.org  ...
 # [3/3] 扫描 akxan.com  ...
 # == 批量扫描完成 ==
 #   ✓ example.com   total= 2000  alive=    0
-#   ✓ linux.do      total=   84  alive=   33
+#   ✓ example.org      total=   84  alive=   33
 #   ✓ akxan.com     total=  XX   alive=    Y
 
 # 每个域单独 HTML 报告
 ls reports/
-# subdomain_example.com.html  subdomain_linux.do.html  subdomain_akxan.com.html
+# subdomain_example.com.html  subdomain_example.org.html  subdomain_akxan.com.html
 ```
 
 **特点**:
