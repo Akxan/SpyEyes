@@ -68,7 +68,7 @@ except ImportError:
 
 
 # 语义化版本号 —— 同步更新 docs/CHANGELOG.md 与 git tag
-__version__ = '1.6.11'
+__version__ = '1.6.12'
 
 
 # ====================================================================
@@ -434,6 +434,7 @@ TRANSLATIONS: dict = {
         'demails.section_pattern':    'From pattern generation (UNVERIFIED guesses)',
         'prompt.input_demails':       'Enter target domain for email harvest (e.g. example.com): ',
         'prompt.demails_subdomains':  'Include alive subdomains in crawl?\n   [ 1 ] Yes (default, more thorough)  [ 2 ] No (main domain only, faster)\n  Choose [1/2, default 1] : ',
+        'prompt.demails_max_pages':   'Crawl depth?\n   [ 1 ] Standard 200 pages (default, ~1 min)  [ 2 ] Deep 500 pages (~3-4 min)  [ 3 ] Quick 50 pages (~20s)\n  Choose [1/2/3, default 1] : ',
         'prompt.demails_guess':       'Generate pattern emails from names? Enter comma-separated names (or empty to skip): ',
         'prompt.demails_verify':      'Run SMTP verification (HIGH-PROFILE — only for domains you own)?\n   [ 1 ] Yes  [ 2 ] No (default)\n  Choose [1/2, default 2] : ',
         # Errors
@@ -718,6 +719,7 @@ TRANSLATIONS: dict = {
         'demails.section_pattern':    '来自模式生成(未验证的猜测)',
         'prompt.input_demails':       '请输入要挖邮箱的目标域名(如 example.com):',
         'prompt.demails_subdomains':  '是否包含活跃子域名一起爬取?\n   [ 1 ] 是(默认,更全面)  [ 2 ] 否(仅主域,更快)\n  请选择 [1/2,默认 1] : ',
+        'prompt.demails_max_pages':   '爬取深度?\n   [ 1 ] 标准 200 页(默认,约 1 分钟)  [ 2 ] 深度 500 页(约 3-4 分钟)  [ 3 ] 极速 50 页(约 20 秒)\n  请选择 [1/2/3,默认 1] : ',
         'prompt.demails_guess':       '从姓名生成模式邮箱?用逗号分隔多人(留空跳过):',
         'prompt.demails_verify':      '是否做 SMTP 验证(高调 — 仅对自己拥有的域使用)?\n   [ 1 ] 是  [ 2 ] 否(默认)\n  请选择 [1/2,默认 2] : ',
         'err.network':          '网络请求失败（超时或连接错误）',
@@ -4878,6 +4880,18 @@ def handle_choice(choice: int, save_dir: Optional[str] = None) -> None:
         except (EOFError, KeyboardInterrupt):
             inc_ans = ''
         include_subdomains = inc_ans != '2'
+        # v1.6.12:子问题 — 爬取深度(默认标准 200 页)
+        try:
+            depth_ans = input(f"\n {Color.Wh}{t('prompt.demails_max_pages')}{Color.Gr}").strip()
+        except (EOFError, KeyboardInterrupt):
+            depth_ans = ''
+        # '1' 或空 → 200(默认),'2' → 500(深度),'3' → 50(极速)
+        if depth_ans == '2':
+            max_pages = 500
+        elif depth_ans == '3':
+            max_pages = 50
+        else:
+            max_pages = DOMAIN_EMAIL_DEFAULT_MAX_PAGES  # 200
         # 子问题:是否要模式生成
         try:
             guess_ans = input(f"\n {Color.Wh}{t('prompt.demails_guess')}{Color.Gr}").strip()
@@ -4893,6 +4907,7 @@ def handle_choice(choice: int, save_dir: Optional[str] = None) -> None:
         result = enumerate_domain_emails(
             domain,
             include_subdomains=include_subdomains,
+            max_pages=max_pages,
             guess_names=guess_names,
             verify_smtp=verify_smtp,
         )
