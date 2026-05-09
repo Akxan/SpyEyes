@@ -68,7 +68,7 @@ except ImportError:
 
 
 # 语义化版本号 —— 同步更新 docs/CHANGELOG.md 与 git tag
-__version__ = '1.6.9'
+__version__ = '1.6.10'
 
 
 # ====================================================================
@@ -5231,9 +5231,16 @@ _PDF_USABLE_WIDTH = 523  # 595 - 36*2
 _PDF_MAX_IPS_SHOWN = 4
 _PDF_MAX_TITLE_LEN = 50
 
-# v1.3.1:连续 ASCII 可打印字符段(0x20-0x7E)切换到 Helvetica 字体,避免 STSong-Light
+# v1.3.1:连续 ASCII 可打印字符段切换到 Helvetica 字体,避免 STSong-Light
 # 把英文/数字字符宽度压得太紧贴(中文字体下 Latin advance 偏窄)
-_PDF_LATIN_RUN_RE = re.compile(r'[\x20-\x7E]+')
+# v1.6.10:扩展到 Latin-1 Supplement (U+00A0-U+00FF),覆盖西/法/德/葡/意全部带变音符
+# Latin 字母(í/ñ/é/ü/ç/á/à/è/ò/ó/ú/â/î/ô/ê/û 等)。之前 í 等会 fall through 到
+# STSong-Light(中文字体不含这些字形)→ 字体回退插诡异空格,如
+# "Comparador de Envíos" 渲染成 "Comparador de Enví os"。
+# Helvetica 的 WinAnsi 编码完整覆盖 0xA0-0xFF Latin-1 Supplement 区。
+# 加 ‐-―(各种 dash)+ ‘-”(smart quotes)+ …(…)
+# 提升西文标点支持,这些在 Helvetica 也可用。
+_PDF_LATIN_RUN_RE = re.compile(r'[\x20-\x7E -ÿ‐-―‘-”…]+')
 
 
 def _pdf_para_text(raw: Any) -> str:

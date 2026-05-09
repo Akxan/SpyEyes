@@ -18,6 +18,72 @@ This project adheres to [Keep a Changelog](https://keepachangelog.com/en/1.1.0/)
 
 ---
 
+## [1.6.10] — 2026-05-09
+
+🐛 **PDF 西文带变音符字符渲染修复**(用户反馈截图)
+
+### 背景
+
+PDF 报告里西班牙语 / 法语 / 德语等带变音符的拉丁字符渲染异常:
+
+```
+正确:  Comparador de Envíos | Logística Inteligente
+之前:  Comparador de Enví os | Logí stic Inteligente
+                  ↑ 多余空格        ↑ 字符被切
+```
+
+### 根因
+
+`_PDF_LATIN_RUN_RE` 之前是 `[\x20-\x7E]+`,只匹配 ASCII。`í ñ é ü ç` 等 Latin-1 Supplement 字符(U+00A0-U+00FF)fall through 到 STSong-Light 中文字体 — 该字体不含这些字形,reportlab 字体回退失败 → 插入诡异空格。
+
+### 修复
+
+regex 扩展到完整 Western 字符集:
+
+```python
+# v1.6.10:扩展到 Latin-1 Supplement + 常用标点
+r'[\x20-\x7E\xa0-\xff‐-―‘-”…]+'
+```
+
+覆盖范围:
+- ASCII 可打印(`\x20-\x7E`)
+- **Latin-1 Supplement**(`\xa0-\xff`)— 西/法/德/葡/意/英 全部带变音符:**í ñ é ü ç á à â î ô ê û è ò ó ú ý ÿ Ä Ö Ü ß** 等
+- Em / en dash(`‐-―`)
+- Smart quotes(`‘-”`)
+- Ellipsis(`…`)
+
+Helvetica 的 WinAnsi 编码完整支持上述区域。
+
+### 实测
+
+```
+原文: Comparador de Envíos | Logística Inteligente
+处理后: <font name="Helvetica">Comparador de Envíos | Logística Inteligente</font>
+       ↑ 整体被一个 Helvetica 标签包住,不再切分
+```
+
+### 影响范围
+
+修复任何含西文带变音符的 PDF 内容:
+- 国际化网站 title(西班牙语 / 法语 / 德语 / 葡萄牙语)
+- WHOIS 注册组织名(欧洲公司常含 ä ö ü)
+- 邮箱报告里的西文姓名(José / Müller / François)
+
+### 注意
+
+- Latin Extended-A(波兰语 ł / 捷克语 ž / 匈牙利语 ő)仍可能 fall through — 这部分 Helvetica WinAnsi 不全;OSINT 西方主流用例不受影响
+- 中日韩 / 阿拉伯语等仍走 STSong-Light(原本就 OK)
+
+### Tests / Lint
+
+无变化(只改正则)。**488 全绿**。ruff 0 / mypy 0 / bandit 0。
+
+### Packaging
+
+- `__version__` 1.6.9 → 1.6.10
+
+---
+
 ## [1.6.9] — 2026-05-09
 
 🐛 **修复 PDF 报告里 6 源状态行 emoji 乱码**(用户反馈截图)
