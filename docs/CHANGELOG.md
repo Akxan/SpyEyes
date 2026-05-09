@@ -18,6 +18,36 @@ This project adheres to [Keep a Changelog](https://keepachangelog.com/en/1.1.0/)
 
 ---
 
+## [1.4.7] — 2026-05-09
+
+✨ **CertSpotter 支持 API key**(对齐 OTX 设计 — 免费注册即可解锁高 quota)
+
+### Features
+
+- `_src_certspotter` 加 `SPYEYES_CERTSPOTTER_API_KEY` 环境变量支持:
+  - 无 key:免费匿名层 100 req/h
+  - 有 key:免费注册 https://sslmate.com/account/api_credentials,quota 显著放宽
+  - 用 `Authorization: Bearer {key}` header
+
+### 配置示例
+
+```bash
+# 在 ~/.zshrc / ~/.bashrc 中加:
+export SPYEYES_OTX_API_KEY="..."           # AlienVault OTX 免费 key
+export SPYEYES_CERTSPOTTER_API_KEY="..."   # SSLMate CertSpotter 免费 key
+export SPYEYES_PHONE_API_KEY="numverify:..." # 可选实时 HLR 电话运营商
+```
+
+### 实测
+
+`linux.do` 4 源:certspotter(with key) 1.5s 返 36 hosts;OTX(with key) 26s 返 23 hosts。
+
+### Packaging
+
+- `__version__` 1.4.6 → 1.4.7
+
+---
+
 ## [1.4.6] — 2026-05-09
 
 ✨ **HTML 报告交互性 + 可读性升级**(用户反馈)

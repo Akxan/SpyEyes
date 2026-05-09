@@ -68,7 +68,7 @@ except ImportError:
 
 
 # 语义化版本号 —— 同步更新 docs/CHANGELOG.md 与 git tag
-__version__ = '1.4.6'
+__version__ = '1.4.7'
 
 
 # ====================================================================
@@ -2339,10 +2339,15 @@ def _src_otx(domain: str) -> set[str]:
 def _src_certspotter(domain: str) -> set[str]:
     """https://api.certspotter.com/v1/issuances?domain={domain}&include_subdomains=true&expand=dns_names
     SSLMate CertSpotter:免费 CT 日志查询 API,替补 crt.sh(后者经常超时)。
-    返回 [{dns_names: [host1, host2], ...}, ...]"""
+    返回 [{dns_names: [host1, host2], ...}, ...]
+    v1.4.7:加 SPYEYES_CERTSPOTTER_API_KEY 支持(免费层 100 req/h → 注册后宽很多;
+    https://sslmate.com/account/api_credentials)"""
     url = (f'https://api.certspotter.com/v1/issuances?domain={domain}'
            f'&include_subdomains=true&expand=dns_names')
-    resp = safe_get(url, timeout=SUBDOMAIN_SOURCE_TIMEOUT, connect_timeout=10.0)
+    api_key = (os.environ.get('SPYEYES_CERTSPOTTER_API_KEY') or '').strip()
+    headers = {'Authorization': f'Bearer {api_key}'} if api_key else None
+    resp = safe_get(url, timeout=SUBDOMAIN_SOURCE_TIMEOUT,
+                    connect_timeout=10.0, headers=headers)
     if resp is None or resp.status_code != 200:
         return set()
     try:
