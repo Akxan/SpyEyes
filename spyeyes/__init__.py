@@ -68,7 +68,7 @@ except ImportError:
 
 
 # 语义化版本号 —— 同步更新 docs/CHANGELOG.md 与 git tag
-__version__ = '1.6.7'
+__version__ = '1.6.8'
 
 
 # ====================================================================
@@ -77,9 +77,62 @@ __version__ = '1.6.7'
 CONFIG_DIR = os.path.expanduser('~/.spyeyes')
 CONFIG_FILE = os.path.join(CONFIG_DIR, 'config.json')
 HISTORY_FILE = os.path.join(CONFIG_DIR, 'history.jsonl')
+ENV_FILE = os.path.join(CONFIG_DIR, 'env')   # v1.6.8:KEY=VALUE 格式 API key 配置
 
 # 历史遗留路径（早期版本配置目录），首次启动时自动迁移
 _LEGACY_CONFIG_DIR = os.path.expanduser('~/.ghosttrack')
+
+
+def _load_env_file() -> int:
+    """v1.6.8:从 ~/.spyeyes/env 读 KEY=VALUE 格式 API key 配置。
+
+    设计原因(替代 LaunchAgent 方案):
+    - LaunchAgent 在 macOS Sequoia 显示"未签名开发者"警告 + 污染登录项
+    - 跨平台不一致(Windows / Linux 没有 LaunchAgent)
+    - 改 key 要重启
+    - 现在改成读项目控制的简单文件,跨平台一致 + 不污染系统
+
+    格式:
+      KEY=VALUE          # 简单赋值
+      KEY="VALUE"        # 带引号(支持空格 / 特殊字符)
+      KEY='VALUE'        # 单引号
+      # 注释行,空行                  也支持
+
+    优先级:已存在的 os.environ 优先(用户显式 export 的不被覆盖),
+    文件里的值仅填补缺失的。
+
+    返回:成功读取的 KEY 数(供测试 / 启动 log)。"""
+    if not os.path.isfile(ENV_FILE):
+        return 0
+    loaded = 0
+    try:
+        with open(ENV_FILE, encoding='utf-8') as f:
+            for line_no, raw in enumerate(f, 1):
+                line = raw.strip()
+                if not line or line.startswith('#'):
+                    continue
+                if '=' not in line:
+                    continue
+                key, _, value = line.partition('=')
+                key = key.strip()
+                value = value.strip()
+                # 剥可选引号
+                if len(value) >= 2 and value[0] == value[-1] and value[0] in '\'"':
+                    value = value[1:-1]
+                if not key:
+                    continue
+                # 已存在的不覆盖(用户 shell export 优先)
+                if key in os.environ:
+                    continue
+                os.environ[key] = value
+                loaded += 1
+    except OSError:
+        pass
+    return loaded
+
+
+# 模块加载时自动读 env 文件(早于任何 _src_* 调用 os.environ.get)
+_load_env_file()
 
 
 def _migrate_legacy_config() -> None:
@@ -3061,6 +3114,38 @@ def enumerate_subdomains(domain: str, *, probe: bool = True,
 # 输入:两份 enumerate_subdomains 的 JSON 输出
 # 输出:{added: [...], removed: [...], changed: [{host, before, after, changes}], unchanged_count}
 
+def _format_source_breakdown(data: dict) -> str:
+    """v1.6.8:格式化所有源的状态字符串(报告 / 终端共用)。
+
+    用户反馈"为什么数据源数字一会 2 一会 3,看不到内部"。
+    展示 ALL configured sources(包括返 0 的)+ 状态符号:
+      ✅ N      源成功返 N 个 hosts
+      ⊘ 空     源成功但返 0(API 限速 / 域无数据 / 没 key 等)
+      ❌ 错误    源抛异常(连接失败 / 超时 / etc)
+
+    输入:enumerate_subdomains() 输出 dict
+    输出:`✅ certspotter: 21  ⊘ crtsh: 0  ⊘ otx: 0  ❌ wayback (错误)  ✅ subfinder: 20`
+         (单行紧凑,保留空格分隔以便长行 wrap 不切坏)
+    """
+    sources = data.get('sources') or {}
+    errors = (data.get('_stats') or {}).get('errors') or {}
+    if not sources and not errors:
+        return ''
+    # 同时展示成功 + 错误的源(都按字母序)
+    all_names = sorted(set(list(sources.keys()) + list(errors.keys())))
+    parts = []
+    for name in all_names:
+        if errors.get(name):
+            parts.append(f'❌ {name} (错误)')
+        else:
+            n = sources.get(name, 0)
+            if n > 0:
+                parts.append(f'✅ {name}: {n}')
+            else:
+                parts.append(f'⊘ {name}: 0')
+    return '  '.join(parts)
+
+
 def _filter_alive_only(data: dict) -> dict:
     """v1.6.5:智能 --alive-only 过滤,自动应对 wildcard DNS / DNS 劫持场景。
 
@@ -4391,8 +4476,9 @@ def print_subdomains(data: dict) -> None:
     print(f" {Color.Wh}{t('subdomain.summary', total=stats.get('total', 0), alive=stats.get('alive', 0), sources=sources_active)}{Color.Reset}")
     if data.get('wildcard_suspect'):
         print(f" {Color.Re}⚠ {t('subdomain.wildcard_warn')}{Color.Reset}")
-    if sources:
-        breakdown = ', '.join(f"{k}={v}" for k, v in sources.items())
+    # v1.6.8:用新 _format_source_breakdown 显示完整 6 源状态(✅/⊘/❌)
+    breakdown = _format_source_breakdown(data)
+    if breakdown:
         print(f" {Color.Bl}{t('subdomain.source_breakdown', breakdown=breakdown)}{Color.Reset}")
     print()
 
@@ -5015,6 +5101,11 @@ def _to_markdown(prefix: str, data: Any) -> str:
         lines.append(f"## {_md_escape(t('subdomain.title', domain=domain_lbl))}")
         lines.append("")
         lines.append(f"**{_md_escape(t('subdomain.summary', total=stats.get('total', 0), alive=stats.get('alive', 0), sources=sum(1 for v in (data.get('sources') or {}).values() if v > 0)))}**")
+        # v1.6.8:加完整 6 源状态行
+        bd = _format_source_breakdown(data)
+        if bd:
+            lines.append("")
+            lines.append(f"_{_md_escape(t('subdomain.source_breakdown', breakdown=bd))}_")
         if data.get('wildcard_suspect'):
             lines.append(f"\n> ⚠ {_md_escape(t('subdomain.wildcard_warn'))}")
         lines.append("")
@@ -5503,6 +5594,12 @@ def _to_pdf(prefix: str, data: Any, out_path: str) -> Optional[str]:
                              total=stats.get('total', 0), alive=stats.get('alive', 0),
                              sources=sources_active)),
                 styles['Normal']))
+            # v1.6.8:PDF 加完整 6 源状态(用户反馈"X 个"太笼统)
+            bd_pdf = _format_source_breakdown(data)
+            if bd_pdf:
+                story.append(_pdf_story(
+                    f"<i>{_md_escape(t('subdomain.source_breakdown', breakdown=bd_pdf))}</i>",
+                    styles['Normal']))
             if data.get('wildcard_suspect'):
                 story.append(_pdf_story(
                     f"<b>⚠ {_md_escape(t('subdomain.wildcard_warn'))}</b>", styles['Normal']))
@@ -5969,6 +6066,13 @@ def _to_html(prefix: str, data: Any) -> str:
         parts.append(
             f'<p><b>{_html_escape(t("subdomain.summary", total=stats.get("total", 0), alive=stats.get("alive", 0), sources=sources_active))}</b></p>'
         )
+        # v1.6.8:HTML 加完整 6 源状态行(用户反馈"X 个数据源"太笼统)
+        bd_html = _format_source_breakdown(data)
+        if bd_html:
+            parts.append(
+                f'<p style="font-size: 0.92em; color: #5a5550; margin-top: -0.5em;">'
+                f'<i>{_html_escape(t("subdomain.source_breakdown", breakdown=bd_html))}</i></p>'
+            )
         if data.get('wildcard_suspect'):
             parts.append(
                 f'<div class="error">⚠ {_html_escape(t("subdomain.wildcard_warn"))}</div>'
@@ -6214,6 +6318,10 @@ def _to_txt(prefix: str, data: Any) -> str:
         lines.append(t('subdomain.title', domain=domain_lbl))
         lines.append(t('subdomain.summary', total=stats.get('total', 0),
                        alive=stats.get('alive', 0), sources=sources_active))
+        # v1.6.8:加完整 6 源状态
+        bd = _format_source_breakdown(data)
+        if bd:
+            lines.append(t('subdomain.source_breakdown', breakdown=bd))
         if data.get('wildcard_suspect'):
             lines.append(f'⚠ {t("subdomain.wildcard_warn")}')
         lines.append('')

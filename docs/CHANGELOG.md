@@ -18,6 +18,115 @@ This project adheres to [Keep a Changelog](https://keepachangelog.com/en/1.1.0/)
 
 ---
 
+## [1.6.8] — 2026-05-09
+
+✨ **`~/.spyeyes/env` 自动加载 + 报告显示完整 6 源状态**(用户连续反馈)
+
+### 改动 1:`~/.spyeyes/env` 文件自动加载 API keys
+
+之前用 macOS LaunchAgent (`com.akxan.spyeyes.envvars.plist`) 持久化 env vars,但:
+- 在 macOS Sequoia 系统设置→登录项里显示"sh - 项目来自身份不明的开发者"(警告 + 污染)
+- 跨平台不一致(Windows/Linux 没 LaunchAgent)
+- 改 key 要重启
+
+改用 SpyEyes 项目内自管的 `~/.spyeyes/env`(KEY=VALUE 格式),模块加载时自动读:
+
+```bash
+# ~/.spyeyes/env(权限 600,仅本用户)
+SPYEYES_OTX_API_KEY=...
+SPYEYES_CERTSPOTTER_API_KEY=...
+PDCP_API_KEY=...
+```
+
+特性:
+- 跨平台(macOS/Linux/Windows 一致)
+- shell `export` 优先(已有 env vars 不被覆盖)
+- 支持 `# 注释` + 空行 + 单/双引号
+- 修改后下次跑立即生效,无需重启
+
+### 改动 2:报告显示完整 6 源状态(✅/⊘/❌)
+
+用户多次反馈"为什么数据源数字一会 2 一会 3,看不到内部"。
+
+之前所有报告(HTML/PDF/Markdown/TXT)只显示总数:
+```
+共发现 273 个 · 活跃 33 个 · 来自 2 个数据源     ← 哪 2 个?
+```
+
+现在多打一行**完整 6 源状态**:
+```
+共发现 273 个 · 活跃 33 个 · 来自 2 个数据源
+数据源:✅ certspotter: 36  ⊘ crtsh: 0  ❌ hackertarget (错误)  ✅ otx: 23  ⊘ wayback: 0  ✅ subfinder: 45
+```
+
+| 符号 | 含义 |
+|---|---|
+| ✅ N | 源成功返 N 个 hosts |
+| ⊘ 0 | 源跑 OK 但返空(API 限速 / 域无数据 / 无 key) |
+| ❌ (错误) | 源抛异常(连接失败 / 超时) |
+
+### 9 轮循环测试结果(用户要求)
+
+跨 3 个域 × 3 轮验证源稳定性:
+
+| 源 | 跨 9 次活跃率 | 类型 |
+|---|---|---|
+| certspotter | 9/9 (100%) | 🟢 骨干 |
+| subfinder | 9/9 (100%) | 🟢 骨干 |
+| otx | 8/9 (89%) | 🟢 骨干 |
+| crtsh | 3/9 (33%) | 🟡 机会 |
+| wayback | 2/9 (22%) | 🟡 机会 |
+| hackertarget | 0/9 (0%) | 🔴 quota 耗尽,需等 |
+
+**结论:3 个骨干源数据完全稳定,3 个机会源是赠品。看到 "X 个数据源" 在 3-6 间浮动 = 骨干 3 + 机会 0~3 是正常的。**
+
+### 应用范围
+
+报告生成器都加了完整 6 源状态:
+- 终端 `print_subdomains`(已有,format 升级)
+- Markdown 报告
+- HTML 报告(带样式)
+- PDF 报告(斜体)
+- TXT 报告
+
+### Tests
+
+- 7 个新测试 `TestLoadEnvFile`(共 **488 全绿**):
+  - `test_loads_simple_key_value` — 基本格式
+  - `test_handles_comments_and_blank_lines` — 注释 / 空行跳过
+  - `test_strips_quotes` — 单引号 / 双引号
+  - `test_existing_env_wins` — shell 优先
+  - `test_missing_file_returns_zero` — 文件不存在静默
+  - `test_malformed_lines_skipped` — 无 `=` / 空 key 跳过
+  - `test_value_with_equals_sign` — value 含 `=`(用 partition)
+
+### Code Quality
+
+ruff 0 / mypy 0 / bandit 0
+
+### Packaging
+
+- `__version__` 1.6.7 → 1.6.8
+
+### 升级 / 迁移指南
+
+如果你之前用了 v1.6.5/6 的 LaunchAgent 方案:
+
+```bash
+# 1. 卸载 LaunchAgent
+launchctl unload ~/Library/LaunchAgents/com.akxan.spyeyes.envvars.plist
+rm ~/Library/LaunchAgents/com.akxan.spyeyes.envvars.plist
+
+# 2. 创建 ~/.spyeyes/env(把 key 写进去,KEY=VALUE 格式)
+mkdir -p ~/.spyeyes
+nano ~/.spyeyes/env
+chmod 600 ~/.spyeyes/env
+```
+
+升级后系统设置→登录项里那个"sh"会消失。
+
+---
+
 ## [1.6.7] — 2026-05-09
 
 ✨ **HTTP probe 抓全部状态码 title + CNAME 完整 chain**(用户反馈 2 件)

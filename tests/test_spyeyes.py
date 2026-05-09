@@ -735,6 +735,82 @@ class TestCliParser:
 # ------------------------------------------------------------------
 # _maybe_save 真写文件
 # ------------------------------------------------------------------
+class TestLoadEnvFile:
+    """v1.6.8:~/.spyeyes/env 文件自动加载 API keys。"""
+
+    def test_loads_simple_key_value(self, monkeypatch, tmp_path):
+        env_file = tmp_path / 'env'
+        env_file.write_text('FOO_KEY=bar123\nBAZ_KEY=qux\n', encoding='utf-8')
+        monkeypatch.setattr(gt, 'ENV_FILE', str(env_file))
+        monkeypatch.delenv('FOO_KEY', raising=False)
+        monkeypatch.delenv('BAZ_KEY', raising=False)
+        n = gt._load_env_file()
+        assert n == 2
+        assert os.environ['FOO_KEY'] == 'bar123'
+        assert os.environ['BAZ_KEY'] == 'qux'
+
+    def test_handles_comments_and_blank_lines(self, monkeypatch, tmp_path):
+        env_file = tmp_path / 'env'
+        env_file.write_text('# 注释行\n\nFOO=val\n   \n# 又注释\nBAR=val2\n',
+                            encoding='utf-8')
+        monkeypatch.setattr(gt, 'ENV_FILE', str(env_file))
+        monkeypatch.delenv('FOO', raising=False)
+        monkeypatch.delenv('BAR', raising=False)
+        n = gt._load_env_file()
+        assert n == 2
+        assert os.environ['FOO'] == 'val'
+        assert os.environ['BAR'] == 'val2'
+
+    def test_strips_quotes(self, monkeypatch, tmp_path):
+        """支持双引号 / 单引号(里面可含空格 / 特殊字符)。"""
+        env_file = tmp_path / 'env'
+        env_file.write_text('A="hello world"\nB=\'foo bar\'\nC=plain\n',
+                            encoding='utf-8')
+        monkeypatch.setattr(gt, 'ENV_FILE', str(env_file))
+        for k in ('A', 'B', 'C'):
+            monkeypatch.delenv(k, raising=False)
+        gt._load_env_file()
+        assert os.environ['A'] == 'hello world'
+        assert os.environ['B'] == 'foo bar'
+        assert os.environ['C'] == 'plain'
+
+    def test_existing_env_wins(self, monkeypatch, tmp_path):
+        """已存在的 os.environ 不被文件覆盖(shell export 优先)。"""
+        env_file = tmp_path / 'env'
+        env_file.write_text('FOO=from_file\n', encoding='utf-8')
+        monkeypatch.setattr(gt, 'ENV_FILE', str(env_file))
+        monkeypatch.setenv('FOO', 'from_shell')
+        gt._load_env_file()
+        assert os.environ['FOO'] == 'from_shell'  # shell 值赢
+
+    def test_missing_file_returns_zero(self, monkeypatch, tmp_path):
+        """文件不存在时静默返 0,不报错。"""
+        monkeypatch.setattr(gt, 'ENV_FILE', str(tmp_path / 'nonexistent'))
+        assert gt._load_env_file() == 0
+
+    def test_malformed_lines_skipped(self, monkeypatch, tmp_path):
+        """格式错的行(无 = 等)跳过,不影响其他行。"""
+        env_file = tmp_path / 'env'
+        env_file.write_text('VALID=ok\nno_equals_sign\n=no_key\nA_KEY=v\n',
+                            encoding='utf-8')
+        monkeypatch.setattr(gt, 'ENV_FILE', str(env_file))
+        monkeypatch.delenv('VALID', raising=False)
+        monkeypatch.delenv('A_KEY', raising=False)
+        n = gt._load_env_file()
+        assert n == 2  # 只有 VALID 和 A_KEY 被加载
+        assert os.environ['VALID'] == 'ok'
+        assert os.environ['A_KEY'] == 'v'
+
+    def test_value_with_equals_sign(self, monkeypatch, tmp_path):
+        """值里含 = 不被切断(用 partition 而不是 split)。"""
+        env_file = tmp_path / 'env'
+        env_file.write_text('TOKEN=abc=xyz=123\n', encoding='utf-8')
+        monkeypatch.setattr(gt, 'ENV_FILE', str(env_file))
+        monkeypatch.delenv('TOKEN', raising=False)
+        gt._load_env_file()
+        assert os.environ['TOKEN'] == 'abc=xyz=123'
+
+
 class TestFilterAliveOnly:
     """v1.6.5:智能 alive-only 过滤,wildcard 时自动严格防 DNS 劫持。"""
 
