@@ -35,3 +35,6 @@ Downloads/
 # 但保留 docs/ 下的文档文件
 !docs/**/*.html
 !docs/**/*.pdf
+
+# v1.6.7: 防 escape 字符等"奇怪"文件名(由 shell 转义错误意外创建,已遇到 2 次)
+# 注:无法在 .gitignore 用 ANSI escape 字符匹配,删除时手动 git rm $'\033\033\033'
