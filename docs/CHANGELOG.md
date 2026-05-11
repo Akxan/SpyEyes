@@ -15,6 +15,241 @@ This project adheres to [Keep a Changelog](https://keepachangelog.com/en/1.1.0/)
 - 首次 upload 到 PyPI（package 重构已完成，`pip install .` 已 work，剩 `twine upload`）
 - Docker 镜像
 - curl_cffi 浏览器指纹伪装可选（`spyeyes[stealth]`，绕过 Cloudflare）
+- `investigate` v2:扩到 email / ip / username 实体 + 双向 pivot(配合"已访问集合"防环)
+- `investigate` 报告:PDF / XMind / D3 关系图(v1.7.0 MVP 仅 JSON / MD / HTML / TXT / CSV)
+
+---
+
+## [1.8.0] — 2026-05-11
+
+✨ **智能默认报告目录** + **启动版本检查** + **`investigate` 提速 3-4× + 全程进度反馈** — 三组影响每次启动 / 长任务体验的改进。
+
+### 用户故事
+
+**问题 1**:v1.6.4 把默认报告目录改成 `<cwd>/Downloads/`,本意是"所见即所得"。
+但 `pip install -e .` + 软链到 `/usr/local/bin/spyeyes` 之后,用户在 `/` 或随便哪个目录敲 `spyeyes`,
+报告就建在那里 —— 服务器根目录冒出 `/Downloads/`,用户找不到、心里也膈应。
+
+**问题 2**:用户 git clone 后再没回去看仓库,我们改了代码 push 了 release,他们永远不知道。
+唯一的"通知渠道"是用户主动去 GitHub Watch,绝大多数人不会做。
+
+### 改进 1:智能默认目录路由
+
+```python
+# 优先级:
+# 1. SPYEYES_REPORTS_DIR=/path     ← 显式覆盖,始终最高
+# 2. 源码运行(__file__ 不在 site-packages) → <项目根>/Downloads/
+# 3. 打包安装(pip/pipx/brew/conda)        → ~/Downloads/spyeyes/
+# 4. 兜底 <cwd>/Downloads/, 最后 cwd
+```
+
+判定方式:`__file__` 路径里有没有 `site-packages` / `dist-packages` 标记。
+- editable install (`pip install -e .`) 因为 `__file__` 直接指向源码,**正确识别为源码运行**
+- 打包用户得到 `~/Downloads/spyeyes/`,**绝不写入 site-packages**(权限/污染)
+
+### 改进 2:启动 GitHub Release 版本检查
+
+```
+$ spyeyes ip 8.8.8.8
+
+🆕 SpyEyes v1.8.1 可用(当前 1.8.0)
+   更新: 进入仓库目录,执行 `git pull && pip install -e .`
+   更新内容: https://github.com/Akxan/SpyEyes/releases/tag/v1.8.1
+   (关闭提示: SPYEYES_NO_UPDATE_CHECK=1 或 --no-update-check)
+
+ ========== IP Info ==========
+ ...
+```
+
+设计要点(参考 yt-dlp / gh CLI):
+- **24h 缓存**(`~/.spyeyes/.update_check.json`),每天最多查 1 次 GitHub API
+- **后台异步**,daemon 线程刷新,主流程立即继续,**永不阻塞**
+- **首次运行不打扰** — 缓存为空只静默后台 fetch,第二次开始才可能看到通知
+- **完全离线降级** — 网络不通/超时/GitHub 502 一律静默,不抛异常
+- **保守比较** — 版本号无法解析返回 False(不打扰)
+- **stderr 输出** — 不污染 `--json` 管道(`spyeyes ip 8.8.8.8 --json | jq` 完全干净)
+
+### CLI
+
+```bash
+spyeyes ip 8.8.8.8                         # 默认开启版本检查
+spyeyes ip 8.8.8.8 --no-update-check       # 单次禁用
+SPYEYES_NO_UPDATE_CHECK=1 spyeyes ip 8.8.8.8   # env var 持久禁用(推荐 ~/.spyeyes/env)
+```
+
+### 内部
+
+- **`spyeyes/__init__.py`** 新增模块 `UPDATE CHECK`(~150 行):
+  - `_normalize_version()` / `_is_newer()` — 语义化版本解析与比较
+  - `_read_update_cache()` / `_write_update_cache()` — JSON 缓存 IO
+  - `_fetch_latest_version_from_github()` — `requests.get` + 3s 超时 + 完全静默
+  - `get_cached_update_info()` — 同步读缓存(主流程用)
+  - `refresh_update_cache_sync()` — 后台线程实查 GitHub
+  - `_start_background_update_check()` — daemon 线程启动,24h 内不重复
+  - `print_update_notice()` — stderr 彩色输出
+  - `_is_update_check_disabled()` — 统一禁用判定
+- **`spyeyes/__init__.py`** `_default_report_dir()` 重写,新增 `_is_packaged_install()` 辅助
+- **`spyeyes/__init__.py`** `build_parser()` 加 `--no-update-check` 全局标志
+- **`spyeyes/__init__.py`** `main()` 接入 `_maybe_show_update_notice()` (CLI/交互两条路径都覆盖)
+- **`spyeyes/__init__.py`** TRANSLATIONS 加 4 个 i18n 键(中英各):
+  `update.available` / `update.howto` / `update.release_notes` / `update.disable_hint`
+- **`tests/test_spyeyes.py`** 重写 `TestDefaultReportDir`(7 测试,覆盖源码 vs 打包 vs env var)
+- **`tests/test_spyeyes.py`** 新增 `TestUpdateCheck`(21 测试,覆盖版本解析/比较/缓存 IO/禁用开关/后台线程/通知输出)
+- **`tests/conftest.py`** autouse fixture 默认 `SPYEYES_NO_UPDATE_CHECK=1`,避免测试套件击打 GitHub API;`UPDATE_CACHE_FILE` 也重定向到 tmp_path
+- **`README.md` / `README.en.md`** 同步更新 v1.6.3 旧描述 → v1.8.0 新行为;`~/.spyeyes/env` 示例新增 `SPYEYES_NO_UPDATE_CHECK` 注释
+
+### 改进 3:`investigate` Phase 2b 并行化 + 全程进度反馈
+
+**背景**:v1.7.0 的 `investigate` 在深度 1 时,Phase 2b(邮箱→用户名扫描)是**串行**循环。
+15 个邮箱 × 单用户名扫描 ~14s = ~210s(3.5 分钟)用户黑屏等待,且没有任何进度提示。
+
+**优化**:
+
+```python
+# 新常量
+INVESTIGATE_IP_PIVOT_WORKERS = 20           # Phase 2a: 10 → 20
+INVESTIGATE_USER_PIVOT_OUTER_WORKERS = 4    # Phase 2b: 串行 → 4 并行
+INVESTIGATE_USER_PIVOT_INNER_WORKERS = 50   # 每邮箱内部 worker 数(4×50=200, 持平单 user 150)
+```
+
+| 场景 | 老 | 新 | 提速 |
+|---|---|---|---|
+| Phase 2b 15 邮箱串行 (单 user 150 worker) | ~210s | ~50-80s | **3-4×** |
+| Phase 2a 10 个 IP 富化 | ~5s | ~3s | 2s |
+
+**单平台 burst 风险评估**:200 总线程,但 4 个 outer 同时打同一平台(如 GitHub)
+概率 ≈ 4 × (1/1700) = 0.2%,远低于单 user 模式 — 安全。
+
+**进度反馈**(5 处新增,所有 i18n 双语):
+
+```
+ 开始综合调查: akxan.com
+ 阶段 1: 4 个原子任务并发 (whois / mx / subdomain / domain-emails)…
+   [0s]  ✓ mx                                          ← 实时 elapsed 戳
+   [0s]  ✓ whois
+   [45s] ✓ subdomain
+   [51s] ✓ emails
+
+ 阶段 2a: 接力查询 N 个 IP (子域 → IP)…
+   [1/N] ✓ 8.8.8.8 → US GOOGLE                         ← [N/M] 计数 + 摘要
+
+ 阶段 2b: 接力扫描 N 个邮箱本地部分 (邮箱 → 用户名, 4 并发)…
+   [1/N] ✓ john.doe → 8 hits                          ← 同上
+
+ 总耗时: 56s                                            ← 收尾
+```
+
+**TTY 安全**:`_stage_log` 仅在 `sys.stderr.isatty()` 时输出 — CI / 管道场景完全静默,
+不污染日志或 jq pipeline。
+
+**i18n 新增 5 个键**(中英各):
+- `investigate.task_done` / `investigate.ip_pivot_done` / `investigate.user_pivot_done`
+- `investigate.budget_warn` / `investigate.elapsed_total`
+- 修订 `investigate.stage_user_pivot` 增加 `{workers}` 占位符
+
+**测试**:`tests/test_investigate.py` 新增 3 个测试:
+- `test_pivot2_passes_inner_workers_to_track_username` — 验证 50(非旧的 120) 传给 track_username
+- `test_pivot2_silent_when_show_progress_false` — 验证 show_progress=False 不写 stderr
+- `test_pivot2_outer_workers_capped_at_pick_count` — 验证 outer=min(配置, 实际邮箱数)
+
+### 仓库清理
+
+- 删除 `asset/` 目录(6 个图片,1.1 MB) — 历史遗留截图,README 已不引用
+- 删除 `docs/releases/v1.0.0.md`(CHANGELOG 已包含同样内容)
+- 删除空文件 `tests/__init__.py`(modern pytest 不需要)
+- 修复 README 顶部版本徽章 1.6.12 → 1.8.0(zh+en)
+
+### 测试
+
+`541 passed / 7 skipped`(538 base + 3 new investigate 并行测试 + 7 已有可选依赖跳过)
+
+### 兼容性
+
+- **行为变化(用户可能感知)**:默认报告目录从 `<cwd>/Downloads/` 变成 `<项目根>/Downloads/` 或 `~/Downloads/spyeyes/`。原有 `SPYEYES_REPORTS_DIR=path` 用法不受影响。
+- **行为变化(隐私)**:首次启动会向 `api.github.com` 发 1 个 GET 请求拉最新 release。不带任何身份信息(只发 `User-Agent: spyeyes/1.8.0`)。不接受可关闭。
+- **API 增量**:6 个新公共函数(`_normalize_version`, `_is_newer`, `get_cached_update_info`, `refresh_update_cache_sync`, `print_update_notice`, `_is_packaged_install`)+ 5 个内部辅助。
+- **依赖**:**零新增**(全部基于 stdlib + 已有 `requests`)。
+
+---
+
+## [1.7.0] — 2026-05-11
+
+✨ **新增 `investigate` 子命令 — 综合调查(一次输入域名,出整合档案)**
+
+### 用户故事
+
+之前每个维度要单独跑:`whois example.com` → `mx example.com` → `subdomain example.com`
+→ `domain-emails example.com` → 翻出有价值邮箱后再 `user john.doe`,翻 IP 后再 `ip 1.2.3.4`。
+6 条命令、6 份报告、自己脑补关系。
+
+现在一条命令搞定:
+
+```bash
+spyeyes investigate example.com --save dossier.html
+```
+
+打开 `dossier.html` 一份报告里 **6 个 section**:WHOIS / MX / 子域名 / 子域→IP 富化 /
+域名邮箱 / 邮箱→平台账号足迹。
+
+### 架构(为什么不会死循环 / 不会信息爆炸)
+
+物理上无环 — pivot 是单向 DAG,不是图:
+
+```
+domain (根)
+  ├── whois        → 终止
+  ├── mx           → 终止
+  ├── subdomain    → 每个子域查 IP → 终止 (IP 不反查域名)
+  └── domain-emails → 每个邮箱查 user → 终止 (user 不反查域名)
+```
+
+四道闸防爆炸:
+- **闸 1** — 单向树,无回边:user/ip 都不再反查任何东西,根本无法成环
+- **闸 2** — 每步硬截断:`max_pivot_ips=20`,`max_pivot_emails=15`
+- **闸 3** — 总预算:`--budget 300` 秒硬超时,超时已完成部分照常出报告
+- **闸 4** — 用户控制:`--depth 0` 关掉所有接力,只跑 4 原子;`--depth 1`(默认)开接力
+
+邮箱挑人:`noreply@` / `info@` / `admin@` 等 role-account 自动跳过,只对看似真人名
+(`john.doe@` / `zhangsan@` 等)做 username 反查。
+
+### CLI
+
+```bash
+spyeyes investigate example.com                            # 默认:深度 1, 5 分钟预算
+spyeyes investigate example.com --depth 0                  # 只跑 4 原子, 不接力
+spyeyes investigate example.com --budget 60                # 1 分钟硬超时
+spyeyes investigate example.com --max-pivot-emails 5       # 只对前 5 个真人邮箱反查
+spyeyes investigate example.com --save report.html         # HTML 整合报告
+spyeyes investigate example.com --save report.md           # Markdown 报告
+spyeyes investigate example.com --save report.csv          # 4 列扁平 CSV (section/kind/key/value)
+```
+
+交互菜单同步加 `[10] 综合调查` 入口,问"接力深度?"(标准/仅原子)。语言切换从 `[10]` 让位到 `[11]`。
+
+### 内部
+
+- 新增 `do_investigate(target, *, depth, budget, max_pivot_ips, max_pivot_emails, quick, probe)`
+  → dict 含 `tasks` / `pivots` / `graph` / `_stats`
+- 新增辅助:`_detect_entity_type`(domain/ip/email/username/unknown)、`_personal_email_score`
+  (0..3 真人评分 — role 0 / role 变体 1 / 多段名 3)、`_build_investigate_graph`(domain 为根的单向 DAG)
+- 报告生成:`_to_markdown` / `_to_html` / `_to_txt` / `_to_csv` 加 `investigate_` 分支
+  (PDF / XMind / Graph 留 v1.7.1)
+- `_record_history` 加 investigate cmd(只记 stats summary,不存 emails/users 细节防泄露)
+- i18n:21 个新 key,zh+en 双套(`menu.investigate` / `section.investigate` / `investigate.*` /
+  `err.investigate_only_domain`)
+- 测试:`tests/test_investigate.py` 34 个 case(实体侦测 / 评分 / happy path / cap / 失败隔离 /
+  4 种报告 / XSS 转义 / CSV 注入防御 / CLI parser + dispatch + history)
+
+### 设计决策
+
+- **MVP 仅 domain 实体**:email/ip/username 输入返回 `_error('only_domain')`。v2 加。
+  原因:domain 是最常见入口、pivot 图最稳定、不需要"已访问集合"去重(无环)。
+  email/ip 输入会引入"邮箱→其它域→更多邮箱"这种潜在回边,要先把去重做对。
+- **domain-emails 任务用 `include_subdomains=False`**:综合调查里 subdomain 独立任务已经覆盖子域视图;
+  内部再跑一遍 enumerate_subdomains 重复且翻倍耗时(15-30s)。tradeoff:可能漏极少数仅在某些子域页面
+  上的邮箱 — 实践上对企业域影响 <5%,但单次调查从 ~90s 降到 ~50s。
+- **MX/whois 多次失败不阻塞 subdomain/emails**:每个原子任务独立 try/except,失败的槽位记 `_error`,
+  其它正常完成。和现有 `SUBDOMAIN_SOURCES` / `DOMAIN_EMAIL_SOURCES` 单源容错风格一致。
 
 ---
 

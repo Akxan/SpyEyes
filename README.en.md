@@ -14,7 +14,7 @@
 [![Platforms](https://img.shields.io/badge/platforms-3164-orange.svg)](#-comparison-with-similar-tools)
 [![Reports](https://img.shields.io/badge/reports-8%20formats-9cf.svg)](#-report-formats-8-types)
 [![Commands](https://img.shields.io/badge/commands-10-blueviolet.svg)](docs/TUTORIAL.md)
-[![Version](https://img.shields.io/badge/version-1.6.13-blueviolet.svg)](docs/CHANGELOG.md)
+[![Version](https://img.shields.io/badge/version-1.8.0-blueviolet.svg)](docs/CHANGELOG.md)
 [![Docs](https://img.shields.io/badge/docs-online-blue.svg)](https://akxan.github.io/SpyEyes/)
 [![Platform](https://img.shields.io/badge/platform-macOS%20%7C%20Linux%20%7C%20Windows%20%7C%20Termux-lightgrey)](#-installation)
 [![PRs Welcome](https://img.shields.io/badge/PRs-welcome-brightgreen.svg)](docs/CONTRIBUTING.md)
@@ -42,7 +42,7 @@ Designed for **security researchers, penetration testers, SOC analysts, threat h
 ### 💎 Highlights
 
 - **🆕 v1.6.8: `~/.spyeyes/env` autoload + full 6-source status in reports** — KEY=VALUE file replacing LaunchAgent / shell config; each source's ✅/⊘/❌ status visible at a glance
-- **🆕 v1.6.6: Domain email harvest 3-4× speedup** — HTTP probe filter + parallel BFS crawler (typical large site 5.5min → 1.5min)
+- **🆕 v1.6.6: Domain email harvest 3-4× speedup** — HTTP probe filter + parallel BFS crawler (linux.do 5.5min → 1.5min)
 - **🆕 v1.6.5: Smart `--alive-only`** — auto-strict mode under wildcard / DNS hijack to filter fake "alive" hosts
 - **🆕 v1.6.0: Domain email — 6 sources concurrent, all free** — Bing SERP + DuckDuckGo + Wayback + GitHub commits + crt.sh + WHOIS; vs theHarvester/Photon/EmailFinder, **strongest free tier**
 - **🆕 v1.5.0: Diff + batch** — `spyeyes diff old.json new.json` for OSINT monitoring; `--batch domains.txt`
@@ -54,8 +54,10 @@ Designed for **security researchers, penetration testers, SOC analysts, threat h
 - **WAF detection**: Cloudflare / AWS WAF / PerimeterX / DataDome / Akamai
 - **Full bilingual**: interactive menu / CLI / errors / **report content** all in zh+en
 - **🆕 v1.6.1: 100% progress feedback** — every >2s operation has live progress
-- **🆕 v1.6.3: Cross-platform report dir** — all platforms default to `<cwd>/Downloads/`; `SPYEYES_REPORTS_DIR=path` for custom
-- **488 pytest tests**: 4-tool audit clean (ruff 0 / mypy 0 / bandit 0 / pytest), CI on macOS/Linux/Windows × Python 3.10–3.14
+- **🆕 v1.8.0: Smart default report dir** — source install (git clone / `pip install -e .`) → `<project_root>/Downloads/` (visible right in the repo); packaged install (pip/pipx/brew) → `~/Downloads/spyeyes/` (never writes to site-packages); `SPYEYES_REPORTS_DIR=path` always wins
+- **🆕 v1.8.0: Startup version check** — 24h-cached comparison against GitHub Releases, prints upgrade hint to stderr when newer version is available; disable with `--no-update-check` or `SPYEYES_NO_UPDATE_CHECK=1`; offline / API failure is fully silent
+- **🆕 v1.8.0: `investigate` 3-4× faster + live progress** — Phase 2b (email→username) parallelized from serial to 4 concurrent; 15-email scenario drops from ~210s to ~50-80s; full Phase 1/2a/2b live `[N/M] ✓ task` progress feedback; TTY-safe, fully silent in pipes
+- **541 pytest tests**: 4-tool audit clean (ruff 0 / mypy 0 / bandit 0 / pytest), CI on macOS/Linux/Windows × Python 3.10–3.14
 
 ---
 
@@ -366,7 +368,7 @@ python3 -m spyeyes user torvalds --save report.xmind
 python3 -m spyeyes user torvalds --save report.graph.html
 ```
 
-**Interactive mode**: after picking "Save report", you'll see a `[1] JSON ... [8] Graph` numeric chooser, default path `~/Downloads/`. After saving, you'll be asked "Save another format?" — chain multiple format outputs in one session.
+**Interactive mode**: after picking "Save report", you'll see a `[1] JSON ... [8] Graph` numeric chooser. Default path follows v1.8.0 smart routing (source install → `<project_root>/Downloads/`, pip/brew install → `~/Downloads/spyeyes/`, override with `SPYEYES_REPORTS_DIR=path`). After saving, you'll be asked "Save another format?" — chain multiple format outputs in one session.
 
 > **Security**: HTML / Graph use `_html_escape` against XSS; CSV cells starting with `= + - @ \t \r` are prefixed with `'` to neutralize Excel/Sheets formula injection; the Graph escapes `</` to `<\/` inside embedded JSON to prevent `</script>` injection.
 
@@ -474,7 +476,6 @@ Found a security issue? Please report responsibly via [SECURITY.md](docs/SECURIT
 
 ## 🙏 Acknowledgments
 
-- 🌟 **[LINUX DO Community](https://linux.do)** — Open-source Chinese tech community; this project actively participates in and recognizes the community
 - 🌟 **[Google libphonenumber](https://github.com/google/libphonenumber)** — industry-standard phone number library
 - 🌟 **[ipwho.is](https://ipwho.is/)** — free, stable, info-rich IP geolocation API
 - 🌟 **[ipify.org](https://www.ipify.org/)** — clean public IP lookup service
