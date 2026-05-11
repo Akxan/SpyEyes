@@ -68,7 +68,7 @@ except ImportError:
 
 
 # 语义化版本号 —— 同步更新 docs/CHANGELOG.md 与 git tag
-__version__ = '1.6.12'
+__version__ = '1.8.0'
 
 
 # ====================================================================
@@ -226,6 +226,158 @@ def save_config(cfg: dict) -> None:
         with open(CONFIG_FILE, 'w', encoding='utf-8') as f:
             json.dump(cfg, f, ensure_ascii=False, indent=2)
     except OSError:
+        pass
+
+
+# ====================================================================
+# UPDATE CHECK —— 启动时静默检查 GitHub Release 新版本
+# ====================================================================
+# 设计要点(参考 yt-dlp / gh CLI 等成熟实践):
+# - 完全异步,不阻塞主流程(后台 daemon 线程)
+# - 24h 缓存,避免每次启动都打 GitHub API
+# - 完整离线降级(无网/超时/解析错误一律静默)
+# - 可禁用:SPYEYES_NO_UPDATE_CHECK=1 / --no-update-check
+# - 通知输出到 stderr,不污染 --json 管道(jq 等下游工具不受影响)
+
+UPDATE_CACHE_FILE = os.path.join(CONFIG_DIR, '.update_check.json')
+UPDATE_CHECK_URL = 'https://api.github.com/repos/Akxan/SpyEyes/releases/latest'
+UPDATE_RELEASES_URL_TEMPLATE = 'https://github.com/Akxan/SpyEyes/releases/tag/{tag}'
+UPDATE_CACHE_TTL = 24 * 3600   # 24h
+UPDATE_CHECK_TIMEOUT = 3.0     # 3s 网络超时
+
+
+def _normalize_version(s: str) -> tuple:
+    """'v1.7.0' / '1.7.0' / 'v1.7.0-rc1' → (1, 7, 0)。无法解析返回 ()。"""
+    raw = (s or '').strip().lstrip('vV').split('-')[0].split('+')[0]
+    if not raw:
+        return ()
+    parts = raw.split('.')
+    out: list = []
+    for p in parts:
+        try:
+            out.append(int(p))
+        except ValueError:
+            return ()
+    return tuple(out)
+
+
+def _is_newer(remote: str, local: str) -> bool:
+    """语义化比较:remote > local → True。任一无法解析 → False(保守不打扰)。"""
+    r = _normalize_version(remote)
+    l = _normalize_version(local)
+    if not r or not l:
+        return False
+    return r > l
+
+
+def _read_update_cache() -> Optional[dict]:
+    """读 ~/.spyeyes/.update_check.json。任何失败返回 None。"""
+    try:
+        with open(UPDATE_CACHE_FILE, encoding='utf-8') as f:
+            data = json.load(f)
+        return data if isinstance(data, dict) else None
+    except (OSError, json.JSONDecodeError, UnicodeDecodeError):
+        return None
+
+
+def _write_update_cache(data: dict) -> None:
+    try:
+        os.makedirs(CONFIG_DIR, exist_ok=True)
+        with open(UPDATE_CACHE_FILE, 'w', encoding='utf-8') as f:
+            json.dump(data, f, ensure_ascii=False, indent=2)
+    except OSError:
+        pass
+
+
+def _fetch_latest_version_from_github() -> Optional[str]:
+    """同步 HTTP 调用,3s 超时,完全静默(任何错误返回 None)。
+
+    用 requests.get 而不是 safe_get:此函数在模块早期路径(main 启动时)运行,
+    不希望依赖 _get_session() 的 thread-local 初始化。"""
+    try:
+        resp = requests.get(
+            UPDATE_CHECK_URL,
+            headers={
+                'User-Agent': f'spyeyes/{__version__}',
+                'Accept': 'application/vnd.github+json',
+            },
+            timeout=UPDATE_CHECK_TIMEOUT,
+        )
+        if resp.status_code != 200:
+            return None
+        data = resp.json()
+        tag = data.get('tag_name') if isinstance(data, dict) else None
+        return tag if isinstance(tag, str) and tag.strip() else None
+    except (requests.RequestException, ValueError, OSError):
+        return None
+
+
+def _is_update_check_disabled() -> bool:
+    return os.environ.get('SPYEYES_NO_UPDATE_CHECK', '').strip().lower() in ('1', 'true', 'yes')
+
+
+def get_cached_update_info() -> Optional[dict]:
+    """同步读缓存,立即返回。
+    返回 {latest, current, url} 表示有新版本; None 表示无更新 / 无缓存 / 已禁用。
+    """
+    if _is_update_check_disabled():
+        return None
+    cache = _read_update_cache()
+    if not cache:
+        return None
+    latest = cache.get('latest')
+    if not isinstance(latest, str) or not _is_newer(latest, __version__):
+        return None
+    return {
+        'latest': latest,
+        'current': __version__,
+        'url': cache.get('url') or UPDATE_RELEASES_URL_TEMPLATE.format(tag=latest),
+    }
+
+
+def refresh_update_cache_sync() -> None:
+    """同步刷新缓存(实查 GitHub)。供后台线程或测试调用。"""
+    if _is_update_check_disabled():
+        return
+    tag = _fetch_latest_version_from_github()
+    payload = {
+        'checked_at': time.time(),
+        'latest': tag,
+        'url': UPDATE_RELEASES_URL_TEMPLATE.format(tag=tag) if tag else None,
+    }
+    _write_update_cache(payload)
+
+
+def _start_background_update_check() -> None:
+    """启动后台 daemon 线程刷新缓存。
+    24h 内已查过则跳过(避免每次启动都打 GitHub API)。"""
+    if _is_update_check_disabled():
+        return
+    cache = _read_update_cache()
+    if cache:
+        ts = cache.get('checked_at', 0)
+        if isinstance(ts, (int, float)) and (time.time() - ts) < UPDATE_CACHE_TTL:
+            return   # 缓存还新,不查
+    th = threading.Thread(target=refresh_update_cache_sync,
+                          daemon=True, name='spyeyes-update-check')
+    th.start()
+
+
+def print_update_notice(info: dict) -> None:
+    """启动时打印一行升级提示到 stderr(不污染 --json 管道)。
+    所有 i18n 调用前 _lang 必须已设定。"""
+    try:
+        msg_avail = t('update.available', latest=info['latest'], current=info['current'])
+        msg_howto = t('update.howto')
+        msg_notes = t('update.release_notes', url=info.get('url') or '')
+        msg_hint = t('update.disable_hint')
+        sys.stderr.write(
+            f"\n{Color.Ye}🆕 {msg_avail}{Color.Reset}\n"
+            f"   {Color.Cy}{msg_howto}{Color.Reset}\n"
+            f"   {Color.Gr}{msg_notes}{Color.Reset}\n"
+            f"   {Color.Bl}{msg_hint}{Color.Reset}\n\n"
+        )
+    except (OSError, UnicodeEncodeError):
         pass
 
 
@@ -528,6 +680,39 @@ TRANSLATIONS: dict = {
         'report.legend_query':    'Query username',
         'report.legend_hit':      'Hit platform',
         'report.legend_other':    'Error / Other',
+        # v1.7.0 — Investigate (one-shot multi-source dossier)
+        'menu.investigate':           'Investigate (multi-source dossier)',
+        'section.investigate':        'Comprehensive Investigation',
+        'prompt.input_investigate':   'Enter target domain : ',
+        'prompt.investigate_depth':   'Pivot depth?\n   [ 1 ] Standard (subdomain→IP, email→user) — default\n   [ 2 ] Atomic only (no pivots, faster)\n  Choose [1/2, default 1] : ',
+        'investigate.stage_start':    'Starting comprehensive investigation: {target}',
+        'investigate.stage_atomic':   'Stage 1: 4 atomic tasks (whois / mx / subdomain / domain-emails)…',
+        'investigate.stage_ip_pivot': 'Stage 2a: enriching {n} IPs (subdomain → ip)…',
+        'investigate.stage_user_pivot':'Stage 2b: scanning {n} email local-parts (email → user, {workers} parallel)…',
+        'investigate.task_done':      '[{elapsed}s] {sym} {name}',
+        'investigate.ip_pivot_done':  '[{n}/{total}] {sym} {ip}{summary}',
+        'investigate.user_pivot_done':'[{n}/{total}] {sym} {local}{summary}',
+        'investigate.budget_warn':    '⚠  budget exhausted, skipping remaining work',
+        'investigate.elapsed_total':  'Total elapsed: {elapsed}s',
+        'investigate.title':          'Investigation Report for {target}',
+        'investigate.summary':        'Tasks: {tasks_done} done · {tasks_failed} failed · Pivots: {pivots_done} done · Elapsed: {elapsed}s',
+        'investigate.budget_exceeded':'Budget exceeded — some pivots were skipped',
+        'investigate.truncated':      'Truncated by cap: {ips} IPs and {emails} emails skipped (use --max-pivot-* to raise)',
+        'investigate.subdomain_summary':'{alive} alive / {total} total',
+        'investigate.email_summary':  '{total} emails harvested across {pages} pages',
+        'investigate.section_whois':  'I. WHOIS Registration',
+        'investigate.section_mx':     'II. MX (Mail Servers)',
+        'investigate.section_subdomain':'III. Subdomain Enumeration',
+        'investigate.section_ip_pivot':'IV. IP Enrichment (subdomain → IP)',
+        'investigate.section_emails': 'V. Domain Emails',
+        'investigate.section_user_pivot':'VI. Username Footprint (email → platforms)',
+        'investigate.no_data':        'no data',
+        'err.investigate_only_domain':'investigate currently supports domain input only (email/ip/username planned for v2)',
+        # Update check
+        'update.available':           'SpyEyes {latest} available (current {current})',
+        'update.howto':               'Update: cd to repo, then `git pull && pip install -e .`',
+        'update.release_notes':       'Release notes: {url}',
+        'update.disable_hint':        '(disable: SPYEYES_NO_UPDATE_CHECK=1 or --no-update-check)',
     },
     'zh': {
         'menu.ip_track':        'IP 追踪',
@@ -812,6 +997,39 @@ TRANSLATIONS: dict = {
         'report.legend_query':    '查询用户名',
         'report.legend_hit':      '命中平台',
         'report.legend_other':    '错误 / 其它',
+        # v1.7.0 — 综合调查(一次输入域名,自动 fan-out + 单向接力,出整合档案)
+        'menu.investigate':           '综合调查 (多源整合档案)',
+        'section.investigate':        '综合调查',
+        'prompt.input_investigate':   '请输入目标域名 : ',
+        'prompt.investigate_depth':   '接力深度?\n   [ 1 ] 标准 (子域→IP, 邮箱→用户) — 默认\n   [ 2 ] 仅原子查询 (不接力,更快)\n  请选择 [1/2, 默认 1] : ',
+        'investigate.stage_start':    '开始综合调查: {target}',
+        'investigate.stage_atomic':   '阶段 1: 4 个原子任务并发 (whois / mx / subdomain / domain-emails)…',
+        'investigate.stage_ip_pivot': '阶段 2a: 接力查询 {n} 个 IP (子域 → IP)…',
+        'investigate.stage_user_pivot':'阶段 2b: 接力扫描 {n} 个邮箱本地部分 (邮箱 → 用户名, {workers} 并发)…',
+        'investigate.task_done':      '[{elapsed}s] {sym} {name}',
+        'investigate.ip_pivot_done':  '[{n}/{total}] {sym} {ip}{summary}',
+        'investigate.user_pivot_done':'[{n}/{total}] {sym} {local}{summary}',
+        'investigate.budget_warn':    '⚠  预算耗尽,跳过剩余工作',
+        'investigate.elapsed_total':  '总耗时: {elapsed}s',
+        'investigate.title':          '综合调查报告: {target}',
+        'investigate.summary':        '任务: {tasks_done} 成功 · {tasks_failed} 失败 · 接力: {pivots_done} 完成 · 耗时: {elapsed}s',
+        'investigate.budget_exceeded':'已超出时间预算 — 部分接力被跳过',
+        'investigate.truncated':      '触发上限截断: 跳过了 {ips} 个 IP 和 {emails} 个邮箱 (用 --max-pivot-* 提升)',
+        'investigate.subdomain_summary':'{alive} 个活子域 / {total} 个候选',
+        'investigate.email_summary':  '抓取到 {total} 个邮箱 (共爬取 {pages} 页)',
+        'investigate.section_whois':  'I. WHOIS 注册信息',
+        'investigate.section_mx':     'II. MX 邮件服务器',
+        'investigate.section_subdomain':'III. 子域名枚举',
+        'investigate.section_ip_pivot':'IV. IP 富化 (子域 → IP)',
+        'investigate.section_emails': 'V. 域名邮箱',
+        'investigate.section_user_pivot':'VI. 用户名足迹 (邮箱 → 平台)',
+        'investigate.no_data':        '无数据',
+        'err.investigate_only_domain':'综合调查当前仅支持 domain 输入 (email/ip/username 计划 v2 支持)',
+        # 版本更新检查
+        'update.available':           'SpyEyes {latest} 可用(当前 {current})',
+        'update.howto':               '更新: 进入仓库目录,执行 `git pull && pip install -e .`',
+        'update.release_notes':       '更新内容: {url}',
+        'update.disable_hint':        '(关闭提示: SPYEYES_NO_UPDATE_CHECK=1 或 --no-update-check)',
     },
 }
 
@@ -4116,6 +4334,438 @@ def enumerate_domain_emails(domain: str, *,
 
 
 # ====================================================================
+# v1.7.0: INVESTIGATE — 综合调查（一次输入域名,自动 fan-out + 单向接力,出综合报告）
+# ====================================================================
+# 设计:
+#   1. 入口:do_investigate(target, ...) -> dict.MVP 仅支持 domain 实体
+#   2. 阶段 1 并发:whois + mx + subdomain + domain-emails(4 个原子任务)
+#   3. 阶段 2 单向 pivot(depth>=1):
+#        subdomain.alive[*].a → track_ip(每 IP)         # 单向叶子,不回根
+#        emails[*].address → track_username(local-part) # 单向叶子,不回根
+#      物理上无环:user/ip 都不再反查域名 — 不可能出现"死循环"
+#   4. 硬上限:
+#        - budget (总时间硬超时;default 300s,深度 0 时只跑阶段 1)
+#        - max_pivot_ips (默认 20 个 IP)
+#        - max_pivot_emails (默认 15 个邮箱,且按"看着像真人名"评分排序优先)
+#        - role-account 邮箱(noreply/info/...)自动跳过
+#   5. 错误隔离:任何单任务失败只在自己槽位记 _error,其它任务照常进行
+
+INVESTIGATE_DEFAULT_BUDGET = 300.0          # 5 分钟硬超时(深度 1 时)
+INVESTIGATE_MAX_PIVOT_IPS = 20              # 子域接 IP 最多查 20 个 unique IP
+INVESTIGATE_MAX_PIVOT_EMAILS = 15           # 邮箱接 user 最多 15 个邮箱
+INVESTIGATE_MIN_PIVOT_EMAIL_LEN = 3         # local-part 长度门槛(防 a@x.com)
+INVESTIGATE_EMAILS_MAX_PAGES = 80           # 综合调查默认轻量爬取(对比 domain-emails 默认 200)
+INVESTIGATE_IP_PIVOT_WORKERS = 20           # v1.8.0:10 → 20,track_ip 单 HTTP 调用,可激进
+INVESTIGATE_USER_PIVOT_OUTER_WORKERS = 4    # v1.8.0:Phase 2b 并行邮箱数(配合 INNER_WORKERS 控制总线程)
+INVESTIGATE_USER_PIVOT_INNER_WORKERS = 50   # v1.8.0:每邮箱内部 worker 数(50×4=200 持平单 user 150)
+
+# 邮箱本地部分 role-account 黑名单 → 自动跳过 user pivot
+_EMAIL_NONPERSONAL_PREFIXES = frozenset({
+    'noreply', 'no-reply', 'donotreply', 'do-not-reply', 'info',
+    'admin', 'administrator', 'support', 'help', 'contact', 'hello',
+    'sales', 'marketing', 'press', 'jobs', 'careers', 'team',
+    'webmaster', 'postmaster', 'hostmaster', 'mailer-daemon', 'mailer',
+    'abuse', 'security', 'privacy', 'legal', 'compliance', 'office',
+    'billing', 'accounts', 'service', 'feedback', 'news', 'newsletter',
+    'updates', 'notifications', 'notify', 'noticias', 'root',
+})
+
+
+def _personal_email_score(local: str) -> int:
+    """评 email local-part 像真人名的程度(0..3,越高越像).
+       0 = 明确 role-account(noreply/info/...) → user pivot 跳过
+       1 = role-account 变体(noreply-john / info_xx) → 不推荐 pivot
+       2 = 看起来像 username(纯字母 / 字母+数字)
+       3 = 多段名字风格(john.doe / first_last)→ 真人概率高
+    """
+    lp = (local or '').lower().split('+')[0]  # 去掉 +tag
+    if not lp:
+        return 0
+    if lp in _EMAIL_NONPERSONAL_PREFIXES:
+        return 0
+    # role-account 前缀变体: noreply-x / noreply.x / noreply_x
+    for role in _EMAIL_NONPERSONAL_PREFIXES:
+        if lp.startswith(role + '-') or lp.startswith(role + '.') or lp.startswith(role + '_'):
+            return 1
+    # 多段分隔(john.doe / first_last)→ 真名概率
+    if any(sep in lp for sep in '._-'):
+        parts = re.split(r'[._-]+', lp)
+        if all(p and p not in _EMAIL_NONPERSONAL_PREFIXES for p in parts):
+            return 3
+    if lp.isdigit():
+        return 0
+    if len(lp) >= 4:
+        return 2
+    return 1
+
+
+def _detect_entity_type(target: str) -> str:
+    """v1.7.0:实体侦测,返回 'domain' / 'email' / 'ip' / 'username' / 'unknown'.
+    MVP 只 'domain' 走完整 investigate 流程,其余 v2 实现。"""
+    s = (target or '').strip()
+    if not s:
+        return 'unknown'
+    try:
+        ipaddress.ip_address(s)
+        return 'ip'
+    except ValueError:
+        pass
+    if '@' in s and EMAIL_RE.match(s):
+        return 'email'
+    if '.' in s and _normalize_domain(s) is not None:
+        return 'domain'
+    if not _is_invalid_username(s):
+        return 'username'
+    return 'unknown'
+
+
+def _build_investigate_graph(target: str, tasks: dict, pivots: dict) -> dict:
+    """v1.7.0:把任务/接力结果折成图(nodes + edges),给 HTML 报告用.
+    单向 DAG — domain 是根,其它节点都是叶子(无回边)。"""
+    nodes: list = [{'id': target, 'type': 'domain', 'label': target}]
+    edges: list = []
+    seen_ids: set = {target}
+
+    def _add_node(nid: str, ntype: str, label: Optional[str] = None) -> None:
+        if nid in seen_ids:
+            return
+        seen_ids.add(nid)
+        nodes.append({'id': nid, 'type': ntype, 'label': label or nid})
+
+    def _add_edge(src: str, dst: str, kind: str) -> None:
+        edges.append({'src': src, 'dst': dst, 'kind': kind})
+
+    # WHOIS 注册邮箱
+    w = tasks.get('whois') or {}
+    if isinstance(w, dict) and '_error' not in w:
+        wem = w.get('emails')
+        if isinstance(wem, str):
+            wem = [wem]
+        for em in (wem or []):
+            if isinstance(em, str) and em:
+                _add_node(em, 'email')
+                _add_edge(target, em, 'whois_email')
+
+    # MX 服务器
+    mx_d = tasks.get('mx') or {}
+    if isinstance(mx_d, dict) and '_error' not in mx_d:
+        for r in (mx_d.get('records') or []):
+            ex = r.get('exchange') if isinstance(r, dict) else None
+            if ex:
+                _add_node(ex, 'mx', label=ex)
+                _add_edge(target, ex, 'mx_record')
+
+    # 子域名(只画 alive)
+    sub_d = tasks.get('subdomain') or {}
+    sub_list = sub_d.get('subdomains') if isinstance(sub_d, dict) else None
+    for s in (sub_list or []):
+        if isinstance(s, dict) and s.get('alive'):
+            host = s.get('host', '')
+            if host and host != target:
+                _add_node(host, 'subdomain', label=host)
+                _add_edge(target, host, 'subdomain')
+
+    # 域名邮箱
+    em_d = tasks.get('emails') or {}
+    if isinstance(em_d, dict) and '_error' not in em_d:
+        for e in (em_d.get('emails') or []):
+            addr = e.get('address') if isinstance(e, dict) else None
+            if addr:
+                _add_node(addr, 'email', label=addr)
+                _add_edge(target, addr, 'email')
+
+    # Pivot IP — 用 subdomain.a 反查 host
+    for ip in (pivots.get('ips') or {}).keys():
+        _add_node(ip, 'ip', label=ip)
+        for s in (sub_list or []):
+            if isinstance(s, dict) and ip in (s.get('a') or []):
+                _add_edge(s.get('host', ''), ip, 'resolves_to')
+
+    # Pivot user 命中
+    for addr, ud in (pivots.get('users') or {}).items():
+        if not isinstance(ud, dict):
+            continue
+        result = ud.get('result')
+        local = ud.get('local_part', '')
+        if not isinstance(result, dict):
+            continue
+        for plat_name, url in result.items():
+            if plat_name.startswith('_') or not url:
+                continue
+            plat_id = f'platform:{plat_name}:{addr}'
+            _add_node(plat_id, 'platform', label=f'{plat_name} / {local}')
+            _add_edge(addr, plat_id, 'username_hit')
+
+    return {'nodes': nodes, 'edges': edges}
+
+
+def do_investigate(target: str, *,
+                   depth: int = 1,
+                   budget: float = INVESTIGATE_DEFAULT_BUDGET,
+                   max_pivot_ips: int = INVESTIGATE_MAX_PIVOT_IPS,
+                   max_pivot_emails: int = INVESTIGATE_MAX_PIVOT_EMAILS,
+                   quick: bool = True,
+                   probe: bool = True,
+                   show_progress: bool = True) -> dict:
+    """v1.7.0:综合调查 — domain 输入,自动 fan-out + 单向 pivot,出整合 dict.
+
+    MVP 仅支持 domain 实体;其余实体类型返回 _error('only_domain').
+
+    pivot 设计是单向 DAG(domain 是根,user/ip/mx/email 都是叶子),物理上不可能死循环。
+    explosion 防御靠 cap:子域 → 最多 max_pivot_ips 个 IP;邮箱 → 按真人评分排前
+    max_pivot_emails 个,role-account(noreply/info/...)自动跳过。
+    """
+    raw = (target or '').strip()
+    if not raw:
+        return {'_error': t('err.empty_input'), 'target': raw, 'entity_type': 'unknown'}
+
+    entity = _detect_entity_type(raw)
+    if entity != 'domain':
+        return {'_error': t('err.investigate_only_domain'),
+                'target': raw, 'entity_type': entity}
+
+    normalized = _normalize_domain(raw)
+    if normalized is None:
+        return {'_error': t('err.invalid_domain', domain=raw[:80]),
+                'target': raw, 'entity_type': entity}
+    domain = normalized
+
+    started_at = time.time()
+    deadline = (started_at + budget) if budget and budget > 0 else float('inf')
+
+    def _remaining() -> float:
+        return max(0.0, deadline - time.time())
+
+    if show_progress:
+        _stage_log(f"\n {Color.Cy}{t('investigate.stage_start', target=domain)}{Color.Reset}")
+        _stage_log(f" {Color.Wh}{t('investigate.stage_atomic')}{Color.Reset}")
+
+    # 阶段 1:4 个原子任务并发(每个 task 内部已有自己的超时/异常处理)
+    # 注意:emails 任务用 include_subdomains=False — 否则会再跑一遍 subdomain
+    # 枚举(重复 + 慢 2x).综合调查里 subdomain 独立任务已经覆盖子域视图.
+    def _task_whois() -> dict:
+        return whois_lookup(domain)
+
+    def _task_mx() -> dict:
+        return mx_lookup(domain)
+
+    def _task_subdomain() -> dict:
+        return enumerate_subdomains(domain, probe=probe, show_progress=False)
+
+    def _task_emails() -> dict:
+        return enumerate_domain_emails(
+            domain,
+            crawl=True,
+            include_subdomains=False,
+            max_pages=INVESTIGATE_EMAILS_MAX_PAGES,
+            show_progress=False,
+        )
+
+    tasks_result: dict = {'whois': None, 'mx': None, 'subdomain': None, 'emails': None}
+    fn_map = {
+        'whois': _task_whois, 'mx': _task_mx,
+        'subdomain': _task_subdomain, 'emails': _task_emails,
+    }
+    tasks_failed = 0
+    phase1_start = time.time()
+    with ThreadPoolExecutor(max_workers=4) as ex:
+        futures = {ex.submit(fn): name for name, fn in fn_map.items()}
+        try:
+            for fut in as_completed(futures):
+                name = futures[fut]
+                try:
+                    tasks_result[name] = fut.result()
+                except Exception as e:
+                    tasks_result[name] = {'_error': str(e)}
+                if isinstance(tasks_result[name], dict) and '_error' in tasks_result[name]:
+                    tasks_failed += 1
+                if show_progress:
+                    ok = isinstance(tasks_result[name], dict) and '_error' not in tasks_result[name]
+                    sym = '✓' if ok else '✗'
+                    color = Color.Gr if ok else Color.Re
+                    elapsed = int(time.time() - phase1_start)
+                    _stage_log(f"   {color}{t('investigate.task_done', elapsed=elapsed, sym=sym, name=name)}{Color.Reset}")
+        except KeyboardInterrupt:
+            ex.shutdown(wait=False, cancel_futures=True)
+            raise
+
+    # 阶段 2:单向 pivot(depth>=1 且仍有 budget)
+    pivots: dict = {'ips': {}, 'users': {}}
+    truncated = {'ips': 0, 'emails': 0}
+    pivots_done = 0
+    pivots_skipped = 0
+
+    if depth >= 1 and _remaining() > 0:
+        # Pivot 1:alive subdomain → IP enrichment(country/ASN/org)
+        sub_data = tasks_result.get('subdomain') or {}
+        if isinstance(sub_data, dict) and 'subdomains' in sub_data:
+            all_alive_ips: set = set()
+            for s in sub_data.get('subdomains', []) or []:
+                if isinstance(s, dict) and s.get('alive'):
+                    for ip in (s.get('a') or []):
+                        if ip:
+                            all_alive_ips.add(ip)
+            unique_ips = sorted(all_alive_ips)[:max_pivot_ips]
+            truncated['ips'] = max(0, len(all_alive_ips) - len(unique_ips))
+
+            if unique_ips:
+                if show_progress:
+                    _stage_log(f"\n {Color.Wh}{t('investigate.stage_ip_pivot', n=len(unique_ips))}{Color.Reset}")
+                ip_total = len(unique_ips)
+                ip_completed = 0
+                with ThreadPoolExecutor(
+                    max_workers=min(INVESTIGATE_IP_PIVOT_WORKERS, ip_total),
+                ) as ex:
+                    fut_to_ip = {ex.submit(track_ip, ip): ip for ip in unique_ips}
+                    try:
+                        for fut in as_completed(fut_to_ip):
+                            ip = fut_to_ip[fut]
+                            try:
+                                pivots['ips'][ip] = fut.result()
+                            except Exception as e:
+                                pivots['ips'][ip] = {'_error': str(e)}
+                                pivots_skipped += 1
+                                ip_completed += 1
+                                if show_progress:
+                                    _stage_log(f"   {Color.Re}{t('investigate.ip_pivot_done', n=ip_completed, total=ip_total, sym='✗', ip=ip, summary='')}{Color.Reset}")
+                                continue
+                            ip_completed += 1
+                            if isinstance(pivots['ips'][ip], dict) and '_error' in pivots['ips'][ip]:
+                                pivots_skipped += 1
+                                if show_progress:
+                                    _stage_log(f"   {Color.Re}{t('investigate.ip_pivot_done', n=ip_completed, total=ip_total, sym='✗', ip=ip, summary='')}{Color.Reset}")
+                            else:
+                                pivots_done += 1
+                                if show_progress:
+                                    geo = pivots['ips'][ip] or {}
+                                    cc = geo.get('country_code') or geo.get('country') or ''
+                                    asn = (geo.get('connection') or {}).get('org', '') if isinstance(geo.get('connection'), dict) else ''
+                                    summary = f' → {cc} {asn}'.rstrip() if (cc or asn) else ''
+                                    _stage_log(f"   {Color.Gr}{t('investigate.ip_pivot_done', n=ip_completed, total=ip_total, sym='✓', ip=ip, summary=summary)}{Color.Reset}")
+                            if _remaining() <= 0:
+                                ex.shutdown(wait=False, cancel_futures=True)
+                                if show_progress:
+                                    _stage_log(f"   {Color.Ye}{t('investigate.budget_warn')}{Color.Reset}")
+                                break
+                    except KeyboardInterrupt:
+                        ex.shutdown(wait=False, cancel_futures=True)
+                        raise
+
+        # Pivot 2:emails → username 扫描(local-part)
+        email_data = tasks_result.get('emails') or {}
+        if isinstance(email_data, dict) and '_error' not in email_data and _remaining() > 0:
+            scored: list = []
+            for em_rec in (email_data.get('emails') or []):
+                addr = (em_rec.get('address') if isinstance(em_rec, dict) else '') or ''
+                if '@' not in addr:
+                    continue
+                local = addr.split('@', 1)[0]
+                if len(local) < INVESTIGATE_MIN_PIVOT_EMAIL_LEN:
+                    continue
+                if _is_invalid_username(local):
+                    continue
+                score = _personal_email_score(local)
+                if score == 0:  # role-account → 跳过
+                    continue
+                scored.append((score, len(local), addr, local))
+            # 高分先,短的先(更可能匹配平台 username 约束)
+            scored.sort(key=lambda r: (-r[0], r[1]))
+            picks = scored[:max_pivot_emails]
+            truncated['emails'] = max(0, len(scored) - len(picks))
+
+            if picks:
+                outer = min(INVESTIGATE_USER_PIVOT_OUTER_WORKERS, len(picks))
+                if show_progress:
+                    _stage_log(f"\n {Color.Wh}{t('investigate.stage_user_pivot', n=len(picks), workers=outer)}{Color.Reset}")
+                # v1.8.0:从串行改并行 — outer 4 邮箱 × inner 50 worker = 200 总线程
+                # (持平单 user 默认 150,单平台 burst 风险≈不变 因为 4 outer 同时打同一平台
+                # 概率极低:每个 outer 同一时刻只有 1/1700 概率打 GitHub)
+                # quick 模式跳过 other 长尾(3164 → ~1750 平台)
+                cats = [c for c in CATEGORY_ORDER if c != 'other'] if quick else None
+
+                def _scan_one_email(payload: tuple) -> tuple:
+                    """子线程:跑 track_username,返回 (addr, local, result_or_error_dict)。"""
+                    addr_, local_ = payload
+                    if _remaining() <= 0:
+                        return addr_, local_, {'_error': 'budget_exceeded'}
+                    try:
+                        r = track_username(local_,
+                                           max_workers=INVESTIGATE_USER_PIVOT_INNER_WORKERS,
+                                           timeout=3.0, categories=cats,
+                                           show_progress=False)
+                        return addr_, local_, {'result': r}
+                    except Exception as exc:
+                        return addr_, local_, {'_error': str(exc)}
+
+                user_completed = 0
+                user_total = len(picks)
+                with ThreadPoolExecutor(max_workers=outer) as ex_users:
+                    fut_to_pick = {
+                        ex_users.submit(_scan_one_email, (addr, local)): (addr, local)
+                        for _, _, addr, local in picks
+                    }
+                    try:
+                        for fut in as_completed(fut_to_pick):
+                            addr, local = fut_to_pick[fut]
+                            try:
+                                _addr, _local, payload = fut.result()
+                            except Exception as exc:  # 应该不会到这里(_scan_one_email 已捕获)
+                                payload = {'_error': str(exc)}
+                            user_completed += 1
+                            if '_error' in payload:
+                                pivots['users'][addr] = {'local_part': local, '_error': payload['_error']}
+                                pivots_skipped += 1
+                                if show_progress:
+                                    _stage_log(f"   {Color.Re}{t('investigate.user_pivot_done', n=user_completed, total=user_total, sym='✗', local=local, summary='')}{Color.Reset}")
+                            else:
+                                r = payload['result']
+                                pivots['users'][addr] = {'local_part': local, 'result': r}
+                                pivots_done += 1
+                                if show_progress:
+                                    # 计 hit 数:dict 里非 None 且非以 _ 开头的 key 个数
+                                    hits = sum(1 for k, v in (r or {}).items()
+                                               if v is not None and not k.startswith('_'))
+                                    summary = f' → {hits} hit{"s" if hits != 1 else ""}' if hits else ''
+                                    _stage_log(f"   {Color.Gr}{t('investigate.user_pivot_done', n=user_completed, total=user_total, sym='✓', local=local, summary=summary)}{Color.Reset}")
+                            if _remaining() <= 0:
+                                ex_users.shutdown(wait=False, cancel_futures=True)
+                                if show_progress:
+                                    _stage_log(f"   {Color.Ye}{t('investigate.budget_warn')}{Color.Reset}")
+                                break
+                    except KeyboardInterrupt:
+                        ex_users.shutdown(wait=False, cancel_futures=True)
+                        raise
+
+    elapsed = time.time() - started_at
+    budget_exceeded = bool(budget) and budget > 0 and _remaining() <= 0
+    graph = _build_investigate_graph(domain, tasks_result, pivots)
+
+    if show_progress:
+        _stage_log(f"\n {Color.Cy}{t('investigate.elapsed_total', elapsed=int(elapsed))}{Color.Reset}")
+
+    return {
+        'entity_type': 'domain',
+        'target': domain,
+        'depth': depth,
+        'started_at': time.strftime('%Y-%m-%d %H:%M:%S', time.localtime(started_at)),
+        'finished_at': time.strftime('%Y-%m-%d %H:%M:%S'),
+        'elapsed': round(elapsed, 2),
+        'tasks': tasks_result,
+        'pivots': pivots,
+        'graph': graph,
+        '_stats': {
+            'tasks_done': sum(1 for v in tasks_result.values()
+                              if isinstance(v, dict) and '_error' not in v),
+            'tasks_failed': tasks_failed,
+            'pivots_done': pivots_done,
+            'pivots_skipped': pivots_skipped,
+            'truncated': truncated,
+            'budget_exceeded': budget_exceeded,
+        },
+    }
+
+
+# ====================================================================
 # 输出格式化
 # ====================================================================
 def _print_section_header(section_key: str, *, equals: int = 10) -> None:
@@ -4528,6 +5178,139 @@ def print_subdomains(data: dict) -> None:
         print()
 
 
+def print_investigate(data: dict) -> None:
+    """v1.7.0:综合调查终端输出 — 6 个 section,扁平易读.每个 section 失败独立标记."""
+    _print_section_header('section.investigate')
+    print()
+    if not isinstance(data, dict):
+        print(f" {Color.Re}invalid data{Color.Reset}")
+        return
+    if '_error' in data:
+        print(f" {Color.Re}{t('err.query_failed', msg=data['_error'])}{Color.Reset}")
+        return
+    target = data.get('target', '')
+    stats = data.get('_stats') or {}
+    elapsed = data.get('elapsed', 0)
+    print(f" {Color.Wh}{t('investigate.title', target=target)}{Color.Reset}")
+    print(f" {Color.Wh}{t('investigate.summary', tasks_done=stats.get('tasks_done', 0), tasks_failed=stats.get('tasks_failed', 0), pivots_done=stats.get('pivots_done', 0), elapsed=elapsed)}{Color.Reset}")
+    if stats.get('budget_exceeded'):
+        print(f" {Color.Ye}⚠ {t('investigate.budget_exceeded')}{Color.Reset}")
+    trunc = stats.get('truncated') or {}
+    if trunc.get('ips') or trunc.get('emails'):
+        print(f" {Color.Bl}{t('investigate.truncated', ips=trunc.get('ips', 0), emails=trunc.get('emails', 0))}{Color.Reset}")
+    print()
+
+    tasks = data.get('tasks') or {}
+    pivots = data.get('pivots') or {}
+
+    # WHOIS
+    print(f" {Color.Cy}┌─ {t('investigate.section_whois')} ─{Color.Reset}")
+    w = tasks.get('whois') or {}
+    if isinstance(w, dict) and '_error' in w:
+        print(f"   {Color.Re}✗ {w['_error']}{Color.Reset}")
+    elif isinstance(w, dict):
+        registrar = w.get('registrar') or '-'
+        created = w.get('creation_date') or '-'
+        ns = w.get('name_servers')
+        ns_str = ', '.join(ns) if isinstance(ns, list) else (str(ns) if ns else '-')
+        emails = w.get('emails')
+        if isinstance(emails, list):
+            em_str = ', '.join(emails)
+        else:
+            em_str = str(emails) if emails else '-'
+        print(f"   {Color.Wh}{t('field.registrar')}:{Color.Reset} {registrar}")
+        print(f"   {Color.Wh}{t('field.creation_date')}:{Color.Reset} {created}")
+        print(f"   {Color.Wh}{t('field.name_servers')}:{Color.Reset} {ns_str[:120]}")
+        print(f"   {Color.Wh}{t('field.emails')}:{Color.Reset} {em_str[:120]}")
+    print()
+
+    # MX
+    print(f" {Color.Cy}┌─ {t('investigate.section_mx')} ─{Color.Reset}")
+    mx = tasks.get('mx') or {}
+    if isinstance(mx, dict) and '_error' in mx:
+        print(f"   {Color.Re}✗ {mx['_error']}{Color.Reset}")
+    else:
+        for r in (mx.get('records') or []):
+            if isinstance(r, dict):
+                print(f"   {Color.Wh}[ {Color.Gr}+ {Color.Wh}] {r.get('preference', '-'):>4}  {r.get('exchange', '')}{Color.Reset}")
+    print()
+
+    # Subdomains
+    print(f" {Color.Cy}┌─ {t('investigate.section_subdomain')} ─{Color.Reset}")
+    sub = tasks.get('subdomain') or {}
+    if isinstance(sub, dict) and '_error' in sub:
+        print(f"   {Color.Re}✗ {sub['_error']}{Color.Reset}")
+    elif isinstance(sub, dict):
+        subs = sub.get('subdomains') or []
+        alive = [s for s in subs if isinstance(s, dict) and s.get('alive')]
+        sub_stats = sub.get('_stats') or {}
+        print(f"   {Color.Wh}{t('investigate.subdomain_summary', alive=len(alive), total=sub_stats.get('total', 0))}{Color.Reset}")
+        for s in alive[:20]:
+            host = s.get('host', '')
+            ips = (s.get('a') or []) + (s.get('aaaa') or [])
+            ip_str = ', '.join(ips[:3]) if ips else (s.get('cname') or '?')
+            print(f"   {Color.Wh}[ {Color.Gr}+ {Color.Wh}] {host:35} {Color.Gr}{ip_str[:40]}{Color.Reset}")
+        if len(alive) > 20:
+            print(f"   {Color.Bl}... +{len(alive) - 20} more{Color.Reset}")
+    print()
+
+    # Pivot IP
+    print(f" {Color.Cy}┌─ {t('investigate.section_ip_pivot')} ─{Color.Reset}")
+    ips = pivots.get('ips') or {}
+    if not ips:
+        print(f"   {Color.Bl}({t('investigate.no_data')}){Color.Reset}")
+    else:
+        for ip, ipdata in ips.items():
+            if isinstance(ipdata, dict) and '_error' in ipdata:
+                print(f"   {Color.Re}✗ {ip}: {ipdata['_error']}{Color.Reset}")
+            elif isinstance(ipdata, dict):
+                country = ipdata.get('country') or '-'
+                org = (ipdata.get('connection') or {}).get('org') if isinstance(ipdata.get('connection'), dict) else None
+                org = org or ipdata.get('org') or '-'
+                print(f"   {Color.Wh}[ {Color.Gr}+ {Color.Wh}] {ip:18} {Color.Gr}{country:15}{Color.Reset} {Color.Bl}{str(org)[:40]}{Color.Reset}")
+    print()
+
+    # Emails
+    print(f" {Color.Cy}┌─ {t('investigate.section_emails')} ─{Color.Reset}")
+    em = tasks.get('emails') or {}
+    if isinstance(em, dict) and '_error' in em:
+        print(f"   {Color.Re}✗ {em['_error']}{Color.Reset}")
+    elif isinstance(em, dict):
+        em_list = em.get('emails') or []
+        em_stats = em.get('_stats') or {}
+        print(f"   {Color.Wh}{t('investigate.email_summary', total=em_stats.get('total', 0), pages=em_stats.get('pages_crawled', 0))}{Color.Reset}")
+        for e in em_list[:15]:
+            if isinstance(e, dict):
+                addr = e.get('address', '')
+                srcs = ','.join(e.get('sources') or [])
+                print(f"   {Color.Wh}[ {Color.Gr}+ {Color.Wh}] {addr:45} {Color.Mage}({srcs}){Color.Reset}")
+        if len(em_list) > 15:
+            print(f"   {Color.Bl}... +{len(em_list) - 15} more{Color.Reset}")
+    print()
+
+    # Pivot user
+    print(f" {Color.Cy}┌─ {t('investigate.section_user_pivot')} ─{Color.Reset}")
+    users = pivots.get('users') or {}
+    if not users:
+        print(f"   {Color.Bl}({t('investigate.no_data')}){Color.Reset}")
+    else:
+        for addr, ud in users.items():
+            if not isinstance(ud, dict):
+                continue
+            local = ud.get('local_part', '')
+            if '_error' in ud:
+                print(f"   {Color.Re}✗ {addr} ({local}): {ud['_error']}{Color.Reset}")
+                continue
+            result = ud.get('result') or {}
+            hits = [(k, v) for k, v in result.items() if not k.startswith('_') and v]
+            print(f"   {Color.Wh}[ {Color.Gr}+ {Color.Wh}] {addr:35} ({local}) {Color.Gr}→ {len(hits)} hits{Color.Reset}")
+            for plat, url in hits[:5]:
+                print(f"     {Color.Bl}{plat}{Color.Reset}: {url}")
+            if len(hits) > 5:
+                print(f"     {Color.Bl}... +{len(hits) - 5} more{Color.Reset}")
+    print()
+
+
 # ====================================================================
 # 语言选择器（首次启动 + 菜单切换）
 # ====================================================================
@@ -4586,9 +5369,10 @@ MENU_KEYS = [
     (5, 'menu.whois'),
     (6, 'menu.mx'),
     (7, 'menu.email'),
-    (8, 'menu.subdomain'),     # v1.3.0: 子域名枚举
-    (9, 'menu.domain_emails'), # v1.4.0: 域名邮箱枚举(语言切换从 [9] 让位到 [10])
-    (10, 'menu.lang'),
+    (8, 'menu.subdomain'),       # v1.3.0: 子域名枚举
+    (9, 'menu.domain_emails'),   # v1.4.0: 域名邮箱枚举
+    (10, 'menu.investigate'),    # v1.7.0: 综合调查 (lang 让位到 [11])
+    (11, 'menu.lang'),
     (0, 'menu.exit'),
 ]
 
@@ -4914,7 +5698,21 @@ def handle_choice(choice: int, save_dir: Optional[str] = None) -> None:
         print_domain_emails(result)
         _interactive_save_prompt(f'domain-emails_{domain}', result, save_dir)
     elif choice == 10:
-        # v1.4.0: 切换语言(v1.3.0 是 [9],加 domain-emails 后让位到 [10])
+        # v1.7.0:综合调查 (一个域名 → 4 原子 + 2 单向 pivot,出整合报告)
+        domain = _ask_input('prompt.input_investigate')
+        if domain is None:
+            return
+        # 询问接力深度(默认 1=带 pivot;2=仅原子)
+        try:
+            d_ans = input(f"\n {Color.Wh}{t('prompt.investigate_depth')}{Color.Gr}").strip()
+        except (EOFError, KeyboardInterrupt):
+            d_ans = ''
+        depth = 0 if d_ans == '2' else 1
+        data = do_investigate(domain, depth=depth)
+        print_investigate(data)
+        _interactive_save_prompt(f'investigate_{domain}', data, save_dir)
+    elif choice == 11:
+        # v1.4.0: 切换语言(v1.3.0 是 [9],加 domain-emails 后让位到 [10],加 investigate 后到 [11])
         switch_language_menu()
     elif choice == 0:
         print(f"\n {Color.Gr}{t('prompt.bye')}{Color.Reset}")
@@ -5197,6 +5995,147 @@ def _to_markdown(prefix: str, data: Any) -> str:
                 if url:
                     lines.append(f"| {_md_escape(p_name)} | <{_md_escape(url)}> |")
             lines.append("")
+        return '\n'.join(lines)
+
+    # v1.7.0: investigate 综合调查 — 6 sections,带 stats summary 在前
+    if cmd == 'investigate' and isinstance(data, dict) and 'tasks' in data:
+        target_lbl = _md_escape(data.get('target', query))
+        stats = data.get('_stats', {}) or {}
+        lines.append(f"## {_md_escape(t('investigate.title', target=target_lbl))}")
+        lines.append("")
+        lines.append(f"**{_md_escape(t('investigate.summary', tasks_done=stats.get('tasks_done', 0), tasks_failed=stats.get('tasks_failed', 0), pivots_done=stats.get('pivots_done', 0), elapsed=data.get('elapsed', 0)))}**")
+        lines.append("")
+        if stats.get('budget_exceeded'):
+            lines.append(f"> ⚠ {_md_escape(t('investigate.budget_exceeded'))}")
+            lines.append("")
+        trunc = stats.get('truncated') or {}
+        if trunc.get('ips') or trunc.get('emails'):
+            lines.append(f"_{_md_escape(t('investigate.truncated', ips=trunc.get('ips', 0), emails=trunc.get('emails', 0)))}_")
+            lines.append("")
+        tasks = data.get('tasks') or {}
+        pivots = data.get('pivots') or {}
+
+        # WHOIS
+        lines.append(f"### {_md_escape(t('investigate.section_whois'))}")
+        lines.append("")
+        w = tasks.get('whois') or {}
+        if isinstance(w, dict) and '_error' in w:
+            lines.append(f"> ❌ {_md_escape(w['_error'])}")
+        elif isinstance(w, dict):
+            lines.append(f"| {t('report.field')} | {t('report.value')} |")
+            lines.append("|---|---|")
+            for k in ('registrar', 'creation_date', 'expiration_date', 'name_servers', 'emails', 'org', 'country'):
+                v = w.get(k)
+                if v is None or v == '':
+                    continue
+                if isinstance(v, list):
+                    v_str = ', '.join(str(x) for x in v)
+                else:
+                    v_str = str(v)
+                lines.append(f"| `{_md_escape(k)}` | {_md_escape(v_str)} |")
+        lines.append("")
+
+        # MX
+        lines.append(f"### {_md_escape(t('investigate.section_mx'))}")
+        lines.append("")
+        mx = tasks.get('mx') or {}
+        if isinstance(mx, dict) and '_error' in mx:
+            lines.append(f"> ❌ {_md_escape(mx['_error'])}")
+        elif isinstance(mx, dict) and mx.get('records'):
+            lines.append(f"| {t('report.priority')} | {t('report.mail_server')} |")
+            lines.append("|---:|---|")
+            for r in mx['records']:
+                lines.append(f"| {r.get('preference', '-')} | `{_md_escape(r.get('exchange', ''))}` |")
+        lines.append("")
+
+        # Subdomain
+        lines.append(f"### {_md_escape(t('investigate.section_subdomain'))}")
+        lines.append("")
+        sub = tasks.get('subdomain') or {}
+        if isinstance(sub, dict) and '_error' in sub:
+            lines.append(f"> ❌ {_md_escape(sub['_error'])}")
+        elif isinstance(sub, dict):
+            subs = sub.get('subdomains') or []
+            alive = [s for s in subs if isinstance(s, dict) and s.get('alive')]
+            sub_stats = sub.get('_stats') or {}
+            lines.append(f"**{_md_escape(t('investigate.subdomain_summary', alive=len(alive), total=sub_stats.get('total', 0)))}**")
+            lines.append("")
+            if alive:
+                lines.append(f"| {t('subdomain.col_host')} | {t('subdomain.col_ip')} | {t('subdomain.col_status')} |")
+                lines.append("|---|---|---:|")
+                for s in alive:
+                    ips = ', '.join((s.get('a') or []) + (s.get('aaaa') or []))
+                    status = s.get('http_status')
+                    status_str = str(status) if status is not None else ''
+                    lines.append(f"| `{_md_escape(s.get('host', ''))}` | {_md_escape(ips)} | {status_str} |")
+        lines.append("")
+
+        # IP pivot
+        lines.append(f"### {_md_escape(t('investigate.section_ip_pivot'))}")
+        lines.append("")
+        ip_pivot = pivots.get('ips') or {}
+        if not ip_pivot:
+            lines.append(f"_{_md_escape(t('investigate.no_data'))}_")
+        else:
+            lines.append(f"| IP | {t('field.country')} | {t('field.org')} |")
+            lines.append("|---|---|---|")
+            for ip, ipd in ip_pivot.items():
+                if isinstance(ipd, dict) and '_error' in ipd:
+                    lines.append(f"| `{_md_escape(ip)}` | — | ❌ {_md_escape(ipd['_error'])} |")
+                elif isinstance(ipd, dict):
+                    country = ipd.get('country') or '-'
+                    conn = ipd.get('connection') if isinstance(ipd.get('connection'), dict) else None
+                    org = (conn.get('org') if conn else None) or ipd.get('org') or '-'
+                    lines.append(f"| `{_md_escape(ip)}` | {_md_escape(country)} | {_md_escape(str(org))} |")
+        lines.append("")
+
+        # Emails
+        lines.append(f"### {_md_escape(t('investigate.section_emails'))}")
+        lines.append("")
+        em = tasks.get('emails') or {}
+        if isinstance(em, dict) and '_error' in em:
+            lines.append(f"> ❌ {_md_escape(em['_error'])}")
+        elif isinstance(em, dict):
+            em_list = em.get('emails') or []
+            em_stats = em.get('_stats') or {}
+            lines.append(f"**{_md_escape(t('investigate.email_summary', total=em_stats.get('total', 0), pages=em_stats.get('pages_crawled', 0)))}**")
+            lines.append("")
+            if em_list:
+                lines.append(f"| {t('demails.col_address')} | {t('demails.col_sources')} |")
+                lines.append("|---|---|")
+                for e in em_list:
+                    if isinstance(e, dict):
+                        addr = e.get('address', '')
+                        srcs = ', '.join(e.get('sources') or [])
+                        lines.append(f"| `{_md_escape(addr)}` | {_md_escape(srcs)} |")
+        lines.append("")
+
+        # User pivot
+        lines.append(f"### {_md_escape(t('investigate.section_user_pivot'))}")
+        lines.append("")
+        users = pivots.get('users') or {}
+        if not users:
+            lines.append(f"_{_md_escape(t('investigate.no_data'))}_")
+        else:
+            for addr, ud in users.items():
+                if not isinstance(ud, dict):
+                    continue
+                local = ud.get('local_part', '')
+                lines.append(f"#### `{_md_escape(addr)}` (`{_md_escape(local)}`)")
+                lines.append("")
+                if '_error' in ud:
+                    lines.append(f"> ❌ {_md_escape(ud['_error'])}")
+                    continue
+                result = ud.get('result') or {}
+                hits = [(k, v) for k, v in result.items() if not k.startswith('_') and v]
+                if not hits:
+                    lines.append(f"_{_md_escape(t('investigate.no_data'))}_")
+                    continue
+                lines.append(f"| {t('report.platform')} | {t('report.url')} |")
+                lines.append("|---|---|")
+                for plat, url in hits:
+                    lines.append(f"| {_md_escape(plat)} | <{_md_escape(url)}> |")
+                lines.append("")
         return '\n'.join(lines)
 
     # 通用：扁平化 dict 为表格（key 与 value 都转义）
@@ -6197,6 +7136,213 @@ def _to_html(prefix: str, data: Any) -> str:
         ])
         return '\n'.join(parts)
 
+    # v1.7.0: investigate 综合调查 — 6 sections,Editorial 调性沿用主 CSS
+    if cmd == 'investigate' and isinstance(data, dict) and 'tasks' in data:
+        target_safe = _html_escape(data.get('target', query))
+        stats = data.get('_stats', {}) or {}
+        parts.append(
+            f'<h2>{_html_escape(t("investigate.title", target=target_safe))}</h2>'
+        )
+        parts.append(
+            f'<p class="summary"><b>{_html_escape(t("investigate.summary", tasks_done=stats.get("tasks_done", 0), tasks_failed=stats.get("tasks_failed", 0), pivots_done=stats.get("pivots_done", 0), elapsed=data.get("elapsed", 0)))}</b></p>'
+        )
+        if stats.get('budget_exceeded'):
+            parts.append(
+                f'<div class="error"><b>⚠</b> {_html_escape(t("investigate.budget_exceeded"))}</div>'
+            )
+        trunc = stats.get('truncated') or {}
+        if trunc.get('ips') or trunc.get('emails'):
+            parts.append(
+                f'<p class="summary"><i>{_html_escape(t("investigate.truncated", ips=trunc.get("ips", 0), emails=trunc.get("emails", 0)))}</i></p>'
+            )
+        tasks = data.get('tasks') or {}
+        pivots = data.get('pivots') or {}
+
+        # I. WHOIS
+        parts.append(f'<h3 class="cat">{_html_escape(t("investigate.section_whois"))}</h3>')
+        w = tasks.get('whois') or {}
+        if isinstance(w, dict) and '_error' in w:
+            parts.append(f'<div class="error">❌ {_html_escape(w["_error"])}</div>')
+        elif isinstance(w, dict):
+            parts.append(
+                '<table><thead><tr>'
+                f'<th>{_html_escape(t("report.field"))}</th>'
+                f'<th>{_html_escape(t("report.value"))}</th>'
+                '</tr></thead><tbody>'
+            )
+            for k in ('registrar', 'creation_date', 'expiration_date', 'name_servers',
+                      'emails', 'org', 'country'):
+                v = w.get(k)
+                if v is None or v == '':
+                    continue
+                if isinstance(v, list):
+                    v_str = ', '.join(str(x) for x in v)
+                else:
+                    v_str = str(v)
+                parts.append(
+                    f'<tr><td><code>{_html_escape(k)}</code></td>'
+                    f'<td>{_html_escape(v_str)}</td></tr>'
+                )
+            parts.append('</tbody></table>')
+
+        # II. MX
+        parts.append(f'<h3 class="cat">{_html_escape(t("investigate.section_mx"))}</h3>')
+        mx = tasks.get('mx') or {}
+        if isinstance(mx, dict) and '_error' in mx:
+            parts.append(f'<div class="error">❌ {_html_escape(mx["_error"])}</div>')
+        elif isinstance(mx, dict) and mx.get('records'):
+            parts.append(
+                '<table><thead><tr>'
+                f'<th>{_html_escape(t("report.priority"))}</th>'
+                f'<th>{_html_escape(t("report.mail_server"))}</th>'
+                '</tr></thead><tbody>'
+            )
+            for r in mx['records']:
+                parts.append(
+                    f'<tr><td>{_html_escape(r.get("preference", ""))}</td>'
+                    f'<td><code>{_html_escape(r.get("exchange", ""))}</code></td></tr>'
+                )
+            parts.append('</tbody></table>')
+
+        # III. Subdomain
+        parts.append(f'<h3 class="cat">{_html_escape(t("investigate.section_subdomain"))}</h3>')
+        sub = tasks.get('subdomain') or {}
+        if isinstance(sub, dict) and '_error' in sub:
+            parts.append(f'<div class="error">❌ {_html_escape(sub["_error"])}</div>')
+        elif isinstance(sub, dict):
+            subs = sub.get('subdomains') or []
+            alive_subs = [s for s in subs if isinstance(s, dict) and s.get('alive')]
+            sub_stats = sub.get('_stats') or {}
+            parts.append(
+                f'<p><b>{_html_escape(t("investigate.subdomain_summary", alive=len(alive_subs), total=sub_stats.get("total", 0)))}</b></p>'
+            )
+            if alive_subs:
+                parts.append(
+                    '<table><thead><tr>'
+                    f'<th>{_html_escape(t("subdomain.col_host"))}</th>'
+                    f'<th>{_html_escape(t("subdomain.col_ip"))}</th>'
+                    f'<th>{_html_escape(t("subdomain.col_status"))}</th>'
+                    '</tr></thead><tbody>'
+                )
+                for s in alive_subs:
+                    host = s.get('host', '')
+                    ip_list_str = ', '.join((s.get('a') or []) + (s.get('aaaa') or []))
+                    status = s.get('http_status')
+                    scheme = s.get('scheme') or 'https'
+                    href = f'{scheme}://{_html_escape(host)}/'
+                    host_html = (f'<a href="{href}" target="_blank" rel="noopener noreferrer">'
+                                 f'{_html_escape(host)}</a>')
+                    parts.append(
+                        f'<tr data-alive="true">'
+                        f'<td>{host_html}</td>'
+                        f'<td>{_html_escape(ip_list_str)}</td>'
+                        f'<td>{_html_escape(str(status) if status is not None else "")}</td></tr>'
+                    )
+                parts.append('</tbody></table>')
+
+        # IV. IP pivot
+        parts.append(f'<h3 class="cat">{_html_escape(t("investigate.section_ip_pivot"))}</h3>')
+        ip_pivot = pivots.get('ips') or {}
+        if not ip_pivot:
+            parts.append(f'<p><i>{_html_escape(t("investigate.no_data"))}</i></p>')
+        else:
+            parts.append(
+                '<table><thead><tr>'
+                '<th>IP</th>'
+                f'<th>{_html_escape(t("field.country"))}</th>'
+                f'<th>{_html_escape(t("field.org"))}</th>'
+                '</tr></thead><tbody>'
+            )
+            for ip, ipd in ip_pivot.items():
+                if isinstance(ipd, dict) and '_error' in ipd:
+                    parts.append(
+                        f'<tr><td><code>{_html_escape(ip)}</code></td>'
+                        f'<td colspan="2">❌ {_html_escape(ipd["_error"])}</td></tr>'
+                    )
+                elif isinstance(ipd, dict):
+                    country = ipd.get('country') or '-'
+                    conn = ipd.get('connection') if isinstance(ipd.get('connection'), dict) else None
+                    org = (conn.get('org') if conn else None) or ipd.get('org') or '-'
+                    parts.append(
+                        f'<tr><td><code>{_html_escape(ip)}</code></td>'
+                        f'<td>{_html_escape(country)}</td>'
+                        f'<td>{_html_escape(str(org))}</td></tr>'
+                    )
+            parts.append('</tbody></table>')
+
+        # V. Emails
+        parts.append(f'<h3 class="cat">{_html_escape(t("investigate.section_emails"))}</h3>')
+        em = tasks.get('emails') or {}
+        if isinstance(em, dict) and '_error' in em:
+            parts.append(f'<div class="error">❌ {_html_escape(em["_error"])}</div>')
+        elif isinstance(em, dict):
+            em_list = em.get('emails') or []
+            em_stats = em.get('_stats') or {}
+            parts.append(
+                f'<p><b>{_html_escape(t("investigate.email_summary", total=em_stats.get("total", 0), pages=em_stats.get("pages_crawled", 0)))}</b></p>'
+            )
+            if em_list:
+                parts.append(
+                    '<table><thead><tr>'
+                    f'<th>{_html_escape(t("demails.col_address"))}</th>'
+                    f'<th>{_html_escape(t("demails.col_sources"))}</th>'
+                    '</tr></thead><tbody>'
+                )
+                for e in em_list:
+                    if isinstance(e, dict):
+                        addr_safe = _html_escape(e.get('address', ''))
+                        srcs = ','.join(e.get('sources') or [])
+                        parts.append(
+                            f'<tr><td><a href="mailto:{addr_safe}">{addr_safe}</a></td>'
+                            f'<td>{_html_escape(srcs)}</td></tr>'
+                        )
+                parts.append('</tbody></table>')
+
+        # VI. User pivot
+        parts.append(f'<h3 class="cat">{_html_escape(t("investigate.section_user_pivot"))}</h3>')
+        users = pivots.get('users') or {}
+        if not users:
+            parts.append(f'<p><i>{_html_escape(t("investigate.no_data"))}</i></p>')
+        else:
+            for addr, ud in users.items():
+                if not isinstance(ud, dict):
+                    continue
+                local = ud.get('local_part', '')
+                parts.append(
+                    f'<h4><code>{_html_escape(addr)}</code> '
+                    f'(<code>{_html_escape(local)}</code>)</h4>'
+                )
+                if '_error' in ud:
+                    parts.append(f'<div class="error">❌ {_html_escape(ud["_error"])}</div>')
+                    continue
+                result = ud.get('result') or {}
+                hits = [(k, v) for k, v in result.items() if not k.startswith('_') and v]
+                if not hits:
+                    parts.append(f'<p><i>{_html_escape(t("investigate.no_data"))}</i></p>')
+                    continue
+                parts.append(
+                    '<table><thead><tr>'
+                    f'<th>{_html_escape(t("report.platform"))}</th>'
+                    f'<th>{_html_escape(t("report.url"))}</th>'
+                    '</tr></thead><tbody>'
+                )
+                for plat, url in hits:
+                    url_safe = _html_escape(url)
+                    parts.append(
+                        f'<tr><td>{_html_escape(plat)}</td>'
+                        f'<td><a href="{url_safe}" target="_blank" rel="noopener noreferrer">{url_safe}</a></td></tr>'
+                    )
+                parts.append('</tbody></table>')
+
+        parts.extend([
+            '<footer class="colophon">',
+            'Generated by <a href="https://github.com/Akxan/SpyEyes" target="_blank" rel="noopener noreferrer">SpyEyes</a>',
+            ' · OSINT Toolkit',
+            '</footer>',
+            '</body>', '</html>'
+        ])
+        return '\n'.join(parts)
+
     if isinstance(data, dict):
         parts.append(
             f'<h2>{cmd_safe.upper()} {_html_escape(t("report.info_for"))}: '
@@ -6386,6 +7532,127 @@ def _to_txt(prefix: str, data: Any) -> str:
             lines.append(f'  [{mark}] {host:40}  {"  |  ".join(extra)}')
         return '\n'.join(lines) + '\n'
 
+    # v1.7.0: investigate 综合调查 — 纯文本 6 sections,平铺易复制
+    if cmd == 'investigate' and isinstance(data, dict) and 'tasks' in data:
+        target_lbl = data.get('target', query)
+        stats = data.get('_stats', {}) or {}
+        lines.append(t('investigate.title', target=target_lbl))
+        lines.append(t('investigate.summary',
+                       tasks_done=stats.get('tasks_done', 0),
+                       tasks_failed=stats.get('tasks_failed', 0),
+                       pivots_done=stats.get('pivots_done', 0),
+                       elapsed=data.get('elapsed', 0)))
+        if stats.get('budget_exceeded'):
+            lines.append(f'⚠ {t("investigate.budget_exceeded")}')
+        trunc = stats.get('truncated') or {}
+        if trunc.get('ips') or trunc.get('emails'):
+            lines.append(t('investigate.truncated',
+                           ips=trunc.get('ips', 0), emails=trunc.get('emails', 0)))
+        lines.append('')
+
+        tasks = data.get('tasks') or {}
+        pivots = data.get('pivots') or {}
+
+        def _section(title: str) -> None:
+            lines.append('── ' + title + ' ──')
+
+        # WHOIS
+        _section(t('investigate.section_whois'))
+        w = tasks.get('whois') or {}
+        if isinstance(w, dict) and '_error' in w:
+            lines.append(f'  ✗ {w["_error"]}')
+        elif isinstance(w, dict):
+            for k in ('registrar', 'creation_date', 'expiration_date',
+                      'name_servers', 'emails', 'org', 'country'):
+                v = w.get(k)
+                if v is None or v == '':
+                    continue
+                if isinstance(v, list):
+                    v = ', '.join(str(x) for x in v)
+                lines.append(f'  {k:20}: {v}')
+        lines.append('')
+
+        # MX
+        _section(t('investigate.section_mx'))
+        mx = tasks.get('mx') or {}
+        if isinstance(mx, dict) and '_error' in mx:
+            lines.append(f'  ✗ {mx["_error"]}')
+        elif isinstance(mx, dict):
+            for r in (mx.get('records') or []):
+                lines.append(f'  [{r.get("preference", "-"):>3}]  {r.get("exchange", "")}')
+        lines.append('')
+
+        # Subdomain
+        _section(t('investigate.section_subdomain'))
+        sub = tasks.get('subdomain') or {}
+        if isinstance(sub, dict) and '_error' in sub:
+            lines.append(f'  ✗ {sub["_error"]}')
+        elif isinstance(sub, dict):
+            subs = sub.get('subdomains') or []
+            alive = [s for s in subs if isinstance(s, dict) and s.get('alive')]
+            sub_stats = sub.get('_stats') or {}
+            lines.append(t('investigate.subdomain_summary',
+                           alive=len(alive), total=sub_stats.get('total', 0)))
+            for s in alive:
+                ips = ', '.join((s.get('a') or []) + (s.get('aaaa') or []))
+                lines.append(f'  [+] {s.get("host", ""):40} {ips}')
+        lines.append('')
+
+        # IP pivot
+        _section(t('investigate.section_ip_pivot'))
+        ips_p = pivots.get('ips') or {}
+        if not ips_p:
+            lines.append(f'  ({t("investigate.no_data")})')
+        else:
+            for ip, ipd in ips_p.items():
+                if isinstance(ipd, dict) and '_error' in ipd:
+                    lines.append(f'  ✗ {ip}: {ipd["_error"]}')
+                elif isinstance(ipd, dict):
+                    country = ipd.get('country') or '-'
+                    conn = ipd.get('connection') if isinstance(ipd.get('connection'), dict) else None
+                    org = (conn.get('org') if conn else None) or ipd.get('org') or '-'
+                    lines.append(f'  [+] {ip:18} {country:15}  {str(org)[:40]}')
+        lines.append('')
+
+        # Emails
+        _section(t('investigate.section_emails'))
+        em = tasks.get('emails') or {}
+        if isinstance(em, dict) and '_error' in em:
+            lines.append(f'  ✗ {em["_error"]}')
+        elif isinstance(em, dict):
+            em_list = em.get('emails') or []
+            em_stats = em.get('_stats') or {}
+            lines.append(t('investigate.email_summary',
+                           total=em_stats.get('total', 0),
+                           pages=em_stats.get('pages_crawled', 0)))
+            for e in em_list:
+                if isinstance(e, dict):
+                    addr = e.get('address', '')
+                    srcs = ','.join(e.get('sources') or [])
+                    lines.append(f'  [+] {addr:45}  ({srcs})')
+        lines.append('')
+
+        # User pivot
+        _section(t('investigate.section_user_pivot'))
+        users = pivots.get('users') or {}
+        if not users:
+            lines.append(f'  ({t("investigate.no_data")})')
+        else:
+            for addr, ud in users.items():
+                if not isinstance(ud, dict):
+                    continue
+                local = ud.get('local_part', '')
+                if '_error' in ud:
+                    lines.append(f'  ✗ {addr} ({local}): {ud["_error"]}')
+                    continue
+                result = ud.get('result') or {}
+                hits = [(k, v) for k, v in result.items() if not k.startswith('_') and v]
+                lines.append(f'  [+] {addr} ({local}) → {len(hits)} hits')
+                for plat, url in hits:
+                    lines.append(f'        {plat:25} {url}')
+        lines.append('')
+        return '\n'.join(lines) + '\n'
+
     if isinstance(data, dict):
         lines.append(f'{cmd.upper()} {t("report.info_for")}: {query}')
         lines.append('')
@@ -6513,6 +7780,86 @@ def _to_csv(prefix: str, data: Any) -> str:
                 _csv_safe(s.get('http_status') if s.get('http_status') is not None else ''),
                 _csv_safe(s.get('title') or ''),
             ])
+        return buf.getvalue()
+
+    # v1.7.0: investigate 综合调查 — section, kind, value 三列宽表(扁平)
+    # 让 BI / spreadsheet pivot 时按 section / kind 切片直接可用
+    if cmd == 'investigate' and isinstance(data, dict) and 'tasks' in data:
+        writer.writerow(['section', 'kind', 'key', 'value'])
+        target_lbl = data.get('target', query)
+        writer.writerow(['meta', 'target', '', _csv_safe(target_lbl)])
+        writer.writerow(['meta', 'elapsed', '', _csv_safe(data.get('elapsed', 0))])
+        tasks = data.get('tasks') or {}
+        pivots = data.get('pivots') or {}
+
+        w = tasks.get('whois') or {}
+        if isinstance(w, dict):
+            if '_error' in w:
+                writer.writerow(['whois', 'error', '', _csv_safe(w['_error'])])
+            else:
+                for k, v in w.items():
+                    if v is None or v == '':
+                        continue
+                    if isinstance(v, list):
+                        v = ', '.join(str(x) for x in v)
+                    writer.writerow(['whois', 'field', _csv_safe(k), _csv_safe(str(v))])
+
+        mx = tasks.get('mx') or {}
+        if isinstance(mx, dict):
+            if '_error' in mx:
+                writer.writerow(['mx', 'error', '', _csv_safe(mx['_error'])])
+            else:
+                for r in (mx.get('records') or []):
+                    writer.writerow(['mx', 'record',
+                                     _csv_safe(str(r.get('preference', ''))),
+                                     _csv_safe(r.get('exchange', ''))])
+
+        sub = tasks.get('subdomain') or {}
+        if isinstance(sub, dict):
+            if '_error' in sub:
+                writer.writerow(['subdomain', 'error', '', _csv_safe(sub['_error'])])
+            else:
+                for s in (sub.get('subdomains') or []):
+                    if isinstance(s, dict) and s.get('alive'):
+                        ips = ', '.join((s.get('a') or []) + (s.get('aaaa') or []))
+                        writer.writerow(['subdomain', 'alive',
+                                         _csv_safe(s.get('host', '')), _csv_safe(ips)])
+
+        for ip, ipd in (pivots.get('ips') or {}).items():
+            if isinstance(ipd, dict) and '_error' in ipd:
+                writer.writerow(['ip_pivot', 'error', _csv_safe(ip), _csv_safe(ipd['_error'])])
+            elif isinstance(ipd, dict):
+                country = ipd.get('country') or ''
+                conn = ipd.get('connection') if isinstance(ipd.get('connection'), dict) else None
+                org = (conn.get('org') if conn else None) or ipd.get('org') or ''
+                writer.writerow(['ip_pivot', 'enriched',
+                                 _csv_safe(ip), _csv_safe(f'{country} | {org}')])
+
+        em = tasks.get('emails') or {}
+        if isinstance(em, dict):
+            if '_error' in em:
+                writer.writerow(['email', 'error', '', _csv_safe(em['_error'])])
+            else:
+                for e in (em.get('emails') or []):
+                    if isinstance(e, dict):
+                        writer.writerow(['email', 'address',
+                                         _csv_safe(e.get('address', '')),
+                                         _csv_safe(','.join(e.get('sources') or []))])
+
+        for addr, ud in (pivots.get('users') or {}).items():
+            if not isinstance(ud, dict):
+                continue
+            local = ud.get('local_part', '')
+            if '_error' in ud:
+                writer.writerow(['user_pivot', 'error',
+                                 _csv_safe(f'{addr} ({local})'), _csv_safe(ud['_error'])])
+                continue
+            result = ud.get('result') or {}
+            for plat, url in result.items():
+                if plat.startswith('_') or not url:
+                    continue
+                writer.writerow(['user_pivot', 'hit',
+                                 _csv_safe(f'{addr}|{plat}'), _csv_safe(url)])
         return buf.getvalue()
 
     if isinstance(data, dict):
@@ -7187,24 +8534,34 @@ window.addEventListener('resize', () => {{ applyCenterViewBox(); fitToView(); }}
 '''
 
 
-def _default_report_dir() -> str:
-    """v1.6.4:跨平台统一行为 — 当前工作目录下创建/使用 'Downloads' 子文件夹。
+# pip / pipx / brew / uv / conda 等安装方式都会把包放在含 site-packages/dist-packages 的路径下;
+# editable install (pip install -e .) 不会(__file__ 直接指向源码),所以源码运行能正确识别
+_PACKAGED_INSTALL_MARKERS = ('site-packages', 'dist-packages')
 
-    设计变更原因:
-    - v1.2.0 默认 ~/Downloads,在 Linux 服务器(无桌面环境)往往不存在
-    - 不同平台落点不一致(macOS ~/Downloads, Linux ~/spyeyes-reports, etc.)
-    - 用户反馈"在哪都不知道,不直观"
-    - 改成固定 <cwd>/Downloads/ — 你在哪跑命令,就在哪建文件夹,所见即所得
-    - v1.6.4:文件夹名从中文 '下载' 改回英文 'Downloads',
-      避免某些 shell / SSH / rsync / Windows CMD 对非 ASCII 路径的兼容问题
+
+def _is_packaged_install() -> bool:
+    """判断当前是否为打包安装(pip/pipx/brew/conda 等),还是从源码直接运行。"""
+    pkg_dir = os.path.dirname(os.path.realpath(__file__))
+    return any(marker in pkg_dir for marker in _PACKAGED_INSTALL_MARKERS)
+
+
+def _default_report_dir() -> str:
+    """智能默认报告目录,按安装方式自适应。
 
     优先级:
-    1. SPYEYES_REPORTS_DIR(用户显式配置,服务器场景常用 /var/log/spyeyes 等)
-    2. <cwd>/Downloads/(默认,自动创建,跨平台一致)
-    3. cwd 直接(若 mkdir 失败,极少见)
+    1. SPYEYES_REPORTS_DIR — 用户显式覆盖(服务器场景常用 /var/log/spyeyes 等)
+    2. 源码运行(git clone / pip install -e .) → <项目根>/Downloads/
+       用户能在仓库根目录直接看到报告,所见即所得
+    3. 打包安装(pip/pipx/brew/conda) → ~/Downloads/spyeyes/
+       绝不写入 site-packages(权限/污染问题),用户惯用的 Downloads 下建子文件夹
+    4. 兜底: <cwd>/Downloads/, 最后 cwd
 
-    不再缓存:每次 _default_report_dir() 调用都重新计算 cwd,
-    支持用户在交互菜单内 cd 切换工作目录的场景(罕见但合理)。"""
+    历史:
+    - v1.2.0: ~/Downloads(Linux 服务器无桌面常无此目录)
+    - v1.6.4: <cwd>/Downloads/(所见即所得,但 spyeyes 被加到 PATH 后用户在 / 下跑会污染根目录)
+    - v1.8.0: 智能路由 — 源码用户回归项目目录,打包用户回归 ~/Downloads/spyeyes/
+
+    不缓存:每次重新计算,支持交互菜单内 cd 切换的场景。"""
     custom = (os.environ.get('SPYEYES_REPORTS_DIR') or '').strip()
     if custom:
         try:
@@ -7212,12 +8569,26 @@ def _default_report_dir() -> str:
             return custom
         except OSError:
             pass
-    target = os.path.join(os.getcwd(), 'Downloads')
+
+    if _is_packaged_install():
+        # 打包安装:绝不写 site-packages,落到用户 home 的 Downloads/spyeyes/
+        target = os.path.join(os.path.expanduser('~'), 'Downloads', 'spyeyes')
+    else:
+        # 源码运行:落到项目根 (spyeyes/__init__.py 上一层) 的 Downloads/
+        project_root = os.path.dirname(os.path.dirname(os.path.realpath(__file__)))
+        target = os.path.join(project_root, 'Downloads')
+
     try:
         os.makedirs(target, exist_ok=True)
         return target
     except OSError:
-        return os.getcwd()
+        # 目标不可写(权限/只读 FS),退到 cwd/Downloads/
+        fallback = os.path.join(os.getcwd(), 'Downloads')
+        try:
+            os.makedirs(fallback, exist_ok=True)
+            return fallback
+        except OSError:
+            return os.getcwd()
 
 
 def menu_loop(save_dir: Optional[str] = None) -> None:
@@ -7280,6 +8651,9 @@ def build_parser() -> argparse.ArgumentParser:
                         default=argparse.SUPPRESS, help='Disable color / 禁用颜色')
     common.add_argument('--lang', choices=['zh', 'en'],
                         default=argparse.SUPPRESS, help='UI language: zh or en / 界面语言')
+    common.add_argument('--no-update-check', action='store_const', const=True,
+                        default=argparse.SUPPRESS,
+                        help='Skip GitHub update check / 跳过 GitHub 版本检查')
     common.add_argument('--version', action='version',
                         version=f'%(prog)s {__version__}')
 
@@ -7432,6 +8806,25 @@ def build_parser() -> argparse.ArgumentParser:
                         help='Compare two subdomain scan JSON files / 对比两次子域扫描 (v1.5.0)')
     sp.add_argument('old', help='Old scan JSON file (e.g. monday.json)')
     sp.add_argument('new', help='New scan JSON file (e.g. friday.json)')
+
+    # v1.7.0:综合调查 — 一次输入 domain,自动 fan-out + 单向 pivot,出整合报告
+    sp = sub.add_parser('investigate', parents=[common],
+                        help='Comprehensive multi-source investigation / 综合调查 (v1.7.0)')
+    sp.add_argument('target', help='Target domain (v2 will add email/ip/username)')
+    sp.add_argument('--depth', type=int, default=1,
+                    help='Pivot depth: 0=atomic-only, 1=with pivots (default: 1)')
+    sp.add_argument('--budget', type=float, default=INVESTIGATE_DEFAULT_BUDGET,
+                    help=f'Total time budget in seconds, 0=unlimited (default: {INVESTIGATE_DEFAULT_BUDGET})')
+    sp.add_argument('--max-pivot-ips', type=_positive_int,
+                    default=INVESTIGATE_MAX_PIVOT_IPS, dest='max_pivot_ips',
+                    help=f'Cap on subdomain→IP enrichment (default: {INVESTIGATE_MAX_PIVOT_IPS})')
+    sp.add_argument('--max-pivot-emails', type=_positive_int,
+                    default=INVESTIGATE_MAX_PIVOT_EMAILS, dest='max_pivot_emails',
+                    help=f'Cap on email→username pivot (default: {INVESTIGATE_MAX_PIVOT_EMAILS})')
+    sp.add_argument('--no-quick', action='store_true', dest='no_quick',
+                    help='Disable quick mode (also scan "other" long-tail platforms)')
+    sp.add_argument('--no-probe', action='store_true', dest='no_probe',
+                    help='Skip HTTP probe in subdomain stage (faster)')
     return parser
 
 
@@ -7732,6 +9125,23 @@ def run_cli(args: argparse.Namespace) -> int:
         if args.save:
             _maybe_save(args.save, 'diff', data)
         return 0
+    elif cmd == 'investigate':
+        # v1.7.0:综合调查
+        data = do_investigate(
+            args.target,
+            depth=getattr(args, 'depth', 1),
+            budget=getattr(args, 'budget', INVESTIGATE_DEFAULT_BUDGET),
+            max_pivot_ips=getattr(args, 'max_pivot_ips', INVESTIGATE_MAX_PIVOT_IPS),
+            max_pivot_emails=getattr(args, 'max_pivot_emails', INVESTIGATE_MAX_PIVOT_EMAILS),
+            quick=not getattr(args, 'no_quick', False),
+            probe=not getattr(args, 'no_probe', False),
+            show_progress=not args.json,
+        )
+        save_prefix = f'investigate_{args.target}'
+        if args.json:
+            _emit_json(data)
+        else:
+            print_investigate(data)
     else:
         return 2
     # 写历史（仅对实际查询的子命令）
@@ -7817,9 +9227,19 @@ def _record_history(cmd: str, args: argparse.Namespace, data: Any) -> None:
                    'total': stats.get('total', 0),
                    'pages_crawled': stats.get('pages_crawled', 0),
                    'verified': stats.get('verified', 0)}
+    elif cmd == 'investigate':
+        # v1.7.0: 记录 target + 任务/接力计数(不存 emails / users 细节防泄露)
+        stats = data.get('_stats', {}) or {}
+        summary = {'target': args.target,
+                   'tasks_done': stats.get('tasks_done', 0),
+                   'tasks_failed': stats.get('tasks_failed', 0),
+                   'pivots_done': stats.get('pivots_done', 0),
+                   'elapsed': data.get('elapsed', 0)}
     else:
         # 未知 cmd（未来加新子命令但忘了更新这里）→ 不写空 entry 污染历史
         return
+    # investigate uses 'target' key — domain is normalized at do_investigate entry; we keep
+    # the raw arg for history readability (history is a UI surface, not a re-query key)
     query = summary.get('target') or summary.get('username') or summary.get('address') \
             or (summary.get('domains') and ','.join(summary['domains'])) or summary.get('number') \
             or summary.get('name') or summary.get('domain') or ''
@@ -7879,9 +9299,15 @@ def main() -> int:
     if getattr(args, 'no_color', False):
         Color.disable()
 
+    # CLI 命令显式 --no-update-check 也通过 env var 传给后台线程
+    # (后台线程通过 _is_update_check_disabled() 统一判定,避免参数透传)
+    if getattr(args, 'no_update_check', False):
+        os.environ['SPYEYES_NO_UPDATE_CHECK'] = '1'
+
     # CLI 模式：直接根据语言优先级选定，不弹首次提示
     if args.command:
         set_lang(resolve_language(args))
+        _maybe_show_update_notice()
         return run_cli(args)
 
     # 交互模式：如果配置中没有 lang 且 CLI 没指定，弹出语言选择并保存
@@ -7896,11 +9322,22 @@ def main() -> int:
         set_lang(chosen)
         save_config({**cfg, 'lang': chosen})
 
+    _maybe_show_update_notice()
+
     try:
         menu_loop(save_dir=getattr(args, 'save', None))
     except KeyboardInterrupt:
         print(f"\n{Color.Re}{t('prompt.exited')}{Color.Reset}")
     return 0
+
+
+def _maybe_show_update_notice() -> None:
+    """语言已设定后立刻打提示(若缓存有新版本),并在后台刷新缓存。
+    分开成函数 — 避免 main() 被 update 逻辑拆得太碎。"""
+    info = get_cached_update_info()
+    if info:
+        print_update_notice(info)
+    _start_background_update_check()
 
 
 if __name__ == '__main__':

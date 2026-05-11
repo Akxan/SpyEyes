@@ -34,6 +34,11 @@ def reset_global_state(tmp_path, monkeypatch):
     monkeypatch.setattr(gt, 'CONFIG_DIR', fake_config_dir)
     monkeypatch.setattr(gt, 'CONFIG_FILE', f'{fake_config_dir}/config.json')
     monkeypatch.setattr(gt, 'HISTORY_FILE', f'{fake_config_dir}/history.jsonl')
+    monkeypatch.setattr(gt, 'UPDATE_CACHE_FILE', f'{fake_config_dir}/.update_check.json')
+
+    # 默认禁用更新检查 — 避免测试套件击打 GitHub API。
+    # 单个测试需要测 update logic 时,显式 monkeypatch.delenv 'SPYEYES_NO_UPDATE_CHECK'。
+    monkeypatch.setenv('SPYEYES_NO_UPDATE_CHECK', '1')
 
     try:
         yield

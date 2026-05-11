@@ -14,7 +14,7 @@
 [![Platforms](https://img.shields.io/badge/platforms-3164-orange.svg)](#-与同类工具对比)
 [![Reports](https://img.shields.io/badge/reports-8%20formats-9cf.svg)](#-报告格式8-种)
 [![Commands](https://img.shields.io/badge/commands-10-blueviolet.svg)](docs/TUTORIAL.md)
-[![Version](https://img.shields.io/badge/version-1.6.12-blueviolet.svg)](docs/CHANGELOG.md)
+[![Version](https://img.shields.io/badge/version-1.8.0-blueviolet.svg)](docs/CHANGELOG.md)
 [![Docs](https://img.shields.io/badge/docs-online-blue.svg)](https://akxan.github.io/SpyEyes/)
 [![Platform](https://img.shields.io/badge/platform-macOS%20%7C%20Linux%20%7C%20Windows%20%7C%20Termux-lightgrey)](#-安装)
 [![PRs Welcome](https://img.shields.io/badge/PRs-welcome-brightgreen.svg)](docs/CONTRIBUTING.md)
@@ -54,8 +54,10 @@
 - **WAF 检测**:Cloudflare / AWS WAF / PerimeterX / DataDome / Akamai 等高精度指纹
 - **完整中英双语**:交互菜单 / CLI 参数 / 错误信息 / **报告内容**全部双语
 - **🆕 v1.6.1:进度条 100% 全功能审计** — 所有耗时操作都有实时反馈,告别"看着卡死"
-- **🆕 v1.6.3:跨平台报告目录统一** — 所有平台都默认 `<cwd>/Downloads/`,所见即所得;`SPYEYES_REPORTS_DIR=path` 自定义
-- **488 个 pytest 测试**:4 工具全清(ruff 0 / mypy 0 / bandit 0 / pytest 全绿),CI 跨 macOS/Linux/Windows × Python 3.10–3.14
+- **🆕 v1.8.0:智能默认报告目录** — 源码运行 → `<项目根>/Downloads/`(git clone 用户在仓库直接看到);打包安装(pip/pipx/brew) → `~/Downloads/spyeyes/`(永不写 site-packages);`SPYEYES_REPORTS_DIR=path` 始终最高优先级
+- **🆕 v1.8.0:启动版本检查** — 24h 缓存比对 GitHub Release,新版本时 stderr 提示;`--no-update-check` / `SPYEYES_NO_UPDATE_CHECK=1` 一键禁用;离线 / API 失败完全静默
+- **🆕 v1.8.0:`investigate` 提速 3-4× + 全程进度反馈** — Phase 2b(邮箱→用户名)从串行改 4 并发,15 邮箱场景从 ~210s 降到 ~50-80s;Phase 1/2a/2b 全程实时显示 `[N/M] ✓ task` 进度;TTY 安全,管道完全静默
+- **541 个 pytest 测试**:4 工具全清(ruff 0 / mypy 0 / bandit 0 / pytest 全绿),CI 跨 macOS/Linux/Windows × Python 3.10–3.14
 
 ---
 
@@ -346,8 +348,15 @@ PDCP_API_KEY=your_pdcp_key
 # 可选:GitHub commit search 提速(免费 PAT,只读权限)
 SPYEYES_GITHUB_TOKEN=ghp_your_token
 
-# 可选:固定报告目录(默认 <cwd>/Downloads/)
+# 可选:固定报告目录
+# 默认行为(v1.8.0+):源码运行 → <项目根>/Downloads/
+#                  打包安装 → ~/Downloads/spyeyes/
+# 设此变量可强制覆盖,无视安装方式
 SPYEYES_REPORTS_DIR=/var/log/spyeyes
+
+# 可选:禁用启动时的 GitHub 版本检查(v1.8.0+)
+# 默认每 24h 后台静默查一次最新 release; 设为 1 则完全跳过
+# SPYEYES_NO_UPDATE_CHECK=1
 EOF
 chmod 600 ~/.spyeyes/env
 ```
@@ -401,7 +410,7 @@ python3 -m spyeyes
 > - `[4]` 用户名:先选策略(直接扫 / 变形+扫 / 仅变形)→ 扫描模式 → 可选递归
 > - `[8]` 子域名:输入域名 → 选是否 HTTP probe → 4 阶段实时反馈(被动源 → wildcard → DNS → probe)
 > - `[9]` 域名邮箱:输入域名 → 选是否含 alive 子域 → 可选模式生成姓名 → 可选 SMTP 验证
-> - 保存报告时弹 `[1-8]` 数字格式菜单 + 默认 `~/Downloads/`,可连续多格式保存
+> - 保存报告时弹 `[1-8]` 数字格式菜单 + 默认目录(v1.8.0:源码 → 项目根/Downloads/,打包 → ~/Downloads/spyeyes/),可连续多格式保存
 > - **任何输入步骤**直接回车或 `0` 都返回主菜单(v1.3.2 新增)
 
 ### 2️⃣ 命令行模式（脚本友好）
@@ -456,7 +465,8 @@ python3 -m spyeyes user torvalds --save report.graph.html
 ```
 
 **交互模式**：选"保存报告 → 是"后会弹出 `[1] JSON ... [8] Graph` 数字菜单，
-默认路径 `~/Downloads/`，保存完追问"还要保存其它格式吗？"可连续多种格式输出。
+默认路径按 v1.8.0 智能路由（源码运行 → `<项目根>/Downloads/`，pip/brew 装 → `~/Downloads/spyeyes/`，
+也可用 `SPYEYES_REPORTS_DIR=path` 覆盖），保存完追问"还要保存其它格式吗？"可连续多种格式输出。
 
 > **安全防护**：HTML / Graph 用 `_html_escape` 防 XSS；CSV 单元格首字符为
 > `= + - @ \t \r` 时前置 `'` 防 Excel/Sheets 公式注入；Graph 中嵌入 JSON 的
@@ -527,7 +537,6 @@ SpyEyes/
 │   ├── ISSUE_TEMPLATE/         # bug / 功能 issue 模板
 │   ├── PULL_REQUEST_TEMPLATE.md
 │   └── dependabot.yml          # 自动依赖更新
-└── asset/                      # README 截图与社交预览图
 ```
 
 ---

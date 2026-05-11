@@ -7,6 +7,8 @@
 import json
 import os
 import sys
+import threading
+import time
 from unittest.mock import MagicMock, patch
 
 import pytest
@@ -916,20 +918,38 @@ class TestFilterAliveOnly:
 
 
 class TestDefaultReportDir:
-    """v1.6.4:跨平台统一行为 — cwd/Downloads/ + SPYEYES_REPORTS_DIR 覆盖。"""
+    """v1.8.0:智能默认 — 源码运行→项目根/Downloads/, 打包安装→~/Downloads/spyeyes/, env var 始终最高优先级。"""
 
-    def test_default_creates_downloads_in_cwd(self, monkeypatch, tmp_path):
-        """默认行为:在当前 cwd 下创建 'Downloads' 子目录(v1.6.4 改为英文)。"""
+    def test_source_install_uses_project_root_downloads(self, monkeypatch, tmp_path):
+        """源码运行(__file__ 不在 site-packages 下) → <项目根>/Downloads/。"""
         monkeypatch.delenv('SPYEYES_REPORTS_DIR', raising=False)
-        monkeypatch.chdir(tmp_path)
+        monkeypatch.setattr(gt, '_is_packaged_install', lambda: False)
+        # 临时把模块 __file__ 重定向到 tmp_path/fake_pkg/__init__.py 模拟源码运行
+        fake_pkg = tmp_path / 'fake_project' / 'spyeyes'
+        fake_pkg.mkdir(parents=True)
+        fake_init = fake_pkg / '__init__.py'
+        fake_init.write_text('')
+        monkeypatch.setattr(gt, '__file__', str(fake_init))
         result = gt._default_report_dir()
-        # 路径应是 cwd/Downloads
-        assert os.path.basename(result) == 'Downloads'
-        # 目录已被自动创建
+        # 应该是 tmp_path/fake_project/Downloads
+        expected = tmp_path / 'fake_project' / 'Downloads'
+        assert result == str(expected)
+        assert os.path.isdir(result)
+
+    def test_packaged_install_uses_home_downloads_spyeyes(self, monkeypatch, tmp_path):
+        """打包安装 → ~/Downloads/spyeyes/(绝不写 site-packages)。"""
+        monkeypatch.delenv('SPYEYES_REPORTS_DIR', raising=False)
+        monkeypatch.setattr(gt, '_is_packaged_install', lambda: True)
+        fake_home = tmp_path / 'home'
+        fake_home.mkdir()
+        monkeypatch.setenv('HOME', str(fake_home))
+        result = gt._default_report_dir()
+        expected = fake_home / 'Downloads' / 'spyeyes'
+        assert result == str(expected)
         assert os.path.isdir(result)
 
     def test_env_var_override(self, monkeypatch, tmp_path):
-        """SPYEYES_REPORTS_DIR=path 覆盖默认 cwd/下载/。"""
+        """SPYEYES_REPORTS_DIR=path 始终最高优先级,无视安装方式。"""
         custom = tmp_path / 'my_reports'
         monkeypatch.setenv('SPYEYES_REPORTS_DIR', str(custom))
         result = gt._default_report_dir()
@@ -944,29 +964,248 @@ class TestDefaultReportDir:
         assert result == str(custom)
         assert os.path.isdir(result)
 
-    def test_no_caching_picks_up_cwd_change(self, monkeypatch, tmp_path):
-        """v1.6.3:不再缓存 — 用户在交互菜单内 cd 后再保存能正确响应。"""
-        monkeypatch.delenv('SPYEYES_REPORTS_DIR', raising=False)
-        a = tmp_path / 'a'
-        b = tmp_path / 'b'
-        a.mkdir()
-        b.mkdir()
-        monkeypatch.chdir(a)
-        result_a = gt._default_report_dir()
-        monkeypatch.chdir(b)
-        result_b = gt._default_report_dir()
-        # 两次结果应该不同(对应不同 cwd)
-        assert result_a != result_b
-        assert os.path.dirname(result_a) == str(a)
-        assert os.path.dirname(result_b) == str(b)
-
     def test_env_var_blank_falls_back_to_default(self, monkeypatch, tmp_path):
         """空字符串的 env var 不应触发 override(防止 'export X=' 误用)。"""
         monkeypatch.setenv('SPYEYES_REPORTS_DIR', '   ')  # 仅空白
-        monkeypatch.chdir(tmp_path)
+        monkeypatch.setattr(gt, '_is_packaged_install', lambda: False)
+        fake_pkg = tmp_path / 'proj' / 'spyeyes'
+        fake_pkg.mkdir(parents=True)
+        fake_init = fake_pkg / '__init__.py'
+        fake_init.write_text('')
+        monkeypatch.setattr(gt, '__file__', str(fake_init))
         result = gt._default_report_dir()
-        # 应走默认 cwd/Downloads/
+        # 应走源码默认 → 项目根/Downloads/
         assert os.path.basename(result) == 'Downloads'
+        assert os.path.dirname(result) == str(tmp_path / 'proj')
+
+    def test_is_packaged_install_detects_site_packages(self, monkeypatch, tmp_path):
+        """site-packages / dist-packages 任一标记出现即视为打包安装。"""
+        # 模拟 pip install: __file__ 落在 .../site-packages/spyeyes/__init__.py
+        fake = tmp_path / 'venv' / 'lib' / 'python3.12' / 'site-packages' / 'spyeyes' / '__init__.py'
+        fake.parent.mkdir(parents=True)
+        fake.write_text('')
+        monkeypatch.setattr(gt, '__file__', str(fake))
+        assert gt._is_packaged_install() is True
+
+        # 模拟 debian apt python3-spyeyes: dist-packages
+        fake2 = tmp_path / 'usr' / 'lib' / 'python3' / 'dist-packages' / 'spyeyes' / '__init__.py'
+        fake2.parent.mkdir(parents=True)
+        fake2.write_text('')
+        monkeypatch.setattr(gt, '__file__', str(fake2))
+        assert gt._is_packaged_install() is True
+
+    def test_is_packaged_install_detects_source_run(self, monkeypatch, tmp_path):
+        """源码 / editable install: __file__ 不在 site-packages 路径下。"""
+        fake = tmp_path / 'my_project' / 'spyeyes' / '__init__.py'
+        fake.parent.mkdir(parents=True)
+        fake.write_text('')
+        monkeypatch.setattr(gt, '__file__', str(fake))
+        assert gt._is_packaged_install() is False
+
+
+class TestUpdateCheck:
+    """v1.8.0: 启动时静默 GitHub Release 检查 + 24h 缓存 + 完全离线降级。"""
+
+    # ---------- 版本号解析 ----------
+
+    def test_normalize_version_basic(self):
+        assert gt._normalize_version('1.7.0') == (1, 7, 0)
+        assert gt._normalize_version('v1.7.0') == (1, 7, 0)
+        assert gt._normalize_version('V2.0') == (2, 0)
+
+    def test_normalize_version_strips_prerelease_suffix(self):
+        assert gt._normalize_version('v1.7.0-rc1') == (1, 7, 0)
+        assert gt._normalize_version('1.7.0+build123') == (1, 7, 0)
+
+    def test_normalize_version_invalid_returns_empty(self):
+        assert gt._normalize_version('') == ()
+        assert gt._normalize_version('not-a-version') == ()
+        assert gt._normalize_version('1.x.0') == ()
+
+    # ---------- 比较逻辑 ----------
+
+    def test_is_newer_strict(self):
+        assert gt._is_newer('v1.7.1', '1.7.0') is True
+        assert gt._is_newer('v2.0.0', '1.99.99') is True
+        assert gt._is_newer('v1.7.0', '1.7.0') is False  # 等于不算 newer
+        assert gt._is_newer('v1.6.9', '1.7.0') is False
+
+    def test_is_newer_unparseable_returns_false(self):
+        """无法解析时保守返回 False(不打扰用户)。"""
+        assert gt._is_newer('garbage', '1.7.0') is False
+        assert gt._is_newer('v1.7.0', 'unknown') is False
+
+    # ---------- 缓存读写 ----------
+
+    def test_cache_round_trip(self, monkeypatch, tmp_path):
+        cache_file = str(tmp_path / 'update.json')
+        monkeypatch.setattr(gt, 'UPDATE_CACHE_FILE', cache_file)
+        monkeypatch.setattr(gt, 'CONFIG_DIR', str(tmp_path))
+        payload = {'checked_at': 1234567890.0, 'latest': 'v1.8.0', 'url': 'https://x'}
+        gt._write_update_cache(payload)
+        assert gt._read_update_cache() == payload
+
+    def test_read_cache_missing_returns_none(self, monkeypatch, tmp_path):
+        monkeypatch.setattr(gt, 'UPDATE_CACHE_FILE', str(tmp_path / 'nope.json'))
+        assert gt._read_update_cache() is None
+
+    def test_read_cache_corrupt_returns_none(self, monkeypatch, tmp_path):
+        cache_file = tmp_path / 'corrupt.json'
+        cache_file.write_text('{ not json')
+        monkeypatch.setattr(gt, 'UPDATE_CACHE_FILE', str(cache_file))
+        assert gt._read_update_cache() is None
+
+    # ---------- 禁用开关 ----------
+
+    def test_disabled_via_env_var(self, monkeypatch, tmp_path):
+        """SPYEYES_NO_UPDATE_CHECK=1 → get_cached_update_info 返回 None,即使缓存有新版本。"""
+        monkeypatch.setenv('SPYEYES_NO_UPDATE_CHECK', '1')
+        monkeypatch.setattr(gt, 'UPDATE_CACHE_FILE', str(tmp_path / 'u.json'))
+        monkeypatch.setattr(gt, 'CONFIG_DIR', str(tmp_path))
+        gt._write_update_cache({'checked_at': time.time(), 'latest': 'v99.0.0', 'url': 'x'})
+        assert gt.get_cached_update_info() is None
+        assert gt._is_update_check_disabled() is True
+
+    def test_disabled_truthy_variants(self, monkeypatch):
+        for v in ('1', 'true', 'TRUE', 'yes', 'Yes'):
+            monkeypatch.setenv('SPYEYES_NO_UPDATE_CHECK', v)
+            assert gt._is_update_check_disabled() is True
+
+    def test_not_disabled_default(self, monkeypatch):
+        monkeypatch.delenv('SPYEYES_NO_UPDATE_CHECK', raising=False)
+        assert gt._is_update_check_disabled() is False
+
+    # ---------- get_cached_update_info ----------
+
+    def test_get_cached_returns_info_when_newer(self, monkeypatch, tmp_path):
+        monkeypatch.delenv('SPYEYES_NO_UPDATE_CHECK', raising=False)
+        monkeypatch.setattr(gt, 'UPDATE_CACHE_FILE', str(tmp_path / 'u.json'))
+        monkeypatch.setattr(gt, 'CONFIG_DIR', str(tmp_path))
+        monkeypatch.setattr(gt, '__version__', '1.7.0')
+        gt._write_update_cache({
+            'checked_at': time.time(),
+            'latest': 'v1.7.1',
+            'url': 'https://github.com/Akxan/SpyEyes/releases/tag/v1.7.1',
+        })
+        info = gt.get_cached_update_info()
+        assert info is not None
+        assert info['latest'] == 'v1.7.1'
+        assert info['current'] == '1.7.0'
+        assert 'github.com' in info['url']
+
+    def test_get_cached_returns_none_when_same_or_older(self, monkeypatch, tmp_path):
+        monkeypatch.delenv('SPYEYES_NO_UPDATE_CHECK', raising=False)
+        monkeypatch.setattr(gt, 'UPDATE_CACHE_FILE', str(tmp_path / 'u.json'))
+        monkeypatch.setattr(gt, 'CONFIG_DIR', str(tmp_path))
+        monkeypatch.setattr(gt, '__version__', '1.7.0')
+        gt._write_update_cache({'checked_at': time.time(), 'latest': 'v1.7.0', 'url': 'x'})
+        assert gt.get_cached_update_info() is None
+        gt._write_update_cache({'checked_at': time.time(), 'latest': 'v1.6.0', 'url': 'x'})
+        assert gt.get_cached_update_info() is None
+
+    def test_get_cached_url_falls_back_to_template(self, monkeypatch, tmp_path):
+        """缓存里 url 缺失时,用模板拼回去。"""
+        monkeypatch.delenv('SPYEYES_NO_UPDATE_CHECK', raising=False)
+        monkeypatch.setattr(gt, 'UPDATE_CACHE_FILE', str(tmp_path / 'u.json'))
+        monkeypatch.setattr(gt, 'CONFIG_DIR', str(tmp_path))
+        monkeypatch.setattr(gt, '__version__', '1.7.0')
+        gt._write_update_cache({'checked_at': time.time(), 'latest': 'v1.8.0', 'url': None})
+        info = gt.get_cached_update_info()
+        assert info is not None
+        assert info['url'] == 'https://github.com/Akxan/SpyEyes/releases/tag/v1.8.0'
+
+    # ---------- 后台刷新 ----------
+
+    def test_refresh_writes_cache_on_success(self, monkeypatch, tmp_path):
+        monkeypatch.delenv('SPYEYES_NO_UPDATE_CHECK', raising=False)
+        monkeypatch.setattr(gt, 'UPDATE_CACHE_FILE', str(tmp_path / 'u.json'))
+        monkeypatch.setattr(gt, 'CONFIG_DIR', str(tmp_path))
+        monkeypatch.setattr(gt, '_fetch_latest_version_from_github', lambda: 'v9.9.9')
+        gt.refresh_update_cache_sync()
+        cache = gt._read_update_cache()
+        assert cache is not None
+        assert cache['latest'] == 'v9.9.9'
+        assert cache['url'] == 'https://github.com/Akxan/SpyEyes/releases/tag/v9.9.9'
+        assert isinstance(cache['checked_at'], float)
+
+    def test_refresh_handles_network_failure_silently(self, monkeypatch, tmp_path):
+        """fetch 返回 None(超时/404/JSON错)→ 写入 latest=None,不抛异常。"""
+        monkeypatch.delenv('SPYEYES_NO_UPDATE_CHECK', raising=False)
+        monkeypatch.setattr(gt, 'UPDATE_CACHE_FILE', str(tmp_path / 'u.json'))
+        monkeypatch.setattr(gt, 'CONFIG_DIR', str(tmp_path))
+        monkeypatch.setattr(gt, '_fetch_latest_version_from_github', lambda: None)
+        gt.refresh_update_cache_sync()  # 不抛
+        cache = gt._read_update_cache()
+        assert cache['latest'] is None
+        # 后续 get_cached_update_info 应静默返回 None(不通知用户)
+        assert gt.get_cached_update_info() is None
+
+    def test_refresh_skipped_when_disabled(self, monkeypatch, tmp_path):
+        monkeypatch.setenv('SPYEYES_NO_UPDATE_CHECK', '1')
+        monkeypatch.setattr(gt, 'UPDATE_CACHE_FILE', str(tmp_path / 'u.json'))
+        monkeypatch.setattr(gt, 'CONFIG_DIR', str(tmp_path))
+        called = {'n': 0}
+        def fake_fetch():
+            called['n'] += 1
+            return 'v9.9.9'
+        monkeypatch.setattr(gt, '_fetch_latest_version_from_github', fake_fetch)
+        gt.refresh_update_cache_sync()
+        assert called['n'] == 0  # 完全跳过 fetch
+        assert gt._read_update_cache() is None
+
+    def test_background_check_skips_when_cache_fresh(self, monkeypatch, tmp_path):
+        """24h 内已查过的缓存 → 不发起新请求。"""
+        monkeypatch.delenv('SPYEYES_NO_UPDATE_CHECK', raising=False)
+        monkeypatch.setattr(gt, 'UPDATE_CACHE_FILE', str(tmp_path / 'u.json'))
+        monkeypatch.setattr(gt, 'CONFIG_DIR', str(tmp_path))
+        gt._write_update_cache({'checked_at': time.time(), 'latest': 'v1.7.0', 'url': None})
+        called = {'n': 0}
+        def fake_refresh():
+            called['n'] += 1
+        monkeypatch.setattr(gt, 'refresh_update_cache_sync', fake_refresh)
+        gt._start_background_update_check()
+        # 守护线程存活短暂,主动 sleep 让它有机会跑(但应该立即 return,所以不会 +1)
+        time.sleep(0.1)
+        assert called['n'] == 0
+
+    def test_background_check_runs_when_cache_stale(self, monkeypatch, tmp_path):
+        monkeypatch.delenv('SPYEYES_NO_UPDATE_CHECK', raising=False)
+        monkeypatch.setattr(gt, 'UPDATE_CACHE_FILE', str(tmp_path / 'u.json'))
+        monkeypatch.setattr(gt, 'CONFIG_DIR', str(tmp_path))
+        # 25h 前的缓存 → 视为过期
+        gt._write_update_cache({
+            'checked_at': time.time() - 25 * 3600,
+            'latest': 'v1.7.0',
+            'url': None,
+        })
+        called = threading.Event()
+        def fake_refresh():
+            called.set()
+        monkeypatch.setattr(gt, 'refresh_update_cache_sync', fake_refresh)
+        gt._start_background_update_check()
+        assert called.wait(timeout=1.0) is True
+
+    # ---------- print_update_notice ----------
+
+    def test_print_update_notice_writes_to_stderr(self, monkeypatch, capsys):
+        gt.set_lang('en')
+        info = {'latest': 'v1.7.1', 'current': '1.7.0',
+                'url': 'https://github.com/Akxan/SpyEyes/releases/tag/v1.7.1'}
+        gt.print_update_notice(info)
+        captured = capsys.readouterr()
+        # stdout 应为空(避免污染 --json 管道)
+        assert captured.out == ''
+        # stderr 含核心信息
+        assert 'v1.7.1' in captured.err
+        assert '1.7.0' in captured.err
+        assert 'github.com' in captured.err
+
+    def test_print_update_notice_zh(self, monkeypatch, capsys):
+        gt.set_lang('zh')
+        gt.print_update_notice({'latest': 'v2.0.0', 'current': '1.7.0', 'url': 'X'})
+        captured = capsys.readouterr()
+        assert '可用' in captured.err
+        assert 'v2.0.0' in captured.err
 
 
 class TestMaybeSave:
