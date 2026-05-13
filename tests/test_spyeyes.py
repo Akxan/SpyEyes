@@ -4656,3 +4656,129 @@ class TestPromptYesNo:
         monkeypatch.setattr('builtins.input', raise_kbd)
         with pytest.raises(KeyboardInterrupt):
             gt._prompt_yes_no('q', default_yes=True)
+
+
+class TestRunUpgrade:
+    """v1.8.2: run_upgrade 主流程。"""
+
+    def test_already_latest_returns_0(self, monkeypatch, capsys):
+        """已是最新 → 显示 '✓ Already on latest' + return 0。"""
+        gt.set_lang('en')
+        # mock _get_cached_update_info 返回 None (means: no newer version)
+        monkeypatch.setattr(gt, 'refresh_update_cache_sync', lambda: None)
+        monkeypatch.setattr(gt, '_get_cached_update_info', lambda: None)
+        rc = gt.run_upgrade(yes=False, check_only=False)
+        assert rc == 0
+        assert 'Already on latest' in capsys.readouterr().out
+
+    def test_check_only_does_not_subprocess(self, monkeypatch, capsys):
+        """--check → 显示对比 + return 0,不调 subprocess。"""
+        gt.set_lang('en')
+        info = {'latest': 'v1.8.2', 'current': '1.8.1',
+                'url': 'https://github.com/Akxan/SpyEyes/releases/tag/v1.8.2'}
+        monkeypatch.setattr(gt, 'refresh_update_cache_sync', lambda: None)
+        monkeypatch.setattr(gt, '_get_cached_update_info', lambda: info)
+        subprocess_called = []
+        monkeypatch.setattr('subprocess.run', lambda *a, **kw: subprocess_called.append(a) or None)
+        rc = gt.run_upgrade(yes=False, check_only=True)
+        assert rc == 0
+        assert subprocess_called == []
+        out = capsys.readouterr().out
+        assert 'v1.8.2' in out
+        assert '1.8.1' in out
+
+    def test_source_mode_shows_command_only(self, monkeypatch, capsys):
+        """源码安装 → 只显示命令,不 subprocess,return 0。"""
+        gt.set_lang('en')
+        info = {'latest': 'v1.8.2', 'current': '1.8.1', 'url': 'X'}
+        monkeypatch.setattr(gt, 'refresh_update_cache_sync', lambda: None)
+        monkeypatch.setattr(gt, '_get_cached_update_info', lambda: info)
+        monkeypatch.setattr(gt, '_detect_install_mode', lambda: 'source')
+        subprocess_called = []
+        monkeypatch.setattr('subprocess.run', lambda *a, **kw: subprocess_called.append(a) or None)
+        rc = gt.run_upgrade(yes=True, check_only=False)
+        assert rc == 0
+        assert subprocess_called == []
+        assert 'git pull' in capsys.readouterr().out
+
+    def test_packaged_yes_calls_subprocess(self, monkeypatch, capsys):
+        """打包 + yes=True → subprocess 被调一次,成功 → return 0。"""
+        gt.set_lang('en')
+        info = {'latest': 'v1.8.2', 'current': '1.8.1', 'url': 'X'}
+        monkeypatch.setattr(gt, 'refresh_update_cache_sync', lambda: None)
+        monkeypatch.setattr(gt, '_get_cached_update_info', lambda: info)
+        monkeypatch.setattr(gt, '_detect_install_mode', lambda: 'packaged-pip')
+
+        class FakeCompleted:
+            returncode = 0
+        called = []
+        def fake_run(cmd, **kw):
+            called.append(cmd)
+            return FakeCompleted()
+        monkeypatch.setattr('subprocess.run', fake_run)
+
+        rc = gt.run_upgrade(yes=True, check_only=False)
+        assert rc == 0
+        assert len(called) == 1
+        assert '--upgrade' in called[0]
+
+    def test_packaged_user_declines_returns_0(self, monkeypatch, capsys):
+        """打包 + 用户 N → 不调 subprocess,return 0 (用户主动取消)。"""
+        gt.set_lang('en')
+        info = {'latest': 'v1.8.2', 'current': '1.8.1', 'url': 'X'}
+        monkeypatch.setattr(gt, 'refresh_update_cache_sync', lambda: None)
+        monkeypatch.setattr(gt, '_get_cached_update_info', lambda: info)
+        monkeypatch.setattr(gt, '_detect_install_mode', lambda: 'packaged-pip')
+        monkeypatch.setattr(sys.stdin, 'isatty', lambda: True)  # 确保进入 prompt 路径
+        monkeypatch.setattr(gt, '_prompt_yes_no', lambda *a, **kw: False)
+        subprocess_called = []
+        monkeypatch.setattr('subprocess.run', lambda *a, **kw: subprocess_called.append(a) or None)
+        rc = gt.run_upgrade(yes=False, check_only=False)
+        assert rc == 0
+        assert subprocess_called == []
+        assert 'Cancelled' in capsys.readouterr().out
+
+    def test_non_tty_without_yes_returns_2(self, monkeypatch, capsys):
+        """非 TTY + 不带 yes → return 2 错误。"""
+        gt.set_lang('en')
+        info = {'latest': 'v1.8.2', 'current': '1.8.1', 'url': 'X'}
+        monkeypatch.setattr(gt, 'refresh_update_cache_sync', lambda: None)
+        monkeypatch.setattr(gt, '_get_cached_update_info', lambda: info)
+        monkeypatch.setattr(gt, '_detect_install_mode', lambda: 'packaged-pip')
+        monkeypatch.setattr(sys.stdin, 'isatty', lambda: False)
+        rc = gt.run_upgrade(yes=False, check_only=False)
+        assert rc == 2
+        captured_out = capsys.readouterr().out
+        assert 'TTY' in captured_out or '--yes' in captured_out
+
+    def test_subprocess_failure_propagates_exit_code(self, monkeypatch, capsys):
+        """subprocess 非 0 退出 → 透传 exit code + 显示兜底手动命令。"""
+        gt.set_lang('en')
+        info = {'latest': 'v1.8.2', 'current': '1.8.1', 'url': 'X'}
+        monkeypatch.setattr(gt, 'refresh_update_cache_sync', lambda: None)
+        monkeypatch.setattr(gt, '_get_cached_update_info', lambda: info)
+        monkeypatch.setattr(gt, '_detect_install_mode', lambda: 'packaged-pip')
+
+        class FakeCompleted:
+            returncode = 1
+        monkeypatch.setattr('subprocess.run', lambda *a, **kw: FakeCompleted())
+
+        rc = gt.run_upgrade(yes=True, check_only=False)
+        assert rc == 1
+        out = capsys.readouterr().out
+        assert 'failed' in out.lower() or 'Manual' in out
+
+    def test_pipx_missing_falls_back(self, monkeypatch, capsys):
+        """pipx mode + which('pipx') 找不到 → 降级显示 pip 命令 + return 1。"""
+        gt.set_lang('en')
+        info = {'latest': 'v1.8.2', 'current': '1.8.1', 'url': 'X'}
+        monkeypatch.setattr(gt, 'refresh_update_cache_sync', lambda: None)
+        monkeypatch.setattr(gt, '_get_cached_update_info', lambda: info)
+        monkeypatch.setattr(gt, '_detect_install_mode', lambda: 'packaged-pipx')
+        monkeypatch.setattr('shutil.which', lambda c: None)  # pipx 找不到
+        subprocess_called = []
+        monkeypatch.setattr('subprocess.run', lambda *a, **kw: subprocess_called.append(a) or None)
+        rc = gt.run_upgrade(yes=True, check_only=False)
+        assert rc == 1
+        assert subprocess_called == []
+        assert 'pipx' in capsys.readouterr().out

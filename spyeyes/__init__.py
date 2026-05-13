@@ -22,6 +22,8 @@ import itertools
 import json
 import os
 import re
+import shutil
+import subprocess
 import sys
 import threading
 import time
@@ -333,6 +335,10 @@ def get_cached_update_info() -> Optional[dict]:
         'current': __version__,
         'url': cache.get('url') or UPDATE_RELEASES_URL_TEMPLATE.format(tag=latest),
     }
+
+
+# v1.8.2 private alias used by run_upgrade (and tests)
+_get_cached_update_info = get_cached_update_info
 
 
 def refresh_update_cache_sync() -> None:
@@ -8632,6 +8638,97 @@ def _prompt_yes_no(question: str, default_yes: bool = True) -> bool:
     if answer in ('n', 'no'):
         return False
     return default_yes  # 空输入或不识别 → 用 default
+
+
+def run_upgrade(yes: bool = False, check_only: bool = False) -> int:
+    """v1.8.2 一键升级主流程。
+
+    流程:
+      1. 强刷 update cache (绕过 24h)
+      2. 拿 _get_cached_update_info(),无新版 → 显示 '✓ Already on latest' return 0
+      3. 显示当前/最新版本对比 + release notes URL
+      4. check_only → return 0 (不 prompt 不 subprocess)
+      5. mode = _detect_install_mode()
+         - source → 显示 git pull 命令 → return 0 (不 subprocess)
+         - packaged-pipx 但找不到 pipx → 降级显示 pip 命令 → return 1
+      6. 非 yes 且非 TTY → return 2 (no_tty 错误)
+      7. 非 yes 但 TTY → prompt Y/N,N → 显示 'Cancelled' return 0
+      8. subprocess.run 跑命令 (流式输出走子进程的 stdout/stderr 继承)
+      9. 成功 → 显示 '✓ Upgraded. Please re-run.' return 0
+         失败 → 显示 '✗ Upgrade failed. Manual: ...' return 子进程 exit code
+
+    Return code 约定:
+      0  成功 / 已是最新 / 用户取消 / check-only / 源码模式
+      1  网络错 / pipx 找不到
+      2  非 TTY 缺 --yes
+      130 Ctrl-C
+      其他 透传 subprocess exit code
+    """
+    print(f" {Color.Cy}{t('upgrade.checking')}{Color.Reset}")
+    try:
+        refresh_update_cache_sync()
+    except Exception:
+        print(f" {Color.Re}{t('upgrade.network_error')}{Color.Reset}")
+        return 1
+
+    info = _get_cached_update_info()
+    if not info:
+        print(f" {Color.Gr}{t('upgrade.already_latest', current=__version__)}{Color.Reset}")
+        return 0
+
+    latest = info['latest']
+    current = info['current']
+    url = info.get('url', '')
+
+    print(f" {Color.Wh}{t('upgrade.found_new', current=current, latest=latest)}{Color.Reset}")
+    if url:
+        print(f" {Color.Cy}{t('upgrade.release_notes', url=url)}{Color.Reset}")
+
+    if check_only:
+        return 0
+
+    mode = _detect_install_mode()
+    if mode == 'source':
+        print(f" {Color.Ye}{t('upgrade.source_install_hint')}{Color.Reset}")
+        return 0
+
+    cmd = _build_upgrade_command(mode)
+    if mode == 'packaged-pipx' and shutil.which('pipx') is None:
+        # pipx 不在 PATH,降级到 pip 命令兜底
+        pip_cmd = _build_upgrade_command('packaged-pip') or []
+        pip_str = ' '.join(pip_cmd)
+        print(f" {Color.Re}{t('upgrade.pipx_missing', pip_cmd=pip_str)}{Color.Reset}")
+        return 1
+
+    if cmd is None:
+        return 1
+
+    if not yes:
+        if not sys.stdin.isatty():
+            print(f" {Color.Re}{t('upgrade.no_tty')}{Color.Reset}")
+            return 2
+        try:
+            if not _prompt_yes_no(t('upgrade.confirm'), default_yes=True):
+                print(f" {Color.Wh}{t('upgrade.cancelled')}{Color.Reset}")
+                return 0
+        except KeyboardInterrupt:
+            print(f"\n {Color.Wh}{t('upgrade.cancelled')}{Color.Reset}")
+            return 130
+
+    cmd_str = ' '.join(cmd)
+    print(f"\n {Color.Cy}{t('upgrade.running_cmd', cmd=cmd_str)}{Color.Reset}\n")
+    try:
+        completed = subprocess.run(cmd)  # 流式继承当前进程 stdout/stderr
+    except (OSError, FileNotFoundError) as e:
+        print(f" {Color.Re}{t('upgrade.failed', code=str(e), cmd=cmd_str)}{Color.Reset}")
+        return 1
+
+    if completed.returncode == 0:
+        print(f"\n {Color.Gr}{t('upgrade.success', latest=latest)}{Color.Reset}")
+        return 0
+    else:
+        print(f"\n {Color.Re}{t('upgrade.failed', code=completed.returncode, cmd=cmd_str)}{Color.Reset}")
+        return completed.returncode
 
 
 def _default_report_dir() -> str:
