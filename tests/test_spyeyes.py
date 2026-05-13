@@ -4782,3 +4782,31 @@ class TestRunUpgrade:
         assert rc == 1
         assert subprocess_called == []
         assert 'pipx' in capsys.readouterr().out
+
+    def test_network_error_returns_1(self, monkeypatch, capsys):
+        """refresh_update_cache_sync 抛异常 (网络断/GitHub 502) → return 1。"""
+        gt.set_lang('en')
+        def raise_network(*a, **kw):
+            raise OSError("Connection timeout")
+        monkeypatch.setattr(gt, 'refresh_update_cache_sync', raise_network)
+        rc = gt.run_upgrade(yes=False, check_only=False)
+        assert rc == 1
+        assert 'GitHub' in capsys.readouterr().out
+
+    def test_ctrl_c_during_prompt_returns_130(self, monkeypatch, capsys):
+        """TTY + 用户在 prompt 处 Ctrl-C → return 130 (POSIX 标准 128+SIGINT)。"""
+        gt.set_lang('en')
+        info = {'latest': 'v1.8.2', 'current': '1.8.1', 'url': 'X'}
+        monkeypatch.setattr(gt, 'refresh_update_cache_sync', lambda: None)
+        monkeypatch.setattr(gt, '_get_cached_update_info', lambda: info)
+        monkeypatch.setattr(gt, '_detect_install_mode', lambda: 'packaged-pip')
+        monkeypatch.setattr(sys.stdin, 'isatty', lambda: True)
+        def raise_kbd(*a, **kw):
+            raise KeyboardInterrupt
+        monkeypatch.setattr(gt, '_prompt_yes_no', raise_kbd)
+        subprocess_called = []
+        monkeypatch.setattr('subprocess.run', lambda *a, **kw: subprocess_called.append(a) or None)
+        rc = gt.run_upgrade(yes=False, check_only=False)
+        assert rc == 130
+        assert subprocess_called == []
+        assert 'Cancelled' in capsys.readouterr().out
