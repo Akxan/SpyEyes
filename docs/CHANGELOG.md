@@ -63,7 +63,7 @@ subprocess 命令用 list args (非 shell 字符串),`sys.executable -m pip` 而
 ### 验收
 
 - ✅ ruff 0 / mypy 0 / bandit 0
-- ✅ pytest 580 passed (550 base + 30 新覆盖 4 helpers + run_upgrade 10 分支 + menu/CLI 集成 + i18n 完整性)
+- ✅ pytest 584 passed (550 base + 34 新:i18n 3 + detect 4 + build 3 + prompt 5 + run_upgrade 10 + menu [12] 2 + menu startup 3 + CLI 4)
 - ✅ Linux × Py 3.10-3.14 / macOS × Py 3.10,3.14 / Windows × Py 3.10,3.14 全绿
 
 ---
