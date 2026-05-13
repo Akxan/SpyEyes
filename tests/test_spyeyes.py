@@ -1210,6 +1210,26 @@ class TestUpdateCheck:
         assert '可用' in captured.err
         assert 'v2.0.0' in captured.err
 
+    def test_print_update_notice_source_install_shows_git_pull(self, monkeypatch, capsys):
+        """源码运行(git clone / pip install -e .)用户应看到 git pull 指令。"""
+        monkeypatch.setattr(gt, '_is_packaged_install', lambda: False)
+        gt.set_lang('en')
+        gt.print_update_notice({'latest': 'v1.8.1', 'current': '1.8.0', 'url': 'X'})
+        err = capsys.readouterr().err
+        assert 'git pull' in err
+        assert 'pip install -e' in err
+        assert 'pip install --upgrade' not in err  # 不应混入打包指令
+
+    def test_print_update_notice_packaged_install_shows_pip_upgrade(self, monkeypatch, capsys):
+        """打包安装(pip install git+URL / pipx)用户应看到 pip --upgrade / pipx 指令。"""
+        monkeypatch.setattr(gt, '_is_packaged_install', lambda: True)
+        gt.set_lang('en')
+        gt.print_update_notice({'latest': 'v1.8.1', 'current': '1.8.0', 'url': 'X'})
+        err = capsys.readouterr().err
+        assert 'pip install --upgrade' in err
+        assert 'pipx upgrade' in err
+        assert 'git pull' not in err  # 打包用户没 repo,不应看到 git pull
+
 
 class TestMaybeSave:
     def test_writes_json(self, tmp_path):
