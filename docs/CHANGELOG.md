@@ -20,6 +20,54 @@ This project adheres to [Keep a Changelog](https://keepachangelog.com/en/1.1.0/)
 
 ---
 
+## [1.8.2] — 2026-05-13
+
+✨ **一键升级** — v1.8.0 做了启动版本检查 + stderr 通知,v1.8.2 补全升级闭环:用户选 Y 自动升级,不再需要手动复制命令。
+
+### 三条升级通道
+
+| 通道 | 触发 | 行为 |
+|---|---|---|
+| **菜单启动自动 prompt** | 进交互菜单 + 后台 24h 缓存检测到新版 + TTY | 弹 `🆕 v1.8.2 available. Upgrade now? [Y/n]:`。选 Y 自动跑 → exit 0 提示重启;选 N 跳过本次继续菜单。 |
+| **菜单 [12] Check & Upgrade** | 用户在菜单点 [12] | 强刷缓存 (绕 24h) → 显示版本对比 → 有新版 prompt Y/N → 升级 |
+| **CLI `spyeyes upgrade`** | 命令行 | `--yes` / `-y` 跳 prompt 直接升;`--check` 只查不升 |
+
+### 安装方式自适应 + 完全清理
+
+| 安装方式 | 升级行为 | 旧版本去向 |
+|---|---|---|
+| `pip install git+URL` | `subprocess` 跑 `pip install --upgrade git+URL` | pip 内部 uninstall + 重装,site-packages/spyeyes/ **彻底清除**旧 .py |
+| `pipx install ...` | `subprocess` 跑 `pipx upgrade spyeyes` | 独立 venv `~/.local/pipx/venvs/spyeyes/` 内完全替换,不污染系统 |
+| `git clone + pip install -e .` | 只显示 `git pull && pip install -e .` (git 冲突风险,不自动跑) | git 用户自行处理 |
+
+**用户数据 `~/.spyeyes/`** (config / history / cache) 保留不动,升级后用户的语言偏好/查询历史/API key 全在。
+
+### 边界处理
+
+- **非 TTY 缺 `--yes`** → "Cannot prompt without TTY. Use --yes" + return 2
+- **`pipx` 不在 PATH** → `shutil.which` 检测失败 → 降级显示 `pip install --upgrade` 命令 + return 1
+- **subprocess 失败** → 透传 exit code + 显示兜底手动命令
+- **网络断 / GitHub 502** → "Could not reach GitHub Releases" + return 1
+- **用户 Ctrl-C** → "Cancelled" + return 130 (POSIX 标准)
+- **Windows 文件锁** → 不尝试自我替换,升级后 `sys.exit(0)` 提示用户重启
+
+### 跨平台
+
+subprocess 命令用 list args (非 shell 字符串),`sys.executable -m pip` 而非 `pip` 字面调用 — Windows/Linux/macOS 都正确。pipx 路径识别同时支持正反斜杠(`pipx/venvs` + `pipx\venvs`)。CI 矩阵 9 个平台组合验证。
+
+### 设计参考
+
+- spec: `docs/design/2026-05-13-one-click-upgrade.md`
+- plan: `docs/plans/2026-05-13-one-click-upgrade-plan.md`
+
+### 验收
+
+- ✅ ruff 0 / mypy 0 / bandit 0
+- ✅ pytest 580 passed (550 base + 30 新覆盖 4 helpers + run_upgrade 10 分支 + menu/CLI 集成 + i18n 完整性)
+- ✅ Linux × Py 3.10-3.14 / macOS × Py 3.10,3.14 / Windows × Py 3.10,3.14 全绿
+
+---
+
 ## [1.8.1] — 2026-05-13
 
 🐛 **CI lint 修复**：v1.8.0 引入的 3 处代码质量问题（ruff 阻断 CI 红牌），无功能变更。
