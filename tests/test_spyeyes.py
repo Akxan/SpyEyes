@@ -4526,3 +4526,39 @@ class TestPhoneI18nKeys:
         zh = gt.TRANSLATIONS['zh']['field.carrier']
         assert 'block' in en.lower(), f"en label not block-aware: {en}"
         assert '号段' in zh, f"zh label not block-aware: {zh}"
+
+
+class TestUpgradeI18n:
+    """v1.8.2 一键升级新增 i18n key 完整性检查。"""
+
+    UPGRADE_KEYS = [
+        'upgrade.prompt_menu_start',
+        'upgrade.checking',
+        'upgrade.already_latest',
+        'upgrade.found_new',
+        'upgrade.release_notes',
+        'upgrade.confirm',
+        'upgrade.cancelled',
+        'upgrade.source_install_hint',
+        'upgrade.running_cmd',
+        'upgrade.success',
+        'upgrade.failed',
+        'upgrade.no_tty',
+        'upgrade.network_error',
+        'upgrade.pipx_missing',
+        'menu.upgrade',
+    ]
+
+    def test_all_upgrade_keys_present_in_en(self):
+        for key in self.UPGRADE_KEYS:
+            assert key in gt.TRANSLATIONS['en'], f"missing en key: {key}"
+
+    def test_all_upgrade_keys_present_in_zh(self):
+        for key in self.UPGRADE_KEYS:
+            assert key in gt.TRANSLATIONS['zh'], f"missing zh key: {key}"
+
+    def test_en_zh_key_sets_match(self):
+        """en 和 zh 的 key 集合必须完全一致 (含我们新加的)。"""
+        en_keys = set(gt.TRANSLATIONS['en'].keys())
+        zh_keys = set(gt.TRANSLATIONS['zh'].keys())
+        assert en_keys == zh_keys, f"diff: en-zh={en_keys-zh_keys}, zh-en={zh_keys-en_keys}"
