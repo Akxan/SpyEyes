@@ -4875,3 +4875,36 @@ class TestMenuStartupPrompt:
         except SystemExit:
             pass
         assert prompted == []
+
+
+class TestCliUpgradeSubcommand:
+    """v1.8.2: CLI `spyeyes upgrade [--yes] [--check]` 子命令。"""
+
+    def test_parser_accepts_upgrade(self):
+        """build_parser() 能解析 'upgrade' 子命令。"""
+        parser = gt.build_parser()
+        args = parser.parse_args(['upgrade'])
+        assert args.command == 'upgrade'
+        assert args.yes is False
+        assert args.check is False
+
+    def test_parser_accepts_yes_flag(self):
+        parser = gt.build_parser()
+        args = parser.parse_args(['upgrade', '--yes'])
+        assert args.yes is True
+
+    def test_parser_accepts_check_flag(self):
+        parser = gt.build_parser()
+        args = parser.parse_args(['upgrade', '--check'])
+        assert args.check is True
+
+    def test_run_cli_dispatches_upgrade(self, monkeypatch):
+        """run_cli 收到 upgrade subcommand → 调 run_upgrade。"""
+        called = []
+        monkeypatch.setattr(gt, 'run_upgrade',
+                            lambda yes, check_only: called.append((yes, check_only)) or 0)
+        parser = gt.build_parser()
+        args = parser.parse_args(['upgrade', '--yes'])
+        rc = gt.run_cli(args)
+        assert called == [(True, False)]
+        assert rc == 0

@@ -9035,6 +9035,14 @@ def build_parser() -> argparse.ArgumentParser:
                     help='Disable quick mode (also scan "other" long-tail platforms)')
     sp.add_argument('--no-probe', action='store_true', dest='no_probe',
                     help='Skip HTTP probe in subdomain stage (faster)')
+
+    # v1.8.2: 一键升级
+    p_upgrade = sub.add_parser('upgrade', help='Check & upgrade SpyEyes to latest version')
+    p_upgrade.add_argument('--yes', '-y', action='store_true',
+                           help='Skip confirmation prompt')
+    p_upgrade.add_argument('--check', action='store_true',
+                           help='Check for updates without installing')
+
     return parser
 
 
@@ -9352,6 +9360,8 @@ def run_cli(args: argparse.Namespace) -> int:
             _emit_json(data)
         else:
             print_investigate(data)
+    elif cmd == 'upgrade':
+        return run_upgrade(yes=args.yes, check_only=args.check)
     else:
         return 2
     # 写历史（仅对实际查询的子命令）
