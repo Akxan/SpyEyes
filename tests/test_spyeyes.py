@@ -4617,3 +4617,42 @@ class TestBuildUpgradeCommand:
         """packaged-pipx → [pipx, upgrade, spyeyes]。"""
         cmd = gt._build_upgrade_command('packaged-pipx')
         assert cmd == ['pipx', 'upgrade', 'spyeyes']
+
+
+class TestPromptYesNo:
+    """v1.8.2: TTY-safe Y/N prompt。"""
+
+    def test_returns_default_when_not_tty(self, monkeypatch):
+        """非 TTY 时立即返回 default_yes,不调用 input。"""
+        monkeypatch.setattr(sys.stdin, 'isatty', lambda: False)
+        called = []
+        monkeypatch.setattr('builtins.input', lambda _: called.append(1) or 'y')
+        assert gt._prompt_yes_no('continue?', default_yes=True) is True
+        assert gt._prompt_yes_no('continue?', default_yes=False) is False
+        assert called == []  # 绝不调 input
+
+    def test_tty_y_returns_true(self, monkeypatch):
+        monkeypatch.setattr(sys.stdin, 'isatty', lambda: True)
+        monkeypatch.setattr('builtins.input', lambda _: 'y')
+        assert gt._prompt_yes_no('continue?', default_yes=True) is True
+
+    def test_tty_n_returns_false(self, monkeypatch):
+        monkeypatch.setattr(sys.stdin, 'isatty', lambda: True)
+        monkeypatch.setattr('builtins.input', lambda _: 'n')
+        assert gt._prompt_yes_no('continue?', default_yes=True) is False
+
+    def test_tty_empty_uses_default(self, monkeypatch):
+        """直接回车 → 用 default_yes。"""
+        monkeypatch.setattr(sys.stdin, 'isatty', lambda: True)
+        monkeypatch.setattr('builtins.input', lambda _: '')
+        assert gt._prompt_yes_no('q', default_yes=True) is True
+        assert gt._prompt_yes_no('q', default_yes=False) is False
+
+    def test_tty_ctrl_c_raises(self, monkeypatch):
+        """Ctrl-C 透传 KeyboardInterrupt 让上层处理。"""
+        monkeypatch.setattr(sys.stdin, 'isatty', lambda: True)
+        def raise_kbd(_):
+            raise KeyboardInterrupt
+        monkeypatch.setattr('builtins.input', raise_kbd)
+        with pytest.raises(KeyboardInterrupt):
+            gt._prompt_yes_no('q', default_yes=True)

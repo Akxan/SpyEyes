@@ -8614,6 +8614,26 @@ def _build_upgrade_command(mode: str) -> Optional[list[str]]:
     return None
 
 
+def _prompt_yes_no(question: str, default_yes: bool = True) -> bool:
+    """TTY 安全的 Y/N prompt。
+
+    非 TTY 直接返回 default_yes(管道、cron 等场景不交互)。
+    TTY 上 'y'/'yes' → True,'n'/'no' → False,空 → default_yes,其他 → 重问一次。
+    Ctrl-C 透传给上层 (run_upgrade 会捕获)。
+    """
+    if not sys.stdin.isatty():
+        return default_yes
+    try:
+        answer = input(question + ' ').strip().lower()
+    except EOFError:
+        return default_yes
+    if answer in ('y', 'yes'):
+        return True
+    if answer in ('n', 'no'):
+        return False
+    return default_yes  # 空输入或不识别 → 用 default
+
+
 def _default_report_dir() -> str:
     """智能默认报告目录,按安装方式自适应。
 
