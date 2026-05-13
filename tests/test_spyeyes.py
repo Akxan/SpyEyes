@@ -4593,3 +4593,27 @@ class TestDetectInstallMode:
         fake_path = r'C:\Users\me\pipx\venvs\spyeyes\Lib\site-packages\spyeyes\__init__.py'
         monkeypatch.setattr(gt, '__file__', fake_path)
         assert gt._detect_install_mode() == 'packaged-pipx'
+
+
+class TestBuildUpgradeCommand:
+    """v1.8.2: mode → subprocess 命令列表的映射。"""
+
+    def test_source_returns_none(self):
+        """源码模式不自动跑,返回 None。"""
+        assert gt._build_upgrade_command('source') is None
+
+    def test_pip_command_uses_sys_executable(self):
+        """packaged-pip → [sys.executable, -m, pip, install, --upgrade, git+URL]。"""
+        cmd = gt._build_upgrade_command('packaged-pip')
+        assert cmd is not None
+        assert cmd[0] == sys.executable        # 避 PATH 缺失
+        assert cmd[1] == '-m'
+        assert cmd[2] == 'pip'
+        assert cmd[3] == 'install'
+        assert '--upgrade' in cmd
+        assert any('git+https://github.com/Akxan/SpyEyes.git' in c for c in cmd)
+
+    def test_pipx_command(self):
+        """packaged-pipx → [pipx, upgrade, spyeyes]。"""
+        cmd = gt._build_upgrade_command('packaged-pipx')
+        assert cmd == ['pipx', 'upgrade', 'spyeyes']

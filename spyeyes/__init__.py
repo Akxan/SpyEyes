@@ -8598,6 +8598,22 @@ def _detect_install_mode() -> str:
     return 'packaged-pip'
 
 
+def _build_upgrade_command(mode: str) -> Optional[list[str]]:
+    """按 mode 返回 subprocess 命令列表,源码模式返回 None。
+
+    使用 sys.executable -m pip 而非 'pip',避 PATH 缺失 (Windows 上 pip.exe 可能不在 PATH)。
+    使用 list 形式 (非 shell 字符串) 避跨平台 shell quoting 差异。
+    """
+    if mode == 'source':
+        return None
+    if mode == 'packaged-pipx':
+        return ['pipx', 'upgrade', 'spyeyes']
+    if mode == 'packaged-pip':
+        return [sys.executable, '-m', 'pip', 'install', '--upgrade',
+                'git+https://github.com/Akxan/SpyEyes.git']
+    return None
+
+
 def _default_report_dir() -> str:
     """智能默认报告目录,按安装方式自适应。
 
