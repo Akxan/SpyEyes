@@ -8580,6 +8580,24 @@ def _is_packaged_install() -> bool:
     return any(marker in pkg_dir for marker in _PACKAGED_INSTALL_MARKERS)
 
 
+def _detect_install_mode() -> str:
+    """识别 SpyEyes 是怎么装的,返回 'source' / 'packaged-pip' / 'packaged-pipx'。
+
+    'source':        git clone + pip install -e .  → 不自动跑升级,只显示命令
+    'packaged-pip':  pip install git+URL           → subprocess 跑 pip install --upgrade
+    'packaged-pipx': pipx install git+URL          → subprocess 跑 pipx upgrade spyeyes
+
+    pipx 装的包,__file__ 路径含 `pipx/venvs` (POSIX) 或 `pipx\\venvs` (Windows)。
+    """
+    if not _is_packaged_install():
+        return 'source'
+    real = os.path.realpath(__file__)
+    # 跨平台:同时查正反斜杠两种分隔
+    if 'pipx' + os.sep + 'venvs' in real or 'pipx/venvs' in real or 'pipx\\venvs' in real:
+        return 'packaged-pipx'
+    return 'packaged-pip'
+
+
 def _default_report_dir() -> str:
     """智能默认报告目录,按安装方式自适应。
 

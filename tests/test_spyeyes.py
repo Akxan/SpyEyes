@@ -4562,3 +4562,34 @@ class TestUpgradeI18n:
         en_keys = set(gt.TRANSLATIONS['en'].keys())
         zh_keys = set(gt.TRANSLATIONS['zh'].keys())
         assert en_keys == zh_keys, f"diff: en-zh={en_keys-zh_keys}, zh-en={zh_keys-en_keys}"
+
+
+class TestDetectInstallMode:
+    """v1.8.2: source / packaged-pip / packaged-pipx 三态识别。"""
+
+    def test_source_install_mode(self, monkeypatch):
+        """非打包安装 → 'source'。"""
+        monkeypatch.setattr(gt, '_is_packaged_install', lambda: False)
+        assert gt._detect_install_mode() == 'source'
+
+    def test_packaged_pip_mode(self, monkeypatch):
+        """打包安装 + __file__ 不含 pipx → 'packaged-pip'。"""
+        monkeypatch.setattr(gt, '_is_packaged_install', lambda: True)
+        # 模拟一个普通 site-packages 路径(用 os.sep 让 Windows 也对)
+        fake_path = os.path.join('/usr/lib/python3.12/site-packages', 'spyeyes', '__init__.py')
+        monkeypatch.setattr(gt, '__file__', fake_path)
+        assert gt._detect_install_mode() == 'packaged-pip'
+
+    def test_packaged_pipx_mode_posix(self, monkeypatch):
+        """打包安装 + __file__ 含 pipx/venvs (POSIX) → 'packaged-pipx'。"""
+        monkeypatch.setattr(gt, '_is_packaged_install', lambda: True)
+        fake_path = '/home/user/.local/pipx/venvs/spyeyes/lib/python3.12/site-packages/spyeyes/__init__.py'
+        monkeypatch.setattr(gt, '__file__', fake_path)
+        assert gt._detect_install_mode() == 'packaged-pipx'
+
+    def test_packaged_pipx_mode_windows(self, monkeypatch):
+        """Windows pipx 路径 (反斜杠) → 'packaged-pipx'。"""
+        monkeypatch.setattr(gt, '_is_packaged_install', lambda: True)
+        fake_path = r'C:\Users\me\pipx\venvs\spyeyes\Lib\site-packages\spyeyes\__init__.py'
+        monkeypatch.setattr(gt, '__file__', fake_path)
+        assert gt._detect_install_mode() == 'packaged-pipx'
