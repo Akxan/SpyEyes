@@ -5414,6 +5414,7 @@ MENU_KEYS = [
     (9, 'menu.domain_emails'),   # v1.4.0: 域名邮箱枚举
     (10, 'menu.investigate'),    # v1.7.0: 综合调查 (lang 让位到 [11])
     (11, 'menu.lang'),
+    (12, 'menu.upgrade'),        # v1.8.2: 一键升级
     (0, 'menu.exit'),
 ]
 
@@ -5755,6 +5756,9 @@ def handle_choice(choice: int, save_dir: Optional[str] = None) -> None:
     elif choice == 11:
         # v1.4.0: 切换语言(v1.3.0 是 [9],加 domain-emails 后让位到 [10],加 investigate 后到 [11])
         switch_language_menu()
+    elif choice == 12:
+        # v1.8.2: 一键升级
+        run_upgrade()
     elif choice == 0:
         print(f"\n {Color.Gr}{t('prompt.bye')}{Color.Reset}")
         sys.exit(0)

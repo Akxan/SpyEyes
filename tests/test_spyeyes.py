@@ -4810,3 +4810,21 @@ class TestRunUpgrade:
         assert rc == 130
         assert subprocess_called == []
         assert 'Cancelled' in capsys.readouterr().out
+
+
+class TestMenuUpgradeItem:
+    """v1.8.2: 菜单 [12] Check & Upgrade 入口。"""
+
+    def test_menu_key_12_in_MENU_KEYS(self):
+        """[12] 项必须在 MENU_KEYS 列表里,key='menu.upgrade'。"""
+        items = dict(gt.MENU_KEYS)
+        assert 12 in items
+        assert items[12] == 'menu.upgrade'
+
+    def test_handle_choice_12_calls_run_upgrade(self, monkeypatch):
+        """选 12 → 调 run_upgrade(yes=False, check_only=False)。"""
+        called = []
+        monkeypatch.setattr(gt, 'run_upgrade',
+                            lambda yes=False, check_only=False: called.append((yes, check_only)) or 0)
+        gt.handle_choice(12)
+        assert called == [(False, False)]
