@@ -68,7 +68,7 @@ except ImportError:
 
 
 # 语义化版本号 —— 同步更新 docs/CHANGELOG.md 与 git tag
-__version__ = '1.8.0'
+__version__ = '1.8.1'
 
 
 # ====================================================================
@@ -264,10 +264,10 @@ def _normalize_version(s: str) -> tuple:
 def _is_newer(remote: str, local: str) -> bool:
     """语义化比较:remote > local → True。任一无法解析 → False(保守不打扰)。"""
     r = _normalize_version(remote)
-    l = _normalize_version(local)
-    if not r or not l:
+    lo = _normalize_version(local)
+    if not r or not lo:
         return False
-    return r > l
+    return r > lo
 
 
 def _read_update_cache() -> Optional[dict]:
@@ -4583,8 +4583,8 @@ def do_investigate(target: str, *,
                     ok = isinstance(tasks_result[name], dict) and '_error' not in tasks_result[name]
                     sym = '✓' if ok else '✗'
                     color = Color.Gr if ok else Color.Re
-                    elapsed = int(time.time() - phase1_start)
-                    _stage_log(f"   {color}{t('investigate.task_done', elapsed=elapsed, sym=sym, name=name)}{Color.Reset}")
+                    phase1_elapsed = int(time.time() - phase1_start)
+                    _stage_log(f"   {color}{t('investigate.task_done', elapsed=phase1_elapsed, sym=sym, name=name)}{Color.Reset}")
         except KeyboardInterrupt:
             ex.shutdown(wait=False, cancel_futures=True)
             raise
@@ -4705,10 +4705,10 @@ def do_investigate(target: str, *,
                         for _, _, addr, local in picks
                     }
                     try:
-                        for fut in as_completed(fut_to_pick):
-                            addr, local = fut_to_pick[fut]
+                        for efut in as_completed(fut_to_pick):
+                            addr, local = fut_to_pick[efut]
                             try:
-                                _addr, _local, payload = fut.result()
+                                _addr, _local, payload = efut.result()
                             except Exception as exc:  # 应该不会到这里(_scan_one_email 已捕获)
                                 payload = {'_error': str(exc)}
                             user_completed += 1

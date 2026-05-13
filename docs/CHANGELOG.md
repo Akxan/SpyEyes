@@ -20,6 +20,24 @@ This project adheres to [Keep a Changelog](https://keepachangelog.com/en/1.1.0/)
 
 ---
 
+## [1.8.1] — 2026-05-13
+
+🐛 **CI lint 修复**：v1.8.0 引入的 3 处代码质量问题（ruff 阻断 CI 红牌），无功能变更。
+
+### 修复
+
+- **`ruff E741`**:`_is_newer()` 局部变量 `l` (单字母 L，易与数字 1 / 大写 I 混淆) → 改名 `lo`。`ruff check` 拒绝合并。
+- **`mypy [assignment]`**:`do_investigate()` 内 `elapsed` 在循环里先被赋值为 `int(time.time()-...)`,函数末尾又赋 `float(time.time()-...)`,mypy 锁死类型冲突。前者改名 `phase1_elapsed`。
+- **`mypy [assignment/index]`**:`do_investigate()` 内循环变量 `fut` 先绑定 `Future[dict]`(IP pivot),后又绑定 `Future[tuple]`(email pivot),mypy 类型冲突。后者改名 `efut`。
+
+### 影响
+
+- CI lint job 恢复绿牌(v1.8.0 因 ruff 错误整个 push 被红牌阻断,test matrix 没跑)。
+- v1.8.0 所有功能(`investigate` 命令 / 智能默认目录 / 启动版本检查 / Phase 2b 并发提速)行为不变。
+- 4 工具全清:ruff 0 / mypy 0 / bandit 0 / pytest 548 passed。
+
+---
+
 ## [1.8.0] — 2026-05-11
 
 ✨ **智能默认报告目录** + **启动版本检查** + **`investigate` 提速 3-4× + 全程进度反馈** — 三组影响每次启动 / 长任务体验的改进。
