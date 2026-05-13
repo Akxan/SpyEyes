@@ -942,7 +942,10 @@ class TestDefaultReportDir:
         monkeypatch.setattr(gt, '_is_packaged_install', lambda: True)
         fake_home = tmp_path / 'home'
         fake_home.mkdir()
+        # POSIX (Linux/macOS) 用 HOME; Windows expanduser 完全不读 HOME,
+        # 优先 USERPROFILE,然后 HOMEDRIVE+HOMEPATH。两者都 patch 才跨平台正确。
         monkeypatch.setenv('HOME', str(fake_home))
+        monkeypatch.setenv('USERPROFILE', str(fake_home))
         result = gt._default_report_dir()
         expected = fake_home / 'Downloads' / 'spyeyes'
         assert result == str(expected)
