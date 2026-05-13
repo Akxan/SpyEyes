@@ -4828,3 +4828,50 @@ class TestMenuUpgradeItem:
                             lambda yes=False, check_only=False: called.append((yes, check_only)) or 0)
         gt.handle_choice(12)
         assert called == [(False, False)]
+
+
+class TestMenuStartupPrompt:
+    """v1.8.2: 菜单启动自动 prompt (仅 TTY + 有缓存的新版)。"""
+
+    def test_prompt_called_when_cache_has_new_and_tty(self, monkeypatch):
+        """缓存有新版 + TTY → _prompt_yes_no 被调一次。"""
+        info = {'latest': 'v1.8.2', 'current': '1.8.1', 'url': 'X'}
+        monkeypatch.setattr(gt, '_get_cached_update_info', lambda: info)
+        monkeypatch.setattr(sys.stdin, 'isatty', lambda: True)
+        prompted = []
+        monkeypatch.setattr(gt, '_prompt_yes_no',
+                            lambda *a, **kw: prompted.append(a) or False)  # 选 N 避免 exit
+        # 让菜单循环退出 (用户选 0)
+        monkeypatch.setattr('builtins.input', lambda _: '0')
+        try:
+            gt.menu_loop()
+        except SystemExit:
+            pass
+        assert len(prompted) == 1
+
+    def test_prompt_skipped_when_no_new_cache(self, monkeypatch):
+        """缓存无新版 → 不 prompt。"""
+        monkeypatch.setattr(gt, '_get_cached_update_info', lambda: None)
+        monkeypatch.setattr(sys.stdin, 'isatty', lambda: True)
+        prompted = []
+        monkeypatch.setattr(gt, '_prompt_yes_no', lambda *a, **kw: prompted.append(a) or False)
+        monkeypatch.setattr('builtins.input', lambda _: '0')
+        try:
+            gt.menu_loop()
+        except SystemExit:
+            pass
+        assert prompted == []
+
+    def test_prompt_skipped_when_not_tty(self, monkeypatch):
+        """非 TTY → 不 prompt (即使有新版)。"""
+        info = {'latest': 'v1.8.2', 'current': '1.8.1', 'url': 'X'}
+        monkeypatch.setattr(gt, '_get_cached_update_info', lambda: info)
+        monkeypatch.setattr(sys.stdin, 'isatty', lambda: False)
+        prompted = []
+        monkeypatch.setattr(gt, '_prompt_yes_no', lambda *a, **kw: prompted.append(a) or False)
+        monkeypatch.setattr('builtins.input', lambda _: '0')
+        try:
+            gt.menu_loop()
+        except SystemExit:
+            pass
+        assert prompted == []

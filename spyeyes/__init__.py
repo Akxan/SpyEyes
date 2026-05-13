@@ -8781,7 +8781,27 @@ def _default_report_dir() -> str:
             return os.getcwd()
 
 
+def _menu_startup_upgrade_prompt() -> None:
+    """菜单启动时检测缓存的新版本,有则 prompt Y/N。仅 TTY 触发。"""
+    if not sys.stdin.isatty():
+        return
+    info = _get_cached_update_info()
+    if not info:
+        return
+    msg = t('upgrade.prompt_menu_start',
+            latest=info['latest'], current=info['current'])
+    try:
+        if _prompt_yes_no(f"\n {Color.Ye}{msg}{Color.Reset}", default_yes=True):
+            rc = run_upgrade(yes=True)
+            sys.exit(rc)  # 升级后 exit,提示用户重启
+        # 选 N → 继续菜单
+    except KeyboardInterrupt:
+        sys.exit(130)
+
+
 def menu_loop(save_dir: Optional[str] = None) -> None:
+    # v1.8.2: 启动时如有缓存的新版 + TTY → prompt Y/N 升级。选 N 跳过本次。
+    _menu_startup_upgrade_prompt()
     while True:
         clear_screen()
         show_menu()
