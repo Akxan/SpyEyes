@@ -4665,8 +4665,8 @@ class TestRunUpgrade:
         """已是最新 → 显示 '✓ Already on latest' + return 0。"""
         gt.set_lang('en')
         # mock _get_cached_update_info 返回 None (means: no newer version)
-        monkeypatch.setattr(gt, 'refresh_update_cache_sync', lambda: None)
-        monkeypatch.setattr(gt, '_get_cached_update_info', lambda: None)
+        monkeypatch.setattr(gt, 'refresh_update_cache_sync', lambda *a, **kw: True)
+        monkeypatch.setattr(gt, '_get_cached_update_info', lambda *a, **kw: None)
         rc = gt.run_upgrade(yes=False, check_only=False)
         assert rc == 0
         assert 'Already on latest' in capsys.readouterr().out
@@ -4676,8 +4676,8 @@ class TestRunUpgrade:
         gt.set_lang('en')
         info = {'latest': 'v1.8.2', 'current': '1.8.1',
                 'url': 'https://github.com/Akxan/SpyEyes/releases/tag/v1.8.2'}
-        monkeypatch.setattr(gt, 'refresh_update_cache_sync', lambda: None)
-        monkeypatch.setattr(gt, '_get_cached_update_info', lambda: info)
+        monkeypatch.setattr(gt, 'refresh_update_cache_sync', lambda *a, **kw: True)
+        monkeypatch.setattr(gt, '_get_cached_update_info', lambda *a, **kw: info)
         subprocess_called = []
         monkeypatch.setattr('subprocess.run', lambda *a, **kw: subprocess_called.append(a) or None)
         rc = gt.run_upgrade(yes=False, check_only=True)
@@ -4691,8 +4691,8 @@ class TestRunUpgrade:
         """源码安装 → 只显示命令,不 subprocess,return 0。"""
         gt.set_lang('en')
         info = {'latest': 'v1.8.2', 'current': '1.8.1', 'url': 'X'}
-        monkeypatch.setattr(gt, 'refresh_update_cache_sync', lambda: None)
-        monkeypatch.setattr(gt, '_get_cached_update_info', lambda: info)
+        monkeypatch.setattr(gt, 'refresh_update_cache_sync', lambda *a, **kw: True)
+        monkeypatch.setattr(gt, '_get_cached_update_info', lambda *a, **kw: info)
         monkeypatch.setattr(gt, '_detect_install_mode', lambda: 'source')
         subprocess_called = []
         monkeypatch.setattr('subprocess.run', lambda *a, **kw: subprocess_called.append(a) or None)
@@ -4705,8 +4705,8 @@ class TestRunUpgrade:
         """打包 + yes=True → subprocess 被调一次,成功 → return 0。"""
         gt.set_lang('en')
         info = {'latest': 'v1.8.2', 'current': '1.8.1', 'url': 'X'}
-        monkeypatch.setattr(gt, 'refresh_update_cache_sync', lambda: None)
-        monkeypatch.setattr(gt, '_get_cached_update_info', lambda: info)
+        monkeypatch.setattr(gt, 'refresh_update_cache_sync', lambda *a, **kw: True)
+        monkeypatch.setattr(gt, '_get_cached_update_info', lambda *a, **kw: info)
         monkeypatch.setattr(gt, '_detect_install_mode', lambda: 'packaged-pip')
 
         class FakeCompleted:
@@ -4726,8 +4726,8 @@ class TestRunUpgrade:
         """打包 + 用户 N → 不调 subprocess,return 0 (用户主动取消)。"""
         gt.set_lang('en')
         info = {'latest': 'v1.8.2', 'current': '1.8.1', 'url': 'X'}
-        monkeypatch.setattr(gt, 'refresh_update_cache_sync', lambda: None)
-        monkeypatch.setattr(gt, '_get_cached_update_info', lambda: info)
+        monkeypatch.setattr(gt, 'refresh_update_cache_sync', lambda *a, **kw: True)
+        monkeypatch.setattr(gt, '_get_cached_update_info', lambda *a, **kw: info)
         monkeypatch.setattr(gt, '_detect_install_mode', lambda: 'packaged-pip')
         monkeypatch.setattr(sys.stdin, 'isatty', lambda: True)  # 确保进入 prompt 路径
         monkeypatch.setattr(gt, '_prompt_yes_no', lambda *a, **kw: False)
@@ -4742,8 +4742,8 @@ class TestRunUpgrade:
         """非 TTY + 不带 yes → return 2 错误。"""
         gt.set_lang('en')
         info = {'latest': 'v1.8.2', 'current': '1.8.1', 'url': 'X'}
-        monkeypatch.setattr(gt, 'refresh_update_cache_sync', lambda: None)
-        monkeypatch.setattr(gt, '_get_cached_update_info', lambda: info)
+        monkeypatch.setattr(gt, 'refresh_update_cache_sync', lambda *a, **kw: True)
+        monkeypatch.setattr(gt, '_get_cached_update_info', lambda *a, **kw: info)
         monkeypatch.setattr(gt, '_detect_install_mode', lambda: 'packaged-pip')
         monkeypatch.setattr(sys.stdin, 'isatty', lambda: False)
         rc = gt.run_upgrade(yes=False, check_only=False)
@@ -4755,8 +4755,8 @@ class TestRunUpgrade:
         """subprocess 非 0 退出 → 透传 exit code + 显示兜底手动命令。"""
         gt.set_lang('en')
         info = {'latest': 'v1.8.2', 'current': '1.8.1', 'url': 'X'}
-        monkeypatch.setattr(gt, 'refresh_update_cache_sync', lambda: None)
-        monkeypatch.setattr(gt, '_get_cached_update_info', lambda: info)
+        monkeypatch.setattr(gt, 'refresh_update_cache_sync', lambda *a, **kw: True)
+        monkeypatch.setattr(gt, '_get_cached_update_info', lambda *a, **kw: info)
         monkeypatch.setattr(gt, '_detect_install_mode', lambda: 'packaged-pip')
 
         class FakeCompleted:
@@ -4772,8 +4772,8 @@ class TestRunUpgrade:
         """pipx mode + which('pipx') 找不到 → 降级显示 pip 命令 + return 1。"""
         gt.set_lang('en')
         info = {'latest': 'v1.8.2', 'current': '1.8.1', 'url': 'X'}
-        monkeypatch.setattr(gt, 'refresh_update_cache_sync', lambda: None)
-        monkeypatch.setattr(gt, '_get_cached_update_info', lambda: info)
+        monkeypatch.setattr(gt, 'refresh_update_cache_sync', lambda *a, **kw: True)
+        monkeypatch.setattr(gt, '_get_cached_update_info', lambda *a, **kw: info)
         monkeypatch.setattr(gt, '_detect_install_mode', lambda: 'packaged-pipx')
         monkeypatch.setattr('shutil.which', lambda c: None)  # pipx 找不到
         subprocess_called = []
@@ -4797,8 +4797,8 @@ class TestRunUpgrade:
         """TTY + 用户在 prompt 处 Ctrl-C → return 130 (POSIX 标准 128+SIGINT)。"""
         gt.set_lang('en')
         info = {'latest': 'v1.8.2', 'current': '1.8.1', 'url': 'X'}
-        monkeypatch.setattr(gt, 'refresh_update_cache_sync', lambda: None)
-        monkeypatch.setattr(gt, '_get_cached_update_info', lambda: info)
+        monkeypatch.setattr(gt, 'refresh_update_cache_sync', lambda *a, **kw: True)
+        monkeypatch.setattr(gt, '_get_cached_update_info', lambda *a, **kw: info)
         monkeypatch.setattr(gt, '_detect_install_mode', lambda: 'packaged-pip')
         monkeypatch.setattr(sys.stdin, 'isatty', lambda: True)
         def raise_kbd(*a, **kw):
@@ -4836,7 +4836,7 @@ class TestMenuStartupPrompt:
     def test_prompt_called_when_cache_has_new_and_tty(self, monkeypatch):
         """缓存有新版 + TTY → _prompt_yes_no 被调一次。"""
         info = {'latest': 'v1.8.2', 'current': '1.8.1', 'url': 'X'}
-        monkeypatch.setattr(gt, '_get_cached_update_info', lambda: info)
+        monkeypatch.setattr(gt, '_get_cached_update_info', lambda *a, **kw: info)
         monkeypatch.setattr(sys.stdin, 'isatty', lambda: True)
         prompted = []
         monkeypatch.setattr(gt, '_prompt_yes_no',
@@ -4851,7 +4851,7 @@ class TestMenuStartupPrompt:
 
     def test_prompt_skipped_when_no_new_cache(self, monkeypatch):
         """缓存无新版 → 不 prompt。"""
-        monkeypatch.setattr(gt, '_get_cached_update_info', lambda: None)
+        monkeypatch.setattr(gt, '_get_cached_update_info', lambda *a, **kw: None)
         monkeypatch.setattr(sys.stdin, 'isatty', lambda: True)
         prompted = []
         monkeypatch.setattr(gt, '_prompt_yes_no', lambda *a, **kw: prompted.append(a) or False)
@@ -4865,7 +4865,7 @@ class TestMenuStartupPrompt:
     def test_prompt_skipped_when_not_tty(self, monkeypatch):
         """非 TTY → 不 prompt (即使有新版)。"""
         info = {'latest': 'v1.8.2', 'current': '1.8.1', 'url': 'X'}
-        monkeypatch.setattr(gt, '_get_cached_update_info', lambda: info)
+        monkeypatch.setattr(gt, '_get_cached_update_info', lambda *a, **kw: info)
         monkeypatch.setattr(sys.stdin, 'isatty', lambda: False)
         prompted = []
         monkeypatch.setattr(gt, '_prompt_yes_no', lambda *a, **kw: prompted.append(a) or False)
@@ -4908,3 +4908,229 @@ class TestCliUpgradeSubcommand:
         rc = gt.run_cli(args)
         assert called == [(True, False)]
         assert rc == 0
+
+
+class TestUpgradeRobustness:
+    """v1.8.2 深度回归测试 — 防御已修的 critical bug + 边界 fuzz。
+
+    覆盖:
+    - Bug #1 回归: SPYEYES_NO_UPDATE_CHECK 不应抑制 user-triggered upgrade
+    - Bug #2 回归: 网络失败时显示明确错误,不显示误导的"已是最新"
+    - Fuzz: Y/N prompt 各种怪输入
+    - 缓存损坏 / 缺失 / 半结构化场景
+    """
+
+    # ---------- Bug #1 回归: NO_UPDATE_CHECK 不应抑制 explicit user upgrade ----------
+
+    def test_run_upgrade_bypasses_no_update_check_env_var(self, monkeypatch, capsys):
+        """SPYEYES_NO_UPDATE_CHECK=1 时 run_upgrade 必须仍能查 GitHub。
+
+        修复前 (v1.8.2 release commit): env var 静默使 spyeyes upgrade --check
+        显示"已是最新",即使远程有新版本也看不到。
+        修复后: refresh_update_cache_sync(force=True) 绕过 env var。
+        """
+        gt.set_lang('en')
+        monkeypatch.setenv('SPYEYES_NO_UPDATE_CHECK', '1')
+        # mock 真实 fetch 返回一个新版本
+        monkeypatch.setattr(gt, '_fetch_latest_version_from_github',
+                            lambda: 'v99.0.0')  # 远程有新版
+        # 让 _write/_read 走真实 I/O 但用 tmp_path (conftest fixture 已 redirect)
+        rc = gt.run_upgrade(check_only=True)
+        out = capsys.readouterr().out
+        assert rc == 0
+        # 关键: 必须看到新版本而非"Already on latest"
+        assert 'v99.0.0' in out
+        assert 'Already on latest' not in out
+
+    def test_get_cached_update_info_force_bypasses_env_var(self, monkeypatch):
+        """get_cached_update_info(force=True) 绕过 NO_UPDATE_CHECK。"""
+        monkeypatch.setenv('SPYEYES_NO_UPDATE_CHECK', '1')
+        # 写一个有效 cache (用真实 _write,fixture 已 redirect 到 tmp)
+        gt._write_update_cache({
+            'checked_at': time.time(),
+            'latest': 'v99.0.0',
+            'url': 'https://example.com',
+        })
+        # 默认 force=False → env var 抑制 → None
+        assert gt.get_cached_update_info() is None
+        # force=True → 绕过 env var → 返回 info
+        info = gt.get_cached_update_info(force=True)
+        assert info is not None
+        assert info['latest'] == 'v99.0.0'
+
+    def test_refresh_update_cache_sync_force_bypasses_env_var(self, monkeypatch):
+        """refresh_update_cache_sync(force=True) 绕过 NO_UPDATE_CHECK 强制 fetch。"""
+        monkeypatch.setenv('SPYEYES_NO_UPDATE_CHECK', '1')
+        fetched = []
+        monkeypatch.setattr(gt, '_fetch_latest_version_from_github',
+                            lambda: fetched.append(1) or 'v99.0.0')
+        # 默认 force=False → 不查
+        ok = gt.refresh_update_cache_sync()
+        assert ok is False
+        assert fetched == []
+        # force=True → 查
+        ok = gt.refresh_update_cache_sync(force=True)
+        assert ok is True
+        assert fetched == [1]
+
+    # ---------- Bug #2 回归: 网络失败显示明确错误 ----------
+
+    def test_run_upgrade_network_failure_shows_clear_error(self, monkeypatch, capsys):
+        """_fetch_latest_version_from_github 返回 None (网络断/API 错) → run_upgrade
+        显示 'Could not reach GitHub Releases',不是误导的 'Already on latest'。
+
+        修复前: refresh 函数静默写入 latest=None 到 cache → get_cached_update_info
+        看到 latest=None 返回 None → run_upgrade 显示"Already on latest"(假信息)。
+        修复后: refresh 返回 bool, run_upgrade 检查 fetched_ok → 显式 network_error。
+        """
+        gt.set_lang('en')
+        # mock fetch 返回 None 模拟网络/API 错
+        monkeypatch.setattr(gt, '_fetch_latest_version_from_github', lambda: None)
+        rc = gt.run_upgrade(check_only=True)
+        out = capsys.readouterr().out
+        assert rc == 1
+        assert 'Already on latest' not in out  # 不能显示假信息
+        # 必须显式说网络问题
+        assert 'GitHub' in out or 'Could not' in out or 'reach' in out
+
+    def test_refresh_update_cache_sync_returns_false_on_fetch_failure(self, monkeypatch):
+        """refresh 在 _fetch_latest 返回 None 时,refresh 应返回 False。"""
+        monkeypatch.setattr(gt, '_fetch_latest_version_from_github', lambda: None)
+        ok = gt.refresh_update_cache_sync(force=True)
+        assert ok is False
+
+    def test_refresh_update_cache_sync_returns_true_on_success(self, monkeypatch):
+        """refresh 在 _fetch_latest 返回 tag 时,refresh 应返回 True。"""
+        monkeypatch.setattr(gt, '_fetch_latest_version_from_github', lambda: 'v1.9.0')
+        ok = gt.refresh_update_cache_sync(force=True)
+        assert ok is True
+
+    # ---------- Fuzz: Y/N prompt 各种怪输入 ----------
+
+    def test_prompt_uppercase_Y(self, monkeypatch):
+        """大写 Y 也应被识别 (实现用 .lower())。"""
+        monkeypatch.setattr(sys.stdin, 'isatty', lambda: True)
+        monkeypatch.setattr('builtins.input', lambda _: 'Y')
+        assert gt._prompt_yes_no('?', default_yes=False) is True
+
+    def test_prompt_uppercase_YES(self, monkeypatch):
+        monkeypatch.setattr(sys.stdin, 'isatty', lambda: True)
+        monkeypatch.setattr('builtins.input', lambda _: 'YES')
+        assert gt._prompt_yes_no('?', default_yes=False) is True
+
+    def test_prompt_mixed_case_yEs(self, monkeypatch):
+        """yEs 也识别 (.lower() 应该规范化)。"""
+        monkeypatch.setattr(sys.stdin, 'isatty', lambda: True)
+        monkeypatch.setattr('builtins.input', lambda _: 'yEs')
+        assert gt._prompt_yes_no('?', default_yes=False) is True
+
+    def test_prompt_whitespace_y(self, monkeypatch):
+        """输入 '  y  ' 应该被 strip 后识别。"""
+        monkeypatch.setattr(sys.stdin, 'isatty', lambda: True)
+        monkeypatch.setattr('builtins.input', lambda _: '  y  ')
+        assert gt._prompt_yes_no('?', default_yes=False) is True
+
+    def test_prompt_garbage_uses_default(self, monkeypatch):
+        """输入乱七八糟字符 → 用 default_yes (因为代码现在的行为是不重问)。"""
+        monkeypatch.setattr(sys.stdin, 'isatty', lambda: True)
+        monkeypatch.setattr('builtins.input', lambda _: 'maybe?!@#')
+        assert gt._prompt_yes_no('?', default_yes=True) is True
+        # 改用 default_yes=False 验证 default 被遵守
+        assert gt._prompt_yes_no('?', default_yes=False) is False
+
+    def test_prompt_unicode_input(self, monkeypatch):
+        """Unicode 输入不应崩 (会走 default 分支)。"""
+        monkeypatch.setattr(sys.stdin, 'isatty', lambda: True)
+        monkeypatch.setattr('builtins.input', lambda _: '是')
+        assert gt._prompt_yes_no('?', default_yes=True) is True
+        monkeypatch.setattr('builtins.input', lambda _: '否')
+        assert gt._prompt_yes_no('?', default_yes=False) is False
+
+    def test_prompt_eof_uses_default(self, monkeypatch):
+        """EOFError (stdin 关闭) → default_yes,不抛出。"""
+        monkeypatch.setattr(sys.stdin, 'isatty', lambda: True)
+        def raise_eof(_):
+            raise EOFError
+        monkeypatch.setattr('builtins.input', raise_eof)
+        assert gt._prompt_yes_no('?', default_yes=True) is True
+        assert gt._prompt_yes_no('?', default_yes=False) is False
+
+    # ---------- 缓存损坏 / 边界 ----------
+
+    def test_cache_with_null_latest_returns_none(self, monkeypatch):
+        """缓存里 latest=None (网络断时旧逻辑写入的状态) → get_cached 返回 None,不崩。"""
+        gt._write_update_cache({'checked_at': time.time(), 'latest': None, 'url': None})
+        info = gt.get_cached_update_info(force=True)
+        assert info is None  # latest is None → 不返回 info
+
+    def test_cache_with_non_string_latest_returns_none(self, monkeypatch):
+        """缓存里 latest 是 int 等怪类型 → 不崩,返回 None。"""
+        gt._write_update_cache({'checked_at': time.time(), 'latest': 12345, 'url': 'X'})
+        info = gt.get_cached_update_info(force=True)
+        assert info is None
+
+    def test_cache_with_missing_url_field_uses_template(self, monkeypatch):
+        """缓存缺 url 字段 → 用 template URL 兜底,不崩。"""
+        gt._write_update_cache({
+            'checked_at': time.time(),
+            'latest': 'v99.0.0',
+            # url field 缺失
+        })
+        info = gt.get_cached_update_info(force=True)
+        assert info is not None
+        assert 'v99.0.0' in info['url']  # template 拼出来的 URL 含 tag
+
+    # ---------- 集成: NO_UPDATE_CHECK + 菜单启动 prompt ----------
+
+    def test_menu_startup_prompt_skipped_when_no_update_check_disabled(self, monkeypatch):
+        """SPYEYES_NO_UPDATE_CHECK=1 → 菜单启动不 prompt (因为 cache 空)。
+
+        这个行为符合预期: env var 关掉自动 check, daemon 不刷 cache, 启动 prompt
+        读 cache 看到空 → return。用户主动跑 spyeyes upgrade 才会被强制查。
+        """
+        monkeypatch.setenv('SPYEYES_NO_UPDATE_CHECK', '1')
+        monkeypatch.setattr(sys.stdin, 'isatty', lambda: True)
+        prompted = []
+        monkeypatch.setattr(gt, '_prompt_yes_no',
+                            lambda *a, **kw: prompted.append(a) or False)
+        monkeypatch.setattr('builtins.input', lambda _: '0')
+        try:
+            gt.menu_loop()
+        except SystemExit:
+            pass
+        assert prompted == []  # 不打扰
+
+    # ---------- 边界: subprocess 接口 ----------
+
+    def test_subprocess_oserror_caught(self, monkeypatch, capsys):
+        """subprocess.run 抛 OSError (e.g. exec format error) → return 1, 不 crash。"""
+        gt.set_lang('en')
+        info = {'latest': 'v1.9.0', 'current': '1.8.2', 'url': 'X'}
+        monkeypatch.setattr(gt, 'refresh_update_cache_sync', lambda *a, **kw: True)
+        monkeypatch.setattr(gt, '_get_cached_update_info', lambda *a, **kw: info)
+        monkeypatch.setattr(gt, '_detect_install_mode', lambda: 'packaged-pip')
+        def raise_oserror(*a, **kw):
+            raise OSError("exec format error")
+        monkeypatch.setattr('subprocess.run', raise_oserror)
+        rc = gt.run_upgrade(yes=True, check_only=False)
+        assert rc == 1
+        assert 'failed' in capsys.readouterr().out.lower()
+
+    def test_pipx_absolute_path_used_when_available(self, monkeypatch):
+        """pipx mode + which 找到 → 用绝对路径调 subprocess (Windows robustness)。"""
+        info = {'latest': 'v1.9.0', 'current': '1.8.2', 'url': 'X'}
+        monkeypatch.setattr(gt, 'refresh_update_cache_sync', lambda *a, **kw: True)
+        monkeypatch.setattr(gt, '_get_cached_update_info', lambda *a, **kw: info)
+        monkeypatch.setattr(gt, '_detect_install_mode', lambda: 'packaged-pipx')
+        # 模拟 which 找到 pipx 绝对路径
+        abs_pipx = '/usr/local/bin/pipx'
+        monkeypatch.setattr('shutil.which', lambda c: abs_pipx if c == 'pipx' else None)
+        called = []
+        class Done:
+            returncode = 0
+        monkeypatch.setattr('subprocess.run', lambda cmd, **kw: called.append(cmd) or Done())
+        rc = gt.run_upgrade(yes=True, check_only=False)
+        assert rc == 0
+        # 关键: cmd[0] 必须是绝对路径,不是 'pipx' 字面
+        assert called[0][0] == abs_pipx
+        assert called[0][1:] == ['upgrade', 'spyeyes']

@@ -318,11 +318,15 @@ def _is_update_check_disabled() -> bool:
     return os.environ.get('SPYEYES_NO_UPDATE_CHECK', '').strip().lower() in ('1', 'true', 'yes')
 
 
-def get_cached_update_info() -> Optional[dict]:
+def get_cached_update_info(force: bool = False) -> Optional[dict]:
     """同步读缓存,立即返回。
     返回 {latest, current, url} 表示有新版本; None 表示无更新 / 无缓存 / 已禁用。
+
+    force=True (v1.8.2): 绕过 SPYEYES_NO_UPDATE_CHECK env var。用于 run_upgrade
+    这种 explicit user-triggered 场景 — 用户敲了 `spyeyes upgrade`,就是 explicit
+    consent 要检查,不能被 env var 静默抑制。
     """
-    if _is_update_check_disabled():
+    if not force and _is_update_check_disabled():
         return None
     cache = _read_update_cache()
     if not cache:
@@ -341,10 +345,14 @@ def get_cached_update_info() -> Optional[dict]:
 _get_cached_update_info = get_cached_update_info
 
 
-def refresh_update_cache_sync() -> None:
-    """同步刷新缓存(实查 GitHub)。供后台线程或测试调用。"""
-    if _is_update_check_disabled():
-        return
+def refresh_update_cache_sync(force: bool = False) -> bool:
+    """同步刷新缓存(实查 GitHub)。供后台线程或测试调用。
+
+    返回 True 表示成功 fetch 到 tag,False 表示失败 (env disabled / 网络错 / API 错)。
+    v1.8.2 加 force 参数: True 时绕过 SPYEYES_NO_UPDATE_CHECK env var。
+    """
+    if not force and _is_update_check_disabled():
+        return False
     tag = _fetch_latest_version_from_github()
     payload = {
         'checked_at': time.time(),
@@ -352,6 +360,7 @@ def refresh_update_cache_sync() -> None:
         'url': UPDATE_RELEASES_URL_TEMPLATE.format(tag=tag) if tag else None,
     }
     _write_update_cache(payload)
+    return tag is not None
 
 
 def _start_background_update_check() -> None:
@@ -8628,7 +8637,8 @@ def _prompt_yes_no(question: str, default_yes: bool = True) -> bool:
     """TTY 安全的 Y/N prompt。
 
     非 TTY 直接返回 default_yes(管道、cron 等场景不交互)。
-    TTY 上 'y'/'yes' → True,'n'/'no' → False,空 → default_yes,其他 → 重问一次。
+    TTY 上 'y'/'yes' → True,'n'/'no' → False,**空或其他不识别输入 → default_yes**。
+    EOFError (stdin 关闭) → default_yes。
     Ctrl-C 透传给上层 (run_upgrade 会捕获)。
     """
     if not sys.stdin.isatty():
@@ -8669,13 +8679,18 @@ def run_upgrade(yes: bool = False, check_only: bool = False) -> int:
       其他 透传 subprocess exit code
     """
     print(f" {Color.Cy}{t('upgrade.checking')}{Color.Reset}")
+    # v1.8.2: force=True 绕过 SPYEYES_NO_UPDATE_CHECK env var
+    # (用户 explicit consent 要 upgrade,env 不应静默抑制)
     try:
-        refresh_update_cache_sync()
+        fetched_ok = refresh_update_cache_sync(force=True)
     except Exception:
+        fetched_ok = False
+    if not fetched_ok:
+        # 网络错 / GitHub 502 / API 限速 — 显示明确错误而非误导性"已是最新"
         print(f" {Color.Re}{t('upgrade.network_error')}{Color.Reset}")
         return 1
 
-    info = _get_cached_update_info()
+    info = _get_cached_update_info(force=True)
     if not info:
         print(f" {Color.Gr}{t('upgrade.already_latest', current=__version__)}{Color.Reset}")
         return 0
@@ -8697,12 +8712,17 @@ def run_upgrade(yes: bool = False, check_only: bool = False) -> int:
         return 0
 
     cmd = _build_upgrade_command(mode)
-    if mode == 'packaged-pipx' and shutil.which('pipx') is None:
-        # pipx 不在 PATH,降级到 pip 命令兜底
-        pip_cmd = _build_upgrade_command('packaged-pip') or []
-        pip_str = ' '.join(pip_cmd)
-        print(f" {Color.Re}{t('upgrade.pipx_missing', pip_cmd=pip_str)}{Color.Reset}")
-        return 1
+    if mode == 'packaged-pipx':
+        # v1.8.2: 用绝对路径调 pipx (Windows 上 subprocess + 无扩展名相对命令的
+        # PATH 解析有 edge case; 绝对路径 robust)。同时 which 还能检测 pipx 缺失。
+        pipx_path = shutil.which('pipx')
+        if pipx_path is None:
+            pip_cmd = _build_upgrade_command('packaged-pip') or []
+            pip_str = ' '.join(pip_cmd)
+            print(f" {Color.Re}{t('upgrade.pipx_missing', pip_cmd=pip_str)}{Color.Reset}")
+            return 1
+        if cmd is not None:
+            cmd[0] = pipx_path
 
     if cmd is None:
         return 1
