@@ -350,17 +350,22 @@ def refresh_update_cache_sync(force: bool = False) -> bool:
 
     返回 True 表示成功 fetch 到 tag,False 表示失败 (env disabled / 网络错 / API 错)。
     v1.8.2 加 force 参数: True 时绕过 SPYEYES_NO_UPDATE_CHECK env var。
+    v1.8.2 post-release fix: fetch 失败时**不覆盖旧 cache**,保留之前的 valid
+    版本信息(防止一次网络抖动消除掉用户原本能看到的"有新版"提示)。
     """
     if not force and _is_update_check_disabled():
         return False
     tag = _fetch_latest_version_from_github()
+    if tag is None:
+        # fetch 失败 — 保留旧 cache,不写入 latest=None 覆盖
+        return False
     payload = {
         'checked_at': time.time(),
         'latest': tag,
-        'url': UPDATE_RELEASES_URL_TEMPLATE.format(tag=tag) if tag else None,
+        'url': UPDATE_RELEASES_URL_TEMPLATE.format(tag=tag),
     }
     _write_update_cache(payload)
-    return tag is not None
+    return True
 
 
 def _start_background_update_check() -> None:
@@ -8628,7 +8633,9 @@ def _build_upgrade_command(mode: str) -> Optional[list[str]]:
     if mode == 'packaged-pipx':
         return ['pipx', 'upgrade', 'spyeyes']
     if mode == 'packaged-pip':
-        return [sys.executable, '-m', 'pip', 'install', '--upgrade',
+        # --no-input (pip 21.1+, Python 3.10+ 自带兼容) 防止 pip 边界场景下
+        # prompt 用户导致 subprocess 在我们父进程里 hang。
+        return [sys.executable, '-m', 'pip', 'install', '--upgrade', '--no-input',
                 'git+https://github.com/Akxan/SpyEyes.git']
     return None
 
@@ -8749,7 +8756,12 @@ def run_upgrade(yes: bool = False, check_only: bool = False) -> int:
 
     if completed.returncode == 0:
         print(f"\n {Color.Gr}{t('upgrade.success', latest=latest)}{Color.Reset}")
-        return 0
+        # v1.8.2 fix: subprocess 真跑了 + 成功 → 必须立即 sys.exit(0)。
+        # 否则当 caller 是菜单 [12] 入口时,handle_choice 返回 → menu_loop 继续 →
+        # 但当前 Python 进程已 import 了**旧版** spyeyes 模块,新装的 .py 不会被
+        # 重新加载,用户后续菜单操作走的全是旧代码。让此函数自己 exit,所有
+        # 调用方 (menu_loop / handle_choice / CLI dispatch) 行为一致。
+        sys.exit(0)
     else:
         print(f"\n {Color.Re}{t('upgrade.failed', code=completed.returncode, cmd=cmd_str)}{Color.Reset}")
         return completed.returncode

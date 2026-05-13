@@ -1132,14 +1132,19 @@ class TestUpdateCheck:
         assert isinstance(cache['checked_at'], float)
 
     def test_refresh_handles_network_failure_silently(self, monkeypatch, tmp_path):
-        """fetch 返回 None(超时/404/JSON错)→ 写入 latest=None,不抛异常。"""
+        """fetch 返回 None → 不抛异常,**不覆盖旧 cache** (v1.8.2 post-release fix Bug #8)。
+
+        旧行为 (v1.8.0): refresh 写 {latest: None} 到 cache → 覆盖之前 valid 数据。
+        新行为: fetch 失败时不写 cache,保留旧 valid 数据。
+        """
         monkeypatch.delenv('SPYEYES_NO_UPDATE_CHECK', raising=False)
         monkeypatch.setattr(gt, 'UPDATE_CACHE_FILE', str(tmp_path / 'u.json'))
         monkeypatch.setattr(gt, 'CONFIG_DIR', str(tmp_path))
         monkeypatch.setattr(gt, '_fetch_latest_version_from_github', lambda: None)
         gt.refresh_update_cache_sync()  # 不抛
         cache = gt._read_update_cache()
-        assert cache['latest'] is None
+        # 修复后: fetch 失败时不写 cache (文件未被创建)
+        assert cache is None
         # 后续 get_cached_update_info 应静默返回 None(不通知用户)
         assert gt.get_cached_update_info() is None
 
@@ -4717,8 +4722,10 @@ class TestRunUpgrade:
             return FakeCompleted()
         monkeypatch.setattr('subprocess.run', fake_run)
 
-        rc = gt.run_upgrade(yes=True, check_only=False)
-        assert rc == 0
+        # v1.8.2 fix: 升级成功后 run_upgrade 必须 sys.exit(0) (避免菜单跑旧代码)
+        with pytest.raises(SystemExit) as exc_info:
+            gt.run_upgrade(yes=True, check_only=False)
+        assert exc_info.value.code == 0
         assert len(called) == 1
         assert '--upgrade' in called[0]
 
@@ -5129,8 +5136,165 @@ class TestUpgradeRobustness:
         class Done:
             returncode = 0
         monkeypatch.setattr('subprocess.run', lambda cmd, **kw: called.append(cmd) or Done())
-        rc = gt.run_upgrade(yes=True, check_only=False)
-        assert rc == 0
+        # v1.8.2 fix: 升级成功后 sys.exit(0)
+        with pytest.raises(SystemExit) as exc_info:
+            gt.run_upgrade(yes=True, check_only=False)
+        assert exc_info.value.code == 0
         # 关键: cmd[0] 必须是绝对路径,不是 'pipx' 字面
         assert called[0][0] == abs_pipx
         assert called[0][1:] == ['upgrade', 'spyeyes']
+
+
+class TestUpgradeExitAfterSubprocess:
+    """v1.8.2 fix (post-release deep-test 发现的 Bug #6 + #7):
+
+    Bug #6: 菜单 [12] 升级成功后必须 sys.exit(0),不能继续 menu loop 跑旧代码。
+            ('已 import 的旧 spyeyes 模块对象不会因 pip 重装而刷新')
+    Bug #7: pip install 必须带 --no-input 防 prompt 卡住父进程。
+    """
+
+    def test_handle_choice_12_exits_after_successful_upgrade(self, monkeypatch):
+        """菜单 [12] 升级 subprocess 成功 → sys.exit(0) 而非继续菜单。"""
+        info = {'latest': 'v1.9.0', 'current': '1.8.2', 'url': 'X'}
+        monkeypatch.setattr(gt, 'refresh_update_cache_sync', lambda *a, **kw: True)
+        monkeypatch.setattr(gt, '_get_cached_update_info', lambda *a, **kw: info)
+        monkeypatch.setattr(gt, '_detect_install_mode', lambda: 'packaged-pip')
+        monkeypatch.setattr(sys.stdin, 'isatty', lambda: True)
+        monkeypatch.setattr(gt, '_prompt_yes_no', lambda *a, **kw: True)  # Y
+        class Done:
+            returncode = 0  # subprocess 成功
+        monkeypatch.setattr('subprocess.run', lambda *a, **kw: Done())
+
+        # 必须 sys.exit(0) — 否则 menu_loop 继续跑旧代码
+        with pytest.raises(SystemExit) as exc:
+            gt.handle_choice(12)
+        assert exc.value.code == 0
+
+    def test_handle_choice_12_does_not_exit_when_user_cancels(self, monkeypatch):
+        """菜单 [12] 用户选 N → 不 exit,返回菜单继续。"""
+        info = {'latest': 'v1.9.0', 'current': '1.8.2', 'url': 'X'}
+        monkeypatch.setattr(gt, 'refresh_update_cache_sync', lambda *a, **kw: True)
+        monkeypatch.setattr(gt, '_get_cached_update_info', lambda *a, **kw: info)
+        monkeypatch.setattr(gt, '_detect_install_mode', lambda: 'packaged-pip')
+        monkeypatch.setattr(sys.stdin, 'isatty', lambda: True)
+        monkeypatch.setattr(gt, '_prompt_yes_no', lambda *a, **kw: False)  # N
+        subprocess_called = []
+        monkeypatch.setattr('subprocess.run',
+                            lambda *a, **kw: subprocess_called.append(a) or None)
+
+        # 不抛 SystemExit
+        gt.handle_choice(12)  # 应该正常 return
+        assert subprocess_called == []  # subprocess 没跑
+
+    def test_handle_choice_12_does_not_exit_on_subprocess_failure(self, monkeypatch):
+        """菜单 [12] subprocess 失败 → 不 exit (用户环境还是旧版,菜单继续合理)。"""
+        info = {'latest': 'v1.9.0', 'current': '1.8.2', 'url': 'X'}
+        monkeypatch.setattr(gt, 'refresh_update_cache_sync', lambda *a, **kw: True)
+        monkeypatch.setattr(gt, '_get_cached_update_info', lambda *a, **kw: info)
+        monkeypatch.setattr(gt, '_detect_install_mode', lambda: 'packaged-pip')
+        monkeypatch.setattr(sys.stdin, 'isatty', lambda: True)
+        monkeypatch.setattr(gt, '_prompt_yes_no', lambda *a, **kw: True)  # Y
+        class Done:
+            returncode = 1  # subprocess 失败
+        monkeypatch.setattr('subprocess.run', lambda *a, **kw: Done())
+
+        # 失败时不 exit (用户环境没变)
+        gt.handle_choice(12)  # 正常 return, 不抛 SystemExit
+
+    def test_handle_choice_12_does_not_exit_when_already_latest(self, monkeypatch):
+        """菜单 [12] 已是最新 → 不 exit,继续菜单。"""
+        monkeypatch.setattr(gt, 'refresh_update_cache_sync', lambda *a, **kw: True)
+        monkeypatch.setattr(gt, '_get_cached_update_info', lambda *a, **kw: None)  # 无新版
+
+        gt.handle_choice(12)  # 应该正常 return
+
+    def test_pip_command_includes_no_input_flag(self):
+        """Bug #7 回归: pip install 必须带 --no-input 防 prompt 卡死。"""
+        cmd = gt._build_upgrade_command('packaged-pip')
+        assert cmd is not None
+        assert '--no-input' in cmd
+
+    def test_cli_dispatch_propagates_upgrade_exit_on_success(self, monkeypatch):
+        """CLI `spyeyes upgrade --yes` 升级成功 → 整个 main 进程 exit 0。"""
+        info = {'latest': 'v1.9.0', 'current': '1.8.2', 'url': 'X'}
+        monkeypatch.setattr(gt, 'refresh_update_cache_sync', lambda *a, **kw: True)
+        monkeypatch.setattr(gt, '_get_cached_update_info', lambda *a, **kw: info)
+        monkeypatch.setattr(gt, '_detect_install_mode', lambda: 'packaged-pip')
+        class Done:
+            returncode = 0
+        monkeypatch.setattr('subprocess.run', lambda *a, **kw: Done())
+
+        parser = gt.build_parser()
+        args = parser.parse_args(['upgrade', '--yes'])
+        with pytest.raises(SystemExit) as exc:
+            gt.run_cli(args)
+        assert exc.value.code == 0
+
+
+class TestRefreshFailureDoesNotClobberCache:
+    """v1.8.2 post-release Bug #8 回归: refresh fetch 失败不应覆盖旧 valid cache。
+
+    场景: 用户后台 daemon 已 fetch 过, cache 里有 valid latest='v1.9.0'。
+    某次 daemon 跑时网络抖动,_fetch 返回 None。修复前: refresh 写入
+    {latest: None} 覆盖旧 cache → 用户失去"有新版"提示。修复后: refresh
+    fetch 失败时**不写 cache**,保留旧 valid 数据。
+    """
+
+    def test_refresh_preserves_old_cache_on_fetch_failure(self, monkeypatch):
+        # 准备: cache 里有 valid latest='v9.9.9'
+        gt._write_update_cache({
+            'checked_at': time.time(),
+            'latest': 'v9.9.9',
+            'url': 'https://example.com/9.9.9',
+        })
+        # 验证旧 cache 可读
+        old = gt._read_update_cache()
+        assert old is not None
+        assert old['latest'] == 'v9.9.9'
+
+        # 现在 fetch 失败 (网络断)
+        monkeypatch.setattr(gt, '_fetch_latest_version_from_github', lambda: None)
+        ok = gt.refresh_update_cache_sync(force=True)
+        assert ok is False  # fetch 失败 → False
+
+        # 关键: 旧 cache 必须保留,不被 None 覆盖
+        preserved = gt._read_update_cache()
+        assert preserved is not None
+        assert preserved['latest'] == 'v9.9.9'  # 旧 latest 还在
+        assert preserved['url'] == 'https://example.com/9.9.9'  # 旧 url 还在
+
+    def test_get_cached_update_info_after_failed_refresh(self, monkeypatch):
+        """refresh 失败 → get_cached_update_info 仍然返回旧 valid info。
+
+        组合行为验证: 用户体验 = '看到有新版' 不会因 daemon 一次失败而丢失。
+        """
+        # 准备 valid cache
+        gt._write_update_cache({
+            'checked_at': time.time(),
+            'latest': 'v9.9.9',
+            'url': 'https://example.com',
+        })
+
+        # daemon 跑失败
+        monkeypatch.setattr(gt, '_fetch_latest_version_from_github', lambda: None)
+        gt.refresh_update_cache_sync(force=True)  # 失败,但不应清空 cache
+
+        # 用户从 menu_loop / startup notice 角度看的信息
+        info = gt.get_cached_update_info(force=True)
+        assert info is not None  # 仍能看到有新版
+        assert info['latest'] == 'v9.9.9'
+
+    def test_refresh_with_successful_fetch_does_update_cache(self, monkeypatch):
+        """对照: fetch 成功时 refresh 必须正常写入新 cache。"""
+        gt._write_update_cache({
+            'checked_at': 0,
+            'latest': 'v1.0.0',  # 旧
+            'url': 'X',
+        })
+
+        monkeypatch.setattr(gt, '_fetch_latest_version_from_github', lambda: 'v2.0.0')
+        ok = gt.refresh_update_cache_sync(force=True)
+        assert ok is True
+
+        updated = gt._read_update_cache()
+        assert updated['latest'] == 'v2.0.0'  # 已更新
