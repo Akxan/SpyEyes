@@ -1225,14 +1225,15 @@ class TestUpdateCheck:
         assert 'pip install -e' in err
         assert 'pip install --upgrade' not in err  # 不应混入打包指令
 
-    def test_print_update_notice_packaged_install_shows_pip_upgrade(self, monkeypatch, capsys):
-        """打包安装(pip install git+URL / pipx)用户应看到 pip --upgrade / pipx 指令。"""
+    def test_print_update_notice_packaged_install_points_to_upgrade_command(self, monkeypatch, capsys):
+        """打包安装用户应被引导到 `spyeyes upgrade`(自动处理 pip / pipx / PEP 668),
+        而不是照抄一条裸 pip 命令 —— 那在 Homebrew 等 PEP 668 环境下必然失败。"""
         monkeypatch.setattr(gt, '_is_packaged_install', lambda: True)
         gt.set_lang('en')
         gt.print_update_notice({'latest': 'v1.8.1', 'current': '1.8.0', 'url': 'X'})
         err = capsys.readouterr().err
-        assert 'pip install --upgrade' in err
-        assert 'pipx upgrade' in err
+        assert 'spyeyes upgrade' in err
+        assert 'pip install --upgrade' not in err
         assert 'git pull' not in err  # 打包用户没 repo,不应看到 git pull
 
 

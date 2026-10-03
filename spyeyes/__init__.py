@@ -400,7 +400,9 @@ def print_update_notice(info: dict) -> None:
     所有 i18n 调用前 _lang 必须已设定。"""
     try:
         msg_avail = t('update.available', latest=info['latest'], current=info['current'])
-        # 打包安装(pip/pipx)用户没有 repo 目录,给 pip --upgrade 指令;源码用户走 git pull。
+        # 打包安装(pip/pipx)用户指向 `spyeyes upgrade`:它会按安装方式 / PEP 668 自动选对命令。
+        # 之前直接给裸 `pip install --upgrade`,在 Homebrew 等 PEP 668 环境下照抄必然失败。
+        # 源码用户走 git pull。
         msg_howto = t('update.howto_packaged' if _is_packaged_install() else 'update.howto')
         msg_notes = t('update.release_notes', url=info.get('url') or '')
         msg_hint = t('update.disable_hint')
@@ -741,7 +743,7 @@ TRANSLATIONS: dict = {
         # Update check
         'update.available':           'SpyEyes {latest} available (current {current})',
         'update.howto':               'Update: cd to repo, then `git pull && pip install -e .`',
-        'update.howto_packaged':      'Update: `pip install --upgrade git+https://github.com/Akxan/SpyEyes.git` (or `pipx upgrade spyeyes`)',
+        'update.howto_packaged':      'Update: run `spyeyes upgrade` or menu [12] (handles pip / pipx / Homebrew installs)',
         'update.release_notes':       'Release notes: {url}',
         'update.disable_hint':        '(disable: SPYEYES_NO_UPDATE_CHECK=1 or --no-update-check)',
         # Upgrade (v1.8.2: 一键升级)
@@ -1108,7 +1110,7 @@ TRANSLATIONS: dict = {
         # 版本更新检查
         'update.available':           'SpyEyes {latest} 可用(当前 {current})',
         'update.howto':               '更新: 进入仓库目录,执行 `git pull && pip install -e .`',
-        'update.howto_packaged':      '更新: `pip install --upgrade git+https://github.com/Akxan/SpyEyes.git` (或 `pipx upgrade spyeyes`)',
+        'update.howto_packaged':      '更新: 运行 `spyeyes upgrade` 或菜单 [12](自动适配 pip / pipx / Homebrew 安装)',
         'update.release_notes':       '更新内容: {url}',
         'update.disable_hint':        '(关闭提示: SPYEYES_NO_UPDATE_CHECK=1 或 --no-update-check)',
         # Upgrade (v1.8.2: 一键升级)

@@ -19,6 +19,10 @@ This project adheres to [Keep a Changelog](https://keepachangelog.com/en/1.1.0/)
 - `investigate` 报告:PDF / XMind 专用版式(目前走通用表格;D3 关系图已支持)
 - `investigate --budget` 真·硬超时(需要给阶段 1 原子任务加可取消的超时管道)
 
+### 🐛 修复
+
+- **启动更新提示给出的命令在 Homebrew 环境下照抄必失败**:打包安装用户看到的是裸 `pip install --upgrade git+…`,PEP 668 环境下会被 pip 拒绝。现在改为引导运行 `spyeyes upgrade` / 菜单 `[12]`,由它按安装方式与 PEP 668 自动选对命令。
+
 ---
 
 ## [1.8.4] — 2026-10-03
