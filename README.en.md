@@ -14,7 +14,7 @@
 [![Platforms](https://img.shields.io/badge/platforms-3164-orange.svg)](#-comparison-with-similar-tools)
 [![Reports](https://img.shields.io/badge/reports-8%20formats-9cf.svg)](#-report-formats-8-types)
 [![Commands](https://img.shields.io/badge/commands-14-blueviolet.svg)](docs/TUTORIAL.md)
-[![Version](https://img.shields.io/badge/version-1.8.3-blueviolet.svg)](docs/CHANGELOG.md)
+[![Version](https://img.shields.io/badge/version-1.8.4-blueviolet.svg)](docs/CHANGELOG.md)
 [![Docs](https://img.shields.io/badge/docs-online-blue.svg)](https://akxan.github.io/SpyEyes/)
 [![Platform](https://img.shields.io/badge/platform-macOS%20%7C%20Linux%20%7C%20Windows%20%7C%20Termux-lightgrey)](#-installation)
 [![PRs Welcome](https://img.shields.io/badge/PRs-welcome-brightgreen.svg)](docs/CONTRIBUTING.md)
@@ -60,6 +60,7 @@ Designed for **security researchers, penetration testers, SOC analysts, threat h
 - **🆕 v1.8.0: `investigate` 3-4× faster + live progress** — Phase 2b (email→username) parallelized from serial to 4 concurrent; 15-email scenario drops from ~210s to ~50-80s; full Phase 1/2a/2b live `[N/M] ✓ task` progress feedback; TTY-safe, fully silent in pipes
 - **🆕 v1.8.2: One-click upgrade** — `spyeyes upgrade [--yes] [--check]`, menu `[12]`, and a `[Y/n]` prompt at menu startup when a newer release is cached; pip installs upgrade to the announced release tag, pipx installs run `pipx upgrade spyeyes`, source installs just get the `git pull && pip install -e .` hint
 - **🆕 v1.8.3: Full audit** — fixes the CSV Chinese-mojibake regression, `--max-pages` being silently capped at 100, batch commands exiting 0 on failure and a dozen more; the crawler only fetches in-domain sitemaps (SSRF guard); `investigate` exports a relationship graph (`.graph.html`); `NO_COLOR` support; English reports no longer mix in Chinese
+- **🆕 v1.8.4: Upgrade fix for Homebrew / system Python** — detects PEP 668 externally-managed environments, recommends pipx, and only adds `--break-system-packages` after explicit consent; `--user` installs get `--user` automatically
 - **674 pytest tests**: 4-tool audit clean (ruff 0 / mypy 0 / bandit 0 / pytest), CI on Linux × Python 3.10–3.14 and macOS / Windows × Python 3.10 & 3.14
 
 ---

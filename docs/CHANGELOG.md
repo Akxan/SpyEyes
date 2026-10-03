@@ -19,6 +19,12 @@ This project adheres to [Keep a Changelog](https://keepachangelog.com/en/1.1.0/)
 - `investigate` 报告:PDF / XMind 专用版式(目前走通用表格;D3 关系图已支持)
 - `investigate --budget` 真·硬超时(需要给阶段 1 原子任务加可取消的超时管道)
 
+---
+
+## [1.8.4] — 2026-10-03
+
+🐛 **一键升级修复版** —— 修复 Homebrew / 系统 Python 环境下 `spyeyes upgrade` / 菜单 `[12]` 报 `externally-managed-environment` 失败的问题。
+
 ### 🐛 修复
 
 - **Homebrew / 系统 Python 下一键升级失败**(`error: externally-managed-environment`):这类 Python 是 PEP 668「外部管理环境」,pip 默认拒绝安装;SpyEyes 能装在里面说明当初绕过了保护,但升级命令没带 `--break-system-packages`。现在会检测该环境,说明情况并推荐改用 pipx,经用户单独确认(`[y/N]`,默认否)或 CLI `spyeyes upgrade --break-system-packages` 后才带该参数原地升级;非 TTY 且未给参数时只给出方案、返回 2。
@@ -2436,6 +2442,7 @@ export SPYEYES_PHONE_API_KEY="numverify:..." # 可选实时 HLR 电话运营商
 
 ---
 
-[Unreleased]: https://github.com/Akxan/SpyEyes/compare/v1.8.3...HEAD
+[Unreleased]: https://github.com/Akxan/SpyEyes/compare/v1.8.4...HEAD
+[1.8.4]: https://github.com/Akxan/SpyEyes/compare/v1.8.3...v1.8.4
 [1.8.3]: https://github.com/Akxan/SpyEyes/compare/v1.8.2...v1.8.3
 [1.0.0]: https://github.com/Akxan/SpyEyes/releases/tag/v1.0.0
