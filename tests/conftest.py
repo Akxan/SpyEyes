@@ -13,7 +13,7 @@ sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 import spyeyes as gt  # noqa: E402
 
 
-_COLOR_ATTRS = ('Bl', 'Re', 'Gr', 'Ye', 'Blu', 'Mage', 'Cy', 'Wh', 'Reset')
+_COLOR_ATTRS = gt._COLOR_ATTRS
 
 # 会改变被测行为的用户环境变量。spyeyes 在 import 时 _load_env_file() 会把开发者
 # ~/.spyeyes/env 里的值注入 os.environ —— 例如本机设了 SPYEYES_NO_HISTORY=1 时,
@@ -22,7 +22,7 @@ _COLOR_ATTRS = ('Bl', 'Re', 'Gr', 'Ye', 'Blu', 'Mage', 'Cy', 'Wh', 'Reset')
 _BEHAVIOR_ENV_VARS = (
     'SPYEYES_NO_HISTORY', 'SPYEYES_BRUTEFORCE', 'SPYEYES_DNS_WORDLIST',
     'SPYEYES_REPORTS_DIR', 'SPYEYES_PHONE_API_KEY', 'SPYEYES_GITHUB_TOKEN',
-    'SPYEYES_OTX_API_KEY', 'SPYEYES_CERTSPOTTER_API_KEY', 'NO_COLOR',
+    'SPYEYES_OTX_API_KEY', 'SPYEYES_CERTSPOTTER_API_KEY', 'NO_COLOR', 'SPYEYES_THEME',
 )
 
 

@@ -138,7 +138,7 @@ Designed for **security researchers, penetration testers, SOC analysts, threat h
 - **JSON output**: pipe-friendly with jq
 - **Result saving**: `--save DIR` auto-persistence
 - **100% progress feedback** (v1.6.1): every >2s operation has live progress
-- **Color terminal**: auto TTY detection; disable with `--no-color` or the `NO_COLOR` env var
+- **Color terminal**: calm default palette (body text in your terminal's own color, color only as accents — readable on dark and light backgrounds); `SPYEYES_THEME=classic` brings back the old bright-green look; disable with `--no-color` or the `NO_COLOR` env var
 - **One-click upgrade** (v1.8.2): `spyeyes upgrade` / menu `[12]`
 - **Cross-platform**: macOS / Linux / Windows / Termux
 

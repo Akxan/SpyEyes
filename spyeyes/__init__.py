@@ -1224,23 +1224,57 @@ def _supports_color() -> bool:
     return True
 
 
+# 配色主题。属性名沿用历史命名,但按「语义角色」使用:
+#   Wh  标签 / 编号 / 括号等结构      Gr  正文内容(菜单项 / 查询结果 / 链接)
+#   Cy  阶段标题 / 提示信息           Bl  次要提示(弱化显示)
+#   Ye  警告                          Re  错误 / 未命中
+#   Mage 星标 / 来源等点缀            Blu 预留
+#   Brand  Logo
+# 默认主题:正文用终端自己的前景色(任何背景、任何平台都清晰),颜色只做少量点缀,
+# 且一律用普通亮度 —— 旧版大面积亮绿(1;32)刺眼、容易看花。
+# 每个代码都以 0 开头先复位,防止上一段的加粗"串"进下一段颜色(加粗+颜色在多数终端
+# 会被渲染成刺眼的高亮色);Bl 用「弱化」而非黑色(黑色在深色背景上直接看不见)。
+_THEMES: dict = {
+    'default': {
+        'Wh': '\033[0;1m', 'Gr': '\033[0m', 'Cy': '\033[0;36m', 'Bl': '\033[0;2m',
+        'Ye': '\033[0;33m', 'Re': '\033[0;31m', 'Mage': '\033[0;35m', 'Blu': '\033[0;34m',
+        'Brand': '\033[0;36m', 'Reset': '\033[0m',
+    },
+    # 旧版高亮配色(亮绿正文),喜欢的可设 SPYEYES_THEME=classic 找回
+    'classic': {
+        'Wh': '\033[1;37m', 'Gr': '\033[1;32m', 'Cy': '\033[1;36m', 'Bl': '\033[30m',
+        'Ye': '\033[1;33m', 'Re': '\033[1;31m', 'Mage': '\033[1;35m', 'Blu': '\033[1;34m',
+        'Brand': '\033[1;32m', 'Reset': '\033[0m',
+    },
+}
+_COLOR_ATTRS = ('Bl', 'Re', 'Gr', 'Ye', 'Blu', 'Mage', 'Cy', 'Wh', 'Brand', 'Reset')
+
+
+def _theme_name() -> str:
+    """读 SPYEYES_THEME(可写进 ~/.spyeyes/env);未设置或不认识的值 → 'default'。"""
+    name = (os.environ.get('SPYEYES_THEME') or '').strip().lower()
+    return name if name in _THEMES else 'default'
+
+
 class Color:
     enabled = _supports_color()
-    Bl    = '\033[30m'   if enabled else ''
-    Re    = '\033[1;31m' if enabled else ''
-    Gr    = '\033[1;32m' if enabled else ''
-    Ye    = '\033[1;33m' if enabled else ''
-    Blu   = '\033[1;34m' if enabled else ''
-    Mage  = '\033[1;35m' if enabled else ''
-    Cy    = '\033[1;36m' if enabled else ''
-    Wh    = '\033[1;37m' if enabled else ''
-    Reset = '\033[0m'    if enabled else ''
+    Bl = Re = Gr = Ye = Blu = Mage = Cy = Wh = Brand = Reset = ''
+
+    @classmethod
+    def apply_theme(cls, name: str) -> None:
+        """按主题名设置各颜色属性(终端不支持颜色时全部为空串)。"""
+        palette = _THEMES.get(name, _THEMES['default'])
+        for attr in _COLOR_ATTRS:
+            setattr(cls, attr, palette[attr] if cls.enabled else '')
 
     @classmethod
     def disable(cls) -> None:
-        for attr in ('Bl', 'Re', 'Gr', 'Ye', 'Blu', 'Mage', 'Cy', 'Wh', 'Reset'):
+        for attr in _COLOR_ATTRS:
             setattr(cls, attr, '')
         cls.enabled = False
+
+
+Color.apply_theme(_theme_name())
 
 
 # ====================================================================
@@ -4933,7 +4967,7 @@ def _emit_json(data: Any) -> None:
 
 
 def print_banner() -> None:
-    sys.stderr.write(f"""{Color.Gr}
+    sys.stderr.write(f"""{Color.Brand}
 ███████╗██████╗ ██╗   ██╗███████╗██╗   ██╗███████╗███████╗
 ██╔════╝██╔══██╗╚██╗ ██╔╝██╔════╝╚██╗ ██╔╝██╔════╝██╔════╝
 ███████╗██████╔╝ ╚████╔╝ █████╗   ╚████╔╝ █████╗  ███████╗
@@ -5083,7 +5117,7 @@ def print_username_results(results: dict, show_all: bool = False) -> None:
         if notes:
             print(f" {Color.Ye}[ {t('username.note_label')} ] {Color.Reset}" + "  ·  ".join(notes))
     if not show_all:
-        print(f" {Color.Bl}{Color.Ye}{t('msg.show_all_hint')}{Color.Reset}")
+        print(f" {Color.Bl}{t('msg.show_all_hint')}{Color.Reset}")
     print()
     # 按类别分组打印；类别内部按命中可信度排序：
     #   must_contain（最严格 → 高可信）→ not_found → 仅 HTTP 200（低可信）

@@ -155,7 +155,7 @@ MVP 只支持 domain。阶段 1 并发跑 whois / mx / subdomain / domain-emails
   shell 里 export 的值优先。识别的 key:`SPYEYES_OTX_API_KEY`、`SPYEYES_CERTSPOTTER_API_KEY`、
   `PDCP_API_KEY`(subfinder 读取)、`SPYEYES_GITHUB_TOKEN`、`SPYEYES_PHONE_API_KEY`
   (`numverify:KEY`)、`SPYEYES_DNS_WORDLIST`、`SPYEYES_BRUTEFORCE`、`SPYEYES_REPORTS_DIR`、
-  `SPYEYES_NO_HISTORY`、`SPYEYES_NO_UPDATE_CHECK`、`SPYEYES_LANG`。同时遵守 `NO_COLOR`。
+  `SPYEYES_NO_HISTORY`、`SPYEYES_NO_UPDATE_CHECK`、`SPYEYES_LANG`、`SPYEYES_THEME`。同时遵守 `NO_COLOR`。
 - 交互模式默认报告目录(`_default_report_dir`):`SPYEYES_REPORTS_DIR` > 源码安装
   `<仓库>/Downloads/` > 打包安装 `~/Downloads/spyeyes/`(绝不写进 site-packages)。
 - 旧版 `~/.ghosttrack/` 首次运行时自动迁移(`_migrate_legacy_config`)。
@@ -215,6 +215,10 @@ MVP 只支持 domain。阶段 1 并发跑 whois / mx / subdomain / domain-emails
   新的输入一律复用这两个函数。
 - 进度输出写 stderr,且只在它是 TTY 时输出(`_stage_log`、`_print_scan_progress`),
   保证管道 / `--json` 干净。
+- 终端配色走 `Color` 的语义角色(`_THEMES` 定义):`Wh` 结构(加粗)、`Gr` 正文(终端本色)、
+  `Cy` 标题、`Bl` 次要提示(弱化)、`Ye` 警告、`Re` 错误、`Mage` 点缀、`Brand` Logo。
+  默认主题不许用加粗高亮色和黑色,每个代码以 `\033[0` 开头先复位;`SPYEYES_THEME=classic`
+  保留旧版亮绿。新增输出时按角色选属性,不要直接写 ANSI 码。
 
 ## 新增子命令时
 

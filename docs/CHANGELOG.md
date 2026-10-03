@@ -19,6 +19,11 @@ This project adheres to [Keep a Changelog](https://keepachangelog.com/en/1.1.0/)
 - `investigate` 报告:PDF / XMind 专用版式(目前走通用表格;D3 关系图已支持)
 - `investigate --budget` 真·硬超时(需要给阶段 1 原子任务加可取消的超时管道)
 
+### ✨ 改进
+
+- **默认终端配色改为柔和风格**(用户反馈大面积亮绿刺眼、容易看花):正文改用终端自己的文字颜色,编号 / 标签加粗,颜色只用于阶段标题(青)、警告(黄)、错误(红)、星标(品红)等少量点缀,且全部为普通亮度。在 macOS / Linux / Windows Terminal 的深色、浅色背景下都清晰。想要旧版亮绿风格可设 `SPYEYES_THEME=classic`。
+- 顺带修复两处跨平台配色问题:次要提示原用黑色,在深色背景(如 Windows 默认终端)上看不见,改为弱化显示;颜色代码先复位再上色,避免加粗「串」进后续彩色文字变成刺眼高亮。
+
 ### 🐛 修复
 
 - **启动更新提示给出的命令在 Homebrew 环境下照抄必失败**:打包安装用户看到的是裸 `pip install --upgrade git+…`,PEP 668 环境下会被 pip 拒绝。现在改为引导运行 `spyeyes upgrade` / 菜单 `[12]`,由它按安装方式与 PEP 668 自动选对命令。

@@ -5736,3 +5736,40 @@ class TestUpgradePep668:
         assert gt._is_user_site_install() is True
         monkeypatch.setattr(gt, '__file__', str(tmp_path / 'elsewhere' / '__init__.py'))
         assert gt._is_user_site_install() is False
+
+
+class TestColorThemes:
+    """默认配色不刺眼:正文用终端前景色、点缀色为普通亮度;classic 保留旧版亮绿。"""
+
+    def test_default_palette_is_calm(self):
+        pal = gt._THEMES['default']
+        assert pal['Gr'] == '\033[0m', '正文应使用终端自己的前景色'
+        for attr, code in pal.items():
+            assert code.startswith('\033[0'), f'{attr} 必须先复位,防止加粗串色: {code!r}'
+            assert not any(f'1;3{n}m' in code for n in range(8)), f'{attr} 不应使用加粗高亮色'
+        assert '30m' not in pal['Bl'], '提示文字不能用黑色(深色背景下看不见)'
+
+    def test_classic_keeps_old_green(self):
+        assert gt._THEMES['classic']['Gr'] == '\033[1;32m'
+
+    @pytest.mark.parametrize('value,expected', [
+        ('', 'default'), ('classic', 'classic'), (' CLASSIC ', 'classic'), ('neon', 'default'),
+    ])
+    def test_theme_name_from_env(self, monkeypatch, value, expected):
+        monkeypatch.setenv('SPYEYES_THEME', value)
+        assert gt._theme_name() == expected
+
+    def test_apply_theme(self, monkeypatch):
+        monkeypatch.setattr(gt.Color, 'enabled', True)
+        gt.Color.apply_theme('classic')
+        assert gt.Color.Gr == '\033[1;32m'
+        gt.Color.apply_theme('default')
+        assert gt.Color.Gr == '\033[0m' and gt.Color.Brand == gt._THEMES['default']['Brand']
+        monkeypatch.setattr(gt.Color, 'enabled', False)
+        gt.Color.apply_theme('default')
+        assert all(getattr(gt.Color, a) == '' for a in gt._COLOR_ATTRS), '不支持颜色时全部为空'
+
+    def test_banner_uses_brand_color(self, monkeypatch, capsys):
+        monkeypatch.setattr(gt.Color, 'Brand', '<BRAND>')
+        gt.print_banner()
+        assert capsys.readouterr().err.lstrip().startswith('<BRAND>')
