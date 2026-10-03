@@ -1045,6 +1045,15 @@ python3 -m spyeyes investigate example.com --save dossier.graph.html  # 调查�
 | `pip install git+https://…` | 自动执行 `python -m pip install --upgrade --no-input git+https://github.com/Akxan/SpyEyes.git@<release-tag>`(钉到提示里宣布的那个 tag) |
 | `pipx install …` | 自动执行 `pipx upgrade spyeyes`;PATH 里找不到 `pipx` 时改为显示等价的 pip 命令并以退出码 1 结束 |
 | 源码(git clone / `pip install -e .`) | **不自动执行**,只提示 `git pull && pip install -e .`(避免和本地改动冲突) |
+| 装在 Homebrew / 系统 Python 里(PEP 668「外部管理环境」) | pip 默认拒绝安装。SpyEyes 会说明情况、推荐改用 pipx,并**单独问一次** `[y/N]`(默认否);同意后才带 `--break-system-packages` 原地升级。脚本里用 `spyeyes upgrade --yes --break-system-packages` |
+| `pip install --user` 装在用户目录 | 自动加 `--user`,保证新版不会被用户目录里的旧副本遮住 |
+
+> 💡 **推荐用 pipx 安装**(独立虚拟环境,不碰系统 Python,升级最省心)。从 Homebrew / 系统 Python 迁移:
+> ```bash
+> python3 -m pip uninstall -y --break-system-packages spyeyes   # 用当初安装 spyeyes 的那个 python
+> brew install pipx && pipx ensurepath                           # Debian/Ubuntu: sudo apt install pipx
+> pipx install git+https://github.com/Akxan/SpyEyes.git
+> ```
 
 - 升级成功后进程以退出码 0 结束,并提示**重新启动 spyeyes**(当前进程里加载的还是旧代码)
 - 用户数据 `~/.spyeyes/`(语言、历史、API key)保持不动
@@ -1057,6 +1066,7 @@ spyeyes upgrade --check            # 只查版本,不安装
 spyeyes upgrade                    # 查 → 问 [Y/n] → 升级
 spyeyes upgrade --yes              # 不问,直接升级(脚本 / 无 TTY 场景必须加)
 spyeyes upgrade --lang en --no-color   # 通用选项同样可用
+spyeyes upgrade --yes --break-system-packages   # Homebrew / 系统 Python 里原地升级(显式同意绕过 PEP 668)
 ```
 
 **`upgrade` 退出码**:
@@ -1065,7 +1075,7 @@ spyeyes upgrade --lang en --no-color   # 通用选项同样可用
 |---|---|
 | `0` | 升级成功 / 已是最新 / 用户取消 / `--check` / 源码安装(只提示命令) |
 | `1` | 网络错误(连不上 GitHub Releases)或 pipx 缺失 |
-| `2` | 无 TTY 又没加 `--yes` |
+| `2` | 无 TTY 又没加 `--yes`;或 PEP 668 环境下无 TTY 又没加 `--break-system-packages` |
 | `130` | Ctrl-C |
 | 其它 | 透传 pip / pipx 的退出码 |
 

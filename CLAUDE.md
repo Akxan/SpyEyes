@@ -140,6 +140,10 @@ MVP 只支持 domain。阶段 1 并发跑 whois / mx / subdomain / domain-emails
   (tag 先经 `_RELEASE_TAG_RE` 校验)、`packaged-pipx` → `pipx upgrade spyeyes`、
   `source` → 只打印 `git pull` 提示。升级成功时它自己 `sys.exit(0)`(当前进程还持有旧模块)。
   调用方必须处理它**正常返回**(=什么都没升级)的情况。
+- pip 模式还要看环境:PEP 668「外部管理环境」(Homebrew / 系统 Python,`_is_externally_managed`)
+  下 pip 拒绝安装,必须带 `--break-system-packages` —— 这是高风险动作,只能在用户显式同意后加
+  (CLI `--break-system-packages`,或 TTY 下单独的 `[y/N]`,默认否;`--yes` 不等于同意);
+  装在用户目录(`_is_user_site_install`)时追加 `--user`。conftest 默认把宿主视为非 PEP 668 环境。
 - `run_upgrade` 与菜单代码调用的是别名 `_get_cached_update_info`,方便测试 monkeypatch。
 
 ### 状态与配置

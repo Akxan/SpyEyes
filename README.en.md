@@ -10,7 +10,7 @@
 [![codecov](https://codecov.io/gh/Akxan/SpyEyes/branch/main/graph/badge.svg)](https://codecov.io/gh/Akxan/SpyEyes)
 [![License: Apache 2.0](https://img.shields.io/badge/License-Apache_2.0-blue.svg)](https://opensource.org/licenses/Apache-2.0)
 [![Python](https://img.shields.io/badge/Python-3.10%2B-blue.svg?logo=python&logoColor=white)](https://www.python.org/)
-[![Tests](https://img.shields.io/badge/tests-666%20passed-success.svg)](tests/)
+[![Tests](https://img.shields.io/badge/tests-674%20passed-success.svg)](tests/)
 [![Platforms](https://img.shields.io/badge/platforms-3164-orange.svg)](#-comparison-with-similar-tools)
 [![Reports](https://img.shields.io/badge/reports-8%20formats-9cf.svg)](#-report-formats-8-types)
 [![Commands](https://img.shields.io/badge/commands-14-blueviolet.svg)](docs/TUTORIAL.md)
@@ -60,7 +60,7 @@ Designed for **security researchers, penetration testers, SOC analysts, threat h
 - **🆕 v1.8.0: `investigate` 3-4× faster + live progress** — Phase 2b (email→username) parallelized from serial to 4 concurrent; 15-email scenario drops from ~210s to ~50-80s; full Phase 1/2a/2b live `[N/M] ✓ task` progress feedback; TTY-safe, fully silent in pipes
 - **🆕 v1.8.2: One-click upgrade** — `spyeyes upgrade [--yes] [--check]`, menu `[12]`, and a `[Y/n]` prompt at menu startup when a newer release is cached; pip installs upgrade to the announced release tag, pipx installs run `pipx upgrade spyeyes`, source installs just get the `git pull && pip install -e .` hint
 - **🆕 v1.8.3: Full audit** — fixes the CSV Chinese-mojibake regression, `--max-pages` being silently capped at 100, batch commands exiting 0 on failure and a dozen more; the crawler only fetches in-domain sitemaps (SSRF guard); `investigate` exports a relationship graph (`.graph.html`); `NO_COLOR` support; English reports no longer mix in Chinese
-- **666 pytest tests**: 4-tool audit clean (ruff 0 / mypy 0 / bandit 0 / pytest), CI on Linux × Python 3.10–3.14 and macOS / Windows × Python 3.10 & 3.14
+- **674 pytest tests**: 4-tool audit clean (ruff 0 / mypy 0 / bandit 0 / pytest), CI on Linux × Python 3.10–3.14 and macOS / Windows × Python 3.10 & 3.14
 
 ---
 
@@ -494,7 +494,7 @@ mypy spyeyes tools/build_platforms.py --ignore-missing-imports
 bandit -r spyeyes/ tools/ -ll
 ```
 
-- ✅ **666 tests**, all network access mocked (no real requests)
+- ✅ **674 tests**, all network access mocked (no real requests)
 - ✅ Pure functions + HTTP mocking + edge cases + SSRF/ReDoS defenses + 8 report formats × 2 languages + en/zh translation key parity
 - ✅ GitHub Actions: Linux × Python 3.10–3.14, macOS / **Windows** × Python 3.10 & 3.14
 - ✅ Dedicated lint job (ruff + mypy + bandit) gates the test matrix

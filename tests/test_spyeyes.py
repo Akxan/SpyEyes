@@ -4906,7 +4906,7 @@ class TestCliUpgradeSubcommand:
         """run_cli 收到 upgrade subcommand → 调 run_upgrade。"""
         called = []
         monkeypatch.setattr(gt, 'run_upgrade',
-                            lambda yes, check_only: called.append((yes, check_only)) or 0)
+                            lambda yes, check_only, **kw: called.append((yes, check_only)) or 0)
         parser = gt.build_parser()
         args = parser.parse_args(['upgrade', '--yes'])
         rc = gt.run_cli(args)
@@ -5505,7 +5505,7 @@ class TestUpgradeFlowFixes:
     def test_main_upgrade_skips_notice_and_background_refresh(self, monkeypatch):
         called = []
         monkeypatch.setattr(gt, '_maybe_show_update_notice', lambda *a, **kw: called.append(1))
-        monkeypatch.setattr(gt, 'run_upgrade', lambda yes, check_only: 0)
+        monkeypatch.setattr(gt, 'run_upgrade', lambda yes, check_only, **kw: 0)
         monkeypatch.setattr(sys, 'argv', ['spyeyes', 'upgrade', '--check'])
         assert gt.main() == 0
         assert called == []
@@ -5652,3 +5652,86 @@ class TestEmailSourceGroup:
             {'address': 'guess@example.com', 'sources': ['pattern']}]}
         html = gt._to_graph_html('domain-emails_example.com', data)
         assert '"group": 4' not in html  # D3 模板只有 1/2/3 三种颜色
+
+
+class TestUpgradePep668:
+    """Homebrew / 系统 Python 是 PEP 668「外部管理环境」:pip 拒绝安装,一键升级必须
+    显式带 --break-system-packages(v1.8.2 用户实际踩坑:externally-managed-environment)。"""
+
+    INFO = {'latest': 'v9.0.0', 'current': '1.0.0', 'url': 'X'}
+
+    @pytest.fixture
+    def pep668(self, monkeypatch):
+        gt.set_lang('en')
+        monkeypatch.setattr(gt, 'refresh_update_cache_sync', lambda *a, **kw: True)
+        monkeypatch.setattr(gt, '_get_cached_update_info', lambda *a, **kw: self.INFO)
+        monkeypatch.setattr(gt, '_detect_install_mode', lambda: 'packaged-pip')
+        monkeypatch.setattr(gt, '_is_externally_managed', lambda: True)
+        monkeypatch.setattr(gt, '_is_user_site_install', lambda: False)
+        calls: list = []
+
+        class Done:
+            returncode = 0
+        monkeypatch.setattr('subprocess.run', lambda cmd, **kw: calls.append(cmd) or Done())
+        return calls
+
+    def test_marker_detection(self, tmp_path):
+        assert gt._externally_managed_at(str(tmp_path), in_venv=False) is False
+        (tmp_path / 'EXTERNALLY-MANAGED').write_text('[externally-managed]\n')
+        assert gt._externally_managed_at(str(tmp_path), in_venv=False) is True
+        assert gt._externally_managed_at(str(tmp_path), in_venv=True) is False  # venv 里永远可装
+        assert gt._externally_managed_at(None, in_venv=False) is False
+
+    def test_command_flags(self):
+        cmd = gt._build_upgrade_command('packaged-pip', 'v9.0.0', break_system=True, user=True)
+        assert '--break-system-packages' in cmd and '--user' in cmd
+        assert cmd[-1] == 'git+https://github.com/Akxan/SpyEyes.git@v9.0.0'
+        plain = gt._build_upgrade_command('packaged-pip', 'v9.0.0')
+        assert '--break-system-packages' not in plain and '--user' not in plain
+
+    def test_non_tty_without_flag_refuses_and_suggests_pipx(self, pep668, monkeypatch, capsys):
+        monkeypatch.setattr(sys.stdin, 'isatty', lambda: False)
+        assert gt.run_upgrade(yes=True) == 2
+        assert pep668 == []
+        out = capsys.readouterr().out
+        assert 'pipx install' in out and '--break-system-packages' in out
+
+    def test_tty_declined_runs_nothing(self, pep668, monkeypatch):
+        monkeypatch.setattr(sys.stdin, 'isatty', lambda: True)
+        monkeypatch.setattr(gt, '_prompt_yes_no', lambda *a, **kw: False)
+        assert gt.run_upgrade(yes=True) == 0  # 菜单启动路径 yes=True 也必须单独确认
+        assert pep668 == []
+
+    def test_tty_accepted_adds_flag_and_asks_only_once(self, pep668, monkeypatch):
+        monkeypatch.setattr(sys.stdin, 'isatty', lambda: True)
+        asked: list = []
+        monkeypatch.setattr(gt, '_prompt_yes_no', lambda q, **kw: asked.append(q) or True)
+        with pytest.raises(SystemExit) as exc:
+            gt.run_upgrade(yes=False)
+        assert exc.value.code == 0
+        assert len(asked) == 1, '同意 PEP 668 后不应再追问通用的 [Y/n]'
+        assert '--break-system-packages' in pep668[0]
+
+    def test_cli_flag_allows_non_tty(self, pep668, monkeypatch):
+        monkeypatch.setattr(sys.stdin, 'isatty', lambda: False)
+        args = gt.build_parser().parse_args(['upgrade', '--yes', '--break-system-packages'])
+        assert args.break_system_packages is True
+        with pytest.raises(SystemExit):
+            gt.run_cli(args)
+        assert '--break-system-packages' in pep668[0]
+
+    def test_regular_env_has_no_flag(self, pep668, monkeypatch):
+        monkeypatch.setattr(gt, '_is_externally_managed', lambda: False)
+        with pytest.raises(SystemExit):
+            gt.run_upgrade(yes=True)
+        assert '--break-system-packages' not in pep668[0]
+
+    def test_user_site_install_detected(self, monkeypatch, tmp_path):
+        user_site = tmp_path / 'user-site'
+        pkg = user_site / 'spyeyes'
+        pkg.mkdir(parents=True)
+        monkeypatch.setattr(gt.site, 'getusersitepackages', lambda: str(user_site))
+        monkeypatch.setattr(gt, '__file__', str(pkg / '__init__.py'))
+        assert gt._is_user_site_install() is True
+        monkeypatch.setattr(gt, '__file__', str(tmp_path / 'elsewhere' / '__init__.py'))
+        assert gt._is_user_site_install() is False

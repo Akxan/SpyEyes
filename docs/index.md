@@ -46,7 +46,7 @@ title: SpyEyes
 - 子域名爬虫 robots.txt 默认遵守 + 单域 500ms 速率限制
 - SMTP 验证 opt-in + 强 disclaimer
 - 隐私选项:`SPYEYES_NO_HISTORY=1` 完全禁用历史
-- **666 个 pytest 测试**,0 红 / **ruff 0 / mypy 0 / bandit 0** 全清,CI:Linux × Python 3.10–3.14,macOS / Windows × Python 3.10 与 3.14
+- **674 个 pytest 测试**,0 红 / **ruff 0 / mypy 0 / bandit 0** 全清,CI:Linux × Python 3.10–3.14,macOS / Windows × Python 3.10 与 3.14
 
 ## 🚀 快速开始
 

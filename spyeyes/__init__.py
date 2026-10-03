@@ -24,9 +24,11 @@ import os
 import re
 import secrets
 import shutil
+import site
 # subprocess 仅用于调用 subfinder / pip / pipx:参数均为列表 + shell=False
 import subprocess
 import sys
+import sysconfig
 import threading
 import time
 import urllib.parse
@@ -757,6 +759,17 @@ TRANSLATIONS: dict = {
         'upgrade.no_tty':             'Cannot prompt without a TTY. Use --yes to skip confirmation.',
         'upgrade.network_error':      'Could not reach GitHub Releases. Try again later.',
         'upgrade.pipx_missing':       'pipx not found in PATH. Upgrade manually with: {pip_cmd}',
+        'upgrade.pep668_detected':    ('This Python is an "externally managed" environment (PEP 668, e.g. Homebrew or a'
+                                       ' system Python), so pip refuses to install into it by default. SpyEyes was'
+                                       ' installed here by bypassing that protection, so upgrading in place needs'
+                                       ' --break-system-packages as well.'),
+        'upgrade.pep668_confirm':     'Upgrade in place with --break-system-packages? [y/N]:',
+        'upgrade.pep668_options':     ('Options:\n'
+                                       '   (1) Recommended — move to pipx (isolated, leaves the system Python alone):\n'
+                                       '       {py} -m pip uninstall -y --break-system-packages spyeyes\n'
+                                       '       brew install pipx && pipx ensurepath   (Debian/Ubuntu: sudo apt install pipx)\n'
+                                       '       pipx install git+https://github.com/Akxan/SpyEyes.git\n'
+                                       '   (2) Upgrade in place: spyeyes upgrade --break-system-packages'),
         # i18n 补漏(之前硬编码在代码里的中/英文)
         'msg.hits':                   '{n} hits',
         'msg.more':                   '... +{n} more',
@@ -1113,6 +1126,16 @@ TRANSLATIONS: dict = {
         'upgrade.no_tty':             '无 TTY 无法交互。请加 --yes 跳过确认。',
         'upgrade.network_error':      '无法连接 GitHub Releases,请稍后重试。',
         'upgrade.pipx_missing':       'PATH 里找不到 pipx。请手动执行: {pip_cmd}',
+        'upgrade.pep668_detected':    ('当前 Python 是「外部管理环境」(PEP 668,如 Homebrew / 系统自带 Python),'
+                                       'pip 默认拒绝往里装包。SpyEyes 当初是绕过这层保护装进来的,'
+                                       '原地升级同样需要 --break-system-packages。'),
+        'upgrade.pep668_confirm':     '用 --break-system-packages 原地升级? [y/N]:',
+        'upgrade.pep668_options':     ('可选方案:\n'
+                                       '   ① 推荐改用 pipx(独立环境,不动系统 Python):\n'
+                                       '      {py} -m pip uninstall -y --break-system-packages spyeyes\n'
+                                       '      brew install pipx && pipx ensurepath   (Debian/Ubuntu:sudo apt install pipx)\n'
+                                       '      pipx install git+https://github.com/Akxan/SpyEyes.git\n'
+                                       '   ② 原地升级:spyeyes upgrade --break-system-packages'),
         # i18n 补漏(之前硬编码在代码里的中/英文)
         'msg.hits':                   '命中 {n} 个',
         'msg.more':                   '... 另有 {n} 个',
@@ -8723,18 +8746,50 @@ def _detect_install_mode() -> str:
     return 'packaged-pip'
 
 
+def _externally_managed_at(stdlib_dir: Optional[str], in_venv: bool) -> bool:
+    """PEP 668 判定的纯逻辑部分(便于测试):venv 里永远不是;否则看 stdlib 目录下
+    有没有 EXTERNALLY-MANAGED 标记文件(Homebrew / Debian / Ubuntu 的系统 Python 都带)。"""
+    if in_venv or not stdlib_dir:
+        return False
+    return os.path.isfile(os.path.join(stdlib_dir, 'EXTERNALLY-MANAGED'))
+
+
+def _is_externally_managed() -> bool:
+    """当前解释器是否为 PEP 668「外部管理环境」—— 是的话 pip 默认拒绝安装 / 升级任何包。"""
+    try:
+        stdlib_dir = sysconfig.get_path('stdlib')
+    except KeyError:
+        return False
+    return _externally_managed_at(stdlib_dir, sys.prefix != sys.base_prefix)
+
+
+def _is_user_site_install() -> bool:
+    """SpyEyes 是否装在用户目录(`pip install --user`)。是的话升级也必须带 --user:
+    否则新版装进系统 site-packages,而用户目录里的旧副本在 sys.path 中排得更靠前,继续生效。"""
+    try:
+        user_site = site.getusersitepackages()
+    except (AttributeError, OSError):
+        return False
+    if not user_site:
+        return False
+    return os.path.realpath(__file__).startswith(os.path.realpath(user_site) + os.sep)
+
+
 _UPGRADE_GIT_URL = 'git+https://github.com/Akxan/SpyEyes.git'
 # release tag 白名单:v1.2.3 / 1.2.3 / v1.2.3-rc1 —— tag 来自网络,拼进 pip 参数前先校验
 _RELEASE_TAG_RE = re.compile(r'^[vV]?\d+(?:\.\d+){0,3}(?:[-+][0-9A-Za-z.]+)?$')
 
 
-def _build_upgrade_command(mode: str, tag: Optional[str] = None) -> Optional[list[str]]:
+def _build_upgrade_command(mode: str, tag: Optional[str] = None, *,
+                           break_system: bool = False, user: bool = False) -> Optional[list[str]]:
     """按 mode 返回 subprocess 命令列表,源码模式返回 None。
 
     使用 sys.executable -m pip 而非 'pip',避 PATH 缺失 (Windows 上 pip.exe 可能不在 PATH)。
     使用 list 形式 (非 shell 字符串) 避跨平台 shell quoting 差异。
     tag:pip 模式下钉到该 release tag(`git+URL@v1.8.3`),装的正是提示里宣布的版本;
     不传 / 格式不合法时退回 main 分支 HEAD(旧行为)。
+    break_system:追加 --break-system-packages(PEP 668 环境,须用户明确同意后才传)。
+    user:追加 --user(SpyEyes 装在用户目录时)。
     """
     if mode == 'source':
         return None
@@ -8746,7 +8801,13 @@ def _build_upgrade_command(mode: str, tag: Optional[str] = None) -> Optional[lis
             url = f'{url}@{tag}'
         # --no-input (pip 21.1+, Python 3.10+ 自带兼容) 防止 pip 边界场景下
         # prompt 用户导致 subprocess 在我们父进程里 hang。
-        return [sys.executable, '-m', 'pip', 'install', '--upgrade', '--no-input', url]
+        cmd = [sys.executable, '-m', 'pip', 'install', '--upgrade', '--no-input']
+        if user:
+            cmd.append('--user')
+        if break_system:
+            cmd.append('--break-system-packages')
+        cmd.append(url)
+        return cmd
     return None
 
 
@@ -8771,8 +8832,13 @@ def _prompt_yes_no(question: str, default_yes: bool = True) -> bool:
     return default_yes  # 空输入或不识别 → 用 default
 
 
-def run_upgrade(yes: bool = False, check_only: bool = False) -> int:
+def run_upgrade(yes: bool = False, check_only: bool = False,
+                break_system_packages: bool = False) -> int:
     """v1.8.2 一键升级主流程。
+
+    break_system_packages:PEP 668 环境(Homebrew / 系统 Python)下允许带
+    --break-system-packages 原地升级(CLI `--break-system-packages`)。不传时在 TTY 里
+    单独问一次 [y/N](默认否),非 TTY 直接给出替代方案并返回 2。
 
     流程:
       1. 强刷 update cache (绕过 24h)
@@ -8791,7 +8857,7 @@ def run_upgrade(yes: bool = False, check_only: bool = False) -> int:
     Return code 约定:
       0  成功 / 已是最新 / 用户取消 / check-only / 源码模式
       1  网络错 / pipx 找不到
-      2  非 TTY 缺 --yes
+      2  非 TTY 缺 --yes / PEP 668 环境非 TTY 且未给 --break-system-packages
       130 Ctrl-C
       其他 透传 subprocess exit code
     """
@@ -8828,7 +8894,33 @@ def run_upgrade(yes: bool = False, check_only: bool = False) -> int:
         print(f" {Color.Ye}{t('upgrade.source_install_hint')}{Color.Reset}")
         return 0
 
-    cmd = _build_upgrade_command(mode, latest)
+    if mode == 'packaged-pip':
+        break_system = False
+        if _is_externally_managed():
+            # PEP 668:Homebrew / Debian 等系统 Python 拒绝 pip 安装。SpyEyes 能装在这里,
+            # 说明当初就绕过了保护;原地升级必须同样带 --break-system-packages,
+            # 否则 pip 直接报 externally-managed-environment(v1.8.2 用户实际踩到的坑)。
+            # 绕过保护是有风险的动作 → 必须显式同意:CLI flag,或 TTY 下单独的 [y/N](默认否)。
+            print(f" {Color.Ye}{t('upgrade.pep668_detected')}{Color.Reset}")
+            if not break_system_packages:
+                options = t('upgrade.pep668_options', py=sys.executable)
+                if not sys.stdin.isatty():
+                    print(f" {Color.Wh}{options}{Color.Reset}")
+                    return 2
+                try:
+                    agreed = _prompt_yes_no(t('upgrade.pep668_confirm'), default_yes=False)
+                except KeyboardInterrupt:
+                    print(f"\n {Color.Wh}{t('upgrade.cancelled')}{Color.Reset}")
+                    return 130
+                if not agreed:
+                    print(f" {Color.Wh}{options}{Color.Reset}")
+                    return 0
+                yes = True  # 已就这个更具体的风险单独确认过,不再追问通用的 [Y/n]
+            break_system = True
+        cmd = _build_upgrade_command(mode, latest, break_system=break_system,
+                                     user=_is_user_site_install())
+    else:
+        cmd = _build_upgrade_command(mode, latest)
     if mode == 'packaged-pipx':
         # v1.8.2: 用绝对路径调 pipx (Windows 上 subprocess + 无扩展名相对命令的
         # PATH 解析有 edge case; 绝对路径 robust)。同时 which 还能检测 pipx 缺失。
@@ -9202,6 +9294,10 @@ def build_parser() -> argparse.ArgumentParser:
                            help='Skip confirmation prompt')
     p_upgrade.add_argument('--check', action='store_true',
                            help='Check for updates without installing')
+    p_upgrade.add_argument('--break-system-packages', action='store_true',
+                           dest='break_system_packages',
+                           help='Allow an in-place upgrade inside a PEP 668 externally-managed'
+                                ' Python (e.g. Homebrew). Moving to pipx is recommended instead.')
 
     return parser
 
@@ -9517,7 +9613,8 @@ def run_cli(args: argparse.Namespace) -> int:
         else:
             print_investigate(data)
     elif cmd == 'upgrade':
-        return run_upgrade(yes=args.yes, check_only=args.check)
+        return run_upgrade(yes=args.yes, check_only=args.check,
+                           break_system_packages=getattr(args, 'break_system_packages', False))
     else:
         return 2
     # 写历史（仅对实际查询的子命令）

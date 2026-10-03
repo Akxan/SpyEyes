@@ -49,6 +49,9 @@ def reset_global_state(tmp_path, monkeypatch):
 
     for var in _BEHAVIOR_ENV_VARS:
         monkeypatch.delenv(var, raising=False)
+    # 升级逻辑会按宿主 Python 是否 PEP 668「外部管理环境」走不同分支 —— 默认视为普通环境,
+    # 让结果不取决于跑测试的是 venv 还是 Homebrew Python;需要时测试里再显式 patch 成 True
+    monkeypatch.setattr(gt, '_is_externally_managed', lambda: False)
     # subfinder 探测结果是模块级缓存:强制"未安装",防止装了 subfinder 的开发机跑真实子进程
     monkeypatch.setattr(gt, '_SUBFINDER_BIN', None)
     monkeypatch.setattr(gt, '_SUBFINDER_CHECKED', True)

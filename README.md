@@ -10,7 +10,7 @@
 [![codecov](https://codecov.io/gh/Akxan/SpyEyes/branch/main/graph/badge.svg)](https://codecov.io/gh/Akxan/SpyEyes)
 [![License: Apache 2.0](https://img.shields.io/badge/License-Apache_2.0-blue.svg)](https://opensource.org/licenses/Apache-2.0)
 [![Python](https://img.shields.io/badge/Python-3.10%2B-blue.svg?logo=python&logoColor=white)](https://www.python.org/)
-[![Tests](https://img.shields.io/badge/tests-666%20passed-success.svg)](tests/)
+[![Tests](https://img.shields.io/badge/tests-674%20passed-success.svg)](tests/)
 [![Platforms](https://img.shields.io/badge/platforms-3164-orange.svg)](#-与同类工具对比)
 [![Reports](https://img.shields.io/badge/reports-8%20formats-9cf.svg)](#-报告格式8-种)
 [![Commands](https://img.shields.io/badge/commands-14-blueviolet.svg)](docs/TUTORIAL.md)
@@ -60,7 +60,7 @@
 - **🆕 v1.8.0:`investigate` 提速 3-4× + 全程进度反馈** — Phase 2b(邮箱→用户名)从串行改 4 并发,15 邮箱场景从 ~210s 降到 ~50-80s;Phase 1/2a/2b 全程实时显示 `[N/M] ✓ task` 进度;TTY 安全,管道完全静默
 - **🆕 v1.8.2:一键升级** — `spyeyes upgrade [--yes] [--check]` + 菜单 `[12]` + 菜单启动时有新版自动问 `[Y/n]`;pip 安装自动升级到公告的 release tag,pipx 安装跑 `pipx upgrade spyeyes`,源码安装只提示 `git pull && pip install -e .`
 - **🆕 v1.8.3:全量审计** — 修复 CSV 中文乱码复发、`--max-pages` 被静默压到 100 页、批量命令失败仍 exit 0 等十余处问题;爬虫只请求本域 sitemap(防 SSRF);`investigate` 可导出关系图 `.graph.html`;支持 `NO_COLOR`;英文报告不再混入中文
-- **666 个 pytest 测试**:4 工具全清(ruff 0 / mypy 0 / bandit 0 / pytest 全绿),CI:Linux × Python 3.10–3.14,macOS / Windows × Python 3.10 与 3.14
+- **674 个 pytest 测试**:4 工具全清(ruff 0 / mypy 0 / bandit 0 / pytest 全绿),CI:Linux × Python 3.10–3.14,macOS / Windows × Python 3.10 与 3.14
 
 ---
 
@@ -536,7 +536,7 @@ bandit -r spyeyes/ tools/ -ll
 ```
 
 当前测试覆盖：
-- ✅ **666 个测试**，全部 mock 网络（不发真实请求）
+- ✅ **674 个测试**，全部 mock 网络（不发真实请求）
 - ✅ 覆盖纯函数 + HTTP mock + 边界条件 + SSRF/ReDoS 防御 + 8 种报告格式 × 2 种语言 + 中英翻译 key 一致性
 - ✅ GitHub Actions：Linux × Python 3.10–3.14，macOS / **Windows** × Python 3.10 与 3.14
 - ✅ 独立 lint job（ruff + mypy + bandit），通过后才跑测试矩阵
