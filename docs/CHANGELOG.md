@@ -16,7 +16,45 @@ This project adheres to [Keep a Changelog](https://keepachangelog.com/en/1.1.0/)
 - Docker 镜像
 - curl_cffi 浏览器指纹伪装可选（`spyeyes[stealth]`，绕过 Cloudflare）
 - `investigate` v2:扩到 email / ip / username 实体 + 双向 pivot(配合"已访问集合"防环)
-- `investigate` 报告:PDF / XMind / D3 关系图(v1.7.0 MVP 仅 JSON / MD / HTML / TXT / CSV)
+- `investigate` 报告:PDF / XMind 专用版式(目前走通用表格;D3 关系图已支持)
+- `investigate --budget` 真·硬超时(需要给阶段 1 原子任务加可取消的超时管道)
+
+### 🐛 修复(全量代码审计)
+
+- **CSV 中文乱码复发**:v1.6.13 加的 UTF-8 BOM(`utf-8-sig`)在 v1.8.0 大提交里被误回退成 `utf-8`,Excel / Numbers 打开中文 CSV 又成乱码。已恢复 + 回归测试。
+- **CI lint 随 ruff 发版变红**:`requirements-dev.txt` 未锁 ruff 上限,ruff 0.16 扩大默认规则后 `ruff check .` 报 168 条。`pyproject.toml` 显式 `select = ["E4","E7","E9","F"]` 锁定规则集。
+- **`--max-pages` 与文档 / 菜单矛盾**:
+  - CLI `--max-pages 500` 被 argparse 的 1..200 校验直接拒绝(CHANGELOG v1.6.11 / 菜单「深度 500 页」都承诺可用)→ 上限放宽到 2000;
+  - 单 target 时有固定 `min(100, …)` 上限,默认 200 / 菜单 500 都被静默压成 100 页 → 移除,`max_pages` 改为按 target 均分的总预算。
+- **递归扫描吞掉输入错误**:`user 'a/b' --recursive` 之前显示「扫描 0 个平台」并 exit 0;现在顶层带 `_error`,exit 1。
+- **递归扫描的 URL 提取分支失效**:`t.me` / `mastodon.social` / `threads.net` 被统一追加 `\.com/` 永远匹配不到;同时修复 `dropbox.com/foo` 被子串误读成 `x.com/foo`。
+- **菜单启动「升级?」选 Y 却被踢出菜单**:源码安装 / 网络错误 / pipx 缺失时什么都没升级,却 `sys.exit` 退出;现在停顿提示后继续进入菜单(升级成功仍退出重启)。
+- **`spyeyes upgrade --lang en` 报 unrecognized arguments**:`upgrade` 子命令补上公共参数(`--lang` / `--no-color` / `--no-update-check`);且不再额外打通知 + 起后台刷新线程与自身的强制刷新并发写同一缓存文件。
+- **批量命令全失败也 exit 0**:`whois a b` / `mx a b` / `subdomain --batch` 任一项失败现在返回 1;`--batch` 模式下单独给 `--save`(无 `--batch-save-dir`)时不再静默忽略,给出警告;批量报告的「查询」字段带上域名。
+- **`--save x.json` 丢递归层级**:与 `--json` 输出不一致(后者保留 `_recursive`),统一走 `_username_json_view`。
+- **批量 MX / WHOIS 报告丢数据**:通用 dict 分支只取一层标量,`records` 等嵌套列表被丢弃,报告里每个域只剩 `domain=…`。6 份重复的展平逻辑合并为 `_flatten_value`(嵌套感知)。
+- **numverify 错误信息**:`if resp` 对 4xx/5xx `Response` 为 False,HTTP 500 被报成 "no response"。
+- **HTML 报告双重转义**:标题先 escape 再进 `t()` 再 escape;邮箱出处链接先 escape 后截断可能切断实体。
+- **未知平台类别被"吃掉"**:platforms.json 中不在 `CATEGORY_ORDER` 的类别计入总数却永不显示 → 归入 `other`。
+- **`--save out/` 在 Windows 上被当成文件名**:目录判断只认 `os.sep`。
+- **测试隔离**:开发机 `~/.spyeyes/env` 在 import 时注入环境变量,本机设了 `SPYEYES_NO_HISTORY=1` 会让 12 个测试失败;conftest 现在清理这类变量、重定向 `ENV_FILE`、强制 subfinder「未安装」。
+
+### 🔒 安全加固
+
+- **爬虫 SSRF**:robots.txt / sitemap index 里的 sitemap 地址是目标站可控输入,之前不校验域名就请求(可被引向内网 / 云元数据地址)。现在只请求本域(含子域)的 sitemap;站内判断统一用 `_url_in_domain`(基于 `.hostname`:带端口的站内链接不再被误判站外,`example.com@evil.com` 这类 userinfo 绕过被拒)。
+- **用户名拒收 `<` `>` `"`**:任何平台都不合法,且会被 PDF 内联标签 / HTML 属性当成标记。
+- **一键升级钉到 release tag**:pip 安装升级改为 `git+…@<tag>`(tag 先经白名单校验),装的就是提示里宣布的版本,而不是 `main` 分支当前 HEAD。
+
+### ✨ 改进
+
+- `investigate` 结果可导出 `.graph.html`:`do_investigate` 早已算好的 nodes/edges 关系图之前没有任何报告使用。
+- 支持 [`NO_COLOR`](https://no-color.org/) 环境变量。
+- 交互模式 + TTY:菜单启动的 Y/N 升级提示替代重复的 stderr 通知;更新缓存改为原子写。
+- `--help` 示例覆盖全部 14 个子命令;`investigate --depth` 只接受 0/1;`--budget` 帮助如实说明只约束 pivot 阶段。
+- 大量硬编码中 / 英文字符串改走 `t()`(用户名扫描提示、递归总结、批量扫描进度、Diff 输出、子域源状态「(错误)」、XMind 邮箱摘要、变形扫描报告等),英文报告里不再混入中文。
+- 爬虫 BFS 改 `deque` + 入队去重(之前 `list.pop(0)` + 同一导航链接反复入队);子域 DNS 进度计数 O(n²) → O(n)。
+- 清理:4 个无引用 i18n key、函数内重复 import、测试里的残留 `pass  # marker`;CLAUDE.md 全面更新并改为中文(去掉会漂移的行号,补 investigate / upgrade / 测试隔离 / ruff 锁定等约定)。
+- 测试:612 → 659(新增 47 个,其中针对上述 bug 的回归用例在修复前的代码上均失败)。
 
 ---
 
