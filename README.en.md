@@ -10,11 +10,11 @@
 [![codecov](https://codecov.io/gh/Akxan/SpyEyes/branch/main/graph/badge.svg)](https://codecov.io/gh/Akxan/SpyEyes)
 [![License: Apache 2.0](https://img.shields.io/badge/License-Apache_2.0-blue.svg)](https://opensource.org/licenses/Apache-2.0)
 [![Python](https://img.shields.io/badge/Python-3.10%2B-blue.svg?logo=python&logoColor=white)](https://www.python.org/)
-[![Tests](https://img.shields.io/badge/tests-674%20passed-success.svg)](tests/)
+[![Tests](https://img.shields.io/badge/tests-682%20passed-success.svg)](tests/)
 [![Platforms](https://img.shields.io/badge/platforms-3164-orange.svg)](#-comparison-with-similar-tools)
 [![Reports](https://img.shields.io/badge/reports-8%20formats-9cf.svg)](#-report-formats-8-types)
 [![Commands](https://img.shields.io/badge/commands-14-blueviolet.svg)](docs/TUTORIAL.md)
-[![Version](https://img.shields.io/badge/version-1.8.4-blueviolet.svg)](docs/CHANGELOG.md)
+[![Version](https://img.shields.io/badge/version-1.8.5-blueviolet.svg)](docs/CHANGELOG.md)
 [![Docs](https://img.shields.io/badge/docs-online-blue.svg)](https://akxan.github.io/SpyEyes/)
 [![Platform](https://img.shields.io/badge/platform-macOS%20%7C%20Linux%20%7C%20Windows%20%7C%20Termux-lightgrey)](#-installation)
 [![PRs Welcome](https://img.shields.io/badge/PRs-welcome-brightgreen.svg)](docs/CONTRIBUTING.md)
@@ -61,7 +61,8 @@ Designed for **security researchers, penetration testers, SOC analysts, threat h
 - **🆕 v1.8.2: One-click upgrade** — `spyeyes upgrade [--yes] [--check]`, menu `[12]`, and a `[Y/n]` prompt at menu startup when a newer release is cached; pip installs upgrade to the announced release tag, pipx installs run `pipx upgrade spyeyes`, source installs just get the `git pull && pip install -e .` hint
 - **🆕 v1.8.3: Full audit** — fixes the CSV Chinese-mojibake regression, `--max-pages` being silently capped at 100, batch commands exiting 0 on failure and a dozen more; the crawler only fetches in-domain sitemaps (SSRF guard); `investigate` exports a relationship graph (`.graph.html`); `NO_COLOR` support; English reports no longer mix in Chinese
 - **🆕 v1.8.4: Upgrade fix for Homebrew / system Python** — detects PEP 668 externally-managed environments, recommends pipx, and only adds `--break-system-packages` after explicit consent; `--user` installs get `--user` automatically
-- **674 pytest tests**: 4-tool audit clean (ruff 0 / mypy 0 / bandit 0 / pytest), CI on Linux × Python 3.10–3.14 and macOS / Windows × Python 3.10 & 3.14
+- **🆕 v1.8.5: Calm colors** — body text in your terminal's own color with color only as accents, no more wall of bright green; readable on dark / light backgrounds and on Windows; `SPYEYES_THEME=classic` restores the old look
+- **682 pytest tests**: 4-tool audit clean (ruff 0 / mypy 0 / bandit 0 / pytest), CI on Linux × Python 3.10–3.14 and macOS / Windows × Python 3.10 & 3.14
 
 ---
 
@@ -495,7 +496,7 @@ mypy spyeyes tools/build_platforms.py --ignore-missing-imports
 bandit -r spyeyes/ tools/ -ll
 ```
 
-- ✅ **674 tests**, all network access mocked (no real requests)
+- ✅ **682 tests**, all network access mocked (no real requests)
 - ✅ Pure functions + HTTP mocking + edge cases + SSRF/ReDoS defenses + 8 report formats × 2 languages + en/zh translation key parity
 - ✅ GitHub Actions: Linux × Python 3.10–3.14, macOS / **Windows** × Python 3.10 & 3.14
 - ✅ Dedicated lint job (ruff + mypy + bandit) gates the test matrix

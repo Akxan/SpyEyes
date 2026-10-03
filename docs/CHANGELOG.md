@@ -19,6 +19,12 @@ This project adheres to [Keep a Changelog](https://keepachangelog.com/en/1.1.0/)
 - `investigate` 报告:PDF / XMind 专用版式(目前走通用表格;D3 关系图已支持)
 - `investigate --budget` 真·硬超时(需要给阶段 1 原子任务加可取消的超时管道)
 
+---
+
+## [1.8.5] — 2026-10-03
+
+🎨 **柔和配色版** —— 默认终端配色不再大面积亮绿,深色 / 浅色背景与 Windows 下都清晰;启动更新提示改为引导运行 `spyeyes upgrade`。
+
 ### ✨ 改进
 
 - **默认终端配色改为柔和风格**(用户反馈大面积亮绿刺眼、容易看花):正文改用终端自己的文字颜色,编号 / 标签加粗,颜色只用于阶段标题(青)、警告(黄)、错误(红)、星标(品红)等少量点缀,且全部为普通亮度。在 macOS / Linux / Windows Terminal 的深色、浅色背景下都清晰。想要旧版亮绿风格可设 `SPYEYES_THEME=classic`。
@@ -2451,7 +2457,8 @@ export SPYEYES_PHONE_API_KEY="numverify:..." # 可选实时 HLR 电话运营商
 
 ---
 
-[Unreleased]: https://github.com/Akxan/SpyEyes/compare/v1.8.4...HEAD
+[Unreleased]: https://github.com/Akxan/SpyEyes/compare/v1.8.5...HEAD
+[1.8.5]: https://github.com/Akxan/SpyEyes/compare/v1.8.4...v1.8.5
 [1.8.4]: https://github.com/Akxan/SpyEyes/compare/v1.8.3...v1.8.4
 [1.8.3]: https://github.com/Akxan/SpyEyes/compare/v1.8.2...v1.8.3
 [1.0.0]: https://github.com/Akxan/SpyEyes/releases/tag/v1.0.0
