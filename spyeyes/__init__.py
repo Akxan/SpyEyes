@@ -603,7 +603,7 @@ TRANSLATIONS: dict = {
         'demails.col_sources':        'Sources',
         'demails.col_page':           'First seen at',
         'demails.col_verified':       'Verified',
-        'demails.stage_passive':      'Stage 1/4: Passive sources (crt.sh CT logs + WHOIS contacts) ...',
+        'demails.stage_passive':      'Stage 1/4: Passive sources (crt.sh / WHOIS / Bing / DDG / Wayback / GitHub) ...',
         'demails.stage_subdomain':    'Stage 2/4: Discovering alive subdomains to crawl ...',
         'demails.stage_crawl':        'Stage 3/4: Deep-crawling {n} target(s) (robots.txt + sitemap.xml + BFS) ...',
         'demails.stage_guess':        'Stage 3.5/4: Generating pattern emails from provided names ...',
@@ -612,7 +612,7 @@ TRANSLATIONS: dict = {
         'demails.found_emails':       'emails',
         'demails.target_count':       'crawl targets',
         'demails.pattern_emails':     'pattern emails generated',
-        'demails.section_passive':    'From passive sources (crt.sh / WHOIS)',
+        'demails.section_passive':    'From passive sources (crt.sh / WHOIS / search engines / Wayback / GitHub)',
         'demails.section_crawl':      'From deep crawl',
         'demails.section_pattern':    'From pattern generation (UNVERIFIED guesses)',
         'prompt.input_demails':       'Enter target domain for email harvest (e.g. example.com): ',
@@ -655,7 +655,7 @@ TRANSLATIONS: dict = {
         'err.permute_empty':    'Cannot generate permutations: input is empty',
         'recursive.title':      'Recursive scan summary',
         'msg.recursive_done':   'Recursive scan finished. Total: {total} platforms across {depths} levels.',
-        'err.no_pdf':           'PDF requires reportlab: pip install "spyeyes[pdf]"',
+        'err.no_pdf':           'PDF requires reportlab: pip install reportlab  (or pip install -e ".[pdf]" in the repo)',
         'err.pdf_failed':       'PDF generation failed: {e}',
         # Interactive menu prompts (v1.1.0+; numeric 1/2 style for menu consistency)
         'prompt.recursive':     'Recursive scan (extract sub-usernames from hits)?\n   [ 1 ] Yes  [ 2 ] No (default)\n  Choose [1/2, default 2] : ',
@@ -668,11 +668,11 @@ TRANSLATIONS: dict = {
         'fmt.json':             'JSON               (.json)',
         'fmt.md':               'Markdown           (.md)',
         'fmt.html':             'HTML               (.html)',
-        'fmt.pdf':              'PDF                (.pdf, needs spyeyes[pdf])',
+        'fmt.pdf':              'PDF                (.pdf, needs reportlab)',
         'fmt.txt':              'Plain text         (.txt)',
         'fmt.csv':              'CSV                (.csv)',
         'fmt.xmind':            'XMind 8 mind-map   (.xmind)',
-        'fmt.graph':            'Force-directed graph (.graph.html, D3.js — username scan only)',
+        'fmt.graph':            'Force-directed graph (.graph.html, D3.js — username / subdomain / emails / investigate)',
         'prompt.save_another':  'Save another format?\n   [ 1 ] Yes  [ 2 ] No (default)\n  Choose [1/2, default 2] : ',
         # v1.2.0 — 用户名菜单合并 permute（菜单从 9 项缩到 8 项）
         'prompt.scan_strategy':       'Scan strategy:',
@@ -756,7 +756,7 @@ TRANSLATIONS: dict = {
         'upgrade.failed':             'Upgrade failed (exit {code}). Manual: {cmd}',
         'upgrade.no_tty':             'Cannot prompt without a TTY. Use --yes to skip confirmation.',
         'upgrade.network_error':      'Could not reach GitHub Releases. Try again later.',
-        'upgrade.pipx_missing':       'pipx not found in PATH. Falling back to: {pip_cmd}',
+        'upgrade.pipx_missing':       'pipx not found in PATH. Upgrade manually with: {pip_cmd}',
         # i18n 补漏(之前硬编码在代码里的中/英文)
         'msg.hits':                   '{n} hits',
         'msg.more':                   '... +{n} more',
@@ -960,7 +960,7 @@ TRANSLATIONS: dict = {
         'demails.col_sources':        '来源',
         'demails.col_page':           '首次出现页面',
         'demails.col_verified':       '已验证',
-        'demails.stage_passive':      '阶段 1/4:被动数据源(crt.sh CT 日志 + WHOIS 联系人)...',
+        'demails.stage_passive':      '阶段 1/4:被动数据源(crt.sh / WHOIS / Bing / DDG / Wayback / GitHub)...',
         'demails.stage_subdomain':    '阶段 2/4:发现可爬取的活跃子域名 ...',
         'demails.stage_crawl':        '阶段 3/4:深度爬取 {n} 个目标(robots.txt + sitemap.xml + BFS)...',
         'demails.stage_guess':        '阶段 3.5/4:从提供的姓名生成模式邮箱 ...',
@@ -969,7 +969,7 @@ TRANSLATIONS: dict = {
         'demails.found_emails':       '个邮箱',
         'demails.target_count':       '个爬取目标',
         'demails.pattern_emails':     '个模式邮箱生成',
-        'demails.section_passive':    '来自被动数据源(crt.sh / WHOIS)',
+        'demails.section_passive':    '来自被动数据源(crt.sh / WHOIS / 搜索引擎 / Wayback / GitHub)',
         'demails.section_crawl':      '来自深度爬取',
         'demails.section_pattern':    '来自模式生成(未验证的猜测)',
         'prompt.input_demails':       '请输入要挖邮箱的目标域名(如 example.com):',
@@ -1011,7 +1011,7 @@ TRANSLATIONS: dict = {
         'err.permute_empty':    '无法生成变形：输入为空',
         'recursive.title':      '递归扫描总结',
         'msg.recursive_done':   '递归扫描结束。共 {total} 个平台，{depths} 层。',
-        'err.no_pdf':           'PDF 输出需要 reportlab：pip install "spyeyes[pdf]"',
+        'err.no_pdf':           'PDF 输出需要 reportlab：pip install reportlab(源码仓库内也可 pip install -e ".[pdf]")',
         'err.pdf_failed':       'PDF 生成失败：{e}',
         # 交互菜单提示 (v1.1.0+；统一用 1/2 数字选项，与主菜单风格一致)
         'prompt.recursive':     '是否递归扫描（从命中页面提取次级用户名）？\n   [ 1 ] 是   [ 2 ] 否（默认）\n  请选择 [1/2，默认 2] : ',
@@ -1024,11 +1024,11 @@ TRANSLATIONS: dict = {
         'fmt.json':             'JSON               (.json)',
         'fmt.md':               'Markdown           (.md)',
         'fmt.html':             'HTML               (.html)',
-        'fmt.pdf':              'PDF                (.pdf, 需 spyeyes[pdf])',
+        'fmt.pdf':              'PDF                (.pdf, 需 reportlab)',
         'fmt.txt':              '纯文本             (.txt)',
         'fmt.csv':              'CSV                (.csv)',
         'fmt.xmind':            'XMind 8 思维导图   (.xmind)',
-        'fmt.graph':            '力导向图           (.graph.html, D3.js — 仅用户名扫描)',
+        'fmt.graph':            '力导向图           (.graph.html, D3.js — 用户名 / 子域名 / 邮箱 / 综合调查)',
         'prompt.save_another':  '继续保存其它格式？\n   [ 1 ] 是   [ 2 ] 否（默认）\n  请选择 [1/2，默认 2] : ',
         # v1.2.0 —— 用户名菜单合并 permute（菜单从 9 项缩到 8 项）
         'prompt.scan_strategy':       '扫描方式：',
@@ -1112,7 +1112,7 @@ TRANSLATIONS: dict = {
         'upgrade.failed':             '升级失败 (退出码 {code})。手动: {cmd}',
         'upgrade.no_tty':             '无 TTY 无法交互。请加 --yes 跳过确认。',
         'upgrade.network_error':      '无法连接 GitHub Releases,请稍后重试。',
-        'upgrade.pipx_missing':       'PATH 里找不到 pipx。降级到: {pip_cmd}',
+        'upgrade.pipx_missing':       'PATH 里找不到 pipx。请手动执行: {pip_cmd}',
         # i18n 补漏(之前硬编码在代码里的中/英文)
         'msg.hits':                   '命中 {n} 个',
         'msg.more':                   '... 另有 {n} 个',
@@ -5159,6 +5159,18 @@ def print_email(result: dict) -> None:
         print(f" {Color.Re}{msg}{Color.Reset}")
 
 
+def _email_source_group(sources) -> str:
+    """邮箱展示分组:'crawl'(爬到过)/ 'passive'(任一被动源佐证)/ 'pattern'(纯模式猜测)。
+    之前只认 crtsh / whois / crawl 三个来源 —— 被 Bing / DDG / Wayback / GitHub 证实存在的
+    模式邮箱仍被归进「未验证的猜测」。"""
+    srcs = set(sources or [])
+    if 'crawl' in srcs:
+        return 'crawl'
+    if srcs - {'pattern'}:
+        return 'passive'
+    return 'pattern' if 'pattern' in srcs else 'passive'
+
+
 def print_domain_emails(data: dict) -> None:
     """v1.4.0:打印域名邮箱枚举结果。按 source 分组(passive / crawl / pattern)。"""
     _print_section_header('section.demails')
@@ -5181,16 +5193,10 @@ def print_domain_emails(data: dict) -> None:
         print(f" {Color.Ye}{t('demails.no_results')}{Color.Reset}")
         return
 
-    # 分组:passive(crtsh+whois) / crawl / pattern
+    # 分组:passive(6 个被动源)/ crawl / pattern(仅模式猜测、无任何来源佐证)
     groups: dict = {'passive': [], 'crawl': [], 'pattern': []}
     for e in emails:
-        srcs = set(e.get('sources', []))
-        if 'pattern' in srcs and not (srcs & {'crtsh', 'whois', 'crawl'}):
-            groups['pattern'].append(e)
-        elif 'crawl' in srcs:
-            groups['crawl'].append(e)
-        else:
-            groups['passive'].append(e)
+        groups[_email_source_group(e.get('sources', []))].append(e)
 
     section_keys = [('passive', 'demails.section_passive'),
                     ('crawl', 'demails.section_crawl'),
@@ -8119,13 +8125,7 @@ def _to_xmind(prefix: str, data: Any, out_path: str) -> Optional[str]:
             ))
             groups: dict = {'passive': [], 'crawl': [], 'pattern': []}
             for e in data.get('emails', []):
-                srcs = set(e.get('sources', []))
-                if 'pattern' in srcs and not (srcs & {'crtsh', 'whois', 'crawl'}):
-                    groups['pattern'].append(e)
-                elif 'crawl' in srcs:
-                    groups['crawl'].append(e)
-                else:
-                    groups['passive'].append(e)
+                groups[_email_source_group(e.get('sources', []))].append(e)
             # 每分组用不同 flag 颜色 + 不同 marker
             section_meta = {
                 'passive': ('demails.section_passive', 'flag-blue', 'symbol-info'),
@@ -8370,14 +8370,13 @@ def _to_graph_html(prefix: str, data: Any) -> str:
         nodes = [{'id': data.get('domain', query), 'group': 1,
                   'name': data.get('domain', query), 'url': ''}]
         root_id = data.get('domain', query)
-        # group:passive=2 / crawl=3 / pattern=4
-        src_to_group = {'crtsh': 2, 'whois': 2, 'crawl': 3, 'pattern': 4}
+        # group:有来源佐证(被动源 / 爬取)=2 蓝;纯模式猜测=3 灰。
+        # 之前 pattern 映射到 group 4,而 D3 模板只定义了 1/2/3 三种颜色
         for e in data.get('emails', []):
             addr = e.get('address', '')
             if not addr:
                 continue
-            srcs = e.get('sources', [])
-            grp = max((src_to_group.get(s, 2) for s in srcs), default=2)
+            grp = 3 if _email_source_group(e.get('sources', [])) == 'pattern' else 2
             nodes.append({
                 'id': f'em_{addr}',
                 'group': grp,

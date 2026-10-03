@@ -5631,3 +5631,24 @@ class TestConftestEnvIsolation:
         """开发者 ~/.spyeyes/env 里的 SPYEYES_NO_HISTORY 等不应泄漏进测试。"""
         for var in ('SPYEYES_NO_HISTORY', 'SPYEYES_BRUTEFORCE', 'SPYEYES_DNS_WORDLIST'):
             assert var not in os.environ
+
+
+class TestEmailSourceGroup:
+    """模式邮箱一旦被任一被动源佐证,就不应再归进「未验证的猜测」。"""
+
+    @pytest.mark.parametrize('sources,group', [
+        (['pattern'], 'pattern'),
+        (['pattern', 'bing'], 'passive'),       # 之前误判为 pattern
+        (['pattern', 'github'], 'passive'),
+        (['pattern', 'crawl'], 'crawl'),
+        (['wayback'], 'passive'),
+        ([], 'passive'),
+    ])
+    def test_grouping(self, sources, group):
+        assert gt._email_source_group(sources) == group
+
+    def test_graph_pattern_email_uses_defined_color_group(self):
+        data = {'domain': 'example.com', 'emails': [
+            {'address': 'guess@example.com', 'sources': ['pattern']}]}
+        html = gt._to_graph_html('domain-emails_example.com', data)
+        assert '"group": 4' not in html  # D3 模板只有 1/2/3 三种颜色
