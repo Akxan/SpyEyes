@@ -4,17 +4,17 @@
 
 ### OSINT 信息查询工具中文增强版
 
-**一站式查询 IP · 电话 · 用户名 · 域名 WHOIS · MX 记录 · 邮箱 · 子域名 · 域名邮箱 · Diff 监控 · 批量扫描**
+**一站式查询 IP · 电话 · 用户名 · 域名 WHOIS · MX 记录 · 邮箱 · 子域名 · 域名邮箱 · Diff 监控 · 批量扫描 · 综合调查**
 
 [![CI](https://github.com/Akxan/SpyEyes/actions/workflows/ci.yml/badge.svg)](https://github.com/Akxan/SpyEyes/actions/workflows/ci.yml)
 [![codecov](https://codecov.io/gh/Akxan/SpyEyes/branch/main/graph/badge.svg)](https://codecov.io/gh/Akxan/SpyEyes)
 [![License: Apache 2.0](https://img.shields.io/badge/License-Apache_2.0-blue.svg)](https://opensource.org/licenses/Apache-2.0)
 [![Python](https://img.shields.io/badge/Python-3.10%2B-blue.svg?logo=python&logoColor=white)](https://www.python.org/)
-[![Tests](https://img.shields.io/badge/tests-488%20passed-success.svg)](tests/)
+[![Tests](https://img.shields.io/badge/tests-666%20passed-success.svg)](tests/)
 [![Platforms](https://img.shields.io/badge/platforms-3164-orange.svg)](#-与同类工具对比)
 [![Reports](https://img.shields.io/badge/reports-8%20formats-9cf.svg)](#-报告格式8-种)
-[![Commands](https://img.shields.io/badge/commands-10-blueviolet.svg)](docs/TUTORIAL.md)
-[![Version](https://img.shields.io/badge/version-1.8.0-blueviolet.svg)](docs/CHANGELOG.md)
+[![Commands](https://img.shields.io/badge/commands-14-blueviolet.svg)](docs/TUTORIAL.md)
+[![Version](https://img.shields.io/badge/version-1.8.2-blueviolet.svg)](docs/CHANGELOG.md)
 [![Docs](https://img.shields.io/badge/docs-online-blue.svg)](https://akxan.github.io/SpyEyes/)
 [![Platform](https://img.shields.io/badge/platform-macOS%20%7C%20Linux%20%7C%20Windows%20%7C%20Termux-lightgrey)](#-安装)
 [![PRs Welcome](https://img.shields.io/badge/PRs-welcome-brightgreen.svg)](docs/CONTRIBUTING.md)
@@ -35,7 +35,7 @@
 
 ## 📖 项目简介
 
-**SpyEyes** 是一款用 Python 编写的命令行 **OSINT(开源情报)信息收集工具**,专为中文用户深度优化。**10 大核心能力**:IP 追踪 / 电话号码解析 / 用户名扫描(**3164 个平台 / 中英双语**)/ 域名 WHOIS / MX 查询 / 邮箱有效性验证 / **子域名枚举**(6 被动源 + 字典爆破 + JS 提取)/ **域名邮箱挖掘**(6 源全免费并发 + 深度爬虫)/ **Diff 监控**(对比两次扫描)/ **批量域名输入**(`--batch`)/ **8 种 Editorial 风报告**。
+**SpyEyes** 是一款用 Python 编写的命令行 **OSINT(开源情报)信息收集工具**,专为中文用户深度优化。**14 个子命令**,核心能力:IP 追踪 / 电话号码解析 / 用户名扫描(**3164 个平台 / 中英双语**)/ 域名 WHOIS / MX 查询 / 邮箱有效性验证 / **子域名枚举**(6 被动源 + 字典爆破 + JS 提取)/ **域名邮箱挖掘**(6 源全免费并发 + 深度爬虫)/ **Diff 监控**(对比两次扫描)/ **批量域名输入**(`--batch`)/ **综合调查**(`investigate`,一个域名自动多源并发 + 单向 pivot 出整合档案)/ **一键升级**(`upgrade`)/ **8 种 Editorial 风报告**。
 
 适合 **网络安全研究人员、渗透测试工程师、SOC 分析师、技术调查员、红队蓝队成员、CTF 玩家** 以及任何对开源情报感兴趣的开发者使用。
 
@@ -56,8 +56,10 @@
 - **🆕 v1.6.1:进度条 100% 全功能审计** — 所有耗时操作都有实时反馈,告别"看着卡死"
 - **🆕 v1.8.0:智能默认报告目录** — 源码运行 → `<项目根>/Downloads/`(git clone 用户在仓库直接看到);打包安装(pip/pipx/brew) → `~/Downloads/spyeyes/`(永不写 site-packages);`SPYEYES_REPORTS_DIR=path` 始终最高优先级
 - **🆕 v1.8.0:启动版本检查** — 24h 缓存比对 GitHub Release,新版本时 stderr 提示;`--no-update-check` / `SPYEYES_NO_UPDATE_CHECK=1` 一键禁用;离线 / API 失败完全静默
+- **🆕 v1.7.0:`investigate` 综合调查** — 输入一个域名,并发跑 WHOIS + MX + 子域名 + 域名邮箱,再自动接力(活跃子域 IP → IP 情报;像真人的邮箱 local-part → 用户名扫描),输出一份整合档案
 - **🆕 v1.8.0:`investigate` 提速 3-4× + 全程进度反馈** — Phase 2b(邮箱→用户名)从串行改 4 并发,15 邮箱场景从 ~210s 降到 ~50-80s;Phase 1/2a/2b 全程实时显示 `[N/M] ✓ task` 进度;TTY 安全,管道完全静默
-- **541 个 pytest 测试**:4 工具全清(ruff 0 / mypy 0 / bandit 0 / pytest 全绿),CI 跨 macOS/Linux/Windows × Python 3.10–3.14
+- **🆕 v1.8.2:一键升级** — `spyeyes upgrade [--yes] [--check]` + 菜单 `[12]` + 菜单启动时有新版自动问 `[Y/n]`;pip 安装自动升级到公告的 release tag,pipx 安装跑 `pipx upgrade spyeyes`,源码安装只提示 `git pull && pip install -e .`
+- **666 个 pytest 测试**:4 工具全清(ruff 0 / mypy 0 / bandit 0 / pytest 全绿),CI:Linux × Python 3.10–3.14,macOS / Windows × Python 3.10 与 3.14
 
 ---
 
@@ -123,12 +125,19 @@
 - **批量域名输入**:`spyeyes subdomain --batch domains.txt --batch-save-dir reports/` — 每个域独立报告,Ctrl+C 可中断不丢
 - **`--alive-only` 全局**:CLI / JSON / 8 种导出报告全过滤,只保留可达子域
 
+### 🕵 综合调查(v1.7.0 🆕)
+- `spyeyes investigate example.com`:WHOIS + MX + 子域名 + 域名邮箱 **4 路并发**
+- **单向 pivot**:活跃子域 IP → IP 情报;像真人的邮箱 local-part → 用户名扫描(noreply / info / admin 等角色账号自动跳过)
+- `--depth 0|1` / `--budget 秒` / `--max-pivot-ips` / `--max-pivot-emails` 控制规模
+- 报告:MD / HTML / TXT / CSV 有专属章节,`.graph.html` 画出调查关系图,JSON 含完整数据
+
 ### 🚀 通用增强
 - **CLI 参数模式**:可脚本化批量调用
 - **JSON 输出**:与 jq / 任意工具流水线集成
 - **结果保存**:`--save DIR` 自动落盘
 - **进度反馈 100% 覆盖**(v1.6.1):所有 > 2 秒操作都有实时进度
-- **彩色终端**:自动检测 TTY
+- **彩色终端**:自动检测 TTY;`--no-color` 或 `NO_COLOR` 环境变量关闭
+- **一键升级**(v1.8.2):`spyeyes upgrade` / 菜单 `[12]`
 - **跨平台**:macOS / Linux / Windows / Termux
 
 </td>
@@ -152,7 +161,7 @@
 > 💡 **定位说明**:SpyEyes **不是**为了在用户名扫描深度上跟 Sherlock 卷,而是做**轻量级一站式 + 中文优先 + 报告丰富**的 OSINT 工具。
 > - 只查用户名 → Sherlock / Maigret 更专业
 > - 邮箱挖掘要 30+ 商业 API → theHarvester 更全
-> - 但要**免费层最强 + 8 种报告 + 中文 UI + 一站式 10 个命令** → **SpyEyes 就是为你准备的**
+> - 但要**免费层最强 + 8 种报告 + 中文 UI + 一站式 14 个命令** → **SpyEyes 就是为你准备的**
 
 ---
 
@@ -242,6 +251,14 @@ python3 -m spyeyes domain-emails example.com           # crt.sh + WHOIS + Bing +
 python3 -m spyeyes domain-emails example.com --guess "John Doe,Jane Smith"   # 加模式生成
 python3 -m spyeyes domain-emails example.com --no-crawl   # 仅被动 6 源,最快
 
+# 🆕 v1.7.0:综合调查(一个域名 → 多源整合档案)
+python3 -m spyeyes investigate example.com --save dossier.html   # whois + mx + 子域 + 邮箱 并发,再接力 IP / 用户名
+python3 -m spyeyes investigate example.com --depth 0             # 只跑 4 个原子任务,不接力(更快)
+
+# 🆕 v1.8.2:检查 / 一键升级
+python3 -m spyeyes upgrade --check     # 只查不升
+python3 -m spyeyes upgrade --yes       # 跳过确认直接升级(源码安装只提示 git pull 命令)
+
 # 查看历史记录（~/.spyeyes/history.jsonl 自动累积）
 python3 -m spyeyes history --limit 20            # 最近 20 条
 python3 -m spyeyes history --search torvalds     # 按 query 子串过滤
@@ -325,6 +342,17 @@ python -m venv .venv
 pip install -r requirements.txt
 ```
 
+### 注册 `spyeyes` 命令(可选)
+
+```bash
+# 源码目录内 editable 安装(之后任意目录可直接敲 spyeyes;升级用 git pull && pip install -e .)
+pip install -e .
+
+# 或不 clone,直接从 GitHub 装(之后可用 `spyeyes upgrade` 一键升级)
+pipx install git+https://github.com/Akxan/SpyEyes.git
+# PDF 报告需要 reportlab:源码目录内 pip install -e ".[pdf]"(或直接 pip install reportlab)
+```
+
 ---
 
 ## 🔑 API key 配置(可选,免费,提升数据完整性)
@@ -397,19 +425,25 @@ python3 -m spyeyes
 [ 6 ] 域名 MX 记录
 [ 7 ] 邮箱有效性检查
 [ 8 ] 子域名枚举              ← v1.3.0：新增
-[ 9 ] 域名邮箱枚举            ← v1.4.0：新增(OSINT 邮箱挖取)
-[ 10 ] 切换语言 / Language    ← v1.4.0：让位到 [10]
+[ 9 ] 域名邮箱枚举(OSINT 邮箱挖取)   ← v1.4.0：新增
+[ 10 ] 综合调查 (多源整合档案)        ← v1.7.0：新增
+[ 11 ] 切换语言 / Language
+[ 12 ] 检查并升级 SpyEyes             ← v1.8.2：新增
 [ 0 ] 退出
 
- [ + ] 请选择功能 :
+  (在任意子功能中输入 0 或直接回车可返回此菜单)
 
- (在任意子功能中输入 0 或直接回车可返回此菜单)
+ [ + ] 请选择功能 :
 ```
 
 > **菜单流程**:
+> - **首次启动**(没有 `~/.spyeyes/config.json`)先弹语言选择器,选择会被保存
+> - **启动升级提示**(v1.8.2):若后台缓存发现新版且在 TTY 中,进菜单前问 `现在升级? [Y/n]`;选 N 直接进菜单。源码安装选 Y 只显示 `git pull && pip install -e .` 提示,然后照常进入菜单
 > - `[4]` 用户名:先选策略(直接扫 / 变形+扫 / 仅变形)→ 扫描模式 → 可选递归
-> - `[8]` 子域名:输入域名 → 选是否 HTTP probe → 4 阶段实时反馈(被动源 → wildcard → DNS → probe)
-> - `[9]` 域名邮箱:输入域名 → 选是否含 alive 子域 → 可选模式生成姓名 → 可选 SMTP 验证
+> - `[8]` 子域名:输入域名 → 是否 HTTP probe → 是否 DNS 字典爆破 → 4 阶段实时反馈(被动源 → wildcard → DNS → probe)→ 保存前问是否隐藏不可达子域
+> - `[9]` 域名邮箱:输入域名 → 是否含 alive 子域 → 爬取深度(标准 200 页 / 深度 500 页 / 极速 50 页)→ 可选模式生成姓名 → 可选 SMTP 验证
+> - `[10]` 综合调查:输入域名 → 接力深度(标准:带 pivot / 仅原子查询)
+> - `[11]` 切换中/英文 UI,立即生效并保存;`[12]` 强制查 GitHub Releases,有新版则问 Y/N 后升级
 > - 保存报告时弹 `[1-8]` 数字格式菜单 + 默认目录(v1.8.0:源码 → 项目根/Downloads/,打包 → ~/Downloads/spyeyes/),可连续多格式保存
 > - **任何输入步骤**直接回车或 `0` 都返回主菜单(v1.3.2 新增)
 
@@ -417,7 +451,7 @@ python3 -m spyeyes
 
 ```bash
 # 基本用法
-python3 -m spyeyes <subcommand> <args...> [--json] [--save DIR] [--no-color]
+python3 -m spyeyes <subcommand> <args...> [--json] [--save DIR|FILE] [--no-color] [--lang zh|en] [--no-update-check]
 
 # 与 jq 联动（管道处理）
 python3 -m spyeyes ip 8.8.8.8 --json | jq -r '.country'
@@ -453,7 +487,7 @@ python3 -m spyeyes mx gmail.com --save results
 | **HTML** | `.html` | stdlib + 内嵌 CSS | 浏览器查看、邮件附件、外发报告 |
 | **PDF** | `.pdf` | reportlab（可选 `[pdf]`） | 正式调查报告、归档 |
 | **TXT** | `.txt` | stdlib | 复制粘贴到 ticket / IM / 邮件 |
-| **CSV** | `.csv` | csv stdlib + Excel 公式注入防护 | Excel / Google Sheets / pandas |
+| **CSV** | `.csv` | csv stdlib + Excel 公式注入防护（UTF-8 BOM，Excel 打开中文不乱码） | Excel / Google Sheets / pandas |
 | **XMind** | `.xmind` | zipfile + xml stdlib | 思维导图（XMind 8 兼容） |
 | **Graph** | `.graph.html` | D3.js v7 (CDN) | 力导向关系图，可点击跳转 |
 
@@ -475,6 +509,7 @@ python3 -m spyeyes user torvalds --save report.graph.html
 > **注意**：
 > - `--save DIR/`（目录形式，以 `/` 结尾或目录已存在）固定输出 **JSON**，按时间戳命名归档；
 >   要选格式请用具体的文件路径如 `--save report.html`
+> - `investigate` 报告：MD / HTML / TXT / CSV 有专属章节，`.graph.html` 画调查关系图（域名 → 子域 / IP / MX / 邮箱 → 平台账号），PDF / XMind 用通用布局，JSON 始终含完整数据
 > - **报告内容跟随 `--lang`** —— CSV 列头也会本地化（中文 UI 输出 `分类,平台,主页地址,状态`）。
 >   下游用 pandas/jq 等需要稳定列名的脚本，请用 `--lang en` 或直接读 JSON
 
@@ -483,26 +518,27 @@ python3 -m spyeyes user torvalds --save report.graph.html
 ## 🧪 测试
 
 ```bash
-# 安装测试依赖
-pip install pytest pytest-cov
+# 安装运行依赖 + 开发/测试依赖（pytest / ruff / mypy / bandit），并注册 spyeyes 命令
+pip install -r requirements-dev.txt
+pip install -e .
 
 # 跑全部测试
 pytest tests/ -v
 
 # 带覆盖率报告
-pytest tests/ --cov=. --cov-report=term-missing
+pytest tests/ --cov=spyeyes --cov-report=term-missing
+
+# Lint（与 CI lint job 一致）
+ruff check .
+mypy spyeyes tools/build_platforms.py --ignore-missing-imports
+bandit -r spyeyes/ tools/ -ll
 ```
 
 当前测试覆盖：
-- ✅ **306 个测试**，0.6 秒跑完（v1.2.0 完整覆盖）
-- ✅ 覆盖纯函数 + HTTP mock + 边界条件 + SSRF/ReDoS 防御 + 8 种报告格式 × 2 种语言
-- ✅ GitHub Actions 在 macOS / Ubuntu / **Windows** × Python 3.10-3.13 自动测试
-- ✅ 独立 lint job（ruff + mypy + bandit）
-
-```bash
-# 安装运行依赖 + 测试依赖
-pip install -r requirements-dev.txt
-```
+- ✅ **666 个测试**，全部 mock 网络（不发真实请求）
+- ✅ 覆盖纯函数 + HTTP mock + 边界条件 + SSRF/ReDoS 防御 + 8 种报告格式 × 2 种语言 + 中英翻译 key 一致性
+- ✅ GitHub Actions：Linux × Python 3.10–3.14，macOS / **Windows** × Python 3.10 与 3.14
+- ✅ 独立 lint job（ruff + mypy + bandit），通过后才跑测试矩阵
 
 ---
 
@@ -516,6 +552,8 @@ SpyEyes/
 │   └── data/platforms.json     # 3164 平台数据库（合并 Maigret + Sherlock + WhatsMyName）
 ├── README.md                   # 你正在看的这个（中文入口）
 ├── README.en.md                # English entry
+├── CLAUDE.md                   # 架构约定 / 开发须知
+├── pyproject.toml              # 包元数据（版本号、extras、entry point）
 ├── LICENSE                     # Apache 2.0
 ├── NOTICE                      # 版权声明
 ├── requirements.txt            # 运行依赖
@@ -524,14 +562,17 @@ SpyEyes/
 │   ├── TUTORIAL.md             # 详细教程
 │   ├── CHANGELOG.md            # 版本更新日志
 │   ├── CONTRIBUTING.md         # 贡献指南
-│   └── SECURITY.md             # 安全策略
+│   ├── SECURITY.md             # 安全策略
+│   ├── index.md / _config.yml  # GitHub Pages 首页
+│   ├── design/                 # 功能设计文档
+│   └── plans/                  # 实施计划
 ├── tools/
 │   └── build_platforms.py      # 平台数据库重建脚本（拉取上游最新，原子写 + 重试）
 ├── tests/
-│   ├── __init__.py
 │   ├── conftest.py             # autouse fixture（全局状态隔离）
-│   ├── test_spyeyes.py         # 主功能测试（220 个）
-│   └── test_build_platforms.py # 构建工具测试（40 个）
+│   ├── test_spyeyes.py         # 主功能测试
+│   ├── test_investigate.py     # 综合调查测试
+│   └── test_build_platforms.py # 构建工具测试
 ├── .github/
 │   ├── workflows/ci.yml        # GitHub Actions CI（lint job + 多 OS × 多 Python 矩阵）
 │   ├── ISSUE_TEMPLATE/         # bug / 功能 issue 模板

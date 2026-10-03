@@ -11,8 +11,9 @@
    - [Linux (Debian/Ubuntu)](#linux-debianubuntu-安装)
    - [Termux (Android)](#termux-android-安装)
    - [Windows](#windows-安装)
-4. [启动与菜单导航](#启动与菜单导航)
-5. [功能详解](#功能详解)
+4. [API key 配置(可选)](#api-key-配置可选免费)
+5. [启动与菜单导航](#启动与菜单导航)
+6. [功能详解](#功能详解)
    - [① IP 追踪](#-ip-追踪)
    - [② 查看本机 IP](#-查看本机-ip)
    - [③ 电话号码追踪](#-电话号码追踪)
@@ -22,11 +23,13 @@
    - [⑦ 邮箱有效性检查](#-邮箱有效性检查)
    - [⑧ 子域名枚举（v1.3.0 → v1.6.1)](#-子域名枚举v130)
    - [⑨ 域名邮箱枚举（v1.4.0 → v1.6.0)](#-域名邮箱枚举v140)
-   - [⑩ Diff 模式 + 批量域名（v1.5.0)](#-diff--批量v150)
-6. [命令行模式（脚本调用）](#命令行模式脚本调用)
-7. [常见问题排查](#常见问题排查)
-8. [已知限制](#已知限制)
-9. [法律与道德提醒](#法律与道德提醒)
+   - [⑩ Diff 模式 + 批量域名（v1.5.0)](#-diff-模式--批量v150)
+   - [⑪ 综合调查（v1.7.0)](#-综合调查v170)
+   - [⑫ 一键升级 + 版本检查（v1.8.2)](#-一键升级--版本检查v182)
+7. [命令行模式（脚本调用）](#命令行模式脚本调用)
+8. [常见问题排查](#常见问题排查)
+9. [已知限制](#已知限制)
+10. [法律与道德提醒](#法律与道德提醒)
 
 ---
 
@@ -47,6 +50,9 @@ SpyEyes 是一个用 Python 编写的命令行 OSINT 工具，作为 Python 包�
 | 域名邮箱枚举（v1.4.0 → v1.6.0） | **6 源全并发**(crt.sh + WHOIS + Bing SERP + DuckDuckGo + Wayback + GitHub commits)**全免费** + 深度爬虫 + 模式生成 + 可选 SMTP 验证 | 是 |
 | **Diff 模式（v1.5.0）** | 对比两次子域 JSON 扫描结果,挖出新增/消失/变更 | 否(纯本地计算) |
 | **批量域名（v1.5.0）** | `--batch domains.txt` 逐个扫描,可写每域独立报告 | 是 |
+| **综合调查（v1.7.0）** | 一个域名 → WHOIS + MX + 子域名 + 域名邮箱并发,再接力 IP 情报 / 用户名扫描,出整合档案 | 是 |
+| **一键升级（v1.8.2）** | GitHub Releases 版本检查(24h 缓存)+ `spyeyes upgrade` 按安装方式自动升级 | 是 |
+| **查询历史** | `spyeyes history`,读取 `~/.spyeyes/history.jsonl`(只存查询元数据) | 否 |
 
 > 所有数据查询均依赖**公开渠道**，工具本身不存储任何个人信息，也不绕过任何访问控制。
 
@@ -61,7 +67,8 @@ SpyEyes 是一个用 Python 编写的命令行 OSINT 工具，作为 Python 包�
   - `dnspython` —— DNS 查询（MX 记录、邮箱验证）
   - `python-whois` —— WHOIS 查询
 - **系统命令**：`git`（仅用于下载源码）
-- **可选（开发）**：`pytest`（运行测试套件）
+- **可选**：`reportlab`（PDF 报告，源码目录内 `pip install -e ".[pdf]"` 或直接 `pip install reportlab`）；`subfinder` 二进制（子域名接力 30+ 数据源）
+- **可选（开发）**：`pip install -r requirements-dev.txt`（pytest / ruff / mypy / bandit）
 
 ---
 
@@ -132,6 +139,17 @@ pip install -r requirements.txt
 python -m spyeyes
 ```
 
+### 可选：注册 `spyeyes` 命令 / pipx 安装
+
+```bash
+# 源码目录内 editable 安装 —— 之后任意目录可直接敲 spyeyes
+# (升级:git pull && pip install -e .)
+pip install -e .
+
+# 或不 clone,直接从 GitHub 装到独立环境 —— 之后可用 `spyeyes upgrade` 一键升级
+pipx install git+https://github.com/Akxan/SpyEyes.git
+```
+
 ---
 
 ## API key 配置(可选,免费)
@@ -177,13 +195,26 @@ SPYEYES_GITHUB_TOKEN=ghp_your_pat_here
 # SPYEYES_DNS_WORDLIST=/path/to/all.txt
 
 # ~~~~~ 固定报告目录(可选)~~~~~
-# 默认 <cwd>/Downloads/;服务器场景常用 /var/log/spyeyes
+# 默认(v1.8.0+):源码运行 → <项目根>/Downloads/;pip/pipx 安装 → ~/Downloads/spyeyes/
+# 服务器场景常用 /var/log/spyeyes
 # SPYEYES_REPORTS_DIR=/var/log/spyeyes
+
+# ~~~~~ 其它开关(可选)~~~~~
+# subdomain 总是启用 DNS 字典爆破(等价 --bruteforce)
+# SPYEYES_BRUTEFORCE=1
+# 关闭启动时的 GitHub 版本检查(等价 --no-update-check)
+# SPYEYES_NO_UPDATE_CHECK=1
+# 不写 ~/.spyeyes/history.jsonl(隐私模式)
+# SPYEYES_NO_HISTORY=1
+# 没有 --lang 也没有 ~/.spyeyes/config.json 时的默认语言(zh 开头 → 中文,其它 → 英文)
+# SPYEYES_LANG=zh
 EOF
 
 # 锁权限(只本用户可读)
 chmod 600 ~/.spyeyes/env
 ```
+
+> 格式:每行一个 `KEY=VALUE`,值可加引号;`#` 开头的整行是注释。**不要在值后面写行内注释**(会被当成值的一部分)。
 
 ### 替代方式:shell 配置文件
 
@@ -232,7 +263,7 @@ for k in keys:
  >>>
 ```
 
-选择后会保存到 `~/.spyeyes/config.json`，下次自动用同一语言。后续可以随时通过菜单 `[ 8 ]` 切换。
+选择后会保存到 `~/.spyeyes/config.json`，下次自动用同一语言。后续可以随时通过菜单 `[ 11 ]` 切换。（启动时带了 `--lang zh|en` 则不弹选择器，也不写配置。）
 
 ### 主菜单
 
@@ -252,10 +283,14 @@ for k in keys:
 [ 5 ] 域名 WHOIS 查询
 [ 6 ] 域名 MX 记录
 [ 7 ] 邮箱有效性检查
-[ 8 ] 子域名枚举              ← v1.3.0 新增
-[ 9 ] 域名邮箱枚举            ← v1.4.0 新增
-[ 10 ] 切换语言 / Language
+[ 8 ] 子域名枚举                      ← v1.3.0 新增
+[ 9 ] 域名邮箱枚举(OSINT 邮箱挖取)    ← v1.4.0 新增
+[ 10 ] 综合调查 (多源整合档案)         ← v1.7.0 新增
+[ 11 ] 切换语言 / Language
+[ 12 ] 检查并升级 SpyEyes              ← v1.8.2 新增
 [ 0 ] 退出
+
+  (在任意子功能中输入 0 或直接回车可返回此菜单)
 
  [ + ] 请选择功能 :
 ```
@@ -264,7 +299,9 @@ for k in keys:
 
 - 输入对应**数字**后回车
 - 每个功能跑完会提示「按回车键继续」—— 按回车回到主菜单
-- `[ 10 ]` 随时切换中/英文 UI,立即生效并保存(v1.4.0 加入域名邮箱菜单后从 [9] 移到 [10])
+- `[ 11 ]` 随时切换中/英文 UI,立即生效并保存(v1.7.0 加入综合调查后从 [10] 移到 [11])
+- `[ 12 ]` 检查并升级:强制查询 GitHub Releases,有新版则问 `[Y/n]` 后升级(详见 [⑫](#-一键升级--版本检查v182))
+- **启动升级提示**(v1.8.2):若后台缓存发现新版且在 TTY 中,进菜单前会问 `现在升级? [Y/n]`;选 N 直接进菜单。源码安装选 Y 只显示 `git pull && pip install -e .` 提示,按回车后照常进入菜单
 - **任何子功能输入步骤**输入 `0` 或直接回车都返回主菜单(v1.3.2 新增)
 - 任何时候按 `Ctrl + C` 可以强制退出
 - 输入非数字（如字母）会提示「请输入数字」并重新让你选
@@ -278,7 +315,7 @@ python3 -m spyeyes --lang en ip 8.8.8.8     # 强制英文输出
 python3 -m spyeyes --lang zh user torvalds  # 强制中文输出
 ```
 
-语言优先级：**`--lang` 标志 > 配置文件 > 环境变量 `LANG` > 默认（中文）**
+语言优先级：**`--lang` 标志 > 配置文件 `~/.spyeyes/config.json` > 环境变量 `SPYEYES_LANG` / `LC_ALL` / `LANG`**（值以 `zh` 开头 → 中文，其它或未设置 → 英文）。CLI 模式不会弹语言选择器。
 
 ---
 
@@ -423,19 +460,19 @@ python3 -m spyeyes --lang zh user torvalds  # 强制中文输出
  共扫描 3164 个平台，命中 317 个：
  （仅显示命中；用 --all 查看未命中）
 
- ┌─ 代码与开发 (26/54) ─
+ ┌─ 代码与开发 (26/115) ─
  [ + ] GitHub                         https://github.com/torvalds
  [ + ] GitLab                         https://gitlab.com/torvalds
  [ + ] Bitbucket                      https://bitbucket.org/torvalds
  ...
 
- ┌─ 中文平台（陆/台/港/星/马） (12/46) ─
+ ┌─ 中文平台（陆/台/港/星/马） (12/48) ─
  [ + ] CSDN                           https://blog.csdn.net/torvalds
  [ + ] V2EX                           https://v2ex.com/member/torvalds
  [ + ] Dcard 狄卡                     https://www.dcard.tw/@torvalds
  ...
 
- ┌─ 西语圈（西班牙/拉美） (8/52) ─
+ ┌─ 西语圈（西班牙/拉美） (8/58) ─
  [ + ] MercadoLibre AR                https://perfil.mercadolibre.com.ar/torvalds
  [ + ] Wallapop                       https://es.wallapop.com/user/torvalds
  ...
@@ -445,24 +482,24 @@ python3 -m spyeyes --lang zh user torvalds  # 强制中文输出
 
 | 类别 | 数量 | 典型平台 |
 |---|---:|---|
-| `code` | 54 | GitHub / GitLab / LeetCode / CodePen ... |
-| `social` | 82 | Twitter / Facebook / Mastodon / Bluesky ... |
-| `forum` | 283 | Reddit / Quora / Disqus + 各国论坛 |
-| `video` | 13 | YouTube / TikTok / Twitch / Vimeo ... |
-| `music` | 8 | SoundCloud / Bandcamp / Last.fm ... |
-| `writing` | 35 | Medium / Substack / 简书 ... |
-| `art` | 16 | DeviantArt / ArtStation / Behance ... |
-| `gaming` | 41 | Steam / Itch.io / Lichess ... |
-| `funding` | 14 | Patreon / Ko-fi / OpenCollective ... |
-| **`chinese`** | **46** | 微博 · 知乎 · CSDN · V2EX · 简书 · Dcard · Mobile01 · 巴哈姆特 · PIXNET · LIHKG · Shopee TW/SG/MY · ... |
-| **`spanish`** | **52** | Wallapop · MercadoLibre AR/MX/BR · Menéame · Taringa · Forocoches · Hispachan · Forosperu · Xataka · ... |
-| **`adult`** | **83** | OnlyFans · Fansly · Chaturbate · Pornhub · XVideos · 等成人/约会/CAM 平台（OSINT 用途独立分类） |
-| `other` | 1340 | Maigret 长尾（小众/地区性） |
+| `code` | 115 | GitHub / GitLab / LeetCode / CodePen ... |
+| `social` | 99 | Twitter / Facebook / Mastodon / Bluesky ... |
+| `forum` | 733 | Reddit / Quora / Disqus + 各国论坛 |
+| `video` | 25 | YouTube / TikTok / Twitch / Vimeo ... |
+| `music` | 22 | SoundCloud / Bandcamp / Last.fm ... |
+| `writing` | 51 | Medium / Substack / 简书 ... |
+| `art` | 59 | DeviantArt / ArtStation / Behance ... |
+| `gaming` | 97 | Steam / Itch.io / Lichess ... |
+| `funding` | 13 | Patreon / Ko-fi / OpenCollective ... |
+| **`chinese`** | **48** | 微博 · 知乎 · CSDN · V2EX · 简书 · Dcard · Mobile01 · 巴哈姆特 · PIXNET · LIHKG · Shopee TW/SG/MY · ... |
+| **`spanish`** | **58** | Wallapop · MercadoLibre AR/MX/BR · Menéame · Taringa · Forocoches · Hispachan · Forosperu · Xataka · ... |
+| **`adult`** | **91** | OnlyFans · Fansly · Chaturbate · Pornhub · XVideos · 等成人/约会/CAM 平台（OSINT 用途独立分类） |
+| `other` | 1753 | Maigret 长尾（小众/地区性）；`--quick` 跳过这一类，只扫其余 ~1411 个 |
 
 **性能 / 调优**：
 
-- 默认 **150 线程并发**（v1.2.0 从 100 升级），~20 秒完成 3164 平台全扫描；可用 `--workers N` 调节（1-200）
-- 默认**只显示命中**（不然 3164 行太多）—— `--all` / `[ 4 ] 用户名追踪` 后用 `--all` 选项查看完整报告
+- 默认 **150 线程并发**（v1.2.0 从 100 升级），~20 秒完成 3164 平台全扫描；可用 `--workers N` 调节（1-200），单平台超时 `--timeout`（默认 5 秒）
+- 默认**只显示命中**（不然 3164 行太多）—— CLI 加 `--all` 查看完整报告（含未命中）
 - **三重检测逻辑**：HTTP 200 → 不含 `not_found` 模式（如 "page not found"） → 含 `must_contain` 模式（如平台特征 HTML）
 - **v1.2.0 菜单流程**：进入 `[4]` 后先选策略：
   - `1` 直接扫描原始用户名
@@ -472,7 +509,7 @@ python3 -m spyeyes --lang zh user torvalds  # 强制中文输出
 
 **重要说明**：
 
-> ⚠️ **3164 平台中约 1755 个为 Maigret 长尾**，许多是小众/地区性站点。命中率因平台而异：
+> ⚠️ **3164 平台中约 1753 个为 `other` 长尾（主要来自 Maigret）**，许多是小众/地区性站点。命中率因平台而异：
 > - 主流平台（GitHub / Twitter / Reddit）：精度 95%+
 > - 中文/西语精选区域：精度 85%+（手工 curate 过）
 > - Maigret 长尾：精度 70-80%（部分有 must_contain 验证）
@@ -587,7 +624,13 @@ python3 -m spyeyes --lang zh user torvalds  # 强制中文输出
 是否抓 HTTP <title> 信息？
    [ 1 ] 是（默认）  [ 2 ] 否
   请选择 [1/2，默认 1] : 1
+
+是否启用 DNS 字典爆破？(~220 个前缀，+5-15 秒)
+   [ 1 ] 否（默认，仅被动源）  [ 2 ] 是（更全面）
+  请选择 [1/2，默认 1] : 1
 ```
+
+扫描结束后、保存报告前还会问一次「保存报告时是否隐藏不可达子域？」（默认是，效果同 `--alive-only`）。
 
 **输出示例**(中文 UI):
 
@@ -596,7 +639,7 @@ python3 -m spyeyes --lang zh user torvalds  # 强制中文输出
 
  子域名枚举：example.com
  共发现 8 个 · 活跃 1 个 · 来自 2 个数据源
- 数据源：threatcrowd=0, otx=0, crtsh=6, hackertarget=2
+ 数据源：crtsh=6, hackertarget=2, certspotter=0, otx=0, wayback=0, subfinder=0
 
  ┌─ 活跃子域 (1) ─
  [ + ] example.com                         104.20.23.154, 172.66.147.243   HTTP 200  Example Domain
@@ -639,14 +682,14 @@ python3 -m spyeyes --lang zh user torvalds  # 强制中文输出
 ```json
 {
   "domain": "example.com",
-  "sources": {"crtsh": 6, "hackertarget": 2, "otx": 0, "threatcrowd": 0},
+  "sources": {"crtsh": 6, "certspotter": 0, "hackertarget": 2, "otx": 0, "wayback": 0, "subfinder": 0},
   "wildcard_suspect": false,
   "subdomains": [
     {"host": "example.com", "alive": true,
      "a": ["104.20.23.154"], "aaaa": ["2606:4700:..."], "cname": null,
      "http_status": 200, "title": "Example Domain", "scheme": "https"}
   ],
-  "_stats": {"total": 8, "alive": 1, "probed": 1, "errors": {}}
+  "_stats": {"total": 8, "alive": 1, "probed": 1, "bruteforce_added": 0, "js_extracted": 0, "errors": {}}
 }
 ```
 
@@ -654,10 +697,14 @@ python3 -m spyeyes --lang zh user torvalds  # 强制中文输出
 
 | 选项 | 作用 |
 |---|---|
+| `DOMAIN` / `--batch FILE` | 单个目标域名,或每行一个域名的文件(批量模式见 [⑩](#-diff-模式--批量v150)) |
+| `--batch-save-dir DIR` | 批量模式下逐域写报告的目录 |
 | `--no-probe` | 仅跑 DNS,不发 HTTP(更快,匿名场景) |
-| `--workers N` | DNS / probe 并发数(默认 30,最大 200) |
-| `--timeout T` | 单 probe 超时秒数(默认 5.0) |
-| `--alive-only` | 终端打印仅显示活跃子域(JSON / 报告仍含完整数据) |
+| `--workers N` | DNS 并发数(默认 30,最大 200);HTTP probe 并发取 `max(N, 80)` |
+| `--timeout T` | 单 host HTTP probe 超时秒数(默认 4.0) |
+| `--alive-only` | 只保留活跃子域 —— **终端、JSON 和所有导出报告**都过滤;检测到通配符 DNS 时自动切严格模式(必须有 HTTP 响应或真实 CNAME 才算活) |
+| `--bruteforce` | 启用 DNS 字典爆破(opt-in;内置 ~220 前缀,`SPYEYES_DNS_WORDLIST=/path` 自定义,`SPYEYES_BRUTEFORCE=1` 等价) |
+| `--no-js-extract` | 关闭 JS/HTML body host 提取(默认开) |
 
 **示例**:
 
@@ -666,7 +713,8 @@ python3 -m spyeyes subdomain example.com                  # 默认:被动 + DNS 
 python3 -m spyeyes subdomain example.com --no-probe       # 仅 DNS,~3s
 python3 -m spyeyes subdomain github.io                    # 通配域 → wildcard_suspect=true
 python3 -m spyeyes subdomain example.com --workers 50     # 调高并发
-python3 -m spyeyes subdomain example.com --alive-only     # 只看活跃的(终端简洁)
+python3 -m spyeyes subdomain example.com --alive-only     # 只保留活跃的(终端 / JSON / 报告都过滤)
+python3 -m spyeyes subdomain example.com --bruteforce     # 加 ~220 词字典爆破
 
 # JSON 管道:筛 alive
 python3 -m spyeyes subdomain example.com --json | jq '.subdomains[] | select(.alive)'
@@ -679,11 +727,11 @@ python3 -m spyeyes subdomain example.com --save report.graph.html   # D3.js 力�
 ```
 
 **已知限制**:
-- 只能找到**曾经申请过 TLS 证书**或被三方平台索引过的子域(被动源的本质)
+- 默认只能找到**曾经申请过 TLS 证书**或被三方平台索引过的子域(被动源的本质);`--bruteforce` 可额外猜常见前缀
 - 内网 / 测试环境 / 未公开的子域抓不到(这是设计取舍,符合 SpyEyes 公开信息原则)
 - HackerTarget 匿名每日 quota 约 50,大量调用会触发限速(其它源仍工作)
 
-**安全声明**:本功能仅查询**已经公开**的子域信息,不做字典暴力枚举,不向目标域名发大量 DNS 查询,符合 SpyEyes "不绕过任何访问控制 / 不发送未授权请求" 原则。HTTP probe 与正常浏览器访问无差,可放心使用。但 **仍建议** 仅对**自己拥有的资产** 或 **书面授权范围内** 的目标使用。
+**安全声明**:本功能**默认纯被动** —— 只汇总**已经公开**的子域信息(CT 日志 / 被动 DNS / 网页归档),再对候选做常规 DNS 解析与 HTTP 探测,符合 SpyEyes "不绕过任何访问控制" 原则。**DNS 字典爆破是 opt-in**(`--bruteforce` / `SPYEYES_BRUTEFORCE=1`),开启后会额外发出数百次 DNS 查询(自定义大字典时更多)。HTTP probe 与正常浏览器访问无差。但 **仍建议** 仅对**自己拥有的资产** 或 **书面授权范围内** 的目标使用,开启字典爆破时尤其如此。
 
 ---
 
@@ -700,6 +748,10 @@ python3 -m spyeyes subdomain example.com --save report.graph.html   # D3.js 力�
 是否包含活跃子域名一起爬取?
    [ 1 ] 是(默认,更全面)  [ 2 ] 否(仅主域,更快)
   请选择 [1/2,默认 1] : 1
+
+爬取深度?
+   [ 1 ] 标准 200 页(默认,约 1 分钟)  [ 2 ] 深度 500 页(约 3-4 分钟)  [ 3 ] 极速 50 页(约 20 秒)
+  请选择 [1/2/3,默认 1] : 1
 
 从姓名生成模式邮箱?用逗号分隔多人(留空跳过): John Doe, Jane Smith
 
@@ -735,26 +787,36 @@ python3 -m spyeyes subdomain example.com --save report.graph.html   # D3.js 力�
 **4 阶段实时反馈**(沿用 v1.3.3 stage 风格):
 
 ```
-阶段 1/4:被动数据源(crt.sh CT 日志 + WHOIS 联系人)...
-   [crtsh] 1 个邮箱
-   [whois] 1 个邮箱
+阶段 1/4:被动数据源(crt.sh / WHOIS / Bing / DDG / Wayback / GitHub)...
+   [   crtsh] 1 个邮箱
+   [   whois] 1 个邮箱
+   [    bing] 0 个邮箱
+   [     ddg] 0 个邮箱
+   [ wayback] 0 个邮箱
+   [  github] 0 个邮箱
 阶段 2/4:发现可爬取的活跃子域名 ...
    3 个爬取目标
 阶段 3/4:深度爬取 3 个目标(robots.txt + sitemap.xml + BFS)...
-   [crawl] pages=47/500 emails=8 queue=14
-   [example.com] pages=47 emails=8
+   [example.com] pages=47/66 emails=8 queue=14
+   [1/3] example.com  pages=47 emails=8
 阶段 3.5/4:从提供的姓名生成模式邮箱 ...
    2 个模式邮箱生成
 ```
 
-**4 路并行数据源(默认全开)**:
+> 阶段 1 实际是 **6 个被动源并发**(crt.sh / WHOIS / Bing / DuckDuckGo / Wayback / GitHub),总耗时约等于最慢的那个源。阶段 3 的 `pages=47/66`:`--max-pages` 是**总页数预算**,按爬取目标均分(默认 200 ÷ 3 个目标 ≈ 66 页/目标,每个至少 10 页)。
+
+**数据来源(6 个被动源并发 + 深度爬虫 + 可选项)**:
 
 | 来源 | 提取的内容 | 默认开关 |
 |---|---|---|
 | **crt.sh CT 日志** | 证书 SAN/email 字段(管理员邮箱常出现) | ✓ |
 | **WHOIS 联系人** | 注册联系人邮箱(`registrant.email` / `admin.email`) | ✓ |
-| **深度爬取主域** | robots.txt + sitemap.xml + BFS 内部链接(默认 500 页/深度 5) | ✓ |
-| **含 alive 子域** | 复用 `enumerate_subdomains` 拿活跃子域,逐个爬 | ✓ `--no-include-subdomains` 关 |
+| **Bing 搜索** | `"@domain" site:domain` 搜索结果页中的邮箱(免费、无需 key) | ✓ |
+| **DuckDuckGo 搜索** | HTML 版搜索结果页中的邮箱(免费、无需 key) | ✓ |
+| **Wayback Machine** | 历史归档快照里的邮箱(能挖到已下线页面) | ✓ |
+| **GitHub commits** | commit 作者邮箱(`SPYEYES_GITHUB_TOKEN` 可放宽限速) | ✓ |
+| **深度爬取主域** | robots.txt + sitemap.xml + BFS 内部链接(默认总预算 200 页 / 深度 5) | ✓ `--no-crawl` 关 |
+| **含 alive 子域** | 复用子域名枚举,只爬有 HTTP 响应的活跃子域 | ✓ `--no-include-subdomains` 关 |
 | **模式生成** | 用户给姓名 → `firstname.lastname` / `f.lastname` / `fl` 等 ~10 变体 | opt-in `--guess` |
 | **SMTP 验证** | HELO+MAIL+RCPT 探测候选邮箱真实性 | opt-in `--verify-smtp` |
 
@@ -762,9 +824,9 @@ python3 -m spyeyes subdomain example.com --save report.graph.html   # D3.js 力�
 
 | 选项 | 作用 |
 |---|---|
-| `--no-crawl` | 跳过深度爬取,仅 crt.sh + WHOIS(最快,~3s) |
+| `--no-crawl` | 跳过深度爬取,仅 6 个被动源(最快) |
 | `--no-include-subdomains` | 仅爬主域,不含 alive 子域(更快) |
-| `--max-pages N` | 爬取上限(默认 500) |
+| `--max-pages N` | 爬取**总**页数预算(默认 200,最大 2000),按爬取目标均分 |
 | `--crawl-depth N` | BFS 深度(默认 5) |
 | `--ignore-robots` | 忽略 robots.txt(用慎重) |
 | `--guess "John Doe,Jane Smith"` | 用姓名生成 ~10 个模式邮箱 |
@@ -774,7 +836,8 @@ python3 -m spyeyes subdomain example.com --save report.graph.html   # D3.js 力�
 
 ```bash
 python3 -m spyeyes domain-emails example.com               # 默认:被动 + 爬虫 + alive 子域
-python3 -m spyeyes domain-emails example.com --no-crawl    # 仅被动(几秒)
+python3 -m spyeyes domain-emails example.com --no-crawl    # 仅 6 个被动源(最快)
+python3 -m spyeyes domain-emails example.com --max-pages 500 --no-include-subdomains   # 主域深爬
 python3 -m spyeyes domain-emails example.com --guess "John Doe,Jane Smith"
 python3 -m spyeyes domain-emails example.com --verify-smtp # 高调,自己的域才用
 python3 -m spyeyes domain-emails example.com --json | jq '.emails[]'
@@ -795,6 +858,7 @@ python3 -m spyeyes domain-emails example.com --save report.graph.html # 力导�
 **安全声明**:
 
 - **默认行为合规**:被动 OSINT 源 + 礼貌爬虫(遵守 robots.txt,500ms 单域速率限制)
+- **爬虫不出圈**:只抓目标域及其子域下的 URL(robots.txt 里声明的 sitemap 也一样),不会跟随外链去爬第三方站点
 - **`--ignore-robots` / `--verify-smtp` 高风险**:仅对自己拥有或获得授权的域使用
 - 爬虫与正常浏览器无异,但**仍建议**有授权
 - SMTP 验证连接目标 MX 服务器,**强烈建议**仅自己域使用(否则可能被对方反爬墙记录)
@@ -880,7 +944,9 @@ ls reports/
 
 **特点**:
 - 每行一个域名,`#` 注释 + 空行自动跳过
-- `--batch-save-dir` 自动创建目录,扩展名取 `--save`(默认 `.html`)
+- `--batch-save-dir` 自动创建目录,每个域写 `subdomain_<domain>.<ext>`;扩展名取 `--save`(默认 `.html`)
+- 批量模式下 `--save r.pdf` **只决定报告格式**,必须配合 `--batch-save-dir` 才会写文件(只给 `--save` 会打印警告)
+- 任一域扫描失败,整体退出码为 `1`(全部成功才是 `0`)
 - `--alive-only` 在 batch 下对每个域独立生效
 - Ctrl+C 中断时显示"已完成 N/M",已跑的不丢
 - `--workers` / `--timeout` / `--bruteforce` 等所有 flag 都对每个 domain 生效
@@ -896,8 +962,112 @@ spyeyes subdomain --batch company_domains.txt --batch-save-dir weekly/ \
 spyeyes subdomain --batch authorized_scope.txt --batch-save-dir audit/ \
                    --alive-only --no-js-extract
 
-# 注:`--batch` 与 `--diff` 可组合使用 — 跑批,等几天再跑批,然后对每个域 diff
+# 注:批量 + diff 可组合 — 用 `--save x.json --batch-save-dir snap_0509/` 跑批得到每域 JSON 快照,
+#     几天后换个目录再跑一次,然后对每个域执行
+#     `spyeyes diff snap_0509/subdomain_a.com.json snap_0513/subdomain_a.com.json`
 ```
+
+---
+
+### ⑪ 综合调查(v1.7.0)
+
+**作用**:只输入一个域名,自动把 WHOIS / MX / 子域名 / 域名邮箱 4 个查询**并发**跑完,再沿着结果做**单向接力(pivot)**:活跃子域的 IP → IP 情报;看起来像真人的邮箱 local-part → 用户名扫描。最后汇成一份整合档案(dossier)。目前只支持**域名**作为输入。
+
+**操作示范**(菜单 `[10]`):
+
+```
+请选择功能 : 10
+请输入目标域名 : example.com
+
+接力深度?
+   [ 1 ] 标准 (子域→IP, 邮箱→用户) — 默认
+   [ 2 ] 仅原子查询 (不接力,更快)
+  请选择 [1/2, 默认 1] : 1
+```
+
+**工作流程**:
+
+1. **阶段 1 —— 4 个原子任务并发**:`whois` + `mx` + `subdomain`(含 HTTP probe,`--no-probe` 关闭)+ `domain-emails`(轻量模式:只爬主域,约 80 页)
+2. **阶段 2a —— 子域 → IP**:活跃子域解析出的 IP 去重后逐个查 IP 情报(国家 / ASN / 组织),最多 `--max-pivot-ips` 个(默认 20)
+3. **阶段 2b —— 邮箱 → 用户名**:邮箱按"像不像真人名"打分排序,取前 `--max-pivot-emails` 个(默认 15),用 local-part 做用户名扫描(默认 quick 模式,跳过 `other` 长尾;`--no-quick` 全扫)。`noreply / info / admin / support / contact / sales ...` 等角色账号**自动跳过**
+4. 全程 `[N/M] ✓ task` 实时进度(只在 TTY 显示,`--json` / 管道时静默)
+
+接力是**单向**的:域名是根,IP 和用户名都是叶子,不会再反查域名,所以不会出现循环。任何一个任务失败只记在自己的槽位,其它任务照常进行。
+
+**CLI 选项**:
+
+| 选项 | 作用 |
+|---|---|
+| `--depth {0,1}` | 接力深度:`1` = 带 pivot(默认),`0` = 只跑阶段 1 的 4 个原子任务 |
+| `--budget 秒` | 时间预算(默认 300);超出后**剩余的 pivot 会被跳过** —— 阶段 1 的任务各有自己的超时,总会跑完;`0` = 不限 |
+| `--max-pivot-ips N` | 子域 → IP 接力上限(默认 20) |
+| `--max-pivot-emails N` | 邮箱 → 用户名接力上限(默认 15) |
+| `--no-quick` | 用户名接力也扫 `other` 长尾平台(更全,更慢) |
+| `--no-probe` | 子域阶段跳过 HTTP probe(更快) |
+
+**示例**:
+
+```bash
+python3 -m spyeyes investigate example.com                            # 默认:4 原子任务 + 接力
+python3 -m spyeyes investigate example.com --depth 0                  # 只要 whois / mx / 子域 / 邮箱,不接力
+python3 -m spyeyes investigate example.com --budget 120 --max-pivot-emails 5
+python3 -m spyeyes investigate example.com --json | jq '._stats'      # tasks / pivots / graph / _stats
+python3 -m spyeyes investigate example.com --save dossier.html        # 整合 HTML 档案
+python3 -m spyeyes investigate example.com --save dossier.graph.html  # 调查关系图
+```
+
+**报告**:Markdown / HTML / TXT / CSV 都有综合调查专属章节;`.graph.html` 画出调查关系图(域名为根 → 子域 / IP / MX / 邮箱 → 平台账号);PDF / XMind 使用通用布局;JSON 始终包含完整数据(`tasks` / `pivots` / `graph` / `_stats`)。
+
+**安全声明**:综合调查只是把上面几个功能串起来,默认不做字典爆破(除非设置了 `SPYEYES_BRUTEFORCE=1`)、不做 SMTP 验证;但它会对目标域发起子域探测和网页爬取,并对邮箱 local-part 做跨平台用户名扫描 —— **请仅对自己拥有或获得书面授权的目标使用**。
+
+---
+
+### ⑫ 一键升级 + 版本检查(v1.8.2)
+
+#### 启动版本检查(v1.8.0)
+
+- 每次运行时在**后台线程**查询 GitHub Releases 最新版本,结果缓存 24 小时(`~/.spyeyes/.update_check.json`),不拖慢启动
+- 有新版时在 **stderr** 打一行提示(不会污染 `--json` 管道输出);离线 / API 失败完全静默
+- 关闭:加 `--no-update-check`,或设置 `SPYEYES_NO_UPDATE_CHECK=1`
+
+#### 三个升级入口
+
+| 入口 | 行为 |
+|---|---|
+| **菜单启动提示** | 进交互菜单时,若缓存发现新版且在 TTY 中,先问 `🆕 新版本 vX 可用 (当前 vY)。现在升级? [Y/n]`;选 N 直接进菜单(下次启动仍会提示) |
+| **菜单 `[12]`** | 强制刷新(绕过 24h 缓存)→ 显示版本对比 + 更新说明链接 → 问 `[Y/n]` → 升级 |
+| **CLI `spyeyes upgrade`** | 同上;`--yes` / `-y` 跳过确认,`--check` 只查不升 |
+
+#### 按安装方式自适应
+
+| 安装方式 | 升级动作 |
+|---|---|
+| `pip install git+https://…` | 自动执行 `python -m pip install --upgrade --no-input git+https://github.com/Akxan/SpyEyes.git@<release-tag>`(钉到提示里宣布的那个 tag) |
+| `pipx install …` | 自动执行 `pipx upgrade spyeyes`;PATH 里找不到 `pipx` 时改为显示等价的 pip 命令并以退出码 1 结束 |
+| 源码(git clone / `pip install -e .`) | **不自动执行**,只提示 `git pull && pip install -e .`(避免和本地改动冲突) |
+
+- 升级成功后进程以退出码 0 结束,并提示**重新启动 spyeyes**(当前进程里加载的还是旧代码)
+- 用户数据 `~/.spyeyes/`(语言、历史、API key)保持不动
+- `spyeyes upgrade` 是显式请求,即使设置了 `SPYEYES_NO_UPDATE_CHECK=1` 也会去查
+
+**用法**:
+
+```bash
+spyeyes upgrade --check            # 只查版本,不安装
+spyeyes upgrade                    # 查 → 问 [Y/n] → 升级
+spyeyes upgrade --yes              # 不问,直接升级(脚本 / 无 TTY 场景必须加)
+spyeyes upgrade --lang en --no-color   # 通用选项同样可用
+```
+
+**`upgrade` 退出码**:
+
+| 退出码 | 含义 |
+|---|---|
+| `0` | 升级成功 / 已是最新 / 用户取消 / `--check` / 源码安装(只提示命令) |
+| `1` | 网络错误(连不上 GitHub Releases)或 pipx 缺失 |
+| `2` | 无 TTY 又没加 `--yes` |
+| `130` | Ctrl-C |
+| 其它 | 透传 pip / pipx 的退出码 |
 
 ---
 
@@ -916,27 +1086,41 @@ python3 -m spyeyes user torvalds
 python3 -m spyeyes whois example.com
 python3 -m spyeyes mx gmail.com
 python3 -m spyeyes email someone@gmail.com
+python3 -m spyeyes subdomain example.com
+python3 -m spyeyes domain-emails example.com
+python3 -m spyeyes investigate example.com
+python3 -m spyeyes diff old.json new.json
+python3 -m spyeyes history
+python3 -m spyeyes upgrade --check
 ```
+
+全部 14 个子命令：`ip` · `myip` · `phone` · `user` · `permute` · `whois` · `mx` · `email` · `subdomain` · `domain-emails` · `history` · `diff` · `investigate` · `upgrade`。`whois` / `mx` 可一次传多个域名批量查询。
 
 ### 通用选项（在 subcommand 前后均可）
 
 | 选项 | 作用 |
 |---|---|
 | `--json` | 输出 JSON 而非美化文本，方便管道处理 |
-| `--save DIR` | 同时把结果保存为 `DIR/<功能>_<时间戳>.json` |
-| `--no-color` | 禁用彩色输出 |
-| `--lang zh\|en` | 强制语言（覆盖配置文件 + 环境变量）|
+| `--save DIR/` | 把结果保存为 `DIR/<功能>_<时间戳>.json`（目录形式固定 JSON） |
+| `--save FILE` | 按后缀选报告格式：`.json` `.md` `.html` `.pdf` `.txt` `.csv` `.xmind` `.graph.html`（见下文 8 种报告格式） |
+| `--no-color` | 禁用彩色输出（也支持 [`NO_COLOR`](https://no-color.org/) 环境变量；非 TTY 自动关闭颜色） |
+| `--lang zh\|en` | 强制语言（覆盖配置文件 + 环境变量，不写入配置）|
+| `--no-update-check` | 本次运行跳过 GitHub 版本检查（等价 `SPYEYES_NO_UPDATE_CHECK=1`） |
+| `--version` | 显示版本号 |
 
 ### user 子命令专属选项
 
 | 选项 | 作用 |
 |---|---|
-| `--workers N` | 并发线程数，默认 **100**（已优化到 Sherlock 级速度），范围 1-200 |
+| `--workers N` | 并发线程数，默认 **150**（已优化到 Sherlock 级速度），范围 1-200 |
+| `--timeout T` | 单平台 HTTP 超时秒数，默认 5 |
 | `--all` | 显示所有平台（含未命中），默认仅显示命中 |
 | `--quick` | 跳过 "other" 长尾，仅扫主流 ~1411 个（v1.1.0 重新校准） |
 | `--category CAT,CAT,...` | 只扫指定类别：`code` / `social` / `chinese` / `spanish` / `forum` / 等 |
 | `--recursive` | **v1.1.0**：递归扫描——抓取命中页面提取次级用户名继续扫 |
 | `--depth N` | **v1.1.0**：递归深度（0-2，默认 2，仅与 `--recursive` 配合） |
+
+> 递归扫描时如果初始用户名本身不合法（空、超过 64 字符等），会直接报错并以退出码 `1` 结束。
 
 ```bash
 python3 -m spyeyes user torvalds --workers 50 --all
@@ -987,14 +1171,15 @@ python3 -m spyeyes permute "张 三" --lang zh
 | **HTML** | `.html` | stdlib + 内嵌 CSS | 浏览器查看、邮件附件 |
 | **PDF** | `.pdf` | reportlab（可选 `[pdf]`） | 正式调查报告 |
 | **TXT** | `.txt` | stdlib | 复制粘贴到 ticket / IM / 邮件 |
-| **CSV** | `.csv` | csv stdlib + 公式注入防护 | Excel / Sheets / pandas |
+| **CSV** | `.csv` | csv stdlib + 公式注入防护（UTF-8 BOM，Excel 直接打开中文不乱码） | Excel / Sheets / pandas |
 | **XMind** | `.xmind` | zipfile + xml stdlib | 思维导图（XMind 8 兼容） |
 | **Graph** | `.graph.html` | D3.js v7 (CDN) | 力导向图，可点击跳转 |
 
 **安装可选 PDF 依赖**：
 
 ```bash
-pip install "spyeyes[pdf]"   # 仅 PDF 需要 reportlab；其它 7 种零依赖
+pip install reportlab       # 仅 PDF 需要；其它 7 种零依赖
+pip install -e ".[pdf]"     # 源码目录内的等价写法（项目尚未发布到 PyPI，暂不能 pip install "spyeyes[pdf]"）
 ```
 
 **示例**：
@@ -1020,21 +1205,21 @@ python3 -m spyeyes whois example.com --save whois.csv
 
 ### 🆕 v1.2.0：交互式连续保存
 
-进入"保存报告 → 是"后会弹出 1-8 数字格式选择菜单，默认路径 `~/Downloads/`。保存后追问"继续保存其它格式？"，可在一次会话中同时输出 HTML + PDF + XMind 等多种格式：
+进入"保存报告 → 是"后会弹出 1-8 数字格式选择菜单。默认目录按 v1.8.0 智能路由：**源码运行 → `<项目根>/Downloads/`**，**pip / pipx 安装 → `~/Downloads/spyeyes/`**，设置 `SPYEYES_REPORTS_DIR=path` 则始终用它。保存后追问"继续保存其它格式？"，可在一次会话中同时输出 HTML + PDF + XMind 等多种格式：
 
 ```
 请选择报告格式 / Choose report format:
   [ 1 ] JSON               (.json)
   [ 2 ] Markdown           (.md)
   [ 3 ] HTML               (.html)
-  [ 4 ] PDF                (.pdf, 需 spyeyes[pdf])
+  [ 4 ] PDF                (.pdf, 需 reportlab)
   [ 5 ] 纯文本             (.txt)
   [ 6 ] CSV                (.csv)
   [ 7 ] XMind 8 思维导图   (.xmind)
-  [ 8 ] 力导向图           (.graph.html, D3.js — 仅用户名扫描)
+  [ 8 ] 力导向图           (.graph.html, D3.js — 用户名 / 子域名 / 邮箱 / 综合调查)
 请选择 [1-8，默认 1] : 3
 
-文件名 [默认 /Users/x/Downloads/username_torvalds_20260502-061500.html]:
+文件名 [默认 /path/to/SpyEyes/Downloads/username_torvalds_20260502-061500.html]:
 
 继续保存其它格式？
   [ 1 ] 是   [ 2 ] 否（默认）
@@ -1073,6 +1258,7 @@ ls results/
 ```bash
 python3 -m spyeyes -h         # 总览
 python3 -m spyeyes ip -h      # 查看 ip 子命令的所有参数
+python3 -m spyeyes investigate -h
 ```
 
 ### 退出码（脚本编程友好）
@@ -1080,8 +1266,21 @@ python3 -m spyeyes ip -h      # 查看 ip 子命令的所有参数
 | 退出码 | 含义 |
 |---|---|
 | `0` | 成功 |
-| `1` | 查询失败（如 API 报错、域名不存在） |
-| `2` | 参数错误 |
+| `1` | 查询失败（如 API 报错、域名不存在）；批量 `whois` / `mx`（多个域名）或 `subdomain --batch` 中**任一项失败**也返回 `1` |
+| `2` | 参数 / 用法错误（如 `diff` 读不到 JSON 文件） |
+
+`upgrade` 有自己的退出码约定（无 TTY 未加 `--yes` → `2`，Ctrl-C → `130` 等），见 [⑫ 一键升级](#-一键升级--版本检查v182)。
+
+### 查询历史（history 子命令）
+
+每次 CLI 查询会把**元数据**（命令、查询对象、命中数等，不含完整结果）追加到 `~/.spyeyes/history.jsonl`：
+
+```bash
+python3 -m spyeyes history                     # 最近 20 条
+python3 -m spyeyes history --limit 50          # 最多 200
+python3 -m spyeyes history --search torvalds   # 按查询内容过滤
+SPYEYES_NO_HISTORY=1 python3 -m spyeyes ...    # 本次不记录（也可写进 ~/.spyeyes/env）
+```
 
 ---
 
@@ -1136,9 +1335,9 @@ python3 -m spyeyes ip -h      # 查看 ip 子命令的所有参数
 
 ---
 
-### Q8: 想换语言怎么办？
+### Q7: 想换语言怎么办？
 
-**菜单方式**：在主菜单选 `[ 8 ] 切换语言 / Language`，立即生效并保存到 `~/.spyeyes/config.json`。
+**菜单方式**：在主菜单选 `[ 11 ] 切换语言 / Language`，立即生效并保存到 `~/.spyeyes/config.json`。
 
 **CLI 方式**：每次加 `--lang en` 或 `--lang zh`（覆盖一次，不写入配置）。
 
@@ -1146,20 +1345,35 @@ python3 -m spyeyes ip -h      # 查看 ip 子命令的所有参数
 
 ---
 
-### Q9: 平台数据库怎么更新？
+### Q8: 平台数据库怎么更新？
 
 ```bash
 python3 tools/build_platforms.py
 ```
 
-会从 Maigret + Sherlock + WhatsMyName 三个上游 GitHub 仓库拉取最新 sites 数据，过滤、去重、自动分类后覆盖 `data/platforms.json`。建议每月跑一次。
+会从 Maigret + Sherlock + WhatsMyName 三个上游 GitHub 仓库拉取最新 sites 数据，过滤、去重、自动分类后覆盖 `spyeyes/data/platforms.json`。建议每月跑一次。
+
+---
+
+### Q9: 怎么升级 SpyEyes？
+
+- 源码安装（git clone）：`git pull && pip install -r requirements.txt`（装过 `pip install -e .` 的话再跑一次 `pip install -e .`）
+- pip / pipx 安装：`spyeyes upgrade`，或在菜单选 `[ 12 ]`
+
+详见 [⑫ 一键升级](#-一键升级--版本检查v182)。
+
+---
+
+### Q10: 输出不想要颜色 / 想在脚本里用
+
+加 `--no-color`，或设置环境变量 `NO_COLOR=1`；输出不是终端（管道 / 重定向）时会自动关闭颜色，进度信息写 stderr 且只在 TTY 时显示，`--json` 输出可以直接接 `jq`。
 
 ---
 
 ## 已知限制
 
 1. **数据语言**：`ipwho.is` 返回的城市/地区名仍为英文（国家名已通过本地映射表译成中文）
-2. **用户名扫描准确率有限**：约 1340 个 Maigret 长尾平台仅做基本检测，有 20-30% 误报
+2. **用户名扫描准确率有限**：约 1753 个 `other` 长尾平台（主要来自 Maigret）仅做基本检测，有 20-30% 误报
 3. **登录墙平台**：LinkedIn / Instagram / TikTok 强反爬，命中率较低
 4. **WHOIS 速度**：跨地区查询某些 TLD 时较慢（10-15 秒）
 5. **无代理支持**：默认走系统直连，无内置 HTTP/SOCKS 代理选项

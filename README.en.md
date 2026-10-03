@@ -4,17 +4,17 @@
 
 ### All-in-One OSINT Toolkit (Chinese-Enhanced Edition)
 
-**One-shot lookup for IP · Phone · Username · WHOIS · MX · Email · Subdomain · Domain Emails**
+**One-shot lookup for IP · Phone · Username · WHOIS · MX · Email · Subdomain · Domain Emails · Investigate**
 
 [![CI](https://github.com/Akxan/SpyEyes/actions/workflows/ci.yml/badge.svg)](https://github.com/Akxan/SpyEyes/actions/workflows/ci.yml)
 [![codecov](https://codecov.io/gh/Akxan/SpyEyes/branch/main/graph/badge.svg)](https://codecov.io/gh/Akxan/SpyEyes)
 [![License: Apache 2.0](https://img.shields.io/badge/License-Apache_2.0-blue.svg)](https://opensource.org/licenses/Apache-2.0)
 [![Python](https://img.shields.io/badge/Python-3.10%2B-blue.svg?logo=python&logoColor=white)](https://www.python.org/)
-[![Tests](https://img.shields.io/badge/tests-488%20passed-success.svg)](tests/)
+[![Tests](https://img.shields.io/badge/tests-666%20passed-success.svg)](tests/)
 [![Platforms](https://img.shields.io/badge/platforms-3164-orange.svg)](#-comparison-with-similar-tools)
 [![Reports](https://img.shields.io/badge/reports-8%20formats-9cf.svg)](#-report-formats-8-types)
-[![Commands](https://img.shields.io/badge/commands-10-blueviolet.svg)](docs/TUTORIAL.md)
-[![Version](https://img.shields.io/badge/version-1.8.0-blueviolet.svg)](docs/CHANGELOG.md)
+[![Commands](https://img.shields.io/badge/commands-14-blueviolet.svg)](docs/TUTORIAL.md)
+[![Version](https://img.shields.io/badge/version-1.8.2-blueviolet.svg)](docs/CHANGELOG.md)
 [![Docs](https://img.shields.io/badge/docs-online-blue.svg)](https://akxan.github.io/SpyEyes/)
 [![Platform](https://img.shields.io/badge/platform-macOS%20%7C%20Linux%20%7C%20Windows%20%7C%20Termux-lightgrey)](#-installation)
 [![PRs Welcome](https://img.shields.io/badge/PRs-welcome-brightgreen.svg)](docs/CONTRIBUTING.md)
@@ -35,7 +35,7 @@
 
 ## 📖 About
 
-**SpyEyes** is a Python-based command-line **OSINT (Open-Source Intelligence) toolkit**, deeply optimized for Chinese-speaking users. **10 core capabilities**: IP / Phone / Username (3164 platforms) / WHOIS / MX / Email / **Subdomain enum** (6 sources + bruteforce + JS extract) / **Domain email harvest** (6 sources concurrent, all free) / **Diff monitoring** / **Batch input** / **8 Editorial-style report formats**.
+**SpyEyes** is a Python-based command-line **OSINT (Open-Source Intelligence) toolkit**, deeply optimized for Chinese-speaking users. **14 subcommands** covering: IP / Phone / Username (3164 platforms) / WHOIS / MX / Email / **Subdomain enum** (6 sources + bruteforce + JS extract) / **Domain email harvest** (6 sources concurrent, all free) / **Diff monitoring** / **Batch input** / **Investigate** (`investigate`: one domain → concurrent multi-source fan-out + one-way pivots → consolidated dossier) / **One-click upgrade** (`upgrade`) / **8 Editorial-style report formats**.
 
 Designed for **security researchers, penetration testers, SOC analysts, threat hunters, red/blue teamers, CTF players** and anyone curious about open-source intelligence.
 
@@ -56,8 +56,10 @@ Designed for **security researchers, penetration testers, SOC analysts, threat h
 - **🆕 v1.6.1: 100% progress feedback** — every >2s operation has live progress
 - **🆕 v1.8.0: Smart default report dir** — source install (git clone / `pip install -e .`) → `<project_root>/Downloads/` (visible right in the repo); packaged install (pip/pipx/brew) → `~/Downloads/spyeyes/` (never writes to site-packages); `SPYEYES_REPORTS_DIR=path` always wins
 - **🆕 v1.8.0: Startup version check** — 24h-cached comparison against GitHub Releases, prints upgrade hint to stderr when newer version is available; disable with `--no-update-check` or `SPYEYES_NO_UPDATE_CHECK=1`; offline / API failure is fully silent
+- **🆕 v1.7.0: `investigate` dossier** — give it one domain: WHOIS + MX + subdomains + domain emails run concurrently, then pivots automatically (alive-subdomain IPs → IP enrichment; personal-looking email local-parts → username scan) into one consolidated report
 - **🆕 v1.8.0: `investigate` 3-4× faster + live progress** — Phase 2b (email→username) parallelized from serial to 4 concurrent; 15-email scenario drops from ~210s to ~50-80s; full Phase 1/2a/2b live `[N/M] ✓ task` progress feedback; TTY-safe, fully silent in pipes
-- **541 pytest tests**: 4-tool audit clean (ruff 0 / mypy 0 / bandit 0 / pytest), CI on macOS/Linux/Windows × Python 3.10–3.14
+- **🆕 v1.8.2: One-click upgrade** — `spyeyes upgrade [--yes] [--check]`, menu `[12]`, and a `[Y/n]` prompt at menu startup when a newer release is cached; pip installs upgrade to the announced release tag, pipx installs run `pipx upgrade spyeyes`, source installs just get the `git pull && pip install -e .` hint
+- **666 pytest tests**: 4-tool audit clean (ruff 0 / mypy 0 / bandit 0 / pytest), CI on Linux × Python 3.10–3.14 and macOS / Windows × Python 3.10 & 3.14
 
 ---
 
@@ -123,12 +125,19 @@ Designed for **security researchers, penetration testers, SOC analysts, threat h
 - **Batch domain input**: `spyeyes subdomain --batch domains.txt --batch-save-dir reports/` — per-domain reports, Ctrl+C interruptible
 - **`--alive-only` everywhere**: filters CLI / JSON / all 8 export formats
 
+### 🕵 Investigate (v1.7.0 🆕)
+- `spyeyes investigate example.com`: WHOIS + MX + subdomains + domain emails, **4 tasks concurrently**
+- **One-way pivots**: alive-subdomain IPs → IP enrichment; personal-looking email local-parts → username scan (role accounts like noreply / info / admin are skipped)
+- Size it with `--depth 0|1` / `--budget SECONDS` / `--max-pivot-ips` / `--max-pivot-emails`
+- Reports: MD / HTML / TXT / CSV have dedicated sections, `.graph.html` draws the investigation graph, JSON always has the full data
+
 ### 🚀 General Enhancements
 - **CLI args mode**: scriptable
 - **JSON output**: pipe-friendly with jq
 - **Result saving**: `--save DIR` auto-persistence
 - **100% progress feedback** (v1.6.1): every >2s operation has live progress
-- **Color terminal**: auto TTY detection
+- **Color terminal**: auto TTY detection; disable with `--no-color` or the `NO_COLOR` env var
+- **One-click upgrade** (v1.8.2): `spyeyes upgrade` / menu `[12]`
 - **Cross-platform**: macOS / Linux / Windows / Termux
 
 </td>
@@ -149,7 +158,7 @@ Designed for **security researchers, penetration testers, SOC analysts, threat h
 | [Recon-ng](https://github.com/lanmaster53/recon-ng) | ✅ | ❌ | ✅ | ✅ | ✅ | ✅ | ✅ | ❌ | ❌ | ❌ | 1 | ❌ |
 | **SpyEyes** | ✅ | ✅ | ✅ **(3164)** | ✅ | ✅ | ✅ | ✅ **(7 dim)** | ✅ **(6 free)** | ✅ | ✅ | **8** | ✅ |
 
-> 💡 **Positioning**: SpyEyes is **not** trying to outdo Sherlock in username-scan depth. It's a **lightweight all-in-one + Chinese-first + report-rich** OSINT toolkit. For pure username OSINT, Sherlock/Maigret are deeper. For one tool covering 10 commands with 8 export formats and full bilingual UI, SpyEyes is unmatched in the free tier.
+> 💡 **Positioning**: SpyEyes is **not** trying to outdo Sherlock in username-scan depth. It's a **lightweight all-in-one + Chinese-first + report-rich** OSINT toolkit. For pure username OSINT, Sherlock/Maigret are deeper. For one tool covering 14 commands with 8 export formats and full bilingual UI, SpyEyes is unmatched in the free tier.
 
 ---
 
@@ -239,6 +248,17 @@ python3 -m spyeyes domain-emails example.com           # crt.sh + WHOIS + Bing +
 python3 -m spyeyes domain-emails example.com --guess "John Doe,Jane Smith"   # + pattern generation
 python3 -m spyeyes domain-emails example.com --no-crawl   # 6 passive sources only, fastest
 
+# 🆕 v1.7.0: Investigate (one domain → consolidated multi-source dossier)
+python3 -m spyeyes investigate example.com --save dossier.html   # whois + mx + subdomains + emails concurrently, then IP / username pivots
+python3 -m spyeyes investigate example.com --depth 0             # 4 atomic tasks only, no pivots (faster)
+
+# 🆕 v1.8.2: Check for / install updates
+python3 -m spyeyes upgrade --check     # check only
+python3 -m spyeyes upgrade --yes       # upgrade without prompting (source installs only get the git pull hint)
+
+# Query history (~/.spyeyes/history.jsonl, disable with SPYEYES_NO_HISTORY=1)
+python3 -m spyeyes history --search torvalds
+
 # JSON + save
 python3 -m spyeyes ip 8.8.8.8 --json --save results/
 ```
@@ -316,6 +336,52 @@ python -m venv .venv
 pip install -r requirements.txt
 ```
 
+### Register the `spyeyes` command (optional)
+
+```bash
+# Editable install inside the source checkout (then run `spyeyes` from anywhere; upgrade with git pull && pip install -e .)
+pip install -e .
+
+# Or install straight from GitHub without cloning (then `spyeyes upgrade` can upgrade it for you)
+pipx install git+https://github.com/Akxan/SpyEyes.git
+# PDF reports need reportlab: pip install -e ".[pdf]" inside the checkout (or simply pip install reportlab)
+```
+
+---
+
+## 🔑 API keys (optional, free)
+
+SpyEyes works out of the box with free sources and no keys. Optional keys go in `~/.spyeyes/env` (one `KEY=VALUE` per line, auto-loaded at startup; variables already exported in your shell win):
+
+```bash
+mkdir -p ~/.spyeyes
+cat > ~/.spyeyes/env << 'EOF'
+SPYEYES_OTX_API_KEY=your_otx_key
+SPYEYES_CERTSPOTTER_API_KEY=your_certspotter_key
+PDCP_API_KEY=your_pdcp_key
+SPYEYES_GITHUB_TOKEN=ghp_your_token
+# SPYEYES_PHONE_API_KEY=numverify:your_key
+# SPYEYES_DNS_WORDLIST=/path/to/all.txt
+# SPYEYES_REPORTS_DIR=/var/log/spyeyes
+# SPYEYES_NO_UPDATE_CHECK=1
+# SPYEYES_NO_HISTORY=1
+EOF
+chmod 600 ~/.spyeyes/env
+```
+
+| Key | Purpose |
+|---|---|
+| `SPYEYES_OTX_API_KEY` | AlienVault OTX (subdomain passive DNS) — higher quota |
+| `SPYEYES_CERTSPOTTER_API_KEY` | SSLMate CertSpotter (CT logs) — higher quota |
+| `PDCP_API_KEY` | ProjectDiscovery key, read by the optional `subfinder` binary |
+| `SPYEYES_GITHUB_TOKEN` | GitHub commit-email search (domain-emails) — higher rate limit |
+| `SPYEYES_PHONE_API_KEY` | `numverify:KEY` enables realtime phone carrier lookup |
+| `SPYEYES_DNS_WORDLIST` | Custom wordlist for `subdomain --bruteforce` (`SPYEYES_BRUTEFORCE=1` = always bruteforce) |
+| `SPYEYES_REPORTS_DIR` | Fixed interactive report dir (default: `<repo>/Downloads/` for source installs, `~/Downloads/spyeyes/` for pip/pipx) |
+| `SPYEYES_NO_UPDATE_CHECK` | `1` disables the 24h-cached GitHub release check |
+| `SPYEYES_NO_HISTORY` | `1` stops writing `~/.spyeyes/history.jsonl` |
+| `SPYEYES_LANG` | Default UI language when no `--lang` / saved config (`zh*` → Chinese, otherwise English) |
+
 ---
 
 ## 📋 Usage
@@ -326,11 +392,39 @@ pip install -r requirements.txt
 python3 -m spyeyes
 ```
 
+```
+[ 1 ] IP Tracker
+[ 2 ] My Public IP
+[ 3 ] Phone Number Tracker
+[ 4 ] Username Scanner                      ← includes the permutation sub-flow
+[ 5 ] Domain WHOIS Lookup
+[ 6 ] Domain MX Records
+[ 7 ] Email Validator
+[ 8 ] Subdomain Enumeration
+[ 9 ] Domain Emails (OSINT email harvest)
+[ 10 ] Investigate (multi-source dossier)   ← v1.7.0
+[ 11 ] Language / 语言
+[ 12 ] Check & Upgrade SpyEyes              ← v1.8.2
+[ 0 ] Exit
+
+  (In any sub-menu, enter 0 or press Enter to return here)
+```
+
+> **Menu flow**:
+> - **First run** (no `~/.spyeyes/config.json`) shows a language picker; the choice is saved
+> - **Startup upgrade prompt** (v1.8.2): if a newer release is cached and stdin is a TTY, you're asked `Upgrade now? [Y/n]` before the menu; N goes straight to the menu. On a source install, Y only shows the `git pull && pip install -e .` hint and then continues into the menu
+> - `[4]` Username: pick a strategy (scan as-is / permute + scan / permute only) → scan mode → optional recursion
+> - `[8]` Subdomain: domain → HTTP probe? → DNS bruteforce? → 4 live stages → before saving, asked whether to hide unreachable hosts
+> - `[9]` Domain emails: domain → include alive subdomains? → crawl depth (standard 200 pages / deep 500 / quick 50) → optional name-pattern guessing → optional SMTP verify
+> - `[10]` Investigate: domain → pivot depth (standard with pivots / atomic only)
+> - `[11]` switches zh/en UI instantly and saves it; `[12]` forces a GitHub Releases check and offers a Y/N upgrade
+> - Entering `0` or an empty line at **any** sub-prompt returns to the main menu
+
 ### 2️⃣ CLI mode (script-friendly)
 
 ```bash
 # Basic
-python3 -m spyeyes <subcommand> <args> [--json] [--save DIR] [--no-color]
+python3 -m spyeyes <subcommand> <args> [--json] [--save DIR|FILE] [--no-color] [--lang zh|en] [--no-update-check]
 
 # Pipe with jq
 python3 -m spyeyes ip 8.8.8.8 --json | jq -r '.country'
@@ -340,6 +434,10 @@ for ip in 8.8.8.8 1.1.1.1 9.9.9.9; do
   python3 -m spyeyes ip "$ip" --json | jq -r '.ip + " -> " + .country'
 done
 ```
+
+**UI language priority**: `--lang` flag > `~/.spyeyes/config.json` > env `SPYEYES_LANG` / `LC_ALL` / `LANG` (a value starting with `zh` → Chinese, anything else → English).
+
+**Exit codes**: `0` success · `1` query failed (including batch `whois` / `mx` / `subdomain --batch` where any item failed) · `2` usage / argument error. `upgrade` additionally returns `2` without a TTY and without `--yes`, and `130` on Ctrl-C.
 
 ### 3️⃣ Full tutorial (Chinese)
 
@@ -358,7 +456,7 @@ Auto-dispatched by `--save <file>` extension. All formats follow the current UI 
 | **HTML** | `.html` | stdlib + inline CSS | Browser viewing, email attachments |
 | **PDF** | `.pdf` | reportlab (optional `[pdf]`) | Formal investigation reports, archive |
 | **TXT** | `.txt` | stdlib | Paste into tickets / IM / email |
-| **CSV** | `.csv` | csv stdlib + Excel-formula injection guard | Excel / Google Sheets / pandas |
+| **CSV** | `.csv` | csv stdlib + Excel-formula injection guard (UTF-8 with BOM so Excel shows Chinese correctly) | Excel / Google Sheets / pandas |
 | **XMind** | `.xmind` | zipfile + xml stdlib | Mind-map (XMind 8 compatible) |
 | **Graph** | `.graph.html` | D3.js v7 (CDN) | Interactive force-directed graph |
 
@@ -374,6 +472,7 @@ python3 -m spyeyes user torvalds --save report.graph.html
 
 > **Notes**:
 > - `--save DIR/` (trailing slash or existing directory) always writes **JSON** with timestamped names — to pick a format, give a concrete file path like `--save report.html`
+> - `investigate` reports: MD / HTML / TXT / CSV have dedicated sections, `.graph.html` renders the investigation graph (domain → subdomains / IPs / MX / emails → platform accounts), PDF / XMind use the generic layout, JSON always has the full data
 > - **Report content follows `--lang`** — including CSV column headers (zh outputs `分类,平台,主页地址,状态`). Downstream scripts (pandas/jq) needing stable column names should pin `--lang en` or read JSON instead.
 
 ---
@@ -381,19 +480,23 @@ python3 -m spyeyes user torvalds --save report.graph.html
 ## 🧪 Tests
 
 ```bash
-pip install pytest pytest-cov
-pytest tests/ -v
-pytest tests/ --cov=. --cov-report=term-missing
-```
-
-- ✅ **306 tests**, ~0.6 seconds (v1.2.0 comprehensive coverage)
-- ✅ Pure functions + HTTP mocking + edge cases + SSRF/ReDoS defenses
-- ✅ GitHub Actions runs on macOS / Ubuntu / **Windows** × Python 3.10-3.13
-- ✅ Dedicated lint job (ruff + mypy + bandit)
-
-```bash
+# Runtime + dev/test deps (pytest / ruff / mypy / bandit), and register the spyeyes command
 pip install -r requirements-dev.txt
+pip install -e .
+
+pytest tests/ -v
+pytest tests/ --cov=spyeyes --cov-report=term-missing
+
+# Lint (same as the CI lint job)
+ruff check .
+mypy spyeyes tools/build_platforms.py --ignore-missing-imports
+bandit -r spyeyes/ tools/ -ll
 ```
+
+- ✅ **666 tests**, all network access mocked (no real requests)
+- ✅ Pure functions + HTTP mocking + edge cases + SSRF/ReDoS defenses + 8 report formats × 2 languages + en/zh translation key parity
+- ✅ GitHub Actions: Linux × Python 3.10–3.14, macOS / **Windows** × Python 3.10 & 3.14
+- ✅ Dedicated lint job (ruff + mypy + bandit) gates the test matrix
 
 ---
 
@@ -407,6 +510,8 @@ SpyEyes/
 │   └── data/platforms.json     # 3164-platform database (Maigret + Sherlock + WhatsMyName merged)
 ├── README.md                   # 中文 README
 ├── README.en.md                # English README (you are here)
+├── CLAUDE.md                   # Architecture conventions / dev notes
+├── pyproject.toml              # Package metadata (version, extras, entry point)
 ├── LICENSE                     # Apache 2.0
 ├── NOTICE                      # 版权声明
 ├── requirements.txt            # Runtime deps
@@ -415,14 +520,17 @@ SpyEyes/
 │   ├── TUTORIAL.md             # Detailed tutorial (Chinese)
 │   ├── CHANGELOG.md            # Version history
 │   ├── CONTRIBUTING.md         # Contribution guide
-│   └── SECURITY.md             # Security policy
+│   ├── SECURITY.md             # Security policy
+│   ├── index.md / _config.yml  # GitHub Pages landing page
+│   ├── design/                 # Feature design docs
+│   └── plans/                  # Implementation plans
 ├── tools/
 │   └── build_platforms.py      # Refresh platform DB (atomic write + retries)
 ├── tests/
-│   ├── __init__.py
 │   ├── conftest.py             # autouse fixture (global state isolation)
-│   ├── test_spyeyes.py         # Core tests (222)
-│   └── test_build_platforms.py # Build tool tests (40)
+│   ├── test_spyeyes.py         # Core tests
+│   ├── test_investigate.py     # Investigate tests
+│   └── test_build_platforms.py # Build tool tests
 ├── .github/
 │   ├── workflows/ci.yml        # CI (lint job + multi-OS × multi-Python matrix)
 │   ├── ISSUE_TEMPLATE/         # Issue templates

@@ -14,7 +14,7 @@ body:
     attributes:
       label: 版本 / Version
       description: SpyEyes 的 git commit hash 或 release tag
-      placeholder: "v1.0.0 或 main@abc1234"
+      placeholder: "v1.8.2 或 main@abc1234 (spyeyes --version)"
     validations:
       required: true
 
@@ -53,6 +53,12 @@ body:
         - WHOIS
         - MX 记录 / MX records
         - 邮箱验证 / Email validation
+        - 子域名枚举 / Subdomain
+        - 域名邮箱 / Domain emails
+        - 综合调查 / Investigate
+        - Diff / 批量 Batch
+        - 报告导出 / Reports
+        - 升级 / Upgrade
         - CLI 参数 / CLI args
         - 安装 / Installation
         - 其他 / Other
@@ -65,7 +71,7 @@ body:
       label: 复现命令 / Reproduction Command
       description: 完整的命令和输入
       placeholder: |
-        python3 spyeyes.py ip 8.8.8.8 --json
+        python3 -m spyeyes ip 8.8.8.8 --json
       render: bash
     validations:
       required: true

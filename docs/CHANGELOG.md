@@ -10,7 +10,7 @@ This project adheres to [Keep a Changelog](https://keepachangelog.com/en/1.1.0/)
 
 ### Planned
 - 代理支持 (`--proxy http://...` / SOCKS5 / Tor / I2P，借鉴 Maigret)
-- 批量输入模式 (`--batch ips.txt`)
+- IP / 用户名批量输入(`--batch ips.txt`;子域名已在 v1.5.0 支持 `--batch`)
 - HIBP (Have I Been Pwned) 邮箱泄露集成
 - 首次 upload 到 PyPI（package 重构已完成，`pip install .` 已 work，剩 `twine upload`）
 - Docker 镜像
@@ -50,11 +50,13 @@ This project adheres to [Keep a Changelog](https://keepachangelog.com/en/1.1.0/)
 - `investigate` 结果可导出 `.graph.html`:`do_investigate` 早已算好的 nodes/edges 关系图之前没有任何报告使用。
 - 支持 [`NO_COLOR`](https://no-color.org/) 环境变量。
 - 交互模式 + TTY:菜单启动的 Y/N 升级提示替代重复的 stderr 通知;更新缓存改为原子写。
+- 邮箱分组:被 Bing / DDG / Wayback / GitHub 证实的模式邮箱不再被归进「未验证的猜测」(之前只认 crt.sh / WHOIS / 爬取);关系图里猜测邮箱之前映射到不存在的颜色组。
+- 过时文案:力导向图不再标「仅用户名扫描」、被动源阶段列全 6 个源、pipx 缺失提示不再说「降级」、PDF 依赖提示改为 `pip install reportlab`(项目尚未上 PyPI);pyproject 描述同步 14 个子命令。
 - `--help` 示例覆盖全部 14 个子命令;`investigate --depth` 只接受 0/1;`--budget` 帮助如实说明只约束 pivot 阶段。
 - 大量硬编码中 / 英文字符串改走 `t()`(用户名扫描提示、递归总结、批量扫描进度、Diff 输出、子域源状态「(错误)」、XMind 邮箱摘要、变形扫描报告等),英文报告里不再混入中文。
 - 爬虫 BFS 改 `deque` + 入队去重(之前 `list.pop(0)` + 同一导航链接反复入队);子域 DNS 进度计数 O(n²) → O(n)。
 - 清理:4 个无引用 i18n key、函数内重复 import、测试里的残留 `pass  # marker`;CLAUDE.md 全面更新并改为中文(去掉会漂移的行号,补 investigate / upgrade / 测试隔离 / ruff 锁定等约定)。
-- 测试:612 → 659(新增 47 个,其中针对上述 bug 的回归用例在修复前的代码上均失败)。
+- 测试:612 → 666(新增 54 个,其中针对上述 bug 的回归用例在修复前的代码上均失败)。
 
 ---
 

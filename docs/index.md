@@ -5,9 +5,9 @@ title: SpyEyes
 
 # 🔍 SpyEyes
 
-**OSINT 信息查询工具中文增强版** · One-shot toolkit · **10 commands** · IP · Phone · Username · WHOIS · MX · Email · Subdomain · Domain Emails · **Diff** · **Batch**
+**OSINT 信息查询工具中文增强版** · One-shot toolkit · **14 commands** · IP · Phone · Username · WHOIS · MX · Email · Subdomain · Domain Emails · **Diff** · **Batch** · **Investigate** · **Upgrade**
 
-> 一站式 OSINT:IP / 电话 / 用户名(3164 平台)/ WHOIS / MX / 邮箱 / **子域名枚举(7 维度)** / **域名邮箱挖掘(6 源全免费)** / **Diff 监控** / **批量扫描** · 8 种 Editorial 风报告
+> 一站式 OSINT:IP / 电话 / 用户名(3164 平台)/ WHOIS / MX / 邮箱 / **子域名枚举(7 维度)** / **域名邮箱挖掘(6 源全免费)** / **Diff 监控** / **批量扫描** / **综合调查** / **一键升级** · 8 种 Editorial 风报告
 
 [**📖 详细教程 / Tutorial**](TUTORIAL.html) · [**📝 更新日志 / Changelog**](CHANGELOG.html) · [**🤝 贡献指南 / Contributing**](CONTRIBUTING.html) · [**🔒 安全策略 / Security**](SECURITY.html)
 
@@ -29,11 +29,13 @@ title: SpyEyes
 - **🌐 子域名枚举 (v1.3.0 → v1.6.8)** — 6 被动源(crt.sh + CertSpotter + HackerTarget + OTX + **Wayback Machine**)+ **🚀 可选 subfinder 30+ 源** + **DNS 字典爆破** + **JS/HTML host 提取(支持 4xx/5xx title + CNAME 完整 chain)** + DNS + HTTP probe + Wildcard 检测 + **wildcard 严格模式**(v1.6.5 防 DNS 劫持 fake "活")
 - **📧 域名邮箱挖掘 (v1.4.0 → v1.6.6)** — **6 源全并发,完全免费无需注册**:Bing SERP + DuckDuckGo + Wayback + GitHub commits + crt.sh + WHOIS;**HTTP 过滤 + 多 target 并行 BFS 爬虫(3-4× 提速,v1.6.6)**;深度爬虫 + 模式生成 + 可选 SMTP 验证
 - **📊 Diff 模式 + 批量(v1.5.0)** — `spyeyes diff old.json new.json` OSINT 持续监控;`--batch domains.txt` 批量扫描每个域独立报告
+- **🕵 综合调查(v1.7.0)** — `spyeyes investigate example.com`:WHOIS + MX + 子域名 + 域名邮箱 4 路并发,再单向接力(活跃子域 IP → IP 情报;像真人的邮箱 → 用户名扫描),出一份整合档案;`--depth` / `--budget` / `--max-pivot-*` 控规模
+- **⬆️ 一键升级(v1.8.2)** — `spyeyes upgrade [--yes] [--check]` / 菜单 `[12]` / 菜单启动时有新版自动问 `[Y/n]`;pip 安装升级到公告的 release tag,pipx 跑 `pipx upgrade spyeyes`,源码安装只提示 `git pull && pip install -e .`;启动时 24h 缓存的版本检查可用 `--no-update-check` / `SPYEYES_NO_UPDATE_CHECK=1` 关闭
 - **🔑 API key 配置(v1.6.8)** — `~/.spyeyes/env` 跨平台自动加载;OTX / CertSpotter / PDCP / GitHub PAT 等都支持;shell export 优先
 - **📊 8 种 Editorial 风报告** — `JSON / Markdown / HTML / PDF / TXT / CSV / XMind / Graph`,Cormorant Garamond + JetBrains Mono 三件套;**报告显示完整 6 源状态 ✅/⊘/❌**(v1.6.8)
 - **🌍 完整中英双语** UI **+ 报告内容**
 - **📈 100% 进度反馈(v1.6.1)** — 所有 > 2 秒操作均有阶段反馈,告别"看着卡死"
-- **📁 跨平台报告目录(v1.6.3+)** — 所有平台都默认 `<cwd>/Downloads/`,`SPYEYES_REPORTS_DIR` 自定义
+- **📁 智能报告目录(v1.8.0)** — 交互保存默认:源码运行 → `<项目根>/Downloads/`,pip/pipx 安装 → `~/Downloads/spyeyes/`;`SPYEYES_REPORTS_DIR` 始终优先
 
 ## 🔒 安全防护
 
@@ -44,7 +46,7 @@ title: SpyEyes
 - 子域名爬虫 robots.txt 默认遵守 + 单域 500ms 速率限制
 - SMTP 验证 opt-in + 强 disclaimer
 - 隐私选项:`SPYEYES_NO_HISTORY=1` 完全禁用历史
-- **488 个 pytest 测试**,0 红 / **ruff 0 / mypy 0 / bandit 0** 全清,CI 跨 macOS/Linux/Windows × Python 3.10–3.14
+- **666 个 pytest 测试**,0 红 / **ruff 0 / mypy 0 / bandit 0** 全清,CI:Linux × Python 3.10–3.14,macOS / Windows × Python 3.10 与 3.14
 
 ## 🚀 快速开始
 
@@ -53,7 +55,7 @@ git clone https://github.com/Akxan/SpyEyes.git
 cd SpyEyes
 python3 -m venv .venv && source .venv/bin/activate
 pip install -r requirements.txt
-python3 -m spyeyes --version    # spyeyes 1.6.13
+python3 -m spyeyes --version    # spyeyes 1.8.2
 ```
 
 立即体验:
@@ -80,6 +82,12 @@ python3 -m spyeyes diff snap1.json snap2.json --save diff.html
 # 🆕 v1.6.0 域名邮箱(6 源全免费并发)
 python3 -m spyeyes domain-emails example.com           # crt.sh + WHOIS + Bing + DDG + Wayback + GitHub
 python3 -m spyeyes domain-emails example.com --guess "John Doe"
+
+# 🆕 v1.7.0 综合调查(一个域名 → 多源整合档案)
+python3 -m spyeyes investigate example.com --save dossier.html
+
+# 🆕 v1.8.2 检查 / 一键升级
+python3 -m spyeyes upgrade --check
 
 # 8 种报告格式(全 Editorial 风,中英双语)
 python3 -m spyeyes user torvalds --save report.html       # HTML(sticky thead + 颜色编码)
