@@ -14,7 +14,7 @@
 [![Platforms](https://img.shields.io/badge/platforms-3164-orange.svg)](#-与同类工具对比)
 [![Reports](https://img.shields.io/badge/reports-8%20formats-9cf.svg)](#-报告格式8-种)
 [![Commands](https://img.shields.io/badge/commands-14-blueviolet.svg)](docs/TUTORIAL.md)
-[![Version](https://img.shields.io/badge/version-1.8.2-blueviolet.svg)](docs/CHANGELOG.md)
+[![Version](https://img.shields.io/badge/version-1.8.3-blueviolet.svg)](docs/CHANGELOG.md)
 [![Docs](https://img.shields.io/badge/docs-online-blue.svg)](https://akxan.github.io/SpyEyes/)
 [![Platform](https://img.shields.io/badge/platform-macOS%20%7C%20Linux%20%7C%20Windows%20%7C%20Termux-lightgrey)](#-安装)
 [![PRs Welcome](https://img.shields.io/badge/PRs-welcome-brightgreen.svg)](docs/CONTRIBUTING.md)
@@ -59,6 +59,7 @@
 - **🆕 v1.7.0:`investigate` 综合调查** — 输入一个域名,并发跑 WHOIS + MX + 子域名 + 域名邮箱,再自动接力(活跃子域 IP → IP 情报;像真人的邮箱 local-part → 用户名扫描),输出一份整合档案
 - **🆕 v1.8.0:`investigate` 提速 3-4× + 全程进度反馈** — Phase 2b(邮箱→用户名)从串行改 4 并发,15 邮箱场景从 ~210s 降到 ~50-80s;Phase 1/2a/2b 全程实时显示 `[N/M] ✓ task` 进度;TTY 安全,管道完全静默
 - **🆕 v1.8.2:一键升级** — `spyeyes upgrade [--yes] [--check]` + 菜单 `[12]` + 菜单启动时有新版自动问 `[Y/n]`;pip 安装自动升级到公告的 release tag,pipx 安装跑 `pipx upgrade spyeyes`,源码安装只提示 `git pull && pip install -e .`
+- **🆕 v1.8.3:全量审计** — 修复 CSV 中文乱码复发、`--max-pages` 被静默压到 100 页、批量命令失败仍 exit 0 等十余处问题;爬虫只请求本域 sitemap(防 SSRF);`investigate` 可导出关系图 `.graph.html`;支持 `NO_COLOR`;英文报告不再混入中文
 - **666 个 pytest 测试**:4 工具全清(ruff 0 / mypy 0 / bandit 0 / pytest 全绿),CI:Linux × Python 3.10–3.14,macOS / Windows × Python 3.10 与 3.14
 
 ---

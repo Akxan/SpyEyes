@@ -19,6 +19,19 @@ This project adheres to [Keep a Changelog](https://keepachangelog.com/en/1.1.0/)
 - `investigate` 报告:PDF / XMind 专用版式(目前走通用表格;D3 关系图已支持)
 - `investigate --budget` 真·硬超时(需要给阶段 1 原子任务加可取消的超时管道)
 
+---
+
+## [1.8.3] — 2026-10-03
+
+🛠 **全量代码审计版** —— 修复十余处逻辑错误与回退(含 CI lint 随 ruff 发版变红、CSV 中文乱码复发),加固爬虫与一键升级的安全性,文档与当前代码全面对齐。无新依赖。
+
+### ⚠️ 行为变化(升级前请留意)
+
+- 批量 `whois a b` / `mx a b` / `subdomain --batch` 任一项失败 → 退出码 **1**(之前恒为 0)。
+- `domain-emails` 单域名时会真正爬满 `--max-pages`(默认 200 页;之前实际被压成 100 页),耗时相应增加。想更快可用 `--max-pages 100` 或菜单「极速 50 页」。
+- `user` 的用户名含 `<` `>` `"` 会被直接拒绝;`user --recursive` 的初始用户名非法时退出码为 1。
+- pip 安装的一键升级改为安装 **release tag**(`git+…@vX.Y.Z`),而不是 main 分支当前 HEAD。
+
 ### 🐛 修复(全量代码审计)
 
 - **CSV 中文乱码复发**:v1.6.13 加的 UTF-8 BOM(`utf-8-sig`)在 v1.8.0 大提交里被误回退成 `utf-8`,Excel / Numbers 打开中文 CSV 又成乱码。已恢复 + 回归测试。
@@ -2414,5 +2427,6 @@ export SPYEYES_PHONE_API_KEY="numverify:..." # 可选实时 HLR 电话运营商
 
 ---
 
-[Unreleased]: https://github.com/Akxan/SpyEyes/compare/v1.0.0...HEAD
+[Unreleased]: https://github.com/Akxan/SpyEyes/compare/v1.8.3...HEAD
+[1.8.3]: https://github.com/Akxan/SpyEyes/compare/v1.8.2...v1.8.3
 [1.0.0]: https://github.com/Akxan/SpyEyes/releases/tag/v1.0.0
