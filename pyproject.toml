@@ -96,6 +96,12 @@ spyeyes = ["data/*.json"]
 line-length = 120
 target-version = "py310"
 
+[tool.ruff.lint]
+# 显式锁定规则集(= ruff 旧版默认 E4/E7/E9/F)。requirements-dev 里 ruff 未锁上限,
+# 新版 ruff 扩大了默认规则(0.16 起多出 UP/BLE/SIM/RUF 等 160+ 条),
+# 不显式 select 会让 CI lint 随 ruff 发版无声变红。
+select = ["E4", "E7", "E9", "F"]
+
 [tool.mypy]
 python_version = "3.10"
 ignore_missing_imports = true

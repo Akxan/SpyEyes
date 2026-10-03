@@ -15,12 +15,22 @@ import spyeyes as gt  # noqa: E402
 
 _COLOR_ATTRS = ('Bl', 'Re', 'Gr', 'Ye', 'Blu', 'Mage', 'Cy', 'Wh', 'Reset')
 
+# 会改变被测行为的用户环境变量。spyeyes 在 import 时 _load_env_file() 会把开发者
+# ~/.spyeyes/env 里的值注入 os.environ —— 例如本机设了 SPYEYES_NO_HISTORY=1 时,
+# 所有写历史的测试都会失败;SPYEYES_BRUTEFORCE=1 会往子域测试里塞 220 个字典候选。
+# 每个测试前统一清掉,需要的测试再显式 setenv。
+_BEHAVIOR_ENV_VARS = (
+    'SPYEYES_NO_HISTORY', 'SPYEYES_BRUTEFORCE', 'SPYEYES_DNS_WORDLIST',
+    'SPYEYES_REPORTS_DIR', 'SPYEYES_PHONE_API_KEY', 'SPYEYES_GITHUB_TOKEN',
+    'SPYEYES_OTX_API_KEY', 'SPYEYES_CERTSPOTTER_API_KEY', 'NO_COLOR',
+)
+
 
 @pytest.fixture(autouse=True)
 def reset_global_state(tmp_path, monkeypatch):
     """每个测试前后恢复 _lang、Color、thread-local session、PLATFORMS 缓存。
 
-    并全局隔离 CONFIG_DIR / CONFIG_FILE / HISTORY_FILE 到 tmp_path —— 防止
+    并全局隔离 CONFIG_DIR / CONFIG_FILE / HISTORY_FILE / ENV_FILE 到 tmp_path —— 防止
     任何测试静默写入用户真实 ~/.spyeyes/（之前 TestRunCli 等多处遗漏 patch
     CONFIG_DIR 导致每次 pytest 都在用户家目录建空 .spyeyes/ 目录）。
 
@@ -35,6 +45,13 @@ def reset_global_state(tmp_path, monkeypatch):
     monkeypatch.setattr(gt, 'CONFIG_FILE', f'{fake_config_dir}/config.json')
     monkeypatch.setattr(gt, 'HISTORY_FILE', f'{fake_config_dir}/history.jsonl')
     monkeypatch.setattr(gt, 'UPDATE_CACHE_FILE', f'{fake_config_dir}/.update_check.json')
+    monkeypatch.setattr(gt, 'ENV_FILE', f'{fake_config_dir}/env')
+
+    for var in _BEHAVIOR_ENV_VARS:
+        monkeypatch.delenv(var, raising=False)
+    # subfinder 探测结果是模块级缓存:强制"未安装",防止装了 subfinder 的开发机跑真实子进程
+    monkeypatch.setattr(gt, '_SUBFINDER_BIN', None)
+    monkeypatch.setattr(gt, '_SUBFINDER_CHECKED', True)
 
     # 默认禁用更新检查 — 避免测试套件击打 GitHub API。
     # 单个测试需要测 update logic 时,显式 monkeypatch.delenv 'SPYEYES_NO_UPDATE_CHECK'。

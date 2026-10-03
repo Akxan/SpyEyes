@@ -2636,7 +2636,7 @@ class TestNewTranslationKeys:
         new_keys = [
             'permute.title', 'permute.generated',
             'err.permute_empty',
-            'recursive.depth', 'recursive.title', 'msg.recursive_done',
+            'recursive.title', 'msg.recursive_done',
             'err.no_pdf', 'err.pdf_failed',
         ]
         for key in new_keys:
@@ -3985,9 +3985,6 @@ class TestSubdomainStageI18n:
         assert '阶段 1/4' in zh
 
 
-    pass  # marker
-
-
 # ====================================================================
 # v1.4.0: 域名邮箱枚举(多源 OSINT + 深度爬取 + 可选模式 + 可选 SMTP)
 # ====================================================================
@@ -5298,3 +5295,339 @@ class TestRefreshFailureDoesNotClobberCache:
 
         updated = gt._read_update_cache()
         assert updated['latest'] == 'v2.0.0'  # 已更新
+
+
+# ====================================================================
+# 审计修复回归测试(逻辑错误 / 回退 / i18n 补漏 / 安全加固)
+# ====================================================================
+class TestCsvBomRegression:
+    """v1.6.13 加的 UTF-8 BOM 曾在 v1.8.0 被误回退 → Excel 打开中文 CSV 乱码复发。"""
+
+    def test_saved_csv_starts_with_utf8_bom(self, tmp_path):
+        out = tmp_path / 'r.csv'
+        gt._maybe_save(str(out), 'ip_8.8.8.8', {'country': '美国'})
+        raw = out.read_bytes()
+        assert raw.startswith(b'\xef\xbb\xbf'), 'CSV 必须带 UTF-8 BOM'
+        assert '美国' in raw.decode('utf-8-sig')
+
+
+class TestExtractUsernamesNonComDomains:
+    """t.me / mastodon.social / threads.net 分支之前被统一追加 `\\.com/` 而永远匹配不到。"""
+
+    @pytest.mark.parametrize('text,expected', [
+        ('join https://t.me/durov_channel', 'durov_channel'),
+        ('https://mastodon.social/@gargron', 'gargron'),
+        ('https://www.threads.net/@zuckerberg', 'zuckerberg'),
+        ('follow x.com/elonmusk', 'elonmusk'),
+    ])
+    def test_non_com_and_short_domains(self, text, expected):
+        assert expected in gt._extract_usernames_from_text(text, set())
+
+    def test_substring_domain_not_misread_as_x_com(self):
+        """`dropbox.com/foo` 不应被子串误匹配成 `x.com/foo`。"""
+        out = gt._extract_usernames_from_text('see https://dropbox.com/sharedfile', set())
+        assert 'sharedfile' not in out
+
+
+class TestRecursiveInvalidInput:
+    """递归扫描:初始用户名非法时顶层必须有 _error(之前 exit 0 + 「扫描 0 个平台」)。"""
+
+    def test_invalid_username_propagates_error(self):
+        r = gt.recursive_track_username('a/b', max_depth=1, show_progress=False)
+        assert '_error' in r
+        assert r['_recursive']['levels'][0]['username'] == 'a/b'
+
+    def test_empty_username_propagates_error(self):
+        r = gt.recursive_track_username('   ', max_depth=1, show_progress=False)
+        assert '_error' in r
+
+    def test_cli_recursive_invalid_returns_1(self, capsys):
+        import argparse
+        args = argparse.Namespace(command='user', username='a/b', workers=5, timeout=1.0,
+                                  recursive=True, depth=1, json=True, save=None,
+                                  category_filter=None, quick=False, show_all=False)
+        assert gt.run_cli(args) == 1
+
+
+class TestNumverifyRealResponse:
+    def test_http_500_reports_status_code(self):
+        """requests.Response 4xx/5xx 是 falsy —— 旧代码 `if resp` 会报 'no response'。"""
+        import requests
+        resp = requests.Response()
+        resp.status_code = 500
+        with patch.object(gt, 'safe_get', return_value=resp):
+            with pytest.raises(RuntimeError, match='HTTP 500'):
+                gt._phone_provider_numverify('+34600320351', 'k')
+
+
+class TestUsernameMarkupCharsRejected:
+    @pytest.mark.parametrize('name', ['a<b', 'a>b', 'a"b'])
+    def test_markup_chars_invalid(self, name):
+        assert gt._is_invalid_username(name) is True
+
+
+class TestUnknownCategoryNormalized:
+    def test_unknown_category_mapped_to_other(self, tmp_path):
+        """不在 CATEGORY_ORDER 里的类别会被计入总数却永远不显示 → 归 'other'。"""
+        p = tmp_path / 'platforms.json'
+        p.write_text(json.dumps([{'name': 'X', 'url': 'https://x.com/{}', 'category': 'weird'}]),
+                     encoding='utf-8')
+        assert gt._load_platforms_json(str(p))[0].category == 'other'
+
+
+class TestUsernameJsonViewConsistency:
+    def test_save_keeps_recursive_levels(self, tmp_path):
+        """--save x.json 与 --json 一致:保留 _recursive,剥 _statuses。"""
+        data = {'GitHub': 'https://github.com/x', '_statuses': {'GitHub': 'found'},
+                '_recursive': {'levels': [{'depth': 0, 'username': 'x'}], 'total_found': 1}}
+        out = tmp_path / 'r.json'
+        gt._maybe_save(str(out), 'username_x', data)
+        loaded = json.loads(out.read_text(encoding='utf-8'))
+        assert '_recursive' in loaded and '_statuses' not in loaded
+        assert loaded == gt._username_json_view(data)
+
+
+class TestSitemapSsrfGuard:
+    """robots.txt / sitemap index 里的地址是目标站可控输入,不能把爬虫引到站外。"""
+
+    def test_off_domain_sitemap_not_fetched(self):
+        with patch.object(gt, 'safe_get') as mock_get:
+            out = gt._fetch_sitemap_urls('http://169.254.169.254/latest/sitemap.xml', 'example.com')
+        assert out == set()
+        assert mock_get.call_count == 0
+
+    def test_off_domain_nested_sitemap_not_fetched(self):
+        index = MagicMock(status_code=200, text=(
+            '<sitemapindex><loc>https://evil.com/s.xml</loc>'
+            '<loc>https://example.com/page</loc></sitemapindex>'))
+        with patch.object(gt, 'safe_get', return_value=index) as mock_get:
+            out = gt._fetch_sitemap_urls('https://example.com/sitemap.xml', 'example.com')
+        assert out == {'https://example.com/page'}
+        assert mock_get.call_count == 1  # 嵌套的 evil.com/s.xml 没被请求
+
+    @pytest.mark.parametrize('url,ok', [
+        ('https://example.com:443/x', True),           # 带端口不再误判为站外
+        ('https://a.example.com/x', True),
+        ('https://example.com@evil.com/x', False),     # userinfo 绕过
+        ('https://notexample.com/x', False),
+        ('mailto:a@example.com', False),
+    ])
+    def test_url_in_domain(self, url, ok):
+        assert gt._url_in_domain(url, 'example.com') is ok
+
+
+class TestCrawlerScope:
+    def test_off_domain_links_never_fetched_and_each_url_once(self, monkeypatch):
+        fetched: list = []
+        body = (b'<a href="/team">t</a><a href="/team">t</a>'
+                b'<a href="https://evil.com/x">e</a><a href="mailto:ceo@example.com">m</a>')
+
+        def fake_get(url, **kw):
+            fetched.append(url)
+            r = MagicMock(status_code=200, headers={'Content-Type': 'text/html'})
+            r.raw.read.side_effect = [body, b'']
+            return r
+        monkeypatch.setattr(gt, '_fetch_robots_txt', lambda scheme, host: (set(), []))
+        monkeypatch.setattr(gt, '_fetch_sitemap_urls', lambda *a, **kw: set())
+        monkeypatch.setattr(gt.time, 'sleep', lambda s: None)
+        monkeypatch.setattr(gt, 'safe_get', fake_get)
+        r = gt._crawl_domain_for_emails('example.com', max_pages=50, max_depth=2,
+                                        show_progress=False)
+        assert 'ceo@example.com' in r['emails']
+        assert not any('evil.com' in u for u in fetched)
+        assert len(fetched) == len(set(fetched)), '同一 URL 只应抓取一次'
+
+
+class TestMaxPagesBudget:
+    def test_cli_accepts_500_and_rejects_over_limit(self):
+        args = gt.build_parser().parse_args(['domain-emails', 'example.com', '--max-pages', '500'])
+        assert args.max_pages == 500
+        with pytest.raises(SystemExit):
+            gt.build_parser().parse_args(['domain-emails', 'example.com', '--max-pages',
+                                          str(gt.DOMAIN_EMAIL_MAX_PAGES_LIMIT + 1)])
+
+    def test_single_target_gets_full_budget(self, monkeypatch):
+        """之前固定 min(100, …) 上限,单 target 时 200 / 500 全被压成 100 页。"""
+        for n in gt.DOMAIN_EMAIL_SOURCES:
+            monkeypatch.setitem(gt.DOMAIN_EMAIL_SOURCES, n, lambda d: set())
+        seen: dict = {}
+
+        def fake_crawl(target, **kw):
+            seen[target] = kw['max_pages']
+            return {'emails': set(), 'page_map': {}, 'pages_crawled': 0,
+                    'sitemap_found': False, 'robots_disallows': 0}
+        monkeypatch.setattr(gt, '_crawl_domain_for_emails', fake_crawl)
+        gt.enumerate_domain_emails('example.com', include_subdomains=False,
+                                   max_pages=500, show_progress=False)
+        assert seen == {'example.com': 500}
+
+
+class TestBatchExitCodes:
+    def _batch_args(self, wl, **kw):
+        import argparse
+        base = dict(command='subdomain', domain=None, batch_file=str(wl), batch_save_dir=None,
+                    no_probe=True, workers=30, timeout=4.0, alive_only=False, bruteforce=False,
+                    no_js_extract=True, json=False, save=None)
+        base.update(kw)
+        return argparse.Namespace(**base)
+
+    def test_subdomain_batch_any_failure_returns_1(self, monkeypatch, tmp_path):
+        wl = tmp_path / 'd.txt'
+        wl.write_text('good.com\nbad..com\n', encoding='utf-8')
+        monkeypatch.setattr(gt, 'enumerate_subdomains', lambda d, **kw: (
+            {'_error': 'invalid'} if d == 'bad..com'
+            else {'domain': d, 'subdomains': [], '_stats': {'total': 0, 'alive': 0}}))
+        assert gt.run_cli(self._batch_args(wl)) == 1
+
+    def test_batch_save_without_dir_warns(self, monkeypatch, tmp_path, capsys):
+        gt.set_lang('en')
+        wl = tmp_path / 'd.txt'
+        wl.write_text('a.com\n', encoding='utf-8')
+        monkeypatch.setattr(gt, 'enumerate_subdomains', lambda d, **kw: {
+            'domain': d, 'subdomains': [], '_stats': {'total': 0, 'alive': 0}})
+        rc = gt.run_cli(self._batch_args(wl, save='r.pdf'))
+        assert rc == 0
+        assert '--batch-save-dir' in capsys.readouterr().err
+
+    def test_whois_batch_any_failure_returns_1(self, monkeypatch):
+        import argparse
+        monkeypatch.setattr(gt, '_batch_lookup', lambda fn, items, max_workers=10: {
+            'a.com': {'domain': 'a.com'}, 'b.com': {'_error': 'timeout'}})
+        args = argparse.Namespace(command='whois', domains=['a.com', 'b.com'], json=True, save=None)
+        assert gt.run_cli(args) == 1
+
+
+class TestUpgradeFlowFixes:
+    def test_upgrade_accepts_common_flags(self):
+        args = gt.build_parser().parse_args(['upgrade', '--check', '--lang', 'en', '--no-color'])
+        assert args.command == 'upgrade' and args.lang == 'en' and args.check is True
+
+    def test_main_upgrade_skips_notice_and_background_refresh(self, monkeypatch):
+        called = []
+        monkeypatch.setattr(gt, '_maybe_show_update_notice', lambda *a, **kw: called.append(1))
+        monkeypatch.setattr(gt, 'run_upgrade', lambda yes, check_only: 0)
+        monkeypatch.setattr(sys, 'argv', ['spyeyes', 'upgrade', '--check'])
+        assert gt.main() == 0
+        assert called == []
+
+    def test_startup_prompt_yes_without_upgrade_stays_in_menu(self, monkeypatch):
+        """选 Y 但没升成(源码安装 / 网络错)→ 不再 sys.exit 踢出菜单,而是暂停后继续。"""
+        monkeypatch.setattr(sys.stdin, 'isatty', lambda: True)
+        monkeypatch.setattr(gt, '_get_cached_update_info', lambda *a, **kw: {
+            'latest': 'v9.0.0', 'current': '1.0.0', 'url': 'X'})
+        monkeypatch.setattr(gt, '_prompt_yes_no', lambda *a, **kw: True)
+        runs = []
+        monkeypatch.setattr(gt, 'run_upgrade', lambda yes=False, check_only=False: runs.append(yes) or 0)
+        paused = []
+        monkeypatch.setattr('builtins.input', lambda prompt='': paused.append(prompt) or '')
+        gt._menu_startup_upgrade_prompt()  # 不应抛 SystemExit
+        assert runs == [True]
+        assert len(paused) == 1
+
+    def test_pip_upgrade_pinned_to_release_tag(self):
+        cmd = gt._build_upgrade_command('packaged-pip', 'v1.9.0')
+        assert cmd[-1] == 'git+https://github.com/Akxan/SpyEyes.git@v1.9.0'
+
+    @pytest.mark.parametrize('bad', ['main; rm -rf /', '--index-url=evil', '', None])
+    def test_invalid_tag_falls_back_to_unpinned(self, bad):
+        cmd = gt._build_upgrade_command('packaged-pip', bad)
+        assert cmd[-1] == 'git+https://github.com/Akxan/SpyEyes.git'
+
+    def test_update_cache_write_is_atomic(self, tmp_path):
+        gt._write_update_cache({'checked_at': 1.0, 'latest': 'v1.0.0'})
+        cache_dir = os.path.dirname(gt.UPDATE_CACHE_FILE)
+        assert [f for f in os.listdir(cache_dir) if f.endswith('.tmp')] == []
+        assert gt._read_update_cache()['latest'] == 'v1.0.0'
+
+
+class TestNoColorEnv:
+    """https://no-color.org/ —— 在"本该有颜色"的 TTY 环境下,NO_COLOR 仍要关掉颜色。"""
+
+    @pytest.fixture
+    def fake_tty(self, monkeypatch):
+        monkeypatch.setattr(sys.stdout, 'isatty', lambda: True)
+        monkeypatch.setenv('TERM', 'xterm-256color')
+        monkeypatch.setenv('WT_SESSION', '1')  # Windows 分支需要
+
+    def test_tty_has_color_by_default(self, fake_tty):
+        assert gt._supports_color() is True
+
+    def test_no_color_disables(self, fake_tty, monkeypatch):
+        monkeypatch.setenv('NO_COLOR', '1')
+        assert gt._supports_color() is False
+
+
+class TestFlattenValue:
+    def test_nested_values_not_dropped(self):
+        v = {'domain': 'gmail.com',
+             'records': [{'preference': 5, 'exchange': 'mx1.gmail.com'}]}
+        s = gt._flatten_value(v)
+        assert 'mx1.gmail.com' in s and 'preference=5' in s
+
+    def test_batch_mx_markdown_keeps_records(self):
+        data = {'a.com': {'domain': 'a.com', 'records': [{'preference': 10, 'exchange': 'mx.a.com'}]},
+                'b.com': {'_error': 'no MX'}}
+        md = gt._to_markdown('mx_a.com_b.com', data)
+        assert 'mx.a.com' in md and 'no MX' in md
+
+
+class TestReportI18nAndEscaping:
+    def test_source_breakdown_error_tag_localized(self):
+        data = {'sources': {'crtsh': 3}, '_stats': {'errors': {'otx': True}}}
+        gt.set_lang('en')
+        en = gt._format_source_breakdown(data)
+        gt.set_lang('zh')
+        zh = gt._format_source_breakdown(data)
+        assert '(error)' in en and '错误' not in en
+        assert '(错误)' in zh
+
+    def test_html_title_escaped_once(self):
+        html = gt._to_html('investigate_x', {'target': 'a&b', 'tasks': {}, 'pivots': {},
+                                             '_stats': {}})
+        assert 'a&amp;b' in html and '&amp;amp;' not in html
+
+    def test_xmind_domain_emails_summary_follows_lang(self, tmp_path):
+        import zipfile
+        gt.set_lang('en')
+        out = tmp_path / 'r.xmind'
+        data = {'domain': 'example.com', 'emails': [],
+                '_stats': {'total': 0, 'pages_crawled': 3, 'sitemap_found': False}}
+        assert gt._to_xmind('domain-emails_example.com', data, str(out)) is None
+        content = zipfile.ZipFile(str(out)).read('content.xml').decode('utf-8')
+        assert '共' not in content and 'emails found' in content
+
+    def test_en_zh_translation_parity(self):
+        assert set(gt.TRANSLATIONS['en']) == set(gt.TRANSLATIONS['zh'])
+
+
+class TestInvestigateGraphReport:
+    def test_graph_html_renders_investigate_dag(self):
+        data = {
+            'target': 'example.com', 'tasks': {},
+            'pivots': {'ips': {}, 'users': {'john@example.com': {
+                'local_part': 'john', 'result': {'GitHub': 'https://github.com/john'}}}},
+            'graph': {
+                'nodes': [{'id': 'example.com', 'type': 'domain', 'label': 'example.com'},
+                          {'id': 'www.example.com', 'type': 'subdomain', 'label': 'www.example.com'},
+                          {'id': 'john@example.com', 'type': 'email', 'label': 'john@example.com'},
+                          {'id': 'platform:GitHub:john@example.com', 'type': 'platform',
+                           'label': 'GitHub / john'}],
+                'edges': [{'src': 'example.com', 'dst': 'www.example.com', 'kind': 'subdomain'},
+                          {'src': 'example.com', 'dst': 'john@example.com', 'kind': 'email'},
+                          {'src': 'john@example.com', 'dst': 'platform:GitHub:john@example.com',
+                           'kind': 'username_hit'},
+                          {'src': 'dangling', 'dst': 'example.com', 'kind': 'x'}],
+            },
+        }
+        html = gt._to_graph_html('investigate_example.com', data)
+        assert 'mailto:john@example.com' in html
+        assert 'https://github.com/john' in html
+        assert 'https://www.example.com/' in html
+        assert '"dangling"' not in html  # 悬空边被过滤,否则 D3 forceLink 会抛错
+
+
+class TestConftestEnvIsolation:
+    def test_behavior_env_vars_cleared(self):
+        """开发者 ~/.spyeyes/env 里的 SPYEYES_NO_HISTORY 等不应泄漏进测试。"""
+        for var in ('SPYEYES_NO_HISTORY', 'SPYEYES_BRUTEFORCE', 'SPYEYES_DNS_WORDLIST'):
+            assert var not in os.environ

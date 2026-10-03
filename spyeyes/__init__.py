@@ -22,14 +22,17 @@ import itertools
 import json
 import os
 import re
+import secrets
 import shutil
+# subprocess 仅用于调用 subfinder / pip / pipx:参数均为列表 + shell=False
 import subprocess
 import sys
 import threading
 import time
+import urllib.parse
 import uuid as _uuid
 import zipfile as _zipfile
-from collections import Counter
+from collections import Counter, deque
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from typing import Any, NamedTuple, Optional
 
@@ -109,7 +112,7 @@ def _load_env_file() -> int:
     loaded = 0
     try:
         with open(ENV_FILE, encoding='utf-8') as f:
-            for line_no, raw in enumerate(f, 1):
+            for raw in f:
                 line = raw.strip()
                 if not line or line.startswith('#'):
                     continue
@@ -283,12 +286,19 @@ def _read_update_cache() -> Optional[dict]:
 
 
 def _write_update_cache(data: dict) -> None:
+    """原子写(tmp + os.replace):后台 daemon 线程可能在进程退出时被中途杀掉,
+    直接覆盖写会留下半截 JSON(读取侧虽容错,但会丢掉有效缓存)。"""
+    tmp = f'{UPDATE_CACHE_FILE}.{os.getpid()}.tmp'
     try:
-        os.makedirs(CONFIG_DIR, exist_ok=True)
-        with open(UPDATE_CACHE_FILE, 'w', encoding='utf-8') as f:
+        os.makedirs(os.path.dirname(UPDATE_CACHE_FILE) or '.', exist_ok=True)
+        with open(tmp, 'w', encoding='utf-8') as f:
             json.dump(data, f, ensure_ascii=False, indent=2)
+        os.replace(tmp, UPDATE_CACHE_FILE)
     except OSError:
-        pass
+        try:
+            os.remove(tmp)
+        except OSError:
+            pass
 
 
 def _fetch_latest_version_from_github() -> Optional[str]:
@@ -596,7 +606,6 @@ TRANSLATIONS: dict = {
         'demails.stage_passive':      'Stage 1/4: Passive sources (crt.sh CT logs + WHOIS contacts) ...',
         'demails.stage_subdomain':    'Stage 2/4: Discovering alive subdomains to crawl ...',
         'demails.stage_crawl':        'Stage 3/4: Deep-crawling {n} target(s) (robots.txt + sitemap.xml + BFS) ...',
-        'demails.target_progress':    '[{idx}/{total}] Crawling target: {target}',
         'demails.stage_guess':        'Stage 3.5/4: Generating pattern emails from provided names ...',
         'demails.stage_smtp':         'Stage 4/4: SMTP verification of {n} candidates (HIGH-PROFILE) ...',
         'demails.smtp_warn':          'SMTP verification connects to target MX servers — only run on domains you own or have authorization to test',
@@ -632,7 +641,6 @@ TRANSLATIONS: dict = {
         'err.invalid_domain':   'Invalid domain: {domain}',
         'err.phone_invalid':    'Phone number is not a possible number',
         'err.save_failed':      'Failed to save to {target}: {err}',
-        'msg.progress':         'Scanning',
         'msg.found':            'found',
         'msg.no_history':       '(no history yet — run a query first)',
         'mode.title':           'Scan mode:',
@@ -645,7 +653,6 @@ TRANSLATIONS: dict = {
         'permute.title':        'Username permutations:',
         'permute.generated':    'Generated {n} variations from "{name}":',
         'err.permute_empty':    'Cannot generate permutations: input is empty',
-        'recursive.depth':      'Recursive depth {depth}: {n} new candidates discovered',
         'recursive.title':      'Recursive scan summary',
         'msg.recursive_done':   'Recursive scan finished. Total: {total} platforms across {depths} levels.',
         'err.no_pdf':           'PDF requires reportlab: pip install "spyeyes[pdf]"',
@@ -683,7 +690,6 @@ TRANSLATIONS: dict = {
         'report.query':           'Query',
         'report.generated':       'Generated',
         'report.error':           'Error',
-        'report.tool':            'Tool',
         'report.username_scan':   'Username scan',
         'report.scan_summary':    'Scanned {total} platforms · Found {found} accounts',
         'report.field':           'Field',
@@ -751,6 +757,32 @@ TRANSLATIONS: dict = {
         'upgrade.no_tty':             'Cannot prompt without a TTY. Use --yes to skip confirmation.',
         'upgrade.network_error':      'Could not reach GitHub Releases. Try again later.',
         'upgrade.pipx_missing':       'pipx not found in PATH. Falling back to: {pip_cmd}',
+        # i18n 补漏(之前硬编码在代码里的中/英文)
+        'msg.hits':                   '{n} hits',
+        'msg.more':                   '... +{n} more',
+        'username.note_label':        'note',
+        'username.note_waf':          '{n} WAF-blocked',
+        'username.note_skipped':      '{n} skipped (regex)',
+        'username.note_neterr':       '{n} network errors',
+        'username.tag_waf':           '[ WAF blocked ]',
+        'username.tag_skipped':       '[ skipped ]',
+        'warn.quick_ignored':         '--quick ignored when --category is set',
+        'report.variations_scanned':  '{n} variations scanned',
+        'subdomain.source_error_tag': 'error',
+        'subdomain.bruteforce_done':  '[{name:>13}] {n:>4} candidates ({new} new)',
+        'err.subdomain_need_domain':  'subdomain: a domain or --batch FILE is required',
+        'demails.source_err':         '[{name:>8}] error: {err}',
+        'demails.tag_verified':       '✓ verified',
+        'section.diff':               'Subdomain Diff',
+        'diff.changed_fields':        'changed fields',
+        'batch.header':               '== Batch scanning {n} domains ==',
+        'batch.progress':             '[{idx}/{total}] Scanning {domain}',
+        'batch.interrupted':          'Interrupted by user — {done}/{total} completed',
+        'batch.done':                 '== Batch scan finished ==',
+        'batch.read_failed':          '--batch: cannot read file {path}: {err}',
+        'batch.empty':                '--batch: no valid domains in {path}',
+        'batch.mkdir_failed':         '--batch: cannot create directory {path}: {err}',
+        'batch.save_ignored':         '--save only picks the report format in --batch mode; add --batch-save-dir DIR to write per-domain reports',
     },
     'zh': {
         'menu.ip_track':        'IP 追踪',
@@ -931,7 +963,6 @@ TRANSLATIONS: dict = {
         'demails.stage_passive':      '阶段 1/4:被动数据源(crt.sh CT 日志 + WHOIS 联系人)...',
         'demails.stage_subdomain':    '阶段 2/4:发现可爬取的活跃子域名 ...',
         'demails.stage_crawl':        '阶段 3/4:深度爬取 {n} 个目标(robots.txt + sitemap.xml + BFS)...',
-        'demails.target_progress':    '[{idx}/{total}] 爬取目标:{target}',
         'demails.stage_guess':        '阶段 3.5/4:从提供的姓名生成模式邮箱 ...',
         'demails.stage_smtp':         '阶段 4/4:SMTP 验证 {n} 个候选(高调动作)...',
         'demails.smtp_warn':          'SMTP 验证会连接目标 MX 服务器 — 仅对自己拥有或获得授权的域使用',
@@ -966,7 +997,6 @@ TRANSLATIONS: dict = {
         'err.invalid_domain':   '域名格式不合法：{domain}',
         'err.phone_invalid':    '号码格式不可解析',
         'err.save_failed':      '无法保存到 {target}：{err}',
-        'msg.progress':         '扫描中',
         'msg.found':            '已命中',
         'msg.no_history':       '（暂无历史 —— 先跑一次查询试试）',
         'mode.title':           '扫描模式:',
@@ -979,7 +1009,6 @@ TRANSLATIONS: dict = {
         'permute.title':        '用户名变形：',
         'permute.generated':    '从 "{name}" 生成 {n} 个变形：',
         'err.permute_empty':    '无法生成变形：输入为空',
-        'recursive.depth':      '第 {depth} 层递归：发现 {n} 个新候选',
         'recursive.title':      '递归扫描总结',
         'msg.recursive_done':   '递归扫描结束。共 {total} 个平台，{depths} 层。',
         'err.no_pdf':           'PDF 输出需要 reportlab：pip install "spyeyes[pdf]"',
@@ -1017,7 +1046,6 @@ TRANSLATIONS: dict = {
         'report.query':           '查询',
         'report.generated':       '生成时间',
         'report.error':           '错误',
-        'report.tool':            '工具',
         'report.username_scan':   '用户名扫描',
         'report.scan_summary':    '共扫描 {total} 个平台 · 命中 {found} 个账号',
         'report.field':           '字段',
@@ -1085,6 +1113,32 @@ TRANSLATIONS: dict = {
         'upgrade.no_tty':             '无 TTY 无法交互。请加 --yes 跳过确认。',
         'upgrade.network_error':      '无法连接 GitHub Releases,请稍后重试。',
         'upgrade.pipx_missing':       'PATH 里找不到 pipx。降级到: {pip_cmd}',
+        # i18n 补漏(之前硬编码在代码里的中/英文)
+        'msg.hits':                   '命中 {n} 个',
+        'msg.more':                   '... 另有 {n} 个',
+        'username.note_label':        '提示',
+        'username.note_waf':          '{n} 个被 WAF 拦截',
+        'username.note_skipped':      '{n} 个跳过(格式不符)',
+        'username.note_neterr':       '{n} 个网络错误',
+        'username.tag_waf':           '[ WAF 拦截 ]',
+        'username.tag_skipped':       '[ 已跳过 ]',
+        'warn.quick_ignored':         '已指定 --category,--quick 被忽略',
+        'report.variations_scanned':  '共扫描 {n} 个变形',
+        'subdomain.source_error_tag': '错误',
+        'subdomain.bruteforce_done':  '[{name:>13}] {n:>4} 个候选(新增 {new} 个)',
+        'err.subdomain_need_domain':  'subdomain:需要提供域名或 --batch 文件',
+        'demails.source_err':         '[{name:>8}] 错误:{err}',
+        'demails.tag_verified':       '✓ 已验证',
+        'section.diff':               '子域名 Diff',
+        'diff.changed_fields':        '变更字段',
+        'batch.header':               '== 批量扫描 {n} 个域名 ==',
+        'batch.progress':             '[{idx}/{total}] 扫描 {domain}',
+        'batch.interrupted':          '用户中断 — 已完成 {done}/{total}',
+        'batch.done':                 '== 批量扫描完成 ==',
+        'batch.read_failed':          '--batch: 无法读取文件 {path}: {err}',
+        'batch.empty':                '--batch: 文件 {path} 中没有有效域名',
+        'batch.mkdir_failed':         '--batch: 无法创建保存目录 {path}: {err}',
+        'batch.save_ignored':         '--batch 模式下 --save 只决定报告格式;需加 --batch-save-dir DIR 才会逐域写报告',
     },
 }
 
@@ -1132,6 +1186,9 @@ def t(key: str, **kwargs: Any) -> str:
 # 颜色配置：自动检测 TTY
 # ====================================================================
 def _supports_color() -> bool:
+    # https://no-color.org/ — NO_COLOR 非空即禁用颜色(跨工具通用约定)
+    if os.environ.get('NO_COLOR'):
+        return False
     if not sys.stdout.isatty():
         return False
     term = os.environ.get('TERM', '')
@@ -1406,7 +1463,9 @@ def _phone_provider_numverify(e164: str, api_key: str) -> dict:
     url = f'https://apilayer.net/api/validate?access_key={api_key}&number={num}'
     resp = safe_get(url, timeout=10)
     if resp is None or resp.status_code != 200:
-        raise RuntimeError(f'HTTP {resp.status_code if resp else "no response"}')
+        # 必须 `is not None`:requests.Response.__bool__ 返回 resp.ok,
+        # 4xx/5xx 响应是 falsy → 旧写法 `if resp` 会把 HTTP 500 报成 "no response"
+        raise RuntimeError(f'HTTP {resp.status_code if resp is not None else "no response"}')
     try:
         data = resp.json()
     except (ValueError, requests.exceptions.RequestException) as e:
@@ -1829,11 +1888,16 @@ def _load_platforms_json(path: str) -> list:
             continue
         if not isinstance(url, str) or '{' not in url:
             continue
+        category = item.get('category')
+        # 未知类别归 'other':所有分组展示都按 CATEGORY_ORDER 遍历,
+        # 不在表里的类别会被计入总数但永远不显示(数据被"吃掉")
+        if category not in CATEGORY_ORDER:
+            category = 'other'
         try:
             out.append(Platform(
                 name=name,
                 url=url,
-                category=item.get('category', 'other') if isinstance(item.get('category'), str) else 'other',
+                category=category,
                 not_found=_clean_patterns(item.get('not_found')),
                 must_contain=_clean_patterns(item.get('must_contain')),
                 regex_check=item.get('regex_check') or '' if isinstance(item.get('regex_check'), str) else '',
@@ -1970,7 +2034,9 @@ MAX_USERNAME_LENGTH = 64
 # - 'foo?x=1' 拼到 github.com/{} → 实际访问 /foo?x=1 → 假命中
 # - 'a@b' 拼到 'https://{}.tumblr.com' → 主机变 b.tumblr.com
 # - '%2e%2e' URL-encoded 路径穿越
-_USERNAME_INVALID_CHARS = frozenset('/?#@:&= \t\n\r\\%')
+# - `<` `>` `"`:任何平台 username 都不合法,且会被 PDF 内联标签解析器 /
+#   HTML 属性当成标记,拒收比到处转义更稳
+_USERNAME_INVALID_CHARS = frozenset('/?#@:&= \t\n\r\\%<>"')
 
 
 def _is_invalid_username(username: str) -> bool:
@@ -2308,11 +2374,15 @@ _USERNAME_EXTRACT_RE = re.compile(
     r"(?<![\w])@([a-zA-Z][\w]{2,30})(?![\w])"
     r"|"
     # twitter/instagram/github/youtube 等 URL 中的用户名
-    r"(?:https?://)?(?:www\.)?"
-    r"(?:twitter|x|instagram|facebook|github|gitlab|youtube|t\.me|telegram|"
+    # 注:.com 站点与自带 TLD 的站点(t.me / mastodon.social / threads.net)分开写 ——
+    # 旧版统一追加 `\.com/`,导致 `t\.me\.com/` 这类分支永远匹配不到。
+    # 左边界 lookbehind 防 `dropbox.com/foo` 被子串误匹配成 `x.com/foo`
+    r"(?<![\w.\-])(?:https?://)?(?:www\.)?"
+    r"(?:(?:twitter|x|instagram|facebook|github|gitlab|youtube|"
     r"linkedin|reddit|tiktok|twitch|medium|patreon|behance|dribbble|"
-    r"deviantart|soundcloud|bandcamp|mastodon\.social|threads\.net)"
-    r"\.com/(?:@)?([\w][\w.\-]{2,30})"
+    r"deviantart|soundcloud|bandcamp)\.com"
+    r"|t\.me|telegram\.me|mastodon\.social|threads\.net)"
+    r"/(?:@)?([\w][\w.\-]{2,30})"
     r")",
     re.IGNORECASE,
 )
@@ -2435,7 +2505,7 @@ def recursive_track_username(username: str, *, max_depth: int = 2,
             queue.append((depth + 1, u))
 
     total_found = sum(level.get('found', 0) for level in levels)
-    summary = {
+    summary: dict = {
         '_recursive': {
             'levels': levels,
             'total_found': total_found,
@@ -2445,6 +2515,12 @@ def recursive_track_username(username: str, *, max_depth: int = 2,
     # 向后兼容：把 depth=0 的扁平结果也合并到顶层（让 _platform_only/print_username 直接可用）
     if levels and levels[0].get('platforms'):
         summary.update(levels[0]['platforms'])
+    # 初始用户名本身就非法(空 / 过长 / URL 元字符) → 顶层也要有 _error,
+    # 否则 CLI 打出「扫描 0 个平台」并以 exit 0 退出,把「输入被拒」伪装成「全没命中」
+    if not levels:
+        summary['_error'] = t('err.empty_input')
+    elif 'error' in levels[0]:
+        summary['_error'] = levels[0]['error']
     return summary
 
 
@@ -2769,7 +2845,6 @@ def _src_wayback(domain: str) -> set[str]:
         return set()
     if not isinstance(data, list) or len(data) < 2:
         return set()
-    import urllib.parse
     hosts: list[str] = []
     for row in data[1:]:  # 第一行是 header ["original"]
         if not isinstance(row, list) or not row:
@@ -2804,7 +2879,6 @@ def _has_subfinder() -> Optional[str]:
     """检测 subfinder 二进制路径,返 path 或 None。结果缓存到模块级。"""
     global _SUBFINDER_BIN, _SUBFINDER_CHECKED
     if not _SUBFINDER_CHECKED:
-        import shutil
         _SUBFINDER_BIN = shutil.which('subfinder')
         _SUBFINDER_CHECKED = True
     return _SUBFINDER_BIN
@@ -2826,7 +2900,6 @@ def _src_subfinder(domain: str) -> set[str]:
     # subfinder 是用户主动安装的可信工具,bin_path 来自 shutil.which
     # (仅返 PATH 内可执行文件),domain 已 _normalize_domain 校验,
     # 参数全是字面量,shell=False(默认)。安全。
-    import subprocess  # nosec B404
     try:
         proc = subprocess.run(  # nosec B603
             [bin_path, '-d', domain, '-silent', '-json',
@@ -3015,7 +3088,6 @@ def _detect_wildcard_dns(domain: str, dns_timeout: float = SUBDOMAIN_DNS_TIMEOUT
     随机 32 字符前缀 + 不在被动结果里 → 几乎不可能真有此子域,若解析成功必是 wildcard。"""
     if not HAS_DNS:
         return False
-    import secrets
     probe_label = secrets.token_hex(16)  # 32 hex chars
     probe_host = f'{probe_label}.{domain}'
     try:
@@ -3188,8 +3260,7 @@ def enumerate_subdomains(domain: str, *, probe: bool = True,
         bruteforce_count = len(new_bf)
         candidates = candidates | bf_cands
         if show_progress:
-            _stage_log(f"   {Color.Bl}[{'bruteforce':>13}] {len(bf_cands):>4} candidates"
-                       f" ({bruteforce_count} new){Color.Reset}")
+            _stage_log(f"   {Color.Bl}{t('subdomain.bruteforce_done', name='bruteforce', n=len(bf_cands), new=bruteforce_count)}{Color.Reset}")
 
     # 2) wildcard 探测(独立,失败不阻塞主流程)
     if show_progress:
@@ -3210,6 +3281,7 @@ def enumerate_subdomains(domain: str, *, probe: bool = True,
     resolved: list = []
     total = len(candidates)
     done = 0
+    alive_so_far = 0  # 增量计数(之前每完成一条就全表 sum 一遍,2000 候选时 O(n²))
     if show_progress:
         _stage_log(f"\n {Color.Cy}{t('subdomain.stage_dns', n=total)}{Color.Reset}")
     with ThreadPoolExecutor(max_workers=max_workers) as ex:
@@ -3223,9 +3295,10 @@ def enumerate_subdomains(domain: str, *, probe: bool = True,
                            'a': [], 'aaaa': [], 'cname': None}
                 resolved.append(rec)
                 done += 1
+                if rec.get('alive'):
+                    alive_so_far += 1
                 if show_progress:
-                    _print_scan_progress(done, total,
-                                         sum(1 for r in resolved if r.get('alive')))
+                    _print_scan_progress(done, total, alive_so_far)
         except KeyboardInterrupt:
             ex.shutdown(wait=False, cancel_futures=True)
             if show_progress:
@@ -3409,11 +3482,12 @@ def _format_source_breakdown(data: dict) -> str:
     if not sources and not errors:
         return ''
     # 同时展示成功 + 错误的源(都按字母序)
-    all_names = sorted(set(list(sources.keys()) + list(errors.keys())))
+    all_names = sorted(set(sources) | set(errors))
+    err_tag = t('subdomain.source_error_tag')
     parts = []
     for name in all_names:
         if errors.get(name):
-            parts.append(f'✗ {name} (错误)')
+            parts.append(f'✗ {name} ({err_tag})')
         else:
             n = sources.get(name, 0)
             if n > 0:
@@ -3556,7 +3630,7 @@ def diff_subdomain_results(old: dict, new: dict) -> dict:
 DOMAIN_EMAIL_DEFAULT_MAX_PAGES = 200      # v1.6.11:500→200(用户反馈"卡 5 分钟")
                                           # 实践:典型企业域 contact/about/team 等高邮箱密度页 < 100 页
                                           # 更大 budget 长尾 page 邮箱密度急剧降到几乎 0,纯花时间
-DOMAIN_EMAIL_PER_TARGET_CAP = 100         # v1.6.11:单个 target 最多 100 页(防 2 target 时各拿 100 共 200)
+DOMAIN_EMAIL_MAX_PAGES_LIMIT = 2000       # CLI --max-pages 上限(交互菜单「深度」档为 500)
 DOMAIN_EMAIL_DEFAULT_DEPTH = 5
 DOMAIN_EMAIL_DEFAULT_WORKERS = 5
 DOMAIN_EMAIL_RATE_LIMIT_MS = 500          # 单域请求间最少 500ms 防被反爬墙拉黑
@@ -3700,14 +3774,13 @@ def _emails_from_bing(domain: str) -> set[str]:
         'Accept-Language': 'en-US,en;q=0.9',
     }
     # 两个查询模式分别拿不同邮箱(尽量不重复)
-    import urllib.parse as _urlparse
     queries = [
         f'"@{domain}" site:{domain}',
         f'"@{domain}" -site:{domain}',  # 域外页面(博客/论坛)提到的
     ]
     for q in queries:
         for offset in (1, 11):  # 第 1-10 + 11-20 条结果
-            url = (f'https://www.bing.com/search?q={_urlparse.quote(q)}'
+            url = (f'https://www.bing.com/search?q={urllib.parse.quote(q)}'
                    f'&first={offset}&count=10&FORM=PERE')
             resp = safe_get(url, timeout=15.0, connect_timeout=5.0,
                             headers=headers)
@@ -3730,14 +3803,13 @@ def _emails_from_ddg(domain: str) -> set[str]:
         'User-Agent': 'Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 '
                       '(KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
     }
-    import urllib.parse as _urlparse
     queries = [
         f'"@{domain}"',
         f'"@{domain}" contact',
         f'"@{domain}" email',
     ]
     for q in queries:
-        url = f'https://html.duckduckgo.com/html/?q={_urlparse.quote(q)}'
+        url = f'https://html.duckduckgo.com/html/?q={urllib.parse.quote(q)}'
         resp = safe_get(url, timeout=15.0, connect_timeout=5.0,
                         headers=headers)
         if resp is None or resp.status_code != 200:
@@ -3890,53 +3962,62 @@ def _fetch_robots_txt(scheme: str, host: str) -> tuple[set[str], list[str]]:
     return sitemaps, disallows
 
 
+def _url_in_domain(url: str, target: str) -> bool:
+    """URL 的 host 是否为 target 或其子域。
+    用 .hostname(剥端口 / userinfo / 小写化)而非 .netloc:
+    - `https://example.com:443/x` 不再被误判为站外
+    - `https://example.com@evil.com/` 的真实 host 是 evil.com,不会被放行"""
+    try:
+        host = (urllib.parse.urlsplit(url).hostname or '').rstrip('.')
+    except ValueError:
+        return False
+    return bool(host) and (host == target or host.endswith('.' + target))
+
+
+_SITEMAP_LOC_RE = re.compile(r'<loc>\s*([^<\s]+)\s*</loc>', re.IGNORECASE)
+
+
 def _fetch_sitemap_urls(sitemap_url: str, target_domain: str,
                        max_urls: int = 2000) -> set[str]:
-    """拉取 sitemap.xml 提取 <loc> 标签 URL。支持 sitemap index 嵌套(一层)。"""
+    """拉取 sitemap.xml 提取 <loc> 标签 URL。支持 sitemap index 嵌套(一层)。
+
+    sitemap 地址来自目标站自己的 robots.txt / sitemap index,属于不可信输入 ——
+    只请求 target 本域(含子域)上的 sitemap,防止目标站把爬虫引向内网 / 第三方
+    (crawler SSRF)。返回的页面 URL 同样只保留本域。"""
+    target = target_domain.lower().rstrip('.')
+    if not _url_in_domain(sitemap_url, target):
+        return set()
     resp = safe_get(sitemap_url, timeout=DOMAIN_EMAIL_PAGE_TIMEOUT)
     if resp is None or resp.status_code != 200:
         return set()
     text = (resp.text or '')[:DOMAIN_EMAIL_MAX_BODY * 4]  # sitemap 通常较大
     urls: set[str] = set()
-    nested: set[str] = set()
-    # 简单 regex 提 <loc>(避免 xml 解析复杂度)
-    loc_re = re.compile(r'<loc>\s*([^<\s]+)\s*</loc>', re.IGNORECASE)
-    for m in loc_re.finditer(text):
-        u = m.group(1).strip()
-        if not u:
-            continue
-        if u.endswith('.xml'):
-            nested.add(u)
-        else:
-            urls.add(u)
+    nested: list[str] = []
+
+    def _collect(body: str, allow_nested: bool) -> None:
+        # 简单 regex 提 <loc>(避免 xml 解析复杂度)
+        for m in _SITEMAP_LOC_RE.finditer(body):
+            if len(urls) >= max_urls:
+                return
+            u = m.group(1).strip()
+            if not u or not _url_in_domain(u, target):
+                continue
+            if u.endswith('.xml'):
+                if allow_nested and u not in nested:
+                    nested.append(u)
+            else:
+                urls.add(u)
+
+    _collect(text, allow_nested=True)
+    # 处理一层嵌套 sitemap index(最多展开 10 个)
+    for nu in nested[:10]:
         if len(urls) >= max_urls:
             break
-    # 处理一层嵌套 sitemap index
-    for nu in list(nested)[:10]:  # 最多展开 10 个嵌套
         sub_resp = safe_get(nu, timeout=DOMAIN_EMAIL_PAGE_TIMEOUT)
         if sub_resp is None or sub_resp.status_code != 200:
             continue
-        sub_text = (sub_resp.text or '')[:DOMAIN_EMAIL_MAX_BODY * 4]
-        for m in loc_re.finditer(sub_text):
-            u = m.group(1).strip()
-            if u and not u.endswith('.xml'):
-                urls.add(u)
-                if len(urls) >= max_urls:
-                    break
-        if len(urls) >= max_urls:
-            break
-    # 仅保留属于 target_domain 的 URL
-    target = target_domain.lower().rstrip('.')
-    out = set()
-    for u in urls:
-        try:
-            from urllib.parse import urlparse as _up
-            host = _up(u).netloc.lower()
-            if host == target or host.endswith('.' + target):
-                out.add(u)
-        except Exception:
-            continue
-    return out
+        _collect((sub_resp.text or '')[:DOMAIN_EMAIL_MAX_BODY * 4], allow_nested=False)
+    return urls
 
 
 def _is_path_disallowed(url: str, disallows: list[str]) -> bool:
@@ -3944,9 +4025,8 @@ def _is_path_disallowed(url: str, disallows: list[str]) -> bool:
     if not disallows:
         return False
     try:
-        from urllib.parse import urlparse as _up
-        path = _up(url).path or '/'
-    except Exception:
+        path = urllib.parse.urlsplit(url).path or '/'
+    except ValueError:
         return False
     for d in disallows:
         if d == '/' or path.startswith(d):
@@ -3964,10 +4044,11 @@ def _crawl_domain_for_emails(domain: str, *,
 
     起点:robots.txt + sitemap.xml + 主页 + DOMAIN_EMAIL_PRIORITY_PATHS。
     BFS 跟内部链接,深度限制,礼貌速率限制(单域 500ms 间隔)。"""
+    # 注:workers 参数仅为 API 兼容保留 —— 单 target 内是串行 BFS(共享 500ms 速率窗口),
+    # 并行发生在 enumerate_domain_emails 的多 target 层。
     target = domain.lower().rstrip('.')
     found_emails: set[str] = set()
     page_emails: dict = {}  # email → first 出现的 page url(用于 source 元数据)
-    visited: set[str] = set()
     pages_crawled = 0
 
     # 1) robots.txt
@@ -3996,8 +4077,10 @@ def _crawl_domain_for_emails(domain: str, *,
     for p in DOMAIN_EMAIL_PRIORITY_PATHS:
         seed_urls.add(f'https://{target}{p}')
 
-    # 4) BFS 队列:(url, depth)
-    queue: list[tuple[str, int]] = [(u, 0) for u in seed_urls]
+    # 4) BFS 队列:(url, depth)。deque O(1) 出队;enqueued 去重 —— 每个 URL 只入队一次
+    #    (旧实现 list.pop(0) + 同一导航链接每页重复入队,大站队列会膨胀到数万条)
+    queue: deque = deque((u, 0) for u in seed_urls)
+    enqueued: set[str] = set(seed_urls)
     last_request_ts = 0.0
 
     def _fetch_page(url: str) -> Optional[str]:
@@ -4035,23 +4118,16 @@ def _crawl_domain_for_emails(domain: str, *,
     while queue and pages_crawled < max_pages:
         if (time.time() - started) > DOMAIN_EMAIL_TOTAL_TIMEOUT:
             break
-        url, depth = queue.pop(0)
-        if url in visited:
-            continue
-        visited.add(url)
+        url, depth = queue.popleft()
         # robots.txt 拒绝
         if _is_path_disallowed(url, disallows):
             continue
-        # 仅同主域(含子域)
+        # 仅 http(s) + 同主域(含子域)
         try:
-            from urllib.parse import urlparse as _up, urljoin as _uj
-            parsed = _up(url)
-            if parsed.scheme not in ('http', 'https'):
-                continue
-            host = parsed.netloc.lower()
-            if host != target and not host.endswith('.' + target):
-                continue
-        except Exception:
+            scheme = urllib.parse.urlsplit(url).scheme
+        except ValueError:
+            continue
+        if scheme not in ('http', 'https') or not _url_in_domain(url, target):
             continue
         body = _fetch_page(url)
         if body is None:
@@ -4079,15 +4155,12 @@ def _crawl_domain_for_emails(domain: str, *,
                 if not href:
                     continue
                 try:
-                    abs_url = _uj(url, href)
-                    abs_url = abs_url.split('#', 1)[0]
-                    if abs_url and abs_url not in visited:
-                        queue.append((abs_url, depth + 1))
-                except Exception:
+                    abs_url = urllib.parse.urljoin(url, href).split('#', 1)[0]
+                except ValueError:
                     continue
-    if show_progress and sys.stderr.isatty():
-        sys.stderr.write('\r' + ' ' * 70 + '\r')
-        sys.stderr.flush()
+                if abs_url and abs_url not in enqueued:
+                    enqueued.add(abs_url)
+                    queue.append((abs_url, depth + 1))
     return {
         'emails': found_emails,
         'page_map': page_emails,  # email → first page url
@@ -4237,8 +4310,7 @@ def enumerate_domain_emails(domain: str, *,
             except Exception as e:
                 source_errors[name] = type(e).__name__
                 if show_progress:
-                    _stage_log(f"   {Color.Re}[{name:>8}] error: "
-                               f"{type(e).__name__}{Color.Reset}")
+                    _stage_log(f"   {Color.Re}{t('demails.source_err', name=name, err=type(e).__name__)}{Color.Reset}")
                 continue
             for em in emails:
                 _add(em, name)
@@ -4275,11 +4347,11 @@ def enumerate_domain_emails(domain: str, *,
 
         if show_progress:
             _stage_log(f"\n {Color.Cy}{t('demails.stage_crawl', n=len(targets_to_crawl))}{Color.Reset}")
-        # v1.6.11:per_target 加 PER_TARGET_CAP 上限(防 2 target 时各拿 250 共 500)
-        # 之前 500 / 2 = 250 × 2 = 500 页 × 500ms 速率 = 4 分钟最低
-        # 现在 min(100, 200/2) = 100 × 2 = 200 页 × 500ms = 100 秒,体感快很多
-        per_target = max(10, min(DOMAIN_EMAIL_PER_TARGET_CAP,
-                                  max_pages // max(1, len(targets_to_crawl))))
+        # max_pages 是**总**页数预算,按 target 数均分(每个至少 10 页)。
+        # v1.6.11 曾额外加固定上限 min(100, ...),结果单 target 时默认 200 / 菜单「深度 500」/
+        # `--max-pages 500` 全被静默压成 100 页,与文档承诺矛盾 —— 已移除该上限。
+        # 提速靠的是 v1.6.11 把默认值 500 → 200;单 target 内另有 DOMAIN_EMAIL_TOTAL_TIMEOUT 兜底。
+        per_target = max(10, max_pages // max(1, len(targets_to_crawl)))
         total_targets = len(targets_to_crawl)
 
         # v1.6.6:多 target 并行爬(workers=3,平衡速度 vs 礼貌)
@@ -4307,7 +4379,7 @@ def enumerate_domain_emails(domain: str, *,
                         _, crawl_result = fut.result()
                     except Exception as e:
                         if show_progress:
-                            _stage_log(f"   {Color.Re}[{tgt}] error: {type(e).__name__}{Color.Reset}")
+                            _stage_log(f"   {Color.Re}{t('demails.source_err', name=tgt, err=type(e).__name__)}{Color.Reset}")
                         continue
                     crawl_results[tgt] = crawl_result
                     for em in crawl_result.get('emails', set()):
@@ -4780,7 +4852,7 @@ def do_investigate(target: str, *,
                                     # 计 hit 数:dict 里非 None 且非以 _ 开头的 key 个数
                                     hits = sum(1 for k, v in (r or {}).items()
                                                if v is not None and not k.startswith('_'))
-                                    summary = f' → {hits} hit{"s" if hits != 1 else ""}' if hits else ''
+                                    summary = f' → {t("msg.hits", n=hits)}' if hits else ''
                                     _stage_log(f"   {Color.Gr}{t('investigate.user_pivot_done', n=user_completed, total=user_total, sym='✓', local=local, summary=summary)}{Color.Reset}")
                             if _remaining() <= 0:
                                 ex_users.shutdown(wait=False, cancel_futures=True)
@@ -4900,30 +4972,30 @@ def print_phone_info(data: dict) -> None:
     if '_error' in data:
         print(f" {Color.Re}{data['_error']}{Color.Reset}")
         return
-    print_field(t('field.location'),       data['location'],      width=22)
-    print_field(t('field.region_code'),    data['region_code'],   width=22)
-    print_field(t('field.timezone'),       data['timezones'],     width=22)
+    print_field(t('field.location'),       data['location'],      width=26)
+    print_field(t('field.region_code'),    data['region_code'],   width=26)
+    print_field(t('field.timezone'),       data['timezones'],     width=26)
     # carrier(号段所属)+ disclaimer 子条
-    print_field(t('field.carrier'),        data['carrier'],       width=22)
+    print_field(t('field.carrier'),        data['carrier'],       width=26)
     note = data.get('carrier_note')
     if note:
         print(f"     {Color.Bl}↳ {note}{Color.Reset}")
     # 实时 HLR 运营商(若有)
     rt = data.get('carrier_realtime')
     if rt:
-        print_field(t('field.carrier_realtime'), rt, width=22)
+        print_field(t('field.carrier_realtime'), rt, width=26)
     elif data.get('carrier_realtime_error'):
         print(f"     {Color.Re}↳ {data['carrier_realtime_error']}{Color.Reset}")
     elif data.get('carrier_realtime_hint'):
         print(f"     {Color.Bl}↳ {data['carrier_realtime_hint']}{Color.Reset}")
-    print_field(t('field.is_valid'),       data['is_valid'],      width=22)
-    print_field(t('field.is_possible'),    data['is_possible'],   width=22)
-    print_field(t('field.intl_format'),    data['international'], width=22)
-    print_field(t('field.mobile_dial'),    data['mobile_dial'],   width=22)
-    print_field(t('field.original_num'),   data['national'],      width=22)
-    print_field(t('field.e164_format'),    data['e164'],          width=22)
-    print_field(t('field.country_code'),   data['country_code'],  width=22)
-    print_field(t('field.number_type'),    data['number_type'],   width=22)
+    print_field(t('field.is_valid'),       data['is_valid'],      width=26)
+    print_field(t('field.is_possible'),    data['is_possible'],   width=26)
+    print_field(t('field.intl_format'),    data['international'], width=26)
+    print_field(t('field.mobile_dial'),    data['mobile_dial'],   width=26)
+    print_field(t('field.original_num'),   data['national'],      width=26)
+    print_field(t('field.e164_format'),    data['e164'],          width=26)
+    print_field(t('field.country_code'),   data['country_code'],  width=26)
+    print_field(t('field.number_type'),    data['number_type'],   width=26)
 
 
 def _platform_only(d: dict) -> dict:
@@ -4931,6 +5003,15 @@ def _platform_only(d: dict) -> dict:
     注意：仅供 username 扫描结果使用 —— 批量 mx/whois 的 key 是用户传入的域名
     （包括合法的 _dmarc.example.com 等以 _ 开头的子域），不能套用此过滤。"""
     return {k: v for k, v in d.items() if not k.startswith('_')}
+
+
+def _username_json_view(data: Any) -> Any:
+    """username 扫描结果的公开 JSON 视图:剥掉 _statuses 等内部 key,但保留 _recursive
+    层级数据(递归扫描的核心产出)。`--json` 输出与 `--save x.json` 共用此函数,
+    保证两条路径产出一致(之前 --save 会把 _recursive 一并剥掉)。"""
+    if not isinstance(data, dict) or '_error' in data:
+        return data
+    return {k: v for k, v in data.items() if k == '_recursive' or not k.startswith('_')}
 
 
 def _print_recursive_summary(rec: dict) -> None:
@@ -4948,7 +5029,7 @@ def _print_recursive_summary(rec: dict) -> None:
             print(f"  {Color.Re}[depth {depth}]{Color.Reset} {name}: {level['error']}")
         else:
             print(f"  {Color.Bl}[depth {depth}]{Color.Reset} {Color.Wh}{name}{Color.Reset}  →  "
-                  f"{Color.Gr}{n_found}{Color.Reset} hits")
+                  f"{Color.Gr}{t('msg.hits', n=n_found)}{Color.Reset}")
     total = rec.get('total_found', 0)
     depths = max((lvl.get('depth', 0) for lvl in levels), default=0) + 1
     print(f"\n {Color.Cy}{t('msg.recursive_done', total=total, depths=depths)}{Color.Reset}")
@@ -4969,13 +5050,13 @@ def print_username_results(results: dict, show_all: bool = False) -> None:
         status_counts = Counter(statuses.values())
         notes = []
         if status_counts.get(STATUS_WAF, 0):
-            notes.append(f"{Color.Mage}{status_counts[STATUS_WAF]} WAF-blocked{Color.Reset}")
+            notes.append(f"{Color.Mage}{t('username.note_waf', n=status_counts[STATUS_WAF])}{Color.Reset}")
         if status_counts.get(STATUS_INVALID_USERNAME, 0):
-            notes.append(f"{Color.Bl}{status_counts[STATUS_INVALID_USERNAME]} skipped (regex){Color.Reset}")
+            notes.append(f"{Color.Bl}{t('username.note_skipped', n=status_counts[STATUS_INVALID_USERNAME])}{Color.Reset}")
         if status_counts.get(STATUS_NETWORK_ERROR, 0):
-            notes.append(f"{Color.Re}{status_counts[STATUS_NETWORK_ERROR]} network errors{Color.Reset}")
+            notes.append(f"{Color.Re}{t('username.note_neterr', n=status_counts[STATUS_NETWORK_ERROR])}{Color.Reset}")
         if notes:
-            print(f" {Color.Ye}[ note ] {Color.Reset}" + "  ·  ".join(notes))
+            print(f" {Color.Ye}[ {t('username.note_label')} ] {Color.Reset}" + "  ·  ".join(notes))
     if not show_all:
         print(f" {Color.Bl}{Color.Ye}{t('msg.show_all_hint')}{Color.Reset}")
     print()
@@ -5013,9 +5094,9 @@ def print_username_results(results: dict, show_all: bool = False) -> None:
                 # 区分「未找到」「WAF 拦截」「无效用户名」
                 p_status = statuses.get(p.name, STATUS_NOT_FOUND)
                 if p_status == STATUS_WAF:
-                    note = f"{Color.Mage}[ WAF blocked ]{Color.Reset}"
+                    note = f"{Color.Mage}{t('username.tag_waf')}{Color.Reset}"
                 elif p_status == STATUS_INVALID_USERNAME:
-                    note = f"{Color.Bl}[ skipped ]{Color.Reset}"
+                    note = f"{Color.Bl}{t('username.tag_skipped')}{Color.Reset}"
                 else:
                     note = f"{Color.Ye}{t('msg.not_found')}"
                 print(f" {Color.Wh}[ {Color.Re}- {Color.Wh}] {Color.Bl}{badge}{Color.Wh} {p.name:28} {note}{Color.Reset}")
@@ -5125,7 +5206,7 @@ def print_domain_emails(data: dict) -> None:
             verified = e.get('verified')
             v_str = ''
             if verified is True:
-                v_str = f" {Color.Gr}[✓ verified]{Color.Reset}"
+                v_str = f" {Color.Gr}[{t('demails.tag_verified')}]{Color.Reset}"
             elif verified is False:
                 reason = (e.get('verify_reason') or '')[:30]
                 v_str = f" {Color.Re}[✗ {reason}]{Color.Reset}"
@@ -5141,7 +5222,7 @@ def print_subdomain_diff(data: dict) -> None:
     if isinstance(data, dict) and data.get('_error'):
         print(f"\n {Color.Re}{data['_error']}{Color.Reset}\n")
         return
-    _print_section_header('section.subdomain')
+    _print_section_header('section.diff')
     print()
     domain = data.get('domain', '')
     stats = data.get('_stats', {}) or {}
@@ -5171,7 +5252,7 @@ def print_subdomain_diff(data: dict) -> None:
             host = c.get('host', '')
             chg = c.get('changes', {})
             fields = ', '.join(chg.keys())
-            print(f"   {Color.Ye}~ {host:45} {Color.Wh}变更字段: {Color.Mage}{fields}{Color.Reset}")
+            print(f"   {Color.Ye}~ {host:45} {Color.Wh}{t('diff.changed_fields')}: {Color.Mage}{fields}{Color.Reset}")
             for field, vals in chg.items():
                 b = vals.get('before')
                 a = vals.get('after')
@@ -5306,7 +5387,7 @@ def print_investigate(data: dict) -> None:
             ip_str = ', '.join(ips[:3]) if ips else (s.get('cname') or '?')
             print(f"   {Color.Wh}[ {Color.Gr}+ {Color.Wh}] {host:35} {Color.Gr}{ip_str[:40]}{Color.Reset}")
         if len(alive) > 20:
-            print(f"   {Color.Bl}... +{len(alive) - 20} more{Color.Reset}")
+            print(f"   {Color.Bl}{t('msg.more', n=len(alive) - 20)}{Color.Reset}")
     print()
 
     # Pivot IP
@@ -5340,7 +5421,7 @@ def print_investigate(data: dict) -> None:
                 srcs = ','.join(e.get('sources') or [])
                 print(f"   {Color.Wh}[ {Color.Gr}+ {Color.Wh}] {addr:45} {Color.Mage}({srcs}){Color.Reset}")
         if len(em_list) > 15:
-            print(f"   {Color.Bl}... +{len(em_list) - 15} more{Color.Reset}")
+            print(f"   {Color.Bl}{t('msg.more', n=len(em_list) - 15)}{Color.Reset}")
     print()
 
     # Pivot user
@@ -5358,11 +5439,11 @@ def print_investigate(data: dict) -> None:
                 continue
             result = ud.get('result') or {}
             hits = [(k, v) for k, v in result.items() if not k.startswith('_') and v]
-            print(f"   {Color.Wh}[ {Color.Gr}+ {Color.Wh}] {addr:35} ({local}) {Color.Gr}→ {len(hits)} hits{Color.Reset}")
+            print(f"   {Color.Wh}[ {Color.Gr}+ {Color.Wh}] {addr:35} ({local}) {Color.Gr}→ {t('msg.hits', n=len(hits))}{Color.Reset}")
             for plat, url in hits[:5]:
                 print(f"     {Color.Bl}{plat}{Color.Reset}: {url}")
             if len(hits) > 5:
-                print(f"     {Color.Bl}... +{len(hits) - 5} more{Color.Reset}")
+                print(f"     {Color.Bl}{t('msg.more', n=len(hits) - 5)}{Color.Reset}")
     print()
 
 
@@ -5802,13 +5883,14 @@ def _maybe_save(target: Optional[str], prefix: str, data: Any) -> None:
     is_txt_file = target_lower.endswith('.txt')
     is_csv_file = target_lower.endswith('.csv')
     is_xmind_file = target_lower.endswith('.xmind')
-    is_dir = target.endswith(os.sep) or (os.path.exists(target) and os.path.isdir(target))
+    # 以 '/' 结尾在所有平台都视为目录(Windows 上 os.sep 是 '\\',
+    # 之前 `--save out/` 在 Windows 上会被当成文件名)
+    is_dir = (target.endswith(('/', os.sep))
+              or (os.path.exists(target) and os.path.isdir(target)))
     # 仅 username 扫描结果需要剥 _statuses 等私有 key；
     # 批量 mx/whois 的 key 是用户传入的域名（含合法 _dmarc.example.com 等
     # 以 _ 开头的子域），不能无脑过滤 —— 之前会导致这些子域结果被静默删掉。
-    json_data = data
-    if isinstance(data, dict) and '_error' not in data and prefix.startswith('username_'):
-        json_data = _platform_only(data)
+    json_data = _username_json_view(data) if prefix.startswith('username_') else data
     try:
         if is_dir:
             os.makedirs(target, exist_ok=True)
@@ -5840,7 +5922,9 @@ def _maybe_save(target: Optional[str], prefix: str, data: Any) -> None:
                     f.write(_to_txt(prefix, data))
             elif is_csv_file:
                 # newline='' 让 csv 模块自己控行尾，避免 Windows 多余 \r
-                with open(target, 'w', encoding='utf-8', newline='') as f:
+                # v1.6.13:'utf-8-sig' 写 BOM,Excel/Numbers 才会按 UTF-8 解析中文
+                # (v1.8.0 曾误回退成 'utf-8' 导致乱码复发,已有回归测试守护)
+                with open(target, 'w', encoding='utf-8-sig', newline='') as f:
                     f.write(_to_csv(prefix, data))
             elif is_xmind_file:
                 err = _to_xmind(prefix, data, target)
@@ -5858,6 +5942,27 @@ def _maybe_save(target: Optional[str], prefix: str, data: Any) -> None:
     # 显示绝对路径，方便用户立刻找到文件（解决"我的文件存哪去了"困惑）
     abs_path = os.path.abspath(path)
     print(f"\n {Color.Cy}{t('msg.saved_to', path=abs_path)}{Color.Reset}")
+
+
+def _flatten_value(v: Any, _depth: int = 0) -> str:
+    """报告「通用 dict」分支共用:把任意嵌套值压成单行可读文本。
+    - dict → `k=v; k=v`(跳过 None / 空串)
+    - list / tuple / set → `a, b`;元素是 dict 时每项加括号 `(k=v; k=v), (...)`
+    - 嵌套递归展开,深度 >3 兜底 str()
+    之前 6 个报告生成器各复制一份"只取一层标量"的逻辑,嵌套 dict/list 被直接丢弃 ——
+    批量 `mx a.com b.com --save r.md` 报告里每个域只剩 `domain=…`,records 全丢。"""
+    if v is None:
+        return ''
+    if _depth > 3:
+        return str(v)
+    if isinstance(v, dict):
+        return '; '.join(f'{k}={_flatten_value(x, _depth + 1)}'
+                         for k, x in v.items() if x is not None and x != '')
+    if isinstance(v, (list, tuple, set)):
+        if any(isinstance(x, dict) for x in v):
+            return ', '.join(f'({_flatten_value(x, _depth + 1)})' for x in v)
+        return ', '.join(_flatten_value(x, _depth + 1) for x in v)
+    return str(v)
 
 
 def _md_escape(s: Any) -> str:
@@ -6032,7 +6137,7 @@ def _to_markdown(prefix: str, data: Any) -> str:
     if cmd == 'permute' and _is_permute_scan(data):
         lines.append(f"## {t('permute.title')} `{query}`")
         lines.append("")
-        lines.append(f"**{len(data)} variations scanned**")
+        lines.append(f"**{t('report.variations_scanned', n=len(data))}**")
         lines.append("")
         for var, scan in data.items():
             if not isinstance(scan, dict):
@@ -6210,12 +6315,7 @@ def _to_markdown(prefix: str, data: Any) -> str:
         for k, v in items:
             if v is None or v == '':
                 continue
-            if isinstance(v, dict):
-                v_str = ', '.join(f"{kk}={vv}" for kk, vv in v.items() if not isinstance(vv, (dict, list)))
-            elif isinstance(v, (list, tuple)):
-                v_str = ', '.join(str(x) for x in v)
-            else:
-                v_str = str(v)
+            v_str = _flatten_value(v)
             lines.append(f"| {_md_escape(k)} | {_md_escape(v_str)} |")
         lines.append("")
         return '\n'.join(lines)
@@ -6530,7 +6630,7 @@ def _to_pdf(prefix: str, data: Any, out_path: str) -> Optional[str]:
             story.append(_pdf_story(
                 f"<b>{_md_escape(t('permute.title'))}:</b> {query}", styles['Heading2']))
             story.append(_pdf_story(
-                f"{len(data)} variations scanned", styles['Normal']))
+                t('report.variations_scanned', n=len(data)), styles['Normal']))
             story.append(_rl_spacer(1, 12))
             for var, scan in data.items():
                 if not isinstance(scan, dict):
@@ -6679,13 +6779,7 @@ def _to_pdf(prefix: str, data: Any, out_path: str) -> Optional[str]:
             for k, v in items:
                 if v is None or v == '':
                     continue
-                if isinstance(v, dict):
-                    v_str = ', '.join(f"{kk}={vv}" for kk, vv in v.items()
-                                       if not isinstance(vv, (dict, list)))
-                elif isinstance(v, (list, tuple)):
-                    v_str = ', '.join(str(x) for x in v)
-                else:
-                    v_str = str(v)
+                v_str = _flatten_value(v)
                 table_data.append([
                     _pdf_para(k, styles['Normal']),
                     _pdf_para(v_str, styles['Normal']),
@@ -7007,7 +7101,7 @@ def _to_html(prefix: str, data: Any) -> str:
     # v1.2.1 P1-2: permute + 批量扫描 —— 每个变形一个子节
     if cmd == 'permute' and _is_permute_scan(data):
         parts.append(f'<h2>{_html_escape(t("permute.title"))} <code>{query_safe}</code></h2>')
-        parts.append(f'<p><b>{len(data)} variations scanned</b></p>')
+        parts.append(f'<p><b>{_html_escape(t("report.variations_scanned", n=len(data)))}</b></p>')
         for var, scan in data.items():
             if not isinstance(scan, dict):
                 continue
@@ -7047,10 +7141,10 @@ def _to_html(prefix: str, data: Any) -> str:
 
     # v1.4.0: domain-emails HTML 报告
     if cmd == 'domain-emails' and isinstance(data, dict) and 'emails' in data:
-        domain_safe = _html_escape(data.get('domain', query))
         stats = data.get('_stats', {}) or {}
         sm_label = '✓' if stats.get('sitemap_found') else '✗'
-        parts.append(f'<h2>{_html_escape(t("demails.title", domain=domain_safe))}</h2>')
+        # 只在最外层 escape 一次(之前先 escape 再塞进 t() 再 escape → 双重转义)
+        parts.append(f'<h2>{_html_escape(t("demails.title", domain=data.get("domain", query)))}</h2>')
         parts.append(
             f'<p><b>{_html_escape(t("demails.summary", total=stats.get("total", 0), pages=stats.get("pages_crawled", 0), sitemap=sm_label))}</b></p>'
         )
@@ -7068,7 +7162,7 @@ def _to_html(prefix: str, data: Any) -> str:
             for e in data['emails']:
                 addr_safe = _html_escape(e.get('address', ''))
                 page = e.get('page') or ''
-                page_html = (f'<a href="{_html_escape(page)}" target="_blank" rel="noopener noreferrer">{_html_escape(page)[:60]}</a>'
+                page_html = (f'<a href="{_html_escape(page)}" target="_blank" rel="noopener noreferrer">{_html_escape(page[:60])}</a>'
                              if page else '')
                 ver = ''
                 if e.get('verified') is True:
@@ -7093,11 +7187,10 @@ def _to_html(prefix: str, data: Any) -> str:
 
     # v1.3.0: subdomain 枚举 — 表格 host / IP / CNAME / status / title
     if cmd == 'subdomain' and isinstance(data, dict) and 'subdomains' in data:
-        domain_safe = _html_escape(data.get('domain', query))
         stats = data.get('_stats', {}) or {}
         sources_active = sum(1 for v in (data.get('sources') or {}).values() if v > 0)
         parts.append(
-            f'<h2>{_html_escape(t("subdomain.title", domain=domain_safe))}</h2>'
+            f'<h2>{_html_escape(t("subdomain.title", domain=data.get("domain", query)))}</h2>'
         )
         parts.append(
             f'<p><b>{_html_escape(t("subdomain.summary", total=stats.get("total", 0), alive=stats.get("alive", 0), sources=sources_active))}</b></p>'
@@ -7197,10 +7290,9 @@ def _to_html(prefix: str, data: Any) -> str:
 
     # v1.7.0: investigate 综合调查 — 6 sections,Editorial 调性沿用主 CSS
     if cmd == 'investigate' and isinstance(data, dict) and 'tasks' in data:
-        target_safe = _html_escape(data.get('target', query))
         stats = data.get('_stats', {}) or {}
         parts.append(
-            f'<h2>{_html_escape(t("investigate.title", target=target_safe))}</h2>'
+            f'<h2>{_html_escape(t("investigate.title", target=data.get("target", query)))}</h2>'
         )
         parts.append(
             f'<p class="summary"><b>{_html_escape(t("investigate.summary", tasks_done=stats.get("tasks_done", 0), tasks_failed=stats.get("tasks_failed", 0), pivots_done=stats.get("pivots_done", 0), elapsed=data.get("elapsed", 0)))}</b></p>'
@@ -7417,13 +7509,7 @@ def _to_html(prefix: str, data: Any) -> str:
         for k, v in items:
             if v is None or v == '':
                 continue
-            if isinstance(v, dict):
-                v_str = ', '.join(f'{kk}={vv}' for kk, vv in v.items()
-                                  if not isinstance(vv, (dict, list)))
-            elif isinstance(v, (list, tuple)):
-                v_str = ', '.join(str(x) for x in v)
-            else:
-                v_str = str(v)
+            v_str = _flatten_value(v)
             parts.append(
                 f'<tr><td>{_html_escape(k)}</td><td>{_html_escape(v_str)}</td></tr>'
             )
@@ -7502,7 +7588,7 @@ def _to_txt(prefix: str, data: Any) -> str:
     # v1.2.1 P1-2: permute + 批量扫描 —— 每个变形一个段
     if cmd == 'permute' and _is_permute_scan(data):
         lines.append(f'{t("permute.title")} {query}')
-        lines.append(f'{len(data)} variations scanned')
+        lines.append(t('report.variations_scanned', n=len(data)))
         lines.append('')
         for var, scan in data.items():
             if not isinstance(scan, dict):
@@ -7706,7 +7792,7 @@ def _to_txt(prefix: str, data: Any) -> str:
                     continue
                 result = ud.get('result') or {}
                 hits = [(k, v) for k, v in result.items() if not k.startswith('_') and v]
-                lines.append(f'  [+] {addr} ({local}) → {len(hits)} hits')
+                lines.append(f'  [+] {addr} ({local}) → {t("msg.hits", n=len(hits))}')
                 for plat, url in hits:
                     lines.append(f'        {plat:25} {url}')
         lines.append('')
@@ -7719,13 +7805,7 @@ def _to_txt(prefix: str, data: Any) -> str:
         for k, v in items:
             if v is None or v == '':
                 continue
-            if isinstance(v, dict):
-                v_str = ', '.join(f'{kk}={vv}' for kk, vv in v.items()
-                                  if not isinstance(vv, (dict, list)))
-            elif isinstance(v, (list, tuple)):
-                v_str = ', '.join(str(x) for x in v)
-            else:
-                v_str = str(v)
+            v_str = _flatten_value(v)
             lines.append(f'  {k:22}: {v_str}')
         return '\n'.join(lines) + '\n'
 
@@ -7782,11 +7862,11 @@ def _to_csv(prefix: str, data: Any) -> str:
             t('report.username_scan'), t('report.category'),
             t('report.platform'), t('report.url'),
         ])
+        cat_lookup = {p.name: p.category for p in _get_platforms()}  # 循环外建一次(3164 项)
         for var, scan in data.items():
             if not isinstance(scan, dict) or '_error' in scan:
                 continue
             plat = _platform_only(scan)
-            cat_lookup = {p.name: p.category for p in _get_platforms()}
             for p_name, url in plat.items():
                 if url:
                     writer.writerow([_csv_safe(var),
@@ -7927,13 +8007,7 @@ def _to_csv(prefix: str, data: Any) -> str:
         for k, v in items:
             if v is None or v == '':
                 continue
-            if isinstance(v, dict):
-                v_str = ', '.join(f'{kk}={vv}' for kk, vv in v.items()
-                                  if not isinstance(vv, (dict, list)))
-            elif isinstance(v, (list, tuple)):
-                v_str = ', '.join(str(x) for x in v)
-            else:
-                v_str = str(v)
+            v_str = _flatten_value(v)
             writer.writerow([_csv_safe(k), _csv_safe(v_str)])
         return buf.getvalue()
 
@@ -8014,7 +8088,7 @@ def _to_xmind(prefix: str, data: Any, out_path: str) -> Optional[str]:
                           for p_name, url in plat.items() if url]
                 found = len(p_kids)
                 sub_topics.append(_topic(
-                    f'{var} ({found} hits)', p_kids,
+                    f'{var} ({t("msg.hits", n=found)})', p_kids,
                     markers=['flag-purple'] if found else ['flag-orange'],
                 ))
         elif cmd == 'mx' and isinstance(data, dict) and 'records' in data:
@@ -8038,7 +8112,9 @@ def _to_xmind(prefix: str, data: Any, out_path: str) -> Optional[str]:
             sub_topics = [meta_topic]
             stats = data.get('_stats', {}) or {}
             sub_topics.append(_topic(
-                f'📊 共 {stats.get("total", 0)} 个邮箱 · 爬取 {stats.get("pages_crawled", 0)} 页',
+                '📊 ' + t('demails.summary', total=stats.get('total', 0),
+                          pages=stats.get('pages_crawled', 0),
+                          sitemap='✓' if stats.get('sitemap_found') else '✗'),
                 markers=['symbol-info'],
             ))
             groups: dict = {'passive': [], 'crawl': [], 'pattern': []}
@@ -8172,13 +8248,7 @@ def _to_xmind(prefix: str, data: Any, out_path: str) -> Optional[str]:
             for k, v in items:
                 if v is None or v == '':
                     continue
-                if isinstance(v, dict):
-                    v_str = ', '.join(f'{kk}={vv}' for kk, vv in v.items()
-                                      if not isinstance(vv, (dict, list)))
-                elif isinstance(v, (list, tuple)):
-                    v_str = ', '.join(str(x) for x in v)
-                else:
-                    v_str = str(v)
+                v_str = _flatten_value(v)
                 sub_topics.append(_topic(f'{k}: {v_str}'))
         else:
             sub_topics = [meta_topic, _topic(
@@ -8195,6 +8265,7 @@ def _to_xmind(prefix: str, data: Any, out_path: str) -> Optional[str]:
             'ip': '🌐', 'myip': '📡', 'phone': '📱', 'username': '👤',
             'permute': '🧬', 'whois': '🔍', 'mx': '📧', 'email': '✉️',
             'subdomain': '🌐', 'domain-emails': '📧', 'history': '🕐',
+            'investigate': '🕵', 'diff': '🔀',
         }
         emoji = _XMIND_CMD_EMOJI.get(cmd, '🔎')
         # root title:emoji + 报告名 + cmd · query(支持中英)
@@ -8334,6 +8405,37 @@ def _to_graph_html(prefix: str, data: Any) -> str:
                 'url': url,
             })
             links.append({'source': root_id, 'target': f'sd_{host}', 'value': 1})
+    elif cmd == 'investigate' and isinstance(data, dict) and isinstance(data.get('graph'), dict):
+        # do_investigate 已算好 nodes/edges(domain 为根的单向 DAG),之前只进 JSON、
+        # 没有任何报告用它。group:1=根域名 2=人员足迹(邮箱 / 平台账号) 3=基础设施(子域 / IP / MX)
+        graph = data['graph']
+        type_group = {'domain': 1, 'email': 2, 'platform': 2,
+                      'subdomain': 3, 'ip': 3, 'mx': 3}
+        # 平台节点 id = 'platform:<平台名>:<邮箱>',真实主页 URL 在 pivots.users 里
+        plat_urls: dict = {}
+        for addr, ud in ((data.get('pivots') or {}).get('users') or {}).items():
+            res = ud.get('result') if isinstance(ud, dict) else None
+            if isinstance(res, dict):
+                for p_name, url in res.items():
+                    if not p_name.startswith('_') and url:
+                        plat_urls[f'platform:{p_name}:{addr}'] = url
+        nodes = []
+        for n in graph.get('nodes') or []:
+            if not isinstance(n, dict) or not n.get('id'):
+                continue
+            nid, ntype = n['id'], n.get('type', '')
+            if ntype == 'subdomain':
+                url = f'https://{nid}/'
+            elif ntype == 'email':
+                url = f'mailto:{nid}'
+            else:
+                url = plat_urls.get(nid, '')
+            nodes.append({'id': nid, 'group': type_group.get(ntype, 3),
+                          'name': n.get('label') or nid, 'url': url})
+        node_ids = {n['id'] for n in nodes}
+        links = [{'source': e['src'], 'target': e['dst'], 'value': 1}
+                 for e in graph.get('edges') or []
+                 if isinstance(e, dict) and e.get('src') in node_ids and e.get('dst') in node_ids]
     elif isinstance(data, dict) and '_error' in data:
         # 非 username 命令也允许导出 graph，仅展示 query 单节点 + 错误提示
         nodes.append({'id': 'err', 'group': 3, 'name': data['_error'], 'url': ''})
@@ -8622,21 +8724,30 @@ def _detect_install_mode() -> str:
     return 'packaged-pip'
 
 
-def _build_upgrade_command(mode: str) -> Optional[list[str]]:
+_UPGRADE_GIT_URL = 'git+https://github.com/Akxan/SpyEyes.git'
+# release tag 白名单:v1.2.3 / 1.2.3 / v1.2.3-rc1 —— tag 来自网络,拼进 pip 参数前先校验
+_RELEASE_TAG_RE = re.compile(r'^[vV]?\d+(?:\.\d+){0,3}(?:[-+][0-9A-Za-z.]+)?$')
+
+
+def _build_upgrade_command(mode: str, tag: Optional[str] = None) -> Optional[list[str]]:
     """按 mode 返回 subprocess 命令列表,源码模式返回 None。
 
     使用 sys.executable -m pip 而非 'pip',避 PATH 缺失 (Windows 上 pip.exe 可能不在 PATH)。
     使用 list 形式 (非 shell 字符串) 避跨平台 shell quoting 差异。
+    tag:pip 模式下钉到该 release tag(`git+URL@v1.8.3`),装的正是提示里宣布的版本;
+    不传 / 格式不合法时退回 main 分支 HEAD(旧行为)。
     """
     if mode == 'source':
         return None
     if mode == 'packaged-pipx':
         return ['pipx', 'upgrade', 'spyeyes']
     if mode == 'packaged-pip':
+        url = _UPGRADE_GIT_URL
+        if tag and _RELEASE_TAG_RE.match(tag):
+            url = f'{url}@{tag}'
         # --no-input (pip 21.1+, Python 3.10+ 自带兼容) 防止 pip 边界场景下
         # prompt 用户导致 subprocess 在我们父进程里 hang。
-        return [sys.executable, '-m', 'pip', 'install', '--upgrade', '--no-input',
-                'git+https://github.com/Akxan/SpyEyes.git']
+        return [sys.executable, '-m', 'pip', 'install', '--upgrade', '--no-input', url]
     return None
 
 
@@ -8718,13 +8829,13 @@ def run_upgrade(yes: bool = False, check_only: bool = False) -> int:
         print(f" {Color.Ye}{t('upgrade.source_install_hint')}{Color.Reset}")
         return 0
 
-    cmd = _build_upgrade_command(mode)
+    cmd = _build_upgrade_command(mode, latest)
     if mode == 'packaged-pipx':
         # v1.8.2: 用绝对路径调 pipx (Windows 上 subprocess + 无扩展名相对命令的
         # PATH 解析有 edge case; 绝对路径 robust)。同时 which 还能检测 pipx 缺失。
         pipx_path = shutil.which('pipx')
         if pipx_path is None:
-            pip_cmd = _build_upgrade_command('packaged-pip') or []
+            pip_cmd = _build_upgrade_command('packaged-pip', latest) or []
             pip_str = ' '.join(pip_cmd)
             print(f" {Color.Re}{t('upgrade.pipx_missing', pip_cmd=pip_str)}{Color.Reset}")
             return 1
@@ -8823,10 +8934,16 @@ def _menu_startup_upgrade_prompt() -> None:
     msg = t('upgrade.prompt_menu_start',
             latest=info['latest'], current=info['current'])
     try:
-        if _prompt_yes_no(f"\n {Color.Ye}{msg}{Color.Reset}", default_yes=True):
-            rc = run_upgrade(yes=True)
-            sys.exit(rc)  # 升级后 exit,提示用户重启
-        # 选 N → 继续菜单
+        if not _prompt_yes_no(f"\n {Color.Ye}{msg}{Color.Reset}", default_yes=True):
+            return  # 选 N → 继续菜单(下次启动仍会提示)
+        # 升级成功时 run_upgrade 自己 sys.exit(0)(旧模块已加载,必须重启)。
+        # 能走到下一行说明没升成:源码安装只给 git pull 提示 / 网络错 / pipx 缺失 / 子进程失败。
+        # 之前这里无条件 sys.exit(rc) —— 用户选 Y 却被直接踢出菜单,什么也没升级。
+        # 现在停一下让用户看清提示,再进主菜单(菜单首屏会 clear_screen)。
+        run_upgrade(yes=True)
+        input(f"\n{Color.Wh}[ {Color.Gr}+ {Color.Wh}] {Color.Gr}{t('prompt.press_enter')}{Color.Reset}")
+    except EOFError:
+        return
     except KeyboardInterrupt:
         sys.exit(130)
 
@@ -8870,17 +8987,26 @@ def menu_loop(save_dir: Optional[str] = None) -> None:
 # ====================================================================
 # CLI
 # ====================================================================
-def _positive_int(value: str) -> int:
-    """argparse 校验器：仅接受 1..200 的正整数。"""
-    try:
-        n = int(value)
-    except (TypeError, ValueError):
-        raise argparse.ArgumentTypeError(f"expected integer, got {value!r}")
-    if n < 1:
-        raise argparse.ArgumentTypeError(f"must be >= 1, got {n}")
-    if n > 200:
-        raise argparse.ArgumentTypeError(f"must be <= 200 (avoid system overload), got {n}")
-    return n
+def _int_range(lo: int, hi: int):
+    """argparse 校验器工厂：仅接受 lo..hi 的整数。"""
+    def _check(value: str) -> int:
+        try:
+            n = int(value)
+        except (TypeError, ValueError):
+            raise argparse.ArgumentTypeError(f"expected integer, got {value!r}")
+        if n < lo:
+            raise argparse.ArgumentTypeError(f"must be >= {lo}, got {n}")
+        if n > hi:
+            raise argparse.ArgumentTypeError(f"must be <= {hi} (avoid system overload), got {n}")
+        return n
+    return _check
+
+
+# 并发线程数 / 历史条数等:1..200
+_positive_int = _int_range(1, 200)
+# domain-emails --max-pages:默认 200,交互菜单「深度」档是 500 →
+# 上限不能沿用 200(之前 CLI `--max-pages 500` 直接被 argparse 拒绝,与菜单/文档矛盾)
+_max_pages_int = _int_range(1, DOMAIN_EMAIL_MAX_PAGES_LIMIT)
 
 
 def build_parser() -> argparse.ArgumentParser:
@@ -8905,30 +9031,26 @@ def build_parser() -> argparse.ArgumentParser:
         description=f'SpyEyes {__version__} —— OSINT toolkit (bilingual: zh/en)',
         formatter_class=argparse.RawDescriptionHelpFormatter,
         epilog="""Examples / 示例 (after `pip install .` use `spyeyes ...` directly):
-  python3 -m spyeyes                              # Interactive menu / 交互菜单
-  python3 -m spyeyes --lang en                    # Force English UI / 强制英文界面
-  python3 -m spyeyes ip 8.8.8.8                   # IP lookup
-  python3 -m spyeyes myip --lang en               # English JSON
-  python3 -m spyeyes phone +12025550100           # Phone parse
-  python3 -m spyeyes user torvalds                # Username scan (3164 platforms, 150 workers)
-  python3 -m spyeyes user torvalds --recursive    # v1.1.0: recursive scan
-  python3 -m spyeyes permute "John Doe"           # v1.1.0: generate variations (strict)
-  python3 -m spyeyes permute "John Doe" --method all  # v1.2.0: Maigret-style with _prefix/suffix_
-  python3 -m spyeyes permute "John Doe" --scan    # v1.1.0: gen + scan all
-  python3 -m spyeyes whois example.com            # WHOIS
-  python3 -m spyeyes mx gmail.com                 # MX records
-  python3 -m spyeyes email a@b.com                # Email validate
-  python3 -m spyeyes subdomain example.com        # v1.3.0: subdomain enum (CT logs + DNS + HTTP probe)
-  python3 -m spyeyes subdomain example.com --no-probe  # skip HTTP probe (faster)
-  python3 -m spyeyes ip 8.8.8.8 --json            # JSON output
-  python3 -m spyeyes ip 8.8.8.8 --save out/       # Save to dir (auto JSON)
-  python3 -m spyeyes user torvalds --save r.pdf   # v1.1.0: PDF report (needs spyeyes[pdf])
-  python3 -m spyeyes user torvalds --save r.md    # Markdown report
-  python3 -m spyeyes user torvalds --save r.html  # v1.2.0: HTML report (styled tables)
-  python3 -m spyeyes user torvalds --save r.txt   # v1.2.0: plain text report
-  python3 -m spyeyes user torvalds --save r.csv   # v1.2.0: CSV (excel-safe, injection-protected)
-  python3 -m spyeyes user torvalds --save r.xmind # v1.2.0: XMind 8 mind-map (no extra deps)
-  python3 -m spyeyes user torvalds --save r.graph.html  # v1.2.0: D3.js force-directed graph
+  spyeyes                                         # Interactive menu / 交互菜单
+  spyeyes --lang en ip 8.8.8.8                    # Force English UI / 强制英文界面
+  spyeyes myip --json                             # Public IP as JSON
+  spyeyes phone +12025550100                      # Phone parse (offline)
+  spyeyes user torvalds                           # Username scan (3164 platforms, 150 workers)
+  spyeyes user torvalds --quick --recursive       # Skip long tail + recursive follow-up
+  spyeyes permute "John Doe" --scan --quick       # Username variations + scan each
+  spyeyes whois example.com example.org           # WHOIS (batch)
+  spyeyes mx gmail.com                            # MX records
+  spyeyes email a@b.com                           # Email syntax + MX check
+  spyeyes subdomain example.com --alive-only      # Subdomain enum (6 passive sources + DNS + HTTP)
+  spyeyes subdomain --batch domains.txt --batch-save-dir reports/
+  spyeyes diff monday.json friday.json            # Compare two subdomain scans
+  spyeyes domain-emails example.com --guess "John Doe"   # Email harvest (6 free sources + crawl)
+  spyeyes investigate example.com --save dossier.html    # One-shot multi-source dossier
+  spyeyes history --search torvalds               # Query history
+  spyeyes upgrade --check                         # Check for a newer release
+  spyeyes user torvalds --save out/               # Save to dir (auto JSON, timestamped)
+  spyeyes user torvalds --save r.html             # Report format by extension:
+                                                  #   .json .md .html .pdf .txt .csv .xmind .graph.html
 """,
     )
 
@@ -9024,9 +9146,10 @@ def build_parser() -> argparse.ArgumentParser:
     sp.add_argument('--no-include-subdomains', action='store_true',
                     dest='no_include_subdomains',
                     help='Skip alive subdomains in crawl (main domain only, faster)')
-    sp.add_argument('--max-pages', type=_positive_int,
+    sp.add_argument('--max-pages', type=_max_pages_int,
                     default=DOMAIN_EMAIL_DEFAULT_MAX_PAGES,
-                    help=f'Max pages to crawl (default: {DOMAIN_EMAIL_DEFAULT_MAX_PAGES})')
+                    help=f'Max pages to crawl (default: {DOMAIN_EMAIL_DEFAULT_MAX_PAGES},'
+                         f' max {DOMAIN_EMAIL_MAX_PAGES_LIMIT}; total budget split across crawl targets)')
     sp.add_argument('--crawl-depth', type=int, default=DOMAIN_EMAIL_DEFAULT_DEPTH,
                     help=f'BFS depth limit (default: {DOMAIN_EMAIL_DEFAULT_DEPTH})')
     sp.add_argument('--ignore-robots', action='store_true', dest='ignore_robots',
@@ -9053,10 +9176,14 @@ def build_parser() -> argparse.ArgumentParser:
     sp = sub.add_parser('investigate', parents=[common],
                         help='Comprehensive multi-source investigation / 综合调查 (v1.7.0)')
     sp.add_argument('target', help='Target domain (v2 will add email/ip/username)')
-    sp.add_argument('--depth', type=int, default=1,
+    sp.add_argument('--depth', type=int, choices=[0, 1], default=1,
                     help='Pivot depth: 0=atomic-only, 1=with pivots (default: 1)')
+    # 注意措辞:预算只能约束 pivot 阶段 —— 阶段 1 的 4 个原子任务各有自己的超时,
+    # 线程无法被强制取消,总会跑完;超出预算时剩余 pivot 被跳过
     sp.add_argument('--budget', type=float, default=INVESTIGATE_DEFAULT_BUDGET,
-                    help=f'Total time budget in seconds, 0=unlimited (default: {INVESTIGATE_DEFAULT_BUDGET})')
+                    help='Time budget in seconds; once exceeded, remaining pivots are skipped'
+                         ' (phase-1 tasks always finish under their own timeouts). 0=unlimited'
+                         f' (default: {INVESTIGATE_DEFAULT_BUDGET})')
     sp.add_argument('--max-pivot-ips', type=_positive_int,
                     default=INVESTIGATE_MAX_PIVOT_IPS, dest='max_pivot_ips',
                     help=f'Cap on subdomain→IP enrichment (default: {INVESTIGATE_MAX_PIVOT_IPS})')
@@ -9069,7 +9196,9 @@ def build_parser() -> argparse.ArgumentParser:
                     help='Skip HTTP probe in subdomain stage (faster)')
 
     # v1.8.2: 一键升级
-    p_upgrade = sub.add_parser('upgrade', help='Check & upgrade SpyEyes to latest version')
+    # parents=[common]:让 `spyeyes upgrade --lang en / --no-color` 与其它子命令一致可用
+    p_upgrade = sub.add_parser('upgrade', parents=[common],
+                               help='Check & upgrade SpyEyes to latest version / 检查并升级')
     p_upgrade.add_argument('--yes', '-y', action='store_true',
                            help='Skip confirmation prompt')
     p_upgrade.add_argument('--check', action='store_true',
@@ -9081,21 +9210,24 @@ def build_parser() -> argparse.ArgumentParser:
 def _run_subdomain_batch(args: argparse.Namespace) -> int:
     """v1.5.0:批量子域扫描。从 --batch FILE 读 domain 列表,逐个跑独立报告。
     输出:每个 domain 的 _stats 摘要打到 stderr;若 --batch-save-dir 指定,
-    每个 domain 单独写报告(扩展名取 --save 的);否则只打印进度。"""
+    每个 domain 单独写报告(扩展名取 --save 的,默认 html);否则只打印进度。
+    退出码:全部成功 0;任一域失败 1(与单域 run_cli 语义一致);参数/文件错误 2。"""
     path = args.batch_file
     save_dir = getattr(args, 'batch_save_dir', None)
-    save_ext = None
+    save_ext = 'html'  # 默认 HTML 报告
     if args.save:
-        # 从 --save 推断扩展名
+        # 从 --save 推断扩展名(r.pdf → pdf,r.graph.html → graph.html)
         m = re.search(r'\.([a-z]+(?:\.[a-z]+)?)$', args.save.lower())
-        save_ext = m.group(1) if m else 'html'
-    elif save_dir:
-        save_ext = 'html'  # 默认 HTML 报告
+        if m:
+            save_ext = m.group(1)
+        if not save_dir:
+            # 之前 --save 在 batch 模式下被静默忽略,用户以为报告写了
+            sys.stderr.write(f"{Color.Ye}[warn] {t('batch.save_ignored')}{Color.Reset}\n")
     try:
         with open(path, 'r', encoding='utf-8') as f:
             raw_lines = f.readlines()
     except OSError as e:
-        sys.stderr.write(f"--batch: 无法读取文件 {path}: {e}\n")
+        sys.stderr.write(t('batch.read_failed', path=path, err=e) + '\n')
         return 2
     domains: list[str] = []
     for line in raw_lines:
@@ -9104,19 +9236,19 @@ def _run_subdomain_batch(args: argparse.Namespace) -> int:
             continue
         domains.append(line)
     if not domains:
-        sys.stderr.write(f"--batch: 文件 {path} 中没有有效域名\n")
+        sys.stderr.write(t('batch.empty', path=path) + '\n')
         return 2
     if save_dir:
         try:
             os.makedirs(save_dir, exist_ok=True)
         except OSError as e:
-            sys.stderr.write(f"--batch: 无法创建保存目录 {save_dir}: {e}\n")
+            sys.stderr.write(t('batch.mkdir_failed', path=save_dir, err=e) + '\n')
             return 2
-    sys.stderr.write(f"\n {Color.Cy}== 批量扫描 {len(domains)} 个域名 ==\n{Color.Reset}")
+    sys.stderr.write(f"\n {Color.Cy}{t('batch.header', n=len(domains))}{Color.Reset}\n")
     summary: list = []
     probe = not getattr(args, 'no_probe', False)
     for idx, domain in enumerate(domains, 1):
-        sys.stderr.write(f"\n {Color.Wh}[{idx}/{len(domains)}] 扫描 {Color.Gr}{domain}{Color.Reset}\n")
+        sys.stderr.write(f"\n {Color.Wh}{t('batch.progress', idx=idx, total=len(domains), domain=domain)}{Color.Reset}\n")
         try:
             data = enumerate_subdomains(
                 domain, probe=probe,
@@ -9127,7 +9259,7 @@ def _run_subdomain_batch(args: argparse.Namespace) -> int:
                 show_progress=not args.json,
             )
         except KeyboardInterrupt:
-            sys.stderr.write(f" {Color.Re}用户中断,已完成 {idx-1}/{len(domains)}\n{Color.Reset}")
+            sys.stderr.write(f" {Color.Re}{t('batch.interrupted', done=idx - 1, total=len(domains))}{Color.Reset}\n")
             break
         if getattr(args, 'alive_only', False):
             # v1.6.5:同样用智能过滤(wildcard 时自动严格)
@@ -9139,21 +9271,21 @@ def _run_subdomain_batch(args: argparse.Namespace) -> int:
             'alive': stats.get('alive', 0),
             'error': data.get('_error') if isinstance(data, dict) else None,
         })
-        # 写文件(若 save_dir 给定)
+        # 写文件(若 save_dir 给定);prefix 带上域名,报告里的"查询"字段才不会是空的
         if save_dir and isinstance(data, dict) and not data.get('_error'):
             safe_name = re.sub(r'[^a-zA-Z0-9._-]', '_', domain)
             out_path = os.path.join(save_dir, f'subdomain_{safe_name}.{save_ext}')
-            _maybe_save(out_path, 'subdomain', data)
+            _maybe_save(out_path, f'subdomain_{domain}', data)
         # 写历史(批量也记录)
         _record_history('subdomain', argparse.Namespace(domain=domain), data)
     # 总结
-    sys.stderr.write(f"\n {Color.Cy}== 批量扫描完成 ==\n{Color.Reset}")
+    sys.stderr.write(f"\n {Color.Cy}{t('batch.done')}{Color.Reset}\n")
     for r in summary:
         marker = f"{Color.Re}✗{Color.Reset}" if r['error'] else f"{Color.Gr}✓{Color.Reset}"
         sys.stderr.write(f"  {marker} {r['domain']:30}  total={r['total']:5}  alive={r['alive']:5}\n")
     if args.json:
         _emit_json({'batch_summary': summary, 'count': len(summary)})
-    return 0
+    return 1 if any(r['error'] for r in summary) else 0
 
 
 def run_cli(args: argparse.Namespace) -> int:
@@ -9194,7 +9326,7 @@ def run_cli(args: argparse.Namespace) -> int:
             cats = [c.strip() for c in args.category_filter.split(',') if c.strip()]
             # 同时传 --quick + --category 时警告：--category 优先
             if getattr(args, 'quick', False):
-                sys.stderr.write(f"{Color.Ye}[warn] --quick ignored when --category is set{Color.Reset}\n")
+                sys.stderr.write(f"{Color.Ye}[warn] {t('warn.quick_ignored')}{Color.Reset}\n")
         elif getattr(args, 'quick', False):
             cats = [c for c in CATEGORY_ORDER if c != 'other']
         if getattr(args, 'recursive', False):
@@ -9207,15 +9339,8 @@ def run_cli(args: argparse.Namespace) -> int:
                                   timeout=args.timeout, categories=cats)
         save_prefix = f'username_{args.username}'
         if args.json:
-            # 剥掉私有 _* key（如 _statuses）—— 这些是 print_* 的内部使用
-            # 递归结果保留 _recursive，让 JSON 消费者拿到完整层级数据
-            if isinstance(data, dict) and '_error' not in data:
-                json_data = {k: v for k, v in data.items() if k == '_recursive' or not k.startswith('_')}
-                if '_recursive' not in json_data:
-                    json_data = _platform_only(data)
-            else:
-                json_data = data
-            _emit_json(json_data)
+            # 剥掉私有 _* key（如 _statuses）；递归结果保留 _recursive 层级数据
+            _emit_json(_username_json_view(data))
         else:
             if isinstance(data, dict) and '_recursive' in data:
                 _print_recursive_summary(data['_recursive'])
@@ -9318,7 +9443,7 @@ def run_cli(args: argparse.Namespace) -> int:
         if batch_file:
             return _run_subdomain_batch(args)
         if not args.domain:
-            sys.stderr.write("subdomain: domain or --batch is required\n")
+            sys.stderr.write(t('err.subdomain_need_domain') + "\n")
             return 2
         probe = not getattr(args, 'no_probe', False)
         data = enumerate_subdomains(
@@ -9400,7 +9525,15 @@ def run_cli(args: argparse.Namespace) -> int:
     _record_history(cmd, args, data)
     if args.save:
         _maybe_save(args.save, save_prefix, data)
-    return 1 if isinstance(data, dict) and '_error' in data else 0
+    if isinstance(data, dict) and '_error' in data:
+        return 1
+    # 批量 whois / mx:错误嵌在每个域的子 dict 里,任一失败也要非 0 退出
+    # (之前顶层没有 _error,全失败也 exit 0,`spyeyes mx a b || alert` 永远不触发)
+    if (cmd in ('whois', 'mx') and len(getattr(args, 'domains', [])) > 1
+            and isinstance(data, dict)
+            and any(isinstance(v, dict) and '_error' in v for v in data.values())):
+        return 1
+    return 0
 
 
 def _batch_lookup(fn, items: list, max_workers: int = 10) -> dict:
@@ -9504,6 +9637,8 @@ def print_history(entries: list) -> None:
     if not entries:
         print(f" {Color.Ye}{t('msg.no_history')}{Color.Reset}")
         return
+    # 命令列宽按实际最长命令名对齐(domain-emails / investigate 超过旧的固定宽度 7)
+    cmd_width = max((len(str(e.get('cmd', '?'))) for e in entries), default=7)
     for e in entries:
         ts = e.get('ts', '?')
         cmd = e.get('cmd', '?')
@@ -9521,7 +9656,7 @@ def print_history(entries: list) -> None:
             if e.get('wildcard'):
                 extras.append('⚠wildcard')
         extra_str = f"  [{Color.Cy}{', '.join(str(x) for x in extras)}{Color.Reset}]" if extras else ''
-        print(f"  {Color.Bl}{ts}{Color.Reset}  {Color.Wh}{cmd:7}{Color.Reset}  {Color.Gr}{query}{Color.Reset}{extra_str}")
+        print(f"  {Color.Bl}{ts}{Color.Reset}  {Color.Wh}{cmd:{cmd_width}}{Color.Reset}  {Color.Gr}{query}{Color.Reset}{extra_str}")
 
 
 def resolve_language(args: argparse.Namespace) -> str:
@@ -9559,7 +9694,9 @@ def main() -> int:
     # CLI 模式：直接根据语言优先级选定，不弹首次提示
     if args.command:
         set_lang(resolve_language(args))
-        _maybe_show_update_notice()
+        # upgrade 自己会同步强刷 GitHub;再打通知 + 起后台刷新线程既重复又会并发写同一缓存文件
+        if args.command != 'upgrade':
+            _maybe_show_update_notice()
         return run_cli(args)
 
     # 交互模式：如果配置中没有 lang 且 CLI 没指定，弹出语言选择并保存
@@ -9574,7 +9711,9 @@ def main() -> int:
         set_lang(chosen)
         save_config({**cfg, 'lang': chosen})
 
-    _maybe_show_update_notice()
+    # 交互 + TTY:菜单启动时的 Y/N 升级提示已包含同样信息,不重复打 stderr 通知
+    # (且菜单首屏 clear_screen 会立刻把它清掉);后台刷新照常启动
+    _maybe_show_update_notice(show=not sys.stdin.isatty())
 
     try:
         menu_loop(save_dir=getattr(args, 'save', None))
@@ -9583,10 +9722,10 @@ def main() -> int:
     return 0
 
 
-def _maybe_show_update_notice() -> None:
-    """语言已设定后立刻打提示(若缓存有新版本),并在后台刷新缓存。
+def _maybe_show_update_notice(show: bool = True) -> None:
+    """语言已设定后立刻打提示(若缓存有新版本且 show=True),并在后台刷新缓存。
     分开成函数 — 避免 main() 被 update 逻辑拆得太碎。"""
-    info = get_cached_update_info()
+    info = get_cached_update_info() if show else None
     if info:
         print_update_notice(info)
     _start_background_update_check()
