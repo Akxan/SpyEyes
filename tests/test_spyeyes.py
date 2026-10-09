@@ -5773,3 +5773,37 @@ class TestColorThemes:
         monkeypatch.setattr(gt.Color, 'Brand', '<BRAND>')
         gt.print_banner()
         assert capsys.readouterr().err.lstrip().startswith('<BRAND>')
+
+
+class TestLazyHeavyImports:
+    """重型依赖(phonenumbers 归属地/运营商数据表 ~120 ms、reportlab ~40 ms)推迟到真正用到时才导入,
+    `import spyeyes` 不该加载它们 —— 否则 ip / whois / --version 等每条命令都白付启动开销。"""
+
+    def test_import_does_not_load_heavy_modules(self, tmp_path):
+        import subprocess
+        heavy = ('reportlab', 'phonenumbers.geocoder', 'phonenumbers.carrier', 'phonenumbers.timezone')
+        code = f"import sys, spyeyes; print(sorted(m for m in {heavy!r} if m in sys.modules))"
+        repo_root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+        # HOME 指向临时目录:导入时 _load_env_file 不去读开发者真实的 ~/.spyeyes/env
+        env = {**os.environ, 'HOME': str(tmp_path), 'USERPROFILE': str(tmp_path)}
+        proc = subprocess.run([sys.executable, '-c', code], capture_output=True, text=True,
+                              timeout=30, cwd=repo_root, env=env)
+        assert proc.returncode == 0, proc.stderr
+        assert proc.stdout.strip() == '[]'
+
+    def test_broken_reportlab_install_degrades_gracefully(self, tmp_path, monkeypatch):
+        """find_spec 找得到、但 reportlab 装坏了(导入失败)→ 返回"需要 reportlab"的友好错误,不生成文件。"""
+        import builtins
+        real_import = builtins.__import__
+
+        def fake_import(name, *args, **kwargs):
+            if name.startswith('reportlab'):
+                raise ImportError('broken reportlab')
+            return real_import(name, *args, **kwargs)
+
+        monkeypatch.setattr(gt, 'HAS_REPORTLAB', True)
+        monkeypatch.setattr(gt, '_rl_paragraph', None)  # 视为尚未加载
+        monkeypatch.setattr(builtins, '__import__', fake_import)
+        out = tmp_path / 'r.pdf'
+        assert gt._to_pdf('ip_x', {'a': 1}, str(out)) == gt.t('err.no_pdf')
+        assert not out.exists()

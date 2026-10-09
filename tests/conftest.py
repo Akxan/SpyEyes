@@ -12,6 +12,14 @@ sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 import spyeyes as gt  # noqa: E402
 
+# 预热延迟导入的重型模块。spyeyes 把 phonenumbers 数据表(track_phone 内)和 reportlab
+# (_import_reportlab)推迟到用到时才导入;但冷缓存的 CI runner 上首次导入 geodata 可能超过
+# 15 s,会被 --timeout=15 算进"第一个查电话的测试"而误杀。在收集阶段导入一次,
+# 让 per-test timeout 只衡量测试本身。(TestLazyHeavyImports 用子进程验证延迟导入,不受影响)
+from phonenumbers import carrier, geocoder, timezone  # noqa: E402,F401
+
+gt._import_reportlab()
+
 
 _COLOR_ATTRS = gt._COLOR_ATTRS
 

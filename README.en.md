@@ -10,7 +10,7 @@
 [![codecov](https://codecov.io/gh/Akxan/SpyEyes/branch/main/graph/badge.svg)](https://codecov.io/gh/Akxan/SpyEyes)
 [![License: Apache 2.0](https://img.shields.io/badge/License-Apache_2.0-blue.svg)](https://opensource.org/licenses/Apache-2.0)
 [![Python](https://img.shields.io/badge/Python-3.10%2B-blue.svg?logo=python&logoColor=white)](https://www.python.org/)
-[![Tests](https://img.shields.io/badge/tests-682%20passed-success.svg)](tests/)
+[![Tests](https://img.shields.io/badge/tests-684%20passed-success.svg)](tests/)
 [![Platforms](https://img.shields.io/badge/platforms-3164-orange.svg)](#-comparison-with-similar-tools)
 [![Reports](https://img.shields.io/badge/reports-8%20formats-9cf.svg)](#-report-formats-8-types)
 [![Commands](https://img.shields.io/badge/commands-14-blueviolet.svg)](docs/TUTORIAL.md)
@@ -41,28 +41,17 @@ Designed for **security researchers, penetration testers, SOC analysts, threat h
 
 ### 💎 Highlights
 
-- **🆕 v1.6.8: `~/.spyeyes/env` autoload + full 6-source status in reports** — KEY=VALUE file replacing LaunchAgent / shell config; each source's ✅/⊘/❌ status visible at a glance
-- **🆕 v1.6.6: Domain email harvest 3-4× speedup** — HTTP probe filter + parallel BFS crawler (linux.do 5.5min → 1.5min)
-- **🆕 v1.6.5: Smart `--alive-only`** — auto-strict mode under wildcard / DNS hijack to filter fake "alive" hosts
-- **🆕 v1.6.0: Domain email — 6 sources concurrent, all free** — Bing SERP + DuckDuckGo + Wayback + GitHub commits + crt.sh + WHOIS; vs theHarvester/Photon/EmailFinder, **strongest free tier**
-- **🆕 v1.5.0: Diff + batch** — `spyeyes diff old.json new.json` for OSINT monitoring; `--batch domains.txt`
-- **🆕 v1.4.x → 1.6.x: Subdomain — 7 collection dimensions** — 6 passive sources (crt.sh / CertSpotter / HackerTarget / OTX / **Wayback** / optional subfinder w/ 30+) + DNS dictionary bruteforce + JS/HTML body host extraction (4xx/5xx title support + full CNAME chain) + DNS validation + HTTP probe + wildcard detection
-- **🆕 Editorial Investigation Brief styling** — Cormorant Garamond + Crimson Pro + JetBrains Mono triplet + cream/ink/seal-red palette
-- **3164 username-scan platforms**: 48 Chinese-region + 58 Spanish-region + 91 adult/dating + 733 forums; Sherlock-class speed ~20s
-- **Maigret-style permute** + recursive scan `--recursive` (with full progress) + multi mode `--quick` / `--category`
-- **8 report formats** — `JSON / Markdown / HTML / PDF / TXT / CSV / XMind / Graph (D3.js)`, all bilingual
-- **WAF detection**: Cloudflare / AWS WAF / PerimeterX / DataDome / Akamai
-- **Full bilingual**: interactive menu / CLI / errors / **report content** all in zh+en
-- **🆕 v1.6.1: 100% progress feedback** — every >2s operation has live progress
-- **🆕 v1.8.0: Smart default report dir** — source install (git clone / `pip install -e .`) → `<project_root>/Downloads/` (visible right in the repo); packaged install (pip/pipx/brew) → `~/Downloads/spyeyes/` (never writes to site-packages); `SPYEYES_REPORTS_DIR=path` always wins
-- **🆕 v1.8.0: Startup version check** — 24h-cached comparison against GitHub Releases, prints upgrade hint to stderr when newer version is available; disable with `--no-update-check` or `SPYEYES_NO_UPDATE_CHECK=1`; offline / API failure is fully silent
-- **🆕 v1.7.0: `investigate` dossier** — give it one domain: WHOIS + MX + subdomains + domain emails run concurrently, then pivots automatically (alive-subdomain IPs → IP enrichment; personal-looking email local-parts → username scan) into one consolidated report
-- **🆕 v1.8.0: `investigate` 3-4× faster + live progress** — Phase 2b (email→username) parallelized from serial to 4 concurrent; 15-email scenario drops from ~210s to ~50-80s; full Phase 1/2a/2b live `[N/M] ✓ task` progress feedback; TTY-safe, fully silent in pipes
-- **🆕 v1.8.2: One-click upgrade** — `spyeyes upgrade [--yes] [--check]`, menu `[12]`, and a `[Y/n]` prompt at menu startup when a newer release is cached; pip installs upgrade to the announced release tag, pipx installs run `pipx upgrade spyeyes`, source installs just get the `git pull && pip install -e .` hint
-- **🆕 v1.8.3: Full audit** — fixes the CSV Chinese-mojibake regression, `--max-pages` being silently capped at 100, batch commands exiting 0 on failure and a dozen more; the crawler only fetches in-domain sitemaps (SSRF guard); `investigate` exports a relationship graph (`.graph.html`); `NO_COLOR` support; English reports no longer mix in Chinese
-- **🆕 v1.8.4: Upgrade fix for Homebrew / system Python** — detects PEP 668 externally-managed environments, recommends pipx, and only adds `--break-system-packages` after explicit consent; `--user` installs get `--user` automatically
-- **🆕 v1.8.5: Calm colors** — body text in your terminal's own color with color only as accents, no more wall of bright green; readable on dark / light backgrounds and on Windows; `SPYEYES_THEME=classic` restores the old look
-- **682 pytest tests**: 4-tool audit clean (ruff 0 / mypy 0 / bandit 0 / pytest), CI on Linux × Python 3.10–3.14 and macOS / Windows × Python 3.10 & 3.14
+- **14 commands in one tool, fully bilingual**: UI, error messages and **report content** all follow `--lang`
+- **3164 username platforms**: merged from Maigret + Sherlock + WhatsMyName, including 48 Chinese-region + 58 Spanish-region + 733 forums; 150-thread concurrency, full scan in ~20 s; keyword + `must_contain` double check + WAF fingerprinting; `permute` variations and `--recursive` follow-up scans
+- **Subdomains from 7 dimensions**: 6 passive sources (crt.sh / CertSpotter / HackerTarget / OTX / Wayback / optional subfinder with 30+ sources) + DNS bruteforce + JS/HTML host extraction + DNS validation + HTTP probe + wildcard detection; `--alive-only` adds an HTTP filter automatically under wildcard DNS / DNS hijacking
+- **Domain email harvest — free, no sign-up**: crt.sh + WHOIS + Bing + DuckDuckGo + Wayback + GitHub run concurrently, plus a parallel multi-target crawler (in-domain URLs only) and `--guess` name-pattern generation
+- **`investigate` dossier**: give it one domain — WHOIS + MX + subdomains + domain emails run concurrently, then it pivots automatically (alive-subdomain IPs → IP enrichment; personal-looking emails → username scan) into one consolidated report and relationship graph
+- **Monitoring & batch**: `diff old.json new.json` shows added / removed / changed results between two scans; `--batch domains.txt` scans many domains with one report each
+- **8 report formats**: JSON / Markdown / HTML / PDF / TXT / CSV / XMind / Graph (D3.js force-directed), editorial-style layout; CSV is formula-injection safe and opens in Excel without mojibake
+- **Low-friction daily use**: one `~/.spyeyes/env` file for all API keys; live progress for every long-running step; interactive-mode reports default to `<project_root>/Downloads/` (source) or `~/Downloads/spyeyes/` (packaged install)
+- **Update check + one-click upgrade**: 24 h-cached check against GitHub Releases; `spyeyes upgrade` detects pip / pipx / source installs and only upgrades PEP 668 environments (e.g. Homebrew) after you confirm
+- **Calm colors**: body text in your terminal's own color, color only as accents — readable on dark / light backgrounds and on Windows; `SPYEYES_THEME=classic` restores the old bright green, `--no-color` / `NO_COLOR` turns color off
+- **684 pytest tests**: ruff / mypy / bandit clean, CI on Linux × Python 3.10–3.14 and macOS / Windows × Python 3.10 & 3.14
 
 ---
 
@@ -94,7 +83,7 @@ Designed for **security researchers, penetration testers, SOC analysts, threat h
 - **150-thread concurrent**, full ~20s, quick mode ~10s
 - Dual detection: not-found patterns + must-contain + WAF detection
 - Shows hits only by default, use `--all` for full report
-- **🆕 v1.1.0**: `--recursive` for follow-up scans (depth 0-2), `permute` subcommand for username variations
+- `--recursive` for follow-up scans (depth 0-2), `permute` subcommand for username variations
 
 </td>
 <td width="50%">
@@ -113,22 +102,22 @@ Designed for **security researchers, penetration testers, SOC analysts, threat h
 - MX record validation (no test emails sent)
 - Privacy-respecting: zero traces
 
-### 🌐 Subdomain Enumeration (v1.3.0 → v1.6.1 🆕)
-- **Passive multi-source (6 sources)**: `crt.sh` + CertSpotter + HackerTarget + AlienVault OTX + **Wayback Machine (v1.4.9)** in concurrent fan-out
-- **🚀 Optional subfinder relay (v1.4.8)**: auto-detects `subfinder` binary and relays to 30+ sources (virustotal / shodan / censys / chaos / fofa / quake / securitytrails ...); zero overhead if not installed
-- **🆕 DNS dictionary bruteforce (v1.4.9, opt-in)**: built-in ~220 high-hit prefixes + `SPYEYES_DNS_WORDLIST=/path` for custom big wordlists; `--bruteforce` to enable
-- **🆕 JS / HTML host extraction (v1.4.9, default on)**: regex-scans the already-fetched 16KB probe body for hardcoded host references (e.g. `fetch('https://api.example.com/...')`), then re-resolves found hosts; `--no-js-extract` to disable
+### 🌐 Subdomain Enumeration
+- **Passive multi-source (6 sources)**: `crt.sh` + CertSpotter + HackerTarget + AlienVault OTX + Wayback Machine in concurrent fan-out
+- **Optional subfinder relay**: auto-detects `subfinder` binary and relays to 30+ sources (virustotal / shodan / censys / chaos / fofa / quake / securitytrails ...); zero overhead if not installed
+- **DNS dictionary bruteforce (opt-in)**: built-in ~220 high-hit prefixes + `SPYEYES_DNS_WORDLIST=/path` for custom big wordlists; `--bruteforce` to enable
+- **JS / HTML host extraction (default on)**: regex-scans the already-fetched 16KB probe body for hardcoded host references (e.g. `fetch('https://api.example.com/...')`), then re-resolves found hosts; `--no-js-extract` to disable
 - **DNS validation**: A / AAAA / CNAME (default 30 workers)
 - **HTTP probe**: status_code + `<title>` (`--no-probe` to skip)
 - **Wildcard detection**: 32-char random prefix probe; flags unreliable results
 - All 8 report formats supported (HTML clickable links for alive subs)
 
-### 📊 OSINT Monitoring / Batch (v1.5.0 🆕)
+### 📊 OSINT Monitoring / Batch
 - **Diff mode**: `spyeyes diff old.json new.json` — find **added / removed / changed** subdomains across two scans (essential for continuous monitoring)
 - **Batch domain input**: `spyeyes subdomain --batch domains.txt --batch-save-dir reports/` — per-domain reports, Ctrl+C interruptible
 - **`--alive-only` everywhere**: filters CLI / JSON / all 8 export formats
 
-### 🕵 Investigate (v1.7.0 🆕)
+### 🕵 Investigate
 - `spyeyes investigate example.com`: WHOIS + MX + subdomains + domain emails, **4 tasks concurrently**
 - **One-way pivots**: alive-subdomain IPs → IP enrichment; personal-looking email local-parts → username scan (role accounts like noreply / info / admin are skipped)
 - Size it with `--depth 0|1` / `--budget SECONDS` / `--max-pivot-ips` / `--max-pivot-emails`
@@ -138,9 +127,9 @@ Designed for **security researchers, penetration testers, SOC analysts, threat h
 - **CLI args mode**: scriptable
 - **JSON output**: pipe-friendly with jq
 - **Result saving**: `--save DIR` auto-persistence
-- **100% progress feedback** (v1.6.1): every >2s operation has live progress
+- **100% progress feedback**: every >2s operation has live progress
 - **Color terminal**: calm default palette (body text in your terminal's own color, color only as accents — readable on dark and light backgrounds); `SPYEYES_THEME=classic` brings back the old bright-green look; disable with `--no-color` or the `NO_COLOR` env var
-- **One-click upgrade** (v1.8.2): `spyeyes upgrade` / menu `[12]`
+- **One-click upgrade**: `spyeyes upgrade` / menu `[12]`
 - **Cross-platform**: macOS / Linux / Windows / Termux
 
 </td>
@@ -229,7 +218,7 @@ python3 -m spyeyes mx gmail.com
 # Email validation
 python3 -m spyeyes email someone@gmail.com
 
-# Subdomain enumeration (v1.3.0 → v1.6.1)
+# Subdomain enumeration
 python3 -m spyeyes subdomain example.com                                     # 6 sources passive + DNS + HTTP probe + JS extract (default all on)
 python3 -m spyeyes subdomain example.com --bruteforce                        # add built-in 220-word dict bruteforce
 SPYEYES_DNS_WORDLIST=~/all.txt spyeyes subdomain example.com --bruteforce    # custom big wordlist
@@ -237,25 +226,25 @@ python3 -m spyeyes subdomain example.com --alive-only --save report.html     # o
 python3 -m spyeyes subdomain example.com --no-js-extract --no-probe          # passive only, fastest
 python3 -m spyeyes subdomain example.com --json | jq '.subdomains[] | select(.alive)'
 
-# 🆕 v1.5.0: Batch domain scan
+# Batch domain scan
 python3 -m spyeyes subdomain --batch domains.txt --batch-save-dir reports/ --alive-only
 # domains.txt: one domain per line; # comments + blank lines skipped; per-domain HTML report
 
-# 🆕 v1.5.0: Diff mode — OSINT continuous monitoring
+# Diff mode — OSINT continuous monitoring
 python3 -m spyeyes subdomain example.com --json > monday.json
 python3 -m spyeyes subdomain example.com --json > friday.json   # rescan days later
 python3 -m spyeyes diff monday.json friday.json --save diff.html   # added / removed / changed subdomains
 
-# 🆕 v1.6.0: Domain email harvest (6 sources concurrent, all free)
+# Domain email harvest (6 sources concurrent, all free)
 python3 -m spyeyes domain-emails example.com           # crt.sh + WHOIS + Bing + DDG + Wayback + GitHub all concurrent
 python3 -m spyeyes domain-emails example.com --guess "John Doe,Jane Smith"   # + pattern generation
 python3 -m spyeyes domain-emails example.com --no-crawl   # 6 passive sources only, fastest
 
-# 🆕 v1.7.0: Investigate (one domain → consolidated multi-source dossier)
+# Investigate (one domain → consolidated multi-source dossier)
 python3 -m spyeyes investigate example.com --save dossier.html   # whois + mx + subdomains + emails concurrently, then IP / username pivots
 python3 -m spyeyes investigate example.com --depth 0             # 4 atomic tasks only, no pivots (faster)
 
-# 🆕 v1.8.2: Check for / install updates
+# Check for / install updates
 python3 -m spyeyes upgrade --check     # check only
 python3 -m spyeyes upgrade --yes       # upgrade without prompting (source installs only get the git pull hint)
 
@@ -266,7 +255,7 @@ python3 -m spyeyes history --search torvalds
 python3 -m spyeyes ip 8.8.8.8 --json --save results/
 ```
 
-### 🆕 v1.2.0 New features
+### Reports / permutations / recursion
 
 ```bash
 # 1) 8 report formats — auto-dispatched by --save file extension
@@ -291,7 +280,7 @@ python3 -m spyeyes permute "Linus Torvalds" --scan --quick  # permute + auto-sca
 # 4) Recursive scan
 python3 -m spyeyes user torvalds --recursive --depth 2
 
-# 5) Default 150-thread concurrency (up from 100)
+# 5) Default 150-thread concurrency, adjustable
 python3 -m spyeyes user torvalds --workers 200
 ```
 
@@ -399,15 +388,15 @@ python3 -m spyeyes
 [ 1 ] IP Tracker
 [ 2 ] My Public IP
 [ 3 ] Phone Number Tracker
-[ 4 ] Username Scanner                      ← includes the permutation sub-flow
+[ 4 ] Username Scanner
 [ 5 ] Domain WHOIS Lookup
 [ 6 ] Domain MX Records
 [ 7 ] Email Validator
 [ 8 ] Subdomain Enumeration
 [ 9 ] Domain Emails (OSINT email harvest)
-[ 10 ] Investigate (multi-source dossier)   ← v1.7.0
+[ 10 ] Investigate (multi-source dossier)
 [ 11 ] Language / 语言
-[ 12 ] Check & Upgrade SpyEyes              ← v1.8.2
+[ 12 ] Check & Upgrade SpyEyes
 [ 0 ] Exit
 
   (In any sub-menu, enter 0 or press Enter to return here)
@@ -415,7 +404,7 @@ python3 -m spyeyes
 
 > **Menu flow**:
 > - **First run** (no `~/.spyeyes/config.json`) shows a language picker; the choice is saved
-> - **Startup upgrade prompt** (v1.8.2): if a newer release is cached and stdin is a TTY, you're asked `Upgrade now? [Y/n]` before the menu; N goes straight to the menu. On a source install, Y only shows the `git pull && pip install -e .` hint and then continues into the menu
+> - **Startup upgrade prompt**: if a newer release is cached and stdin is a TTY, you're asked `Upgrade now? [Y/n]` before the menu; N goes straight to the menu. On a source install, Y only shows the `git pull && pip install -e .` hint and then continues into the menu
 > - `[4]` Username: pick a strategy (scan as-is / permute + scan / permute only) → scan mode → optional recursion
 > - `[8]` Subdomain: domain → HTTP probe? → DNS bruteforce? → 4 live stages → before saving, asked whether to hide unreachable hosts
 > - `[9]` Domain emails: domain → include alive subdomains? → crawl depth (standard 200 pages / deep 500 / quick 50) → optional name-pattern guessing → optional SMTP verify
@@ -469,7 +458,7 @@ python3 -m spyeyes user torvalds --save report.xmind
 python3 -m spyeyes user torvalds --save report.graph.html
 ```
 
-**Interactive mode**: after picking "Save report", you'll see a `[1] JSON ... [8] Graph` numeric chooser. Default path follows v1.8.0 smart routing (source install → `<project_root>/Downloads/`, pip/brew install → `~/Downloads/spyeyes/`, override with `SPYEYES_REPORTS_DIR=path`). After saving, you'll be asked "Save another format?" — chain multiple format outputs in one session.
+**Interactive mode**: after picking "Save report", you'll see a `[1] JSON ... [8] Graph` numeric chooser. Default path depends on how SpyEyes was installed (source install → `<project_root>/Downloads/`, pip/brew install → `~/Downloads/spyeyes/`, override with `SPYEYES_REPORTS_DIR=path`). After saving, you'll be asked "Save another format?" — chain multiple format outputs in one session.
 
 > **Security**: HTML / Graph use `_html_escape` against XSS; CSV cells starting with `= + - @ \t \r` are prefixed with `'` to neutralize Excel/Sheets formula injection; the Graph escapes `</` to `<\/` inside embedded JSON to prevent `</script>` injection.
 
@@ -496,7 +485,7 @@ mypy spyeyes tools/build_platforms.py --ignore-missing-imports
 bandit -r spyeyes/ tools/ -ll
 ```
 
-- ✅ **682 tests**, all network access mocked (no real requests)
+- ✅ **684 tests**, all network access mocked (no real requests)
 - ✅ Pure functions + HTTP mocking + edge cases + SSRF/ReDoS defenses + 8 report formats × 2 languages + en/zh translation key parity
 - ✅ GitHub Actions: Linux × Python 3.10–3.14, macOS / **Windows** × Python 3.10 & 3.14
 - ✅ Dedicated lint job (ruff + mypy + bandit) gates the test matrix
@@ -507,7 +496,7 @@ bandit -r spyeyes/ tools/ -ll
 
 ```
 SpyEyes/
-├── spyeyes/                    # Main package (v1.0.0+)
+├── spyeyes/                    # Main package
 │   ├── __init__.py             # Main code (all features + i18n + __version__)
 │   ├── __main__.py             # python -m spyeyes entry point
 │   └── data/platforms.json     # 3164-platform database (Maigret + Sherlock + WhatsMyName merged)
@@ -525,8 +514,7 @@ SpyEyes/
 │   ├── CONTRIBUTING.md         # Contribution guide
 │   ├── SECURITY.md             # Security policy
 │   ├── index.md / _config.yml  # GitHub Pages landing page
-│   ├── design/                 # Feature design docs
-│   └── plans/                  # Implementation plans
+│   └── design/                 # Feature design docs
 ├── tools/
 │   └── build_platforms.py      # Refresh platform DB (atomic write + retries)
 ├── tests/

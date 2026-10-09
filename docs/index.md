@@ -46,7 +46,7 @@ title: SpyEyes
 - 子域名爬虫 robots.txt 默认遵守 + 单域 500ms 速率限制
 - SMTP 验证 opt-in + 强 disclaimer
 - 隐私选项:`SPYEYES_NO_HISTORY=1` 完全禁用历史
-- **682 个 pytest 测试**,0 红 / **ruff 0 / mypy 0 / bandit 0** 全清,CI:Linux × Python 3.10–3.14,macOS / Windows × Python 3.10 与 3.14
+- **684 个 pytest 测试**,0 红 / **ruff 0 / mypy 0 / bandit 0** 全清,CI:Linux × Python 3.10–3.14,macOS / Windows × Python 3.10 与 3.14
 
 ## 🚀 快速开始
 
@@ -67,26 +67,26 @@ python3 -m spyeyes user torvalds                       # 3164 平台扫描
 python3 -m spyeyes whois example.com                   # WHOIS
 python3 -m spyeyes mx 中国.cn                          # IDN 域名 MX
 
-# 子域名枚举(v1.3.0 → v1.6.1)
+# 子域名枚举
 python3 -m spyeyes subdomain example.com --alive-only --save report.html
 python3 -m spyeyes subdomain example.com --bruteforce  # 加 220 词字典
 
-# 🆕 v1.5.0 批量域名扫描
+# 批量域名扫描
 python3 -m spyeyes subdomain --batch domains.txt --batch-save-dir reports/ --alive-only
 
-# 🆕 v1.5.0 Diff 模式 — OSINT 监控
+# Diff 模式 — OSINT 监控
 python3 -m spyeyes subdomain example.com --json > snap1.json
 python3 -m spyeyes subdomain example.com --json > snap2.json   # 几天后
 python3 -m spyeyes diff snap1.json snap2.json --save diff.html
 
-# 🆕 v1.6.0 域名邮箱(6 源全免费并发)
+# 域名邮箱(6 源全免费并发)
 python3 -m spyeyes domain-emails example.com           # crt.sh + WHOIS + Bing + DDG + Wayback + GitHub
 python3 -m spyeyes domain-emails example.com --guess "John Doe"
 
-# 🆕 v1.7.0 综合调查(一个域名 → 多源整合档案)
+# 综合调查(一个域名 → 多源整合档案)
 python3 -m spyeyes investigate example.com --save dossier.html
 
-# 🆕 v1.8.2 检查 / 一键升级
+# 检查 / 一键升级
 python3 -m spyeyes upgrade --check
 
 # 8 种报告格式(全 Editorial 风,中英双语)
