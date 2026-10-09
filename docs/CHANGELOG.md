@@ -19,6 +19,11 @@ This project adheres to [Keep a Changelog](https://keepachangelog.com/en/1.1.0/)
 - `investigate` 报告:PDF / XMind 专用版式(目前走通用表格;D3 关系图已支持)
 - `investigate --budget` 真·硬超时(需要给阶段 1 原子任务加可取消的超时管道)
 
+### 🔧 依赖与 CI
+
+- 合并 Dependabot:`actions/checkout`、`actions/setup-python`、`codecov/codecov-action` 升到 v7;reportlab 允许 5.x(`>=4.0,<6`,已用 5.0.1 实测全部 PDF 测试与中文 PDF 生成)。
+- **CI 之前从没测过 PDF**:`requirements-dev.txt` 未包含 reportlab,7 个 PDF 测试在 CI 里一直被 skipif 跳过。现已加入,CI 会真正跑 PDF 报告测试。
+
 ---
 
 ## [1.8.5] — 2026-10-03
