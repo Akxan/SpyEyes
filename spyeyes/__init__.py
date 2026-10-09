@@ -16,6 +16,7 @@ Licensed under the Apache License, Version 2.0
 
 import argparse
 import csv as _csv
+import importlib.util
 import io as _io
 import ipaddress
 import itertools
@@ -40,7 +41,6 @@ from typing import Any, NamedTuple, Optional
 
 import phonenumbers
 import requests
-from phonenumbers import carrier, geocoder, timezone
 from phonenumbers.phonenumberutil import NumberParseException
 
 try:
@@ -56,22 +56,19 @@ except ImportError:
     HAS_WHOIS = False
 
 # v1.1.0: PDF 输出（可选 extras 依赖 spyeyes[pdf] = reportlab）
-try:
-    from reportlab.lib import colors as _rl_colors  # type: ignore
-    from reportlab.lib.pagesizes import A4 as _rl_a4  # type: ignore
-    from reportlab.lib.styles import getSampleStyleSheet as _rl_styles  # type: ignore
-    from reportlab.platypus import (  # type: ignore
-        HRFlowable as _rl_hr,
-        PageBreak as _rl_pagebreak,
-        Paragraph as _rl_paragraph,
-        SimpleDocTemplate as _rl_doc,
-        Spacer as _rl_spacer,
-        Table as _rl_table,
-        TableStyle as _rl_table_style,
-    )
-    HAS_REPORTLAB = True
-except ImportError:
-    HAS_REPORTLAB = False
+# 这里只探测是否安装;真正的 import 推迟到第一次生成 PDF(_import_reportlab)——
+# reportlab 导入要 ~40 ms,而绝大多数命令根本不出 PDF
+HAS_REPORTLAB = importlib.util.find_spec('reportlab') is not None
+_rl_colors: Any = None
+_rl_a4: Any = None
+_rl_styles: Any = None
+_rl_hr: Any = None
+_rl_pagebreak: Any = None
+_rl_paragraph: Any = None
+_rl_doc: Any = None
+_rl_spacer: Any = None
+_rl_table: Any = None
+_rl_table_style: Any = None
 
 
 # 语义化版本号 —— 同步更新 docs/CHANGELOG.md 与 git tag
@@ -1228,7 +1225,7 @@ def _supports_color() -> bool:
 #   Wh  标签 / 编号 / 括号等结构      Gr  正文内容(菜单项 / 查询结果 / 链接)
 #   Cy  阶段标题 / 提示信息           Bl  次要提示(弱化显示)
 #   Ye  警告                          Re  错误 / 未命中
-#   Mage 星标 / 来源等点缀            Blu 预留
+#   Mage 星标 / 来源等点缀
 #   Brand  Logo
 # 默认主题:正文用终端自己的前景色(任何背景、任何平台都清晰),颜色只做少量点缀,
 # 且一律用普通亮度 —— 旧版大面积亮绿(1;32)刺眼、容易看花。
@@ -1237,17 +1234,17 @@ def _supports_color() -> bool:
 _THEMES: dict = {
     'default': {
         'Wh': '\033[0;1m', 'Gr': '\033[0m', 'Cy': '\033[0;36m', 'Bl': '\033[0;2m',
-        'Ye': '\033[0;33m', 'Re': '\033[0;31m', 'Mage': '\033[0;35m', 'Blu': '\033[0;34m',
+        'Ye': '\033[0;33m', 'Re': '\033[0;31m', 'Mage': '\033[0;35m',
         'Brand': '\033[0;36m', 'Reset': '\033[0m',
     },
     # 旧版高亮配色(亮绿正文),喜欢的可设 SPYEYES_THEME=classic 找回
     'classic': {
         'Wh': '\033[1;37m', 'Gr': '\033[1;32m', 'Cy': '\033[1;36m', 'Bl': '\033[30m',
-        'Ye': '\033[1;33m', 'Re': '\033[1;31m', 'Mage': '\033[1;35m', 'Blu': '\033[1;34m',
+        'Ye': '\033[1;33m', 'Re': '\033[1;31m', 'Mage': '\033[1;35m',
         'Brand': '\033[1;32m', 'Reset': '\033[0m',
     },
 }
-_COLOR_ATTRS = ('Bl', 'Re', 'Gr', 'Ye', 'Blu', 'Mage', 'Cy', 'Wh', 'Brand', 'Reset')
+_COLOR_ATTRS = ('Bl', 'Re', 'Gr', 'Ye', 'Mage', 'Cy', 'Wh', 'Brand', 'Reset')
 
 
 def _theme_name() -> str:
@@ -1258,7 +1255,7 @@ def _theme_name() -> str:
 
 class Color:
     enabled = _supports_color()
-    Bl = Re = Gr = Ye = Blu = Mage = Cy = Wh = Brand = Reset = ''
+    Bl = Re = Gr = Ye = Mage = Cy = Wh = Brand = Reset = ''
 
     @classmethod
     def apply_theme(cls, name: str) -> None:
@@ -1571,6 +1568,9 @@ def track_phone(number: str, default_region: str = 'CN', *,
       (carrier_realtime 字段补充准确数据;失败优雅降级,不影响主流程)
     - lookup_realtime=True/False 显式覆盖 env var 决策
     """
+    # 归属地 / 运营商 / 时区数据表导入要 ~120 ms(geocoder 占大头),只有查电话才需要,
+    # 放在函数内,不拖慢其它命令的启动
+    from phonenumbers import carrier, geocoder, timezone
     try:
         parsed = phonenumbers.parse(number, default_region)
     except NumberParseException as e:
@@ -6397,6 +6397,35 @@ def _to_markdown(prefix: str, data: Any) -> str:
 _PDF_FONT: Optional[str] = None
 
 
+def _import_reportlab() -> bool:
+    """首次生成 PDF 时才真正导入 reportlab,填充模块级 `_rl_*` 符号(供 `_pdf_*` / `_to_pdf` 使用)。
+    find_spec 找得到、但导入失败(装坏了)→ 返回 False,调用方按"未安装"处理。"""
+    global _rl_colors, _rl_a4, _rl_styles, _rl_hr, _rl_pagebreak
+    global _rl_paragraph, _rl_doc, _rl_spacer, _rl_table, _rl_table_style
+    if _rl_paragraph is not None:
+        return True
+    try:
+        from reportlab.lib import colors  # type: ignore
+        from reportlab.lib.pagesizes import A4  # type: ignore
+        from reportlab.lib.styles import getSampleStyleSheet  # type: ignore
+        from reportlab.platypus import (  # type: ignore
+            HRFlowable,
+            PageBreak,
+            Paragraph,
+            SimpleDocTemplate,
+            Spacer,
+            Table,
+            TableStyle,
+        )
+    except ImportError:
+        return False
+    _rl_colors, _rl_a4, _rl_styles = colors, A4, getSampleStyleSheet
+    _rl_hr, _rl_pagebreak, _rl_doc, _rl_spacer = HRFlowable, PageBreak, SimpleDocTemplate, Spacer
+    _rl_table, _rl_table_style = Table, TableStyle
+    _rl_paragraph = Paragraph  # 最后赋值:它是"已加载"的判据
+    return True
+
+
 def _register_pdf_cjk_font() -> str:
     """注册 reportlab 内置 STSong-Light(简中 CID 字体)用于 PDF 中文渲染。
     一次注册全局生效,失败回退 Helvetica(英文场景仍可用)。"""
@@ -6546,7 +6575,7 @@ def _to_pdf(prefix: str, data: Any, out_path: str) -> Optional[str]:
     设计取舍：直接复用 _to_markdown 生成的内容结构 → 转 reportlab Paragraph/Table，
     避免维护两套报告模板（markdown 已经过充分 escape，PDF 也安全）。
     """
-    if not HAS_REPORTLAB:
+    if not HAS_REPORTLAB or not _import_reportlab():
         return t('err.no_pdf')
     try:
         cmd, _, query = prefix.partition('_')
@@ -8392,8 +8421,8 @@ def _to_graph_html(prefix: str, data: Any) -> str:
     # username 扫描：构建节点 / 链接
     nodes: list = [{'id': query, 'group': 1, 'name': query, 'url': ''}]
     links: list = []
-    cat_lookup = {p.name: p.category for p in _get_platforms()}
     if cmd == 'username' and isinstance(data, dict) and '_error' not in data:
+        cat_lookup = {p.name: p.category for p in _get_platforms()}
         plat = _platform_only(data)
         for p_name, url in plat.items():
             if not url:
@@ -8410,6 +8439,7 @@ def _to_graph_html(prefix: str, data: Any) -> str:
         # v1.2.1 P1-2: 多中心图 —— 每个变形一个 group=1 节点，命中平台为 group=2 子节点
         # 重置 nodes：原始 query 不参与（用户通常想看每个 variation 的命中分布）
         nodes = []
+        cat_lookup = {p.name: p.category for p in _get_platforms()}
         for var, scan in data.items():
             if not isinstance(scan, dict) or '_error' in scan:
                 continue
