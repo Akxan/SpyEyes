@@ -9,3 +9,6 @@ mypy>=1.10
 bandit>=1.7
 # types-requests 必须装：mypy 否则报 [import-untyped]（不被 --ignore-missing-imports 覆盖）
 types-requests>=2.31
+# reportlab：PDF 报告是可选依赖，但测试环境必须装上 —— 否则 7 个 PDF 测试会被 skipif 跳过，
+# CI 等于从没测过 PDF（v1.8.5 之前就是这样）。版本范围与 pyproject 的 [pdf] extra 保持一致
+reportlab>=4.0,<6
