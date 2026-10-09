@@ -19,6 +19,12 @@ This project adheres to [Keep a Changelog](https://keepachangelog.com/en/1.1.0/)
 - `investigate` 报告:PDF / XMind 专用版式(目前走通用表格;D3 关系图已支持)
 - `investigate --budget` 真·硬超时(需要给阶段 1 原子任务加可取消的超时管道)
 
+---
+
+## [1.8.6] — 2026-10-09
+
+⚡ **启动提速 + 清理版** —— 每条命令启动快约 2.7 倍;CI 第一次真正测试 PDF 报告;依赖升级与文档、仓库清理。
+
 ### 🔧 依赖与 CI
 
 - 合并 Dependabot:`actions/checkout`、`actions/setup-python`、`codecov/codecov-action` 升到 v7;reportlab 允许 5.x(`>=4.0,<6`,已用 5.0.1 实测全部 PDF 测试与中文 PDF 生成)。
@@ -2473,7 +2479,8 @@ export SPYEYES_PHONE_API_KEY="numverify:..." # 可选实时 HLR 电话运营商
 
 ---
 
-[Unreleased]: https://github.com/Akxan/SpyEyes/compare/v1.8.5...HEAD
+[Unreleased]: https://github.com/Akxan/SpyEyes/compare/v1.8.6...HEAD
+[1.8.6]: https://github.com/Akxan/SpyEyes/compare/v1.8.5...v1.8.6
 [1.8.5]: https://github.com/Akxan/SpyEyes/compare/v1.8.4...v1.8.5
 [1.8.4]: https://github.com/Akxan/SpyEyes/compare/v1.8.3...v1.8.4
 [1.8.3]: https://github.com/Akxan/SpyEyes/compare/v1.8.2...v1.8.3

@@ -14,7 +14,7 @@ body:
     attributes:
       label: 版本 / Version
       description: SpyEyes 的 git commit hash 或 release tag
-      placeholder: "v1.8.5 或 main@abc1234 (spyeyes --version)"
+      placeholder: "v1.8.6 或 main@abc1234 (spyeyes --version)"
     validations:
       required: true
 
