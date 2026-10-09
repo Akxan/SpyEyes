@@ -21,11 +21,11 @@
    - [⑤ 域名 WHOIS 查询](#-域名-whois-查询)
    - [⑥ 域名 MX 记录](#-域名-mx-记录)
    - [⑦ 邮箱有效性检查](#-邮箱有效性检查)
-   - [⑧ 子域名枚举（v1.3.0 → v1.6.1)](#-子域名枚举v130)
-   - [⑨ 域名邮箱枚举（v1.4.0 → v1.6.0)](#-域名邮箱枚举v140)
-   - [⑩ Diff 模式 + 批量域名（v1.5.0)](#-diff-模式--批量v150)
-   - [⑪ 综合调查（v1.7.0)](#-综合调查v170)
-   - [⑫ 一键升级 + 版本检查（v1.8.2)](#-一键升级--版本检查v182)
+   - [⑧ 子域名枚举](#-子域名枚举)
+   - [⑨ 域名邮箱枚举](#-域名邮箱枚举)
+   - [⑩ Diff 模式 + 批量域名](#-diff-模式--批量)
+   - [⑪ 综合调查](#-综合调查)
+   - [⑫ 一键升级 + 版本检查](#-一键升级--版本检查)
 7. [命令行模式（脚本调用）](#命令行模式脚本调用)
 8. [常见问题排查](#常见问题排查)
 9. [已知限制](#已知限制)
@@ -159,7 +159,7 @@ SpyEyes 默认 6 个免费源**无需任何 key 也能跑**,但配置 keys 后:
 - ⬆️ 速率限制大幅放宽(免费层 50/天 → 500/天)
 - ⬆️ subfinder 解锁更多源
 
-### 推荐方式:`~/.spyeyes/env` 文件(v1.6.8+)
+### 推荐方式:`~/.spyeyes/env` 文件
 
 模块加载时自动读,跨平台一致(macOS/Linux/Windows),`shell export` 优先,改完即时生效。
 
@@ -300,7 +300,7 @@ for k in keys:
 - 输入对应**数字**后回车
 - 每个功能跑完会提示「按回车键继续」—— 按回车回到主菜单
 - `[ 11 ]` 随时切换中/英文 UI,立即生效并保存(v1.7.0 加入综合调查后从 [10] 移到 [11])
-- `[ 12 ]` 检查并升级:强制查询 GitHub Releases,有新版则问 `[Y/n]` 后升级(详见 [⑫](#-一键升级--版本检查v182))
+- `[ 12 ]` 检查并升级:强制查询 GitHub Releases,有新版则问 `[Y/n]` 后升级(详见 [⑫](#-一键升级--版本检查))
 - **启动升级提示**(v1.8.2):若后台缓存发现新版且在 TTY 中,进菜单前会问 `现在升级? [Y/n]`;选 N 直接进菜单。源码安装选 Y 只显示 `git pull && pip install -e .` 提示,按回车后照常进入菜单
 - **任何子功能输入步骤**输入 `0` 或直接回车都返回主菜单(v1.3.2 新增)
 - 任何时候按 `Ctrl + C` 可以强制退出
@@ -611,7 +611,7 @@ python3 -m spyeyes --lang zh user torvalds  # 强制中文输出
 
 ---
 
-### ⑧ 子域名枚举（v1.3.0）
+### ⑧ 子域名枚举
 
 **作用**：枚举目标域名下所有公开可见的子域名(`api.example.com`、`mail.example.com` 等),并对每个候选做 DNS 解析与 HTTP 探测,识别哪些子域真实存在、运行什么服务。
 
@@ -697,7 +697,7 @@ python3 -m spyeyes --lang zh user torvalds  # 强制中文输出
 
 | 选项 | 作用 |
 |---|---|
-| `DOMAIN` / `--batch FILE` | 单个目标域名,或每行一个域名的文件(批量模式见 [⑩](#-diff-模式--批量v150)) |
+| `DOMAIN` / `--batch FILE` | 单个目标域名,或每行一个域名的文件(批量模式见 [⑩](#-diff-模式--批量)) |
 | `--batch-save-dir DIR` | 批量模式下逐域写报告的目录 |
 | `--no-probe` | 仅跑 DNS,不发 HTTP(更快,匿名场景) |
 | `--workers N` | DNS 并发数(默认 30,最大 200);HTTP probe 并发取 `max(N, 80)` |
@@ -735,7 +735,7 @@ python3 -m spyeyes subdomain example.com --save report.graph.html   # D3.js 力�
 
 ---
 
-### ⑨ 域名邮箱枚举(v1.4.0)
+### ⑨ 域名邮箱枚举
 
 **作用**:从一个域名挖出**所有公开可见的邮箱地址**(管理员、support、销售、技术联系人等),类 [theHarvester](https://github.com/laramies/theHarvester) + [Hunter.io](https://hunter.io) 的混合方案。
 
@@ -865,7 +865,7 @@ python3 -m spyeyes domain-emails example.com --save report.graph.html # 力导�
 
 ---
 
-### ⑩ Diff 模式 + 批量(v1.5.0)
+### ⑩ Diff 模式 + 批量
 
 #### Diff 模式 — OSINT 持续监控
 
@@ -969,7 +969,7 @@ spyeyes subdomain --batch authorized_scope.txt --batch-save-dir audit/ \
 
 ---
 
-### ⑪ 综合调查(v1.7.0)
+### ⑪ 综合调查
 
 **作用**:只输入一个域名,自动把 WHOIS / MX / 子域名 / 域名邮箱 4 个查询**并发**跑完,再沿着结果做**单向接力(pivot)**:活跃子域的 IP → IP 情报;看起来像真人的邮箱 local-part → 用户名扫描。最后汇成一份整合档案(dossier)。目前只支持**域名**作为输入。
 
@@ -1022,9 +1022,9 @@ python3 -m spyeyes investigate example.com --save dossier.graph.html  # 调查�
 
 ---
 
-### ⑫ 一键升级 + 版本检查(v1.8.2)
+### ⑫ 一键升级 + 版本检查
 
-#### 启动版本检查(v1.8.0)
+#### 启动版本检查
 
 - 每次运行时在**后台线程**查询 GitHub Releases 最新版本,结果缓存 24 小时(`~/.spyeyes/.update_check.json`),不拖慢启动
 - 有新版时在 **stderr** 打一行提示(不会污染 `--json` 管道输出);离线 / API 失败完全静默
@@ -1170,7 +1170,7 @@ python3 -m spyeyes permute "张 三" --lang zh
 
 **交互菜单 `[4]` 也内置变形**：进入用户名追踪后选策略 `2`（变形+扫描）或 `3`（仅生成）。
 
-### 🆕 v1.2.0：8 种报告格式
+### 8 种报告格式
 
 按 `--save <文件>` 后缀自动分发，所有格式都跟随当前 UI 语言（中/英）：
 
@@ -1213,7 +1213,7 @@ python3 -m spyeyes whois example.com --save whois.csv
 
 **`--save DIR/`（目录形式）固定输出 JSON** —— 自动生成 `<prefix>_<时间戳>.json` 文件名。要选具体格式必须给文件名（含后缀）。
 
-### 🆕 v1.2.0：交互式连续保存
+### 交互式连续保存
 
 进入"保存报告 → 是"后会弹出 1-8 数字格式选择菜单。默认目录按 v1.8.0 智能路由：**源码运行 → `<项目根>/Downloads/`**，**pip / pipx 安装 → `~/Downloads/spyeyes/`**，设置 `SPYEYES_REPORTS_DIR=path` 则始终用它。保存后追问"继续保存其它格式？"，可在一次会话中同时输出 HTML + PDF + XMind 等多种格式：
 
@@ -1279,7 +1279,7 @@ python3 -m spyeyes investigate -h
 | `1` | 查询失败（如 API 报错、域名不存在）；批量 `whois` / `mx`（多个域名）或 `subdomain --batch` 中**任一项失败**也返回 `1` |
 | `2` | 参数 / 用法错误（如 `diff` 读不到 JSON 文件） |
 
-`upgrade` 有自己的退出码约定（无 TTY 未加 `--yes` → `2`，Ctrl-C → `130` 等），见 [⑫ 一键升级](#-一键升级--版本检查v182)。
+`upgrade` 有自己的退出码约定（无 TTY 未加 `--yes` → `2`，Ctrl-C → `130` 等），见 [⑫ 一键升级](#-一键升级--版本检查)。
 
 ### 查询历史（history 子命令）
 
@@ -1370,7 +1370,7 @@ python3 tools/build_platforms.py
 - 源码安装（git clone）：`git pull && pip install -r requirements.txt`（装过 `pip install -e .` 的话再跑一次 `pip install -e .`）
 - pip / pipx 安装：`spyeyes upgrade`，或在菜单选 `[ 12 ]`
 
-详见 [⑫ 一键升级](#-一键升级--版本检查v182)。
+详见 [⑫ 一键升级](#-一键升级--版本检查)。
 
 ---
 

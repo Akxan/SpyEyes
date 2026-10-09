@@ -15,8 +15,6 @@ updates:
     commit-message:
       prefix: "deps"
       include: "scope"
-    reviewers:
-      - "Akxan"
 
   # GitHub Actions
   - package-ecosystem: "github-actions"
@@ -33,5 +31,3 @@ updates:
     commit-message:
       prefix: "ci"
       include: "scope"
-    reviewers:
-      - "Akxan"

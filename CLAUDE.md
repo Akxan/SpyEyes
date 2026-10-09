@@ -203,9 +203,12 @@ MVP 只支持 domain。阶段 1 并发跑 whois / mx / subdomain / domain-emails
 ## 风格与护栏
 
 - Ruff `line-length = 120`,target `py310`;mypy `--ignore-missing-imports`。
-- 可选依赖用 `try: import … except ImportError: HAS_X = False` 模式
-  (`HAS_DNS`、`HAS_WHOIS`、`HAS_REPORTLAB`)。依赖它们的函数先检查标志,缺失时返回
-  `{'_error': t('err.no_xxx')}`。仅 reportlab 用到的 import 留在函数内部。
+- 可选依赖用 `try: import … except ImportError: HAS_X = False` 模式(`HAS_DNS`、`HAS_WHOIS`)。
+  依赖它们的函数先检查标志,缺失时返回 `{'_error': t('err.no_xxx')}`。
+- 启动耗时(`import spyeyes` ≈ 95 ms)要守住:重型模块只在用到时导入 —— phonenumbers 的
+  `geocoder`/`carrier`/`timezone` 在 `track_phone` 内部导入;reportlab 只用 `find_spec` 探测出
+  `HAS_REPORTLAB`,第一次出 PDF 时由 `_import_reportlab()` 填充模块级 `_rl_*` 符号。
+  `TestLazyHeavyImports` 用子进程守护;新增重型依赖照此处理,别放回模块顶层。
 - 结果 dict 里 `_*` 开头的 key(`_error`、`_statuses`、`_stats`、`_recursive`、`_filtered`)
   视为私有。JSON 输出只对 `username_*` 结果剥离它们 —— **`mx`/`whois` 批量结果不剥**,
   因为它们的 key 是用户输入的域名,可能合法地以 `_` 开头(`_dmarc.example.com`)。保持这个不对称。
@@ -241,9 +244,9 @@ MVP 只支持 domain。阶段 1 并发跑 whois / mx / subdomain / domain-emails
 - `docs/CHANGELOG.md`(Keep-a-Changelog 格式;把 `[Unreleased]` 的条目移进带日期的版本段;
   提交信息用中文 + conventional 前缀,如 `feat(vX.Y.Z): …`、`fix(vX.Y.Z): …`)
 - README.md / README.en.md 的版本与测试数徽章、`docs/index.md`、`docs/_config.yml`
+  (README 的「项目亮点」按功能组织,不要再按版本追加「🆕 vX.Y.Z」条目 —— 版本变化只写 CHANGELOG)
 - git tag `vX.Y.Z` + GitHub Release(更新检查读的是 `releases/latest`,`spyeyes upgrade`
   安装的就是这个 tag)
 
 文档入口:`README.md`(中文)/ `README.en.md`(英文)/ `docs/TUTORIAL.md` /
-`docs/CHANGELOG.md` / `docs/CONTRIBUTING.md` / `docs/SECURITY.md`;设计文档在
-`docs/design/`,实施计划在 `docs/plans/`。
+`docs/CHANGELOG.md` / `docs/CONTRIBUTING.md` / `docs/SECURITY.md`;设计文档在 `docs/design/`。

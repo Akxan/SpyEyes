@@ -23,6 +23,17 @@ This project adheres to [Keep a Changelog](https://keepachangelog.com/en/1.1.0/)
 
 - 合并 Dependabot:`actions/checkout`、`actions/setup-python`、`codecov/codecov-action` 升到 v7;reportlab 允许 5.x(`>=4.0,<6`,已用 5.0.1 实测全部 PDF 测试与中文 PDF 生成)。
 - **CI 之前从没测过 PDF**:`requirements-dev.txt` 未包含 reportlab,7 个 PDF 测试在 CI 里一直被 skipif 跳过。现已加入,CI 会真正跑 PDF 报告测试。
+- `dependabot.yml` 删除 `reviewers` 字段(GitHub 已于 2025 年移除该配置项,改由 CODEOWNERS 负责)。
+
+### ⚡ 性能
+
+- **启动提速 ~2.7×**(`import spyeyes` ~260 ms → ~95 ms):phonenumbers 的归属地 / 运营商 / 时区数据表(~120 ms)只在查电话时导入;reportlab(~40 ms)只在第一次生成 PDF 时导入。`ip` / `whois` / `--version` 等所有命令都受益。reportlab 装了但导入失败时,按"未安装"给出友好提示。
+- `.graph.html` 报告只在用户名 / 变形扫描时才加载 3000+ 平台数据。
+
+### 🧹 清理
+
+- 删除已实施完毕、代码早已过时的 `docs/plans/2026-05-13-one-click-upgrade-plan.md`(1241 行;存档见 v1.8.2 tag)、全部注释掉的 `.github/FUNDING.yml`、从未使用的 `Color.Blu`、`.gitignore` 里的无效条目。
+- README(中 / 英)的「项目亮点」从 21 条按版本堆叠的「🆕 vX.Y.Z」改为 11 条按功能组织;README / TUTORIAL / 文档首页里早已不"新"的版本标记一并清除(TUTORIAL 目录锚点同步更新)。菜单示例与实际菜单对齐。
 
 ---
 
@@ -146,7 +157,7 @@ subprocess 命令用 list args (非 shell 字符串),`sys.executable -m pip` 而
 ### 设计参考
 
 - spec: `docs/design/2026-05-13-one-click-upgrade.md`
-- plan: `docs/plans/2026-05-13-one-click-upgrade-plan.md`
+- plan(已实施,文件已从仓库移除,存档见 v1.8.2 tag): [v1.8.2/docs/plans/2026-05-13-one-click-upgrade-plan.md](https://github.com/Akxan/SpyEyes/blob/v1.8.2/docs/plans/2026-05-13-one-click-upgrade-plan.md)
 
 ### 验收
 
