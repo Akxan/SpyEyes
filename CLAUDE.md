@@ -209,6 +209,8 @@ MVP 只支持 domain。阶段 1 并发跑 whois / mx / subdomain / domain-emails
   `geocoder`/`carrier`/`timezone` 在 `track_phone` 内部导入;reportlab 只用 `find_spec` 探测出
   `HAS_REPORTLAB`,第一次出 PDF 时由 `_import_reportlab()` 填充模块级 `_rl_*` 符号。
   `TestLazyHeavyImports` 用子进程守护;新增重型依赖照此处理,别放回模块顶层。
+  `tests/conftest.py` 在收集阶段预热这些模块 —— 冷缓存 CI 上首次导入 geodata 可能 >15 s,
+  否则会被 per-test timeout 误杀(PR #13 踩过);新增延迟导入的模块也要加进预热。
 - 结果 dict 里 `_*` 开头的 key(`_error`、`_statuses`、`_stats`、`_recursive`、`_filtered`)
   视为私有。JSON 输出只对 `username_*` 结果剥离它们 —— **`mx`/`whois` 批量结果不剥**,
   因为它们的 key 是用户输入的域名,可能合法地以 `_` 开头(`_dmarc.example.com`)。保持这个不对称。
