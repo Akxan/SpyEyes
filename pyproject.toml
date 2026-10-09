@@ -59,10 +59,10 @@ dependencies = [
 #   pip install "spyeyes[pdf]"   # 需要 PDF 报告
 #   pip install "spyeyes[all]"   # 全部可选功能
 pdf = [
-    "reportlab>=4.0,<5",
+    "reportlab>=4.0,<6",
 ]
 all = [
-    "reportlab>=4.0,<5",
+    "reportlab>=4.0,<6",
 ]
 dev = [
     "pytest>=8.0",
@@ -72,7 +72,7 @@ dev = [
     "mypy>=1.10",
     "bandit>=1.7",
     "types-requests>=2.31",
-    "reportlab>=4.0,<5",
+    "reportlab>=4.0,<6",
 ]
 
 [project.urls]
