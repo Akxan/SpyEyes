@@ -1,0 +1,23 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="1200" viewBox="0 0 1200 1200">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#0e1318"/>
+      <stop offset="1" stop-color="#10262a"/>
+    </linearGradient>
+  </defs>
+  <rect width="1200" height="1200" fill="#0e1318"/>
+  <g transform="translate(0,285)">
+    <rect width="1200" height="630" fill="url(#bg)"/>
+    <rect x="0" y="0" width="1200" height="10" fill="#3ccfbf"/>
+    <g font-family="-apple-system, 'Helvetica Neue', Helvetica, Arial, sans-serif">
+      <text x="80" y="128" font-size="30" font-weight="600" fill="#3ccfbf" letter-spacing="2">FREE · OPEN SOURCE · PYTHON CLI</text>
+      <text x="76" y="258" font-size="124" font-weight="800" fill="#ffffff" letter-spacing="-4">SpyEyes</text>
+      <text x="80" y="338" font-size="52" font-weight="600" fill="#e4e9ee" letter-spacing="-1">The all-in-one OSINT toolkit</text>
+      <text x="80" y="414" font-size="30" fill="#98a4b1">Username search across 3,164 sites · Subdomain enumeration</text>
+      <text x="80" y="460" font-size="30" fill="#98a4b1">Email harvesting · IP / Phone / WHOIS / MX · 8 report formats</text>
+      <rect x="80" y="510" width="470" height="60" rx="12" fill="#1a222b" stroke="#2a3440" stroke-width="2"/>
+      <text x="104" y="549" font-size="26" fill="#e4e9ee" font-family="Menlo, Monaco, monospace">github.com/Akxan/SpyEyes</text>
+      <text x="1120" y="549" font-size="26" fill="#98a4b1" text-anchor="end">No API keys · English / 简体中文</text>
+    </g>
+  </g>
+</svg>

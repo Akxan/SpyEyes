@@ -1,0 +1,41 @@
+<!DOCTYPE html>
+<html lang="{{ page.lang | default: site.lang | default: 'en' }}">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="color-scheme" content="light dark">
+  {% seo %}
+  <link rel="stylesheet" href="{{ '/assets/css/site.css' | relative_url }}">
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Ctext y='.9em' font-size='90'%3E%F0%9F%91%81%3C/text%3E%3C/svg%3E">
+</head>
+<body{% if page.home %} class="home"{% endif %}>
+  <header class="site-header">
+    <div class="wrap">
+      <a class="brand" href="{{ '/' | relative_url }}"><span aria-hidden="true">👁</span> SpyEyes</a>
+      <nav aria-label="Main">
+        <a href="{{ '/TUTORIAL.html' | relative_url }}">Tutorial</a>
+        <a href="{{ '/CHANGELOG.html' | relative_url }}">Changelog</a>
+        <a href="{{ '/SECURITY.html' | relative_url }}">Security</a>
+        <a href="https://github.com/Akxan/SpyEyes/blob/main/README.zh-CN.md" lang="zh-CN">中文</a>
+        <a class="nav-cta" href="https://github.com/Akxan/SpyEyes">GitHub</a>
+      </nav>
+    </div>
+  </header>
+
+  <main class="wrap{% unless page.home %} doc{% endunless %}">
+    {{ content }}
+  </main>
+
+  <footer class="site-footer">
+    <div class="wrap">
+      <p>
+        <strong>SpyEyes</strong> — free, open-source OSINT toolkit · Apache-2.0 ·
+        <a href="https://github.com/Akxan/SpyEyes">GitHub</a> ·
+        <a href="https://github.com/Akxan/SpyEyes/releases/latest">Latest release</a> ·
+        <a href="https://github.com/Akxan/SpyEyes/issues">Report a bug</a>
+      </p>
+      <p class="fine">For authorized security testing, research and education only. Site data from Maigret, Sherlock and WhatsMyName.</p>
+    </div>
+  </footer>
+</body>
+</html>

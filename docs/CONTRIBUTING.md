@@ -1,3 +1,8 @@
+---
+layout: default
+title: Contributing
+---
+
 # 贡献指南
 
 感谢你考虑为 SpyEyes 做贡献！

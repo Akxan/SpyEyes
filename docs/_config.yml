@@ -2,28 +2,33 @@
 # 启用方式：Settings → Pages → Source: Deploy from a branch → main / docs/
 # 访问地址: https://akxan.github.io/SpyEyes/
 #
-# title / description 会被 jekyll-seo-tag 写进 <title>、meta description 和 Open Graph 标签。
+# 版式是自己的(_layouts/default.html + assets/css/site.css),不用官方主题,也不加载任何外部资源。
+# title / description / image 会被 jekyll-seo-tag 写进 <title>、meta description 和 Open Graph 标签。
 # 英文为主;不要写版本号、测试数这类每次发版都会变的数字。
 
 title: SpyEyes — All-in-One OSINT Toolkit
+tagline: Open-source OSINT CLI in Python
 description: >-
   Free, open-source OSINT command-line toolkit in Python: username search across 3,164 sites,
   subdomain enumeration, domain email harvesting, IP geolocation, phone lookup, WHOIS and MX.
   No API keys required. English / 简体中文.
-tagline: Open-source OSINT CLI in Python
 lang: en
-theme: jekyll-theme-hacker
 
 plugins:
   - jekyll-seo-tag
   - jekyll-sitemap
 
+# 分享到社交平台时的卡片样式(大图)
+twitter:
+  card: summary_large_image
+
 # 仓库信息
 repository: Akxan/SpyEyes
 
-# 默认在 Pages 显示的文件
+# 所有页面的默认值:版式 + 社交预览图(assets/social-card.svg 是源文件,改了要重新导出 jpg)
 defaults:
   - scope:
       path: ""
     values:
       layout: default
+      image: /assets/social-card.jpg
