@@ -44,6 +44,9 @@ jobs:
     name: Test (Python ${{ matrix.python-version }} on ${{ matrix.os }})
     needs: lint
     runs-on: ${{ matrix.os }}
+    permissions:
+      contents: read
+      id-token: write   # 仅用于向 Codecov 证明「这次上传来自本仓库的 CI」(OIDC),不涉及仓库写权限
     strategy:
       fail-fast: false
       # 减少冗余：Linux 跑全 5 版本（含 3.14），macOS/Windows 只跑最低和最高
@@ -95,9 +98,10 @@ jobs:
         with:
           # v6 用 'files' (复数)，v3 的 'file' 已废弃 → 之前可能被静默忽略
           files: ./coverage.xml
-          # Codecov 现在要求令牌:没有它上传会被拒绝("Token required"),而下面这行又让失败不报错
-          # —— 覆盖率徽章因此长期没有更新。需要在仓库 Settings → Secrets 里添加 CODECOV_TOKEN。
-          token: ${{ secrets.CODECOV_TOKEN }}
+          # Codecov 要求上传带身份:以前不带令牌的上传一直被拒("Token required"),而下面的
+          # fail_ci_if_error: false 又让失败不报错,覆盖率徽章因此长期没更新。
+          # 这里用 OIDC:GitHub 为这次运行签发一个短期身份凭证,Codecov 据此确认来源 —— 仓库里不用存任何令牌。
+          use_oidc: true
           fail_ci_if_error: false
 
   package:

@@ -2476,7 +2476,7 @@ class TestConfigCorruption:
         config_file = tmp_path / 'config.json'
         config_file.write_text('{not valid json', encoding='utf-8')
         monkeypatch.setattr(gt, 'CONFIG_FILE', str(config_file))
-        # 也要重定向 CONFIG_DIR 避免触发 _migrate_legacy_config
+        # 也要重定向 CONFIG_DIR,不碰真实的配置目录
         monkeypatch.setattr(gt, 'CONFIG_DIR', str(tmp_path))
         assert gt.load_config() == {}
 

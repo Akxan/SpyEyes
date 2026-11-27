@@ -83,9 +83,6 @@ CONFIG_FILE = os.path.join(CONFIG_DIR, 'config.json')
 HISTORY_FILE = os.path.join(CONFIG_DIR, 'history.jsonl')
 ENV_FILE = os.path.join(CONFIG_DIR, 'env')   # v1.6.8:KEY=VALUE 格式 API key 配置
 
-# 历史遗留路径（早期版本配置目录），首次启动时自动迁移
-_LEGACY_CONFIG_DIR = os.path.expanduser('~/.ghosttrack')
-
 
 def _load_env_file() -> int:
     """v1.6.8:从 ~/.spyeyes/env 读 KEY=VALUE 格式 API key 配置。
@@ -137,26 +134,6 @@ def _load_env_file() -> int:
 
 # 模块加载时自动读 env 文件(早于任何 _src_* 调用 os.environ.get)
 _load_env_file()
-
-
-def _migrate_legacy_config() -> None:
-    """如有旧配置/历史文件且新位置不存在，自动迁移（一次性、无感）。"""
-    try:
-        legacy_pairs = [
-            (os.path.join(_LEGACY_CONFIG_DIR, 'config.json'), CONFIG_FILE),
-            (os.path.join(_LEGACY_CONFIG_DIR, 'history.jsonl'), HISTORY_FILE),
-        ]
-        if not any(os.path.exists(legacy) for legacy, _ in legacy_pairs):
-            return
-        os.makedirs(CONFIG_DIR, exist_ok=True)
-        for legacy, new in legacy_pairs:
-            if os.path.exists(legacy) and not os.path.exists(new):
-                # errors='replace' 防 GBK / 半行损坏的旧文件让迁移整个失败
-                with open(legacy, encoding='utf-8', errors='replace') as src, \
-                     open(new, 'w', encoding='utf-8') as dst:
-                    dst.write(src.read())
-    except (OSError, UnicodeDecodeError):
-        pass
 
 
 def append_history(command: str, query: str, summary: dict) -> None:
@@ -218,8 +195,6 @@ def read_history(limit: int = 50, search: Optional[str] = None) -> list:
 
 
 def load_config() -> dict:
-    # 一次性迁移老路径配置（升级用户无感）
-    _migrate_legacy_config()
     try:
         with open(CONFIG_FILE, encoding='utf-8') as f:
             cfg = json.load(f)
@@ -1190,7 +1165,6 @@ _lang = 'zh'  # 当前语言，由 set_lang() 修改
 def detect_lang() -> str:
     """根据系统环境自动判定默认语言。"""
     val = (os.environ.get('SPYEYES_LANG')
-           or os.environ.get('GHOSTTRACK_LANG')  # 旧版兼容
            or os.environ.get('LC_ALL')
            or os.environ.get('LANG')
            or '').lower()

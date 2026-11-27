@@ -28,8 +28,10 @@ description = "All-in-one OSINT toolkit: username search across 2,963 sites, sub
 readme = "README.md"
 requires-python = ">=3.10"
 # PEP 639 SPDX 表达式（替代弃用的 license = { text = ... } 和 license classifier）
-license = "Apache-2.0"
-license-files = ["LICENSE", "NOTICE"]
+# 代码是 Apache-2.0;随包分发的 spyeyes/data/platforms.json 派生自 Maigret(MIT)、Sherlock(MIT)、
+# WhatsMyName(CC BY-SA 4.0),相应部分仍适用各自的许可证 —— 见 THIRD_PARTY_LICENSES.md
+license = "Apache-2.0 AND MIT AND CC-BY-SA-4.0"
+license-files = ["LICENSE", "NOTICE", "THIRD_PARTY_LICENSES.md"]
 authors = [{ name = "Akxan" }]
 keywords = ["osint", "osint-tool", "reconnaissance", "information-gathering",
             "username-search", "username-checker", "subdomain-enumeration",

@@ -1959,7 +1959,7 @@ class TestHandleChoiceInvestigate:
 # ==================================================================
 # 五、语言解析链
 # ==================================================================
-LANG_ENV_VARS = ('SPYEYES_LANG', 'GHOSTTRACK_LANG', 'LC_ALL', 'LANG')
+LANG_ENV_VARS = ('SPYEYES_LANG', 'LC_ALL', 'LANG')
 
 
 @pytest.fixture
@@ -1985,10 +1985,8 @@ class TestDetectLang:
         ({'LANG': 'en_ZH'}, 'en'),                                    # 只看前缀
         ({'LC_ALL': 'zh_CN.UTF-8', 'LANG': 'en_US.UTF-8'}, 'zh'),     # LC_ALL > LANG
         ({'LC_ALL': 'en_US.UTF-8', 'LANG': 'zh_CN.UTF-8'}, 'en'),
-        ({'GHOSTTRACK_LANG': 'zh', 'LC_ALL': 'en_US.UTF-8'}, 'zh'),   # 旧变量 > LC_ALL
-        ({'GHOSTTRACK_LANG': 'en', 'LANG': 'zh_CN.UTF-8'}, 'en'),
-        ({'SPYEYES_LANG': 'en', 'GHOSTTRACK_LANG': 'zh', 'LC_ALL': 'zh_CN.UTF-8', 'LANG': 'zh_CN.UTF-8'}, 'en'),
-        ({'SPYEYES_LANG': 'zh', 'GHOSTTRACK_LANG': 'en', 'LC_ALL': 'en_US.UTF-8', 'LANG': 'en_US.UTF-8'}, 'zh'),
+        ({'SPYEYES_LANG': 'en', 'LC_ALL': 'zh_CN.UTF-8', 'LANG': 'zh_CN.UTF-8'}, 'en'),
+        ({'SPYEYES_LANG': 'zh', 'LC_ALL': 'en_US.UTF-8', 'LANG': 'en_US.UTF-8'}, 'zh'),
         ({'SPYEYES_LANG': '', 'LANG': 'zh_CN.UTF-8'}, 'zh'),          # 空值当作没设
     ])
     def test_environment_precedence(self, lang_env, env, expected):

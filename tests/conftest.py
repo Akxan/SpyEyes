@@ -87,8 +87,6 @@ def reset_global_state(tmp_path, monkeypatch):
     monkeypatch.setattr(gt, 'HISTORY_FILE', f'{fake_config_dir}/history.jsonl')
     monkeypatch.setattr(gt, 'UPDATE_CACHE_FILE', f'{fake_config_dir}/.update_check.json')
     monkeypatch.setattr(gt, 'ENV_FILE', f'{fake_config_dir}/env')
-    # 旧版配置目录也要隔离:load_config() 会把真实的 ~/.ghosttrack 迁移进来
-    monkeypatch.setattr(gt, '_LEGACY_CONFIG_DIR', str(tmp_path / '.ghosttrack'))
 
     for var in _BEHAVIOR_ENV_VARS:
         monkeypatch.delenv(var, raising=False)

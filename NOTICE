@@ -12,7 +12,8 @@ Third-party data
 
 The username site database shipped in spyeyes/data/platforms.json is generated
 by tools/build_platforms.py from the following projects. The portions derived
-from each project remain under that project's own license:
+from each project remain under that project's own license; the full license
+texts are reproduced in THIRD_PARTY_LICENSES.md:
 
   * Maigret — https://github.com/soxoj/maigret
     Copyright (c) Soxoj. MIT License.

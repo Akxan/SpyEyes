@@ -8,6 +8,18 @@ This project adheres to [Keep a Changelog](https://keepachangelog.com/en/1.1.0/)
 
 ## [Unreleased]
 
+### 📄 许可证与归属
+
+- 新增 `THIRD_PARTY_LICENSES.md`:收录平台库三个数据来源的许可证原文 —— Maigret(MIT)、Sherlock(MIT)、
+  WhatsMyName(CC BY-SA 4.0),并说明所做的改动。`NOTICE`、README、打包元数据(`license` 表达式和
+  `license-files`)同步更新。
+- CI 的覆盖率上传改用 OIDC 认证,不再需要在仓库里配置令牌。
+
+### 🧹 清理
+
+- 移除 1.0 之前旧配置目录的自动迁移,以及旧的语言环境变量的兼容读取。配置统一只读 `~/.spyeyes/`,
+  界面语言只认 `--lang`、已保存的选择、`SPYEYES_LANG` / `LC_ALL` / `LANG`。
+
 ### Planned
 - 代理支持 (`--proxy http://...` / SOCKS5 / Tor / I2P，借鉴 Maigret)
 - IP / 用户名批量输入(`--batch ips.txt`;子域名已在 v1.5.0 支持 `--batch`)
@@ -74,7 +86,7 @@ This project adheres to [Keep a Changelog](https://keepachangelog.com/en/1.1.0/)
 
 - **测试禁止真实联网**:从 socket 层拦截连接和 DNS 查询,发起真实网络访问的测试会失败。
   此前"全部 mock"只是约定,新增数据源而忘了在测试里替换就会悄悄联网。
-- 测试隔离补全:每个测试后还原环境变量;隔离旧版配置目录 `~/.ghosttrack`。
+- 测试隔离补全:每个测试后还原环境变量。
 - 修掉 6 个"改了代码也照过"的测试,均经变异检查确认现在能抓住对应的 bug。
 - 源码里 U+2028 / U+2029 的不可见字面量改为转义写法(编辑器规范化后安全校验会悄悄失效)。
 - **CI 真正测试打包**:新增任务构建 wheel、装进干净环境、在源码目录之外运行并确认加载到 2500+ 平台。

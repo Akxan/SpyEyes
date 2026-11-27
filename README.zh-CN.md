@@ -10,7 +10,7 @@
 [![codecov](https://codecov.io/gh/Akxan/SpyEyes/branch/main/graph/badge.svg)](https://codecov.io/gh/Akxan/SpyEyes)
 [![License: Apache 2.0](https://img.shields.io/badge/License-Apache_2.0-blue.svg)](https://opensource.org/licenses/Apache-2.0)
 [![Python](https://img.shields.io/badge/Python-3.10%2B-blue.svg?logo=python&logoColor=white)](https://www.python.org/)
-[![Tests](https://img.shields.io/badge/tests-1493%20passed-success.svg)](tests/)
+[![Tests](https://img.shields.io/badge/tests-1491%20passed-success.svg)](tests/)
 [![Platforms](https://img.shields.io/badge/platforms-2963-orange.svg)](#-与同类工具对比)
 [![Reports](https://img.shields.io/badge/reports-8%20formats-9cf.svg)](#-报告格式8-种)
 [![Commands](https://img.shields.io/badge/commands-14-blueviolet.svg)](docs/TUTORIAL.md)
@@ -51,7 +51,7 @@
 - **日常使用省心**:`~/.spyeyes/env` 一个文件配好全部 API key;所有耗时操作都有进度反馈;交互模式报告默认存到 `<项目根>/Downloads/`(源码)或 `~/Downloads/spyeyes/`(打包安装)
 - **自动检查更新 + 一键升级**:24 h 缓存比对 GitHub Release;`spyeyes upgrade` 自动识别 pip / pipx / 源码安装,Homebrew 等 PEP 668 环境经你确认后才升级
 - **柔和配色**:正文用终端本色,颜色只做点缀,深色 / 浅色背景与 Windows 都清晰;`SPYEYES_THEME=classic` 找回旧版亮绿,`--no-color` / `NO_COLOR` 关闭颜色
-- **1493 个 pytest 测试**(行覆盖率 88%):ruff / mypy / bandit 全清,CI 覆盖 Linux × Python 3.10–3.14,macOS / Windows × Python 3.10 与 3.14
+- **1491 个 pytest 测试**(行覆盖率 88%):ruff / mypy / bandit 全清,CI 覆盖 Linux × Python 3.10–3.14,macOS / Windows × Python 3.10 与 3.14
 
 ---
 
@@ -546,7 +546,7 @@ bandit -c pyproject.toml -r spyeyes/ tools/ -ll
 ```
 
 当前测试覆盖：
-- ✅ **1493 个测试**，全部 mock 网络（不发真实请求）
+- ✅ **1491 个测试**，全部 mock 网络（不发真实请求）
 - ✅ 覆盖纯函数 + HTTP mock + 边界条件 + SSRF/ReDoS 防御 + 8 种报告格式 × 2 种语言 + 中英翻译 key 一致性
 - ✅ GitHub Actions：Linux × Python 3.10–3.14，macOS / **Windows** × Python 3.10 与 3.14
 - ✅ 独立 lint job（ruff + mypy + bandit），通过后才跑测试矩阵
@@ -636,11 +636,13 @@ Apache 2.0 比 MIT 多了**明确的专利授权**和**商标保护**，对二�
 
 任何人可以自由使用、修改、分发，包括商业用途，但需保留版权声明。
 
+内置的平台库派生自 Maigret(MIT)、Sherlock(MIT)、WhatsMyName(CC BY-SA 4.0),这部分数据仍适用各自的许可证,全文见 [THIRD_PARTY_LICENSES.md](THIRD_PARTY_LICENSES.md)。
+
 ---
 
 ## 🙏 致谢
 
-- 🌟 **[Maigret](https://github.com/soxoj/maigret)**(MIT)、**[Sherlock](https://github.com/sherlock-project/sherlock)**(MIT)、**[WhatsMyName](https://github.com/WebBreacher/WhatsMyName)**(CC BY-SA 4.0,© Micah Hoffman)—— `spyeyes/data/platforms.json` 里的用户名平台库派生自这三个项目,相应部分仍适用各自的原始许可证(见 [NOTICE](NOTICE))
+- 🌟 **[Maigret](https://github.com/soxoj/maigret)**(MIT)、**[Sherlock](https://github.com/sherlock-project/sherlock)**(MIT)、**[WhatsMyName](https://github.com/WebBreacher/WhatsMyName)**(CC BY-SA 4.0,© Micah Hoffman)—— `spyeyes/data/platforms.json` 里的用户名平台库派生自这三个项目,相应部分仍适用各自的原始许可证(见 [THIRD_PARTY_LICENSES.md](THIRD_PARTY_LICENSES.md))
 - 🌟 **[Google libphonenumber](https://github.com/google/libphonenumber)** —— 业界最权威的电话号码库
 - 🌟 **[ipwho.is](https://ipwho.is/)** —— 免费、稳定、信息丰富的 IP 地理位置 API
 - 🌟 **[ipify.org](https://www.ipify.org/)** —— 简洁的本机 IP 查询服务

@@ -43,7 +43,7 @@ python tools/build_platforms.py --no-fetch --cache-dir .cache   # 离线复用�
 
 CI(`.github/workflows/ci.yml`):`lint`(Python 3.14)通过后才跑 `test` 和 `package`。`test` 的矩阵为
 Linux × {3.10–3.14}、macOS × {3.10, 3.14}、Windows × {3.10, 3.14};Codecov 只从 Ubuntu × 3.14 上传
-(需要仓库密钥 `CODECOV_TOKEN`,没有时上传被拒但不报错)。`package` 用 `python -m build` 打出 wheel,
+(用 OIDC 认证:`use_oidc: true` + job 权限 `id-token: write`,仓库里不存令牌)。`package` 用 `python -m build` 打出 wheel,
 装进干净的虚拟环境、在检出目录之外运行,确认加载到 2500+ 平台 —— wheel 漏掉 `data/platforms.json` 时
 程序不报错、只会悄悄剩下精选的 200 来个平台,`pip install -e .` 测不出来。
 第三方 Action 固定到提交 SHA(行尾注释标版本,Dependabot 会更新);工作流权限是 `contents: read`。
@@ -168,7 +168,6 @@ MVP 只支持 domain。阶段 1 并发跑 whois / mx / subdomain / domain-emails
   `SPYEYES_NO_HISTORY`、`SPYEYES_NO_UPDATE_CHECK`、`SPYEYES_LANG`、`SPYEYES_THEME`。同时遵守 `NO_COLOR`。
 - 交互模式默认报告目录(`_default_report_dir`):`SPYEYES_REPORTS_DIR` > 源码安装
   `<仓库>/Downloads/` > 打包安装 `~/Downloads/spyeyes/`(绝不写进 site-packages)。
-- 旧版 `~/.ghosttrack/` 首次运行时自动迁移(`_migrate_legacy_config`)。
 
 ### 平台数据
 2963 个用户名平台 = 精选 `PLATFORMS` 列表(去重后 209 个,含全部中文 / 西语 / 18+ 手选)
