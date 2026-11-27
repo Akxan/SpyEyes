@@ -7,6 +7,13 @@ on:
     branches: [main]
   workflow_dispatch:
 
+# 所有 job 只需要读代码;显式写出来,避免沿用仓库默认的(可能更宽的)令牌权限
+permissions:
+  contents: read
+
+# 第三方 Action 固定到提交 SHA(行尾注释是对应的版本,Dependabot 会一起更新):
+# 版本标签可以被重新指向别的提交,SHA 不能。
+
 # 同分支重复 push 时取消旧 build，节省 CI 配额
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
@@ -17,8 +24,8 @@ jobs:
     name: Lint & Type Check
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v7
-      - uses: actions/setup-python@v7
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7
+      - uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0  # v7
         with:
           python-version: '3.14'
           cache: pip
@@ -54,10 +61,10 @@ jobs:
 
     steps:
       - name: Checkout
-        uses: actions/checkout@v7
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7
 
       - name: Set up Python ${{ matrix.python-version }}
-        uses: actions/setup-python@v7
+        uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0  # v7
         with:
           python-version: ${{ matrix.python-version }}
           cache: pip
@@ -67,8 +74,8 @@ jobs:
           python -m pip install --upgrade pip
           pip install -r requirements-dev.txt
 
-      - name: Install package (PyPI smoke test)
-        # 验证 pip install . 真能 work：pyproject.toml 配置正确 + entry_points 注册
+      - name: Install package (editable)
+        # 只验证入口点注册;打包内容(wheel 里有没有数据文件、依赖声明全不全)由下面的 package job 验证
         run: |
           pip install -e .
           spyeyes --version
@@ -84,8 +91,54 @@ jobs:
 
       - name: Upload coverage to Codecov
         if: matrix.os == 'ubuntu-latest' && matrix.python-version == '3.14'
-        uses: codecov/codecov-action@v7
+        uses: codecov/codecov-action@303a32d7a59b442fa8d48b6a1cc6825c09c847a5  # v7
         with:
           # v6 用 'files' (复数)，v3 的 'file' 已废弃 → 之前可能被静默忽略
           files: ./coverage.xml
+          # Codecov 现在要求令牌:没有它上传会被拒绝("Token required"),而下面这行又让失败不报错
+          # —— 覆盖率徽章因此长期没有更新。需要在仓库 Settings → Secrets 里添加 CODECOV_TOKEN。
+          token: ${{ secrets.CODECOV_TOKEN }}
           fail_ci_if_error: false
+
+  package:
+    name: Build & install wheel
+    needs: lint
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7
+      - uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0  # v7
+        with:
+          python-version: '3.14'
+      - name: Build sdist and wheel
+        run: |
+          python -m pip install --upgrade pip build
+          python -m build
+      - name: Install the wheel into a clean environment
+        # 不装 requirements*.txt:依赖必须全部来自 pyproject.toml 的声明
+        run: |
+          python -m venv "$RUNNER_TEMP/wheel-env"
+          "$RUNNER_TEMP/wheel-env/bin/pip" install dist/*.whl
+      - name: Verify the installed package
+        # 在检出目录之外运行,确保导入的是装进去的包而不是源码
+        working-directory: ${{ runner.temp }}
+        env:
+          SPYEYES_NO_UPDATE_CHECK: '1'
+          SPYEYES_NO_HISTORY: '1'
+        run: |
+          wheel-env/bin/spyeyes --version
+          wheel-env/bin/python - <<'PY'
+          import spyeyes
+          assert 'site-packages' in spyeyes.__file__, spyeyes.__file__
+          assert spyeyes._is_packaged_install()
+          total = len(spyeyes.PLATFORMS)
+          curated = len(spyeyes._CURATED_PLATFORMS)
+          # wheel 里漏掉 data/platforms.json 时不会报错,只会悄悄剩下精选的 200 来个平台
+          assert total > 3000, f'only {total} platforms loaded - is data/platforms.json in the wheel?'
+          print(f'spyeyes {spyeyes.__version__}: {total} platforms ({curated} curated)')
+          PY
+      - name: sdist is complete enough to run the tests
+        run: |
+          tar -tzf dist/*.tar.gz > sdist-files.txt
+          grep -q 'tests/conftest.py$' sdist-files.txt
+          grep -q 'spyeyes/data/platforms.json$' sdist-files.txt
+          grep -q 'README.zh-CN.md$' sdist-files.txt

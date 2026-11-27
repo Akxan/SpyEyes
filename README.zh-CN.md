@@ -495,7 +495,7 @@ python3 -m spyeyes mx gmail.com --save results
 |---|---|---|---|
 | **JSON** | `.json` | stdlib | 管道处理、脚本调用、API 集成 |
 | **Markdown** | `.md` | stdlib（含注入转义） | GitHub Issue、笔记、wiki |
-| **HTML** | `.html` | stdlib + 内嵌 CSS | 浏览器查看、邮件附件、外发报告 |
+| **HTML** | `.html` | stdlib + 内嵌 CSS(字体从 Google Fonts 加载) | 浏览器查看、邮件附件、外发报告 |
 | **PDF** | `.pdf` | reportlab（可选 `[pdf]`） | 正式调查报告、归档 |
 | **TXT** | `.txt` | stdlib | 复制粘贴到 ticket / IM / 邮件 |
 | **CSV** | `.csv` | csv stdlib + Excel 公式注入防护（UTF-8 BOM，Excel 打开中文不乱码） | Excel / Google Sheets / pandas |

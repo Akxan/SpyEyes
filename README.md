@@ -464,7 +464,7 @@ Auto-dispatched by `--save <file>` extension. All formats follow the current UI 
 |---|---|---|---|
 | **JSON** | `.json` | stdlib | Pipelines, scripts, API integration |
 | **Markdown** | `.md` | stdlib (with injection escaping) | GitHub Issues, notes, wiki |
-| **HTML** | `.html` | stdlib + inline CSS | Browser viewing, email attachments |
+| **HTML** | `.html` | stdlib + inline CSS (web fonts from Google Fonts) | Browser viewing, email attachments |
 | **PDF** | `.pdf` | reportlab (optional `[pdf]`) | Formal investigation reports, archive |
 | **TXT** | `.txt` | stdlib | Paste into tickets / IM / email |
 | **CSV** | `.csv` | csv stdlib + Excel-formula injection guard (UTF-8 with BOM so Excel shows Chinese correctly) | Excel / Google Sheets / pandas |

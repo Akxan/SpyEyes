@@ -1,0 +1,6 @@
+# sdist 额外包含的文件(wheel 的内容由 pyproject.toml 决定,不受这里影响)。
+# setuptools 默认只把 test_*.py 放进 sdist,不带 conftest.py —— 那样的 sdist 跑不了测试。
+include LICENSE NOTICE README.md README.zh-CN.md
+include requirements.txt requirements-dev.txt
+recursive-include tests *.py
+recursive-include spyeyes/data *.json
