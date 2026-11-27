@@ -5,7 +5,7 @@
 #     __init__.py    # 主代码（之前的 spyeyes.py）
 #     __main__.py    # python -m spyeyes 入口
 #     data/
-#       platforms.json   # 3164 平台数据库（v1.1.0，自动打进 wheel）
+#       platforms.json   # 2963 平台数据库（v1.1.0，自动打进 wheel）
 #
 # 安装方式:
 #   pip install .                    # 从 source
@@ -23,8 +23,8 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "spyeyes"
-version = "1.8.7"  # 同步：spyeyes/__init__.py __version__ + docs/CHANGELOG.md + git tag
-description = "All-in-one OSINT toolkit: username search across 3,164 sites, subdomain enumeration, domain email harvesting, IP geolocation, phone lookup, WHOIS / MX, investigate dossier — one CLI, 8 report formats, no API keys, bilingual (English / Chinese)"
+version = "1.8.8"  # 同步：spyeyes/__init__.py __version__ + docs/CHANGELOG.md + git tag
+description = "All-in-one OSINT toolkit: username search across 2,963 sites, subdomain enumeration, domain email harvesting, IP geolocation, phone lookup, WHOIS / MX, investigate dossier — one CLI, 8 report formats, no API keys, bilingual (English / Chinese)"
 readme = "README.md"
 requires-python = ">=3.10"
 # PEP 639 SPDX 表达式（替代弃用的 license = { text = ... } 和 license classifier）

@@ -264,7 +264,35 @@ def is_probeable_url(url: str) -> bool:
     (曾经写出过 `{}.com` 和 `{urlMain}forum/profile.php?...` 这样的条目,运行时永远请求失败。)"""
     if not re.match(r"^https?://", url) or "{}" not in url:
         return False
-    return re.search(r"\{[^}]+\}", url) is None
+    if re.search(r"\{[^}]+\}", url) is not None:
+        return False
+    # 暗网地址(Tor / I2P)普通 HTTP 请求到不了;Maigret 用 protocol 字段标,其它上游只能看域名
+    host = urlparse(url.replace("{}", "u")).hostname or ""
+    return not host.endswith((".onion", ".i2p"))
+
+
+def url_key(url: str) -> str:
+    """地址模板的归一化形式:忽略 http / https、`www.`、结尾的 `/` 和大小写。
+    与运行时 spyeyes._platform_url_key 保持一致。"""
+    key = re.sub(r"^https?://", "", url.strip().lower())
+    if key.startswith("www."):
+        key = key[4:]
+    return key.rstrip("/")
+
+
+def dedup_by_url(items: list) -> list:
+    """同一个地址模板只留一条:检测规则多的优先,其次是已有明确分类的(不是 other),再其次是先出现的。
+    上游三个库各自给同一个网址起了不同的名字(`YouTube` / `YouTube User`、`Linktree` / `linktr.ee`),
+    按名字去重拦不住 —— 同一个账号会在结果里出现两次。"""
+    best: dict = {}
+    for index, item in enumerate(items):
+        score = (len(item.get("not_found") or []) + len(item.get("must_contain") or []),
+                 item.get("category", "other") != "other", -index)
+        key = url_key(item["url"])
+        if key not in best or score > best[key][0]:
+            best[key] = (score, index)
+    keep = {index for _, index in best.values()}
+    return [item for index, item in enumerate(items) if index in keep]
 
 
 def expand_site_placeholders(url: str, info: dict) -> str:
@@ -564,6 +592,10 @@ def build(cache_dir: str | None = None, no_fetch: bool = False) -> int:
         item.pop("_source", None)
         item.pop("_tags", None)
         item.setdefault("regex_check", "")
+
+    before = len(merged)
+    merged = dedup_by_url(merged)
+    print(f"  dropped {before - len(merged)} entries that repeat another entry's URL template")
 
     by_cat = Counter(p["category"] for p in merged)
     print("  by category:")

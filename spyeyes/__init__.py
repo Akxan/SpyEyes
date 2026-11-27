@@ -3,9 +3,9 @@
 """
 SpyEyes —— All-in-One OSINT Toolkit (Bilingual: zh / en)
 
-  支持: IP / 本机 IP / 电话 / 用户名 (3164 平台) / WHOIS / MX / 邮箱
+  支持: IP / 本机 IP / 电话 / 用户名 (2963 平台) / WHOIS / MX / 邮箱
         + 用户名变形 / 递归扫描 / 8 种报告格式（v1.2.0：HTML / PDF / XMind / Graph 等，全部 i18n）
-  Features: IP / MyIP / Phone / Username (3164 platforms) / WHOIS / MX / Email
+  Features: IP / MyIP / Phone / Username (2963 platforms) / WHOIS / MX / Email
         + Permutations / Recursive scan / 8 report formats (v1.2.0: HTML / PDF / XMind / Graph, all i18n)
 
   https://github.com/Akxan/SpyEyes
@@ -72,7 +72,7 @@ _rl_table_style: Any = None
 
 
 # 语义化版本号 —— 同步更新 docs/CHANGELOG.md 与 git tag
-__version__ = '1.8.7'
+__version__ = '1.8.8'
 
 
 # ====================================================================
@@ -655,10 +655,10 @@ TRANSLATIONS: dict = {
         'msg.found':            'found',
         'msg.no_history':       '(no history yet — run a query first)',
         'mode.title':           'Scan mode:',
-        'mode.quick':           'Quick   (~1390 platforms, ~14s)  [recommended]',
-        'mode.full':            'Full    (~3164 platforms, ~30s)',
-        'mode.cn_es':           'Chinese + Spanish only (~81 platforms, ~6s)',
-        'mode.code':            'Code platforms only (~116 platforms, ~3s)',
+        'mode.quick':           'Quick   (~1301 platforms, ~14s)  [recommended]',
+        'mode.full':            'Full    (~2963 platforms, ~30s)',
+        'mode.cn_es':           'Chinese + Spanish only (~78 platforms, ~6s)',
+        'mode.code':            'Code platforms only (~104 platforms, ~3s)',
         'mode.prompt':          'Choose [1/2/3/4, default 1]: ',
         # v1.1.0 — Permutation / Recursive / PDF
         'permute.title':        'Username permutations:',
@@ -1027,10 +1027,10 @@ TRANSLATIONS: dict = {
         'msg.found':            '已命中',
         'msg.no_history':       '（暂无历史 —— 先跑一次查询试试）',
         'mode.title':           '扫描模式:',
-        'mode.quick':           '快速   (约 1390 平台, ~14 秒)  [推荐]',
-        'mode.full':            '完整   (全部 3164 平台, ~30 秒)',
-        'mode.cn_es':           '仅中文 + 西语圈 (约 81 平台, ~6 秒)',
-        'mode.code':            '仅代码平台 (约 116 平台, ~3 秒)',
+        'mode.quick':           '快速   (约 1301 平台, ~14 秒)  [推荐]',
+        'mode.full':            '完整   (全部 2963 平台, ~30 秒)',
+        'mode.cn_es':           '仅中文 + 西语圈 (约 78 平台, ~6 秒)',
+        'mode.code':            '仅代码平台 (约 104 平台, ~3 秒)',
         'mode.prompt':          '请选择 [1/2/3/4, 默认 1]: ',
         # v1.1.0 —— 用户名变形 / 递归扫描 / PDF
         'permute.title':        '用户名变形：',
@@ -1987,29 +1987,51 @@ def _load_platforms_json(path: str) -> list:
     return _dedup_platforms(out)
 
 
+def _platform_url_key(url: str) -> str:
+    """地址模板的归一化形式,用来判断两个条目查的是不是同一个地址:
+    忽略 http / https、`www.`、结尾的 `/` 和大小写。"""
+    key = url.strip().lower()
+    for scheme in ('https://', 'http://'):
+        if key.startswith(scheme):
+            key = key[len(scheme):]
+            break
+    if key.startswith('www.'):
+        key = key[4:]
+    return key.rstrip('/')
+
+
 def _dedup_platforms(platforms: list) -> list:
-    """去掉名字（不区分大小写）重复的项，保留先出现的。
-    防御 curated 列表中的笔误（例如 Cam4 / CAM4 同时出现）。"""
-    seen = set()
+    """去掉重复的平台,保留先出现的。两种重复都算:
+    - 名字相同(不区分大小写)—— 防 curated 列表里的笔误(Cam4 / CAM4);
+    - 地址模板相同 —— 同一个网址换个名字再收录一遍(`YouTube` / `YouTube User`)。
+      这种重复会让同一个账号在结果里出现两次,同一个地址被请求两次。"""
+    seen_names = set()
+    seen_urls = set()
     out = []
     for p in platforms:
-        key = p.name.lower().strip()
-        if not key or key in seen:
+        name_key = p.name.lower().strip()
+        url_key = _platform_url_key(p.url)
+        if not name_key or name_key in seen_names or url_key in seen_urls:
             continue
-        seen.add(key)
+        seen_names.add(name_key)
+        seen_urls.add(url_key)
         out.append(p)
     return out
 
 
 def _merge_platforms(curated: list, extended: list) -> list:
-    """以 curated 为优先（保留我们的中文/分类），追加 extended 中名字不重复的项。"""
-    seen = {p.name.lower().strip() for p in curated}
+    """以 curated 为优先（保留我们的中文/分类），追加 extended 中名字和地址都不重复的项。
+    地址也要比:扩展库里有不少条目和精选平台是同一个网址、只是名字不同(`Chess` 与 `Chess.com`)。"""
+    seen_names = {p.name.lower().strip() for p in curated}
+    seen_urls = {_platform_url_key(p.url) for p in curated}
     merged = list(curated)
     for p in extended:
-        key = p.name.lower().strip()
-        if key in seen:
+        name_key = p.name.lower().strip()
+        url_key = _platform_url_key(p.url)
+        if name_key in seen_names or url_key in seen_urls:
             continue
-        seen.add(key)
+        seen_names.add(name_key)
+        seen_urls.add(url_key)
         merged.append(p)
     return merged
 
@@ -5011,7 +5033,7 @@ def do_investigate(target: str, *,
                 # v1.8.0:从串行改并行 — outer 4 邮箱 × inner 50 worker = 200 总线程
                 # (持平单 user 默认 150,单平台 burst 风险≈不变 因为 4 outer 同时打同一平台
                 # 概率极低:每个 outer 同一时刻只有 1/1700 概率打 GitHub)
-                # quick 模式跳过 other 长尾(3164 → ~1750 平台)
+                # quick 模式跳过 other 长尾(2963 → ~1750 平台)
                 cats = [c for c in CATEGORY_ORDER if c != 'other'] if quick else None
 
                 def _scan_one_email(payload: tuple) -> tuple:
@@ -8143,7 +8165,7 @@ def _to_csv(prefix: str, data: Any) -> str:
             t('report.username_scan'), t('report.category'),
             t('report.platform'), t('report.url'),
         ])
-        cat_lookup = {p.name: p.category for p in _get_platforms()}  # 循环外建一次(3164 项)
+        cat_lookup = {p.name: p.category for p in _get_platforms()}  # 循环外建一次(2963 项)
         for var, scan in data.items():
             if not isinstance(scan, dict) or '_error' in scan:
                 continue
@@ -9381,7 +9403,7 @@ def build_parser() -> argparse.ArgumentParser:
   spyeyes --lang en ip 8.8.8.8                    # Force English UI / 强制英文界面
   spyeyes myip --json                             # Public IP as JSON
   spyeyes phone +12025550100                      # Phone parse (offline)
-  spyeyes user torvalds                           # Username scan (3164 platforms, 150 workers)
+  spyeyes user torvalds                           # Username scan (2963 platforms, 150 workers)
   spyeyes user torvalds --quick --recursive       # Skip long tail + recursive follow-up
   spyeyes permute "John Doe" --scan --quick       # Username variations + scan each
   spyeyes whois example.com example.org           # WHOIS (batch)
@@ -9420,7 +9442,7 @@ def build_parser() -> argparse.ArgumentParser:
     sp.add_argument('--all', action='store_true', dest='show_all',
                     help='Show all platforms incl. misses / 显示所有平台（含未命中）')
     sp.add_argument('--quick', action='store_true',
-                    help='Skip "other" long-tail (~1390 vs 3164 platforms, ~2x faster) / 跳过 other 长尾')
+                    help='Skip "other" long-tail (~1301 vs 2963 platforms, ~2x faster) / 跳过 other 长尾')
     sp.add_argument('--category', dest='category_filter',
                     help='Comma-separated categories: code,social,chinese,spanish,... / 用逗号分隔的类别')
     # v1.1.0

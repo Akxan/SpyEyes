@@ -2051,7 +2051,7 @@ class TestSymlinkInstall:
         assert proc.returncode == 0, proc.stderr
         loaded_from, count = proc.stdout.split()
         assert os.path.dirname(loaded_from) == str(pkg)          # 确实是从链接那边导入的
-        assert int(count) > 3000, f'只加载到 {count} 个平台 —— data/ 没找到'
+        assert int(count) > 2500, f'只加载到 {count} 个平台 —— data/ 没找到'
 
 
 class TestReadHistoryEdgeCases:
@@ -6333,3 +6333,64 @@ class TestInteractiveSaveHonoursChosenFormat:
         (written,) = self._save(monkeypatch, tmp_path, str(tmp_path / 'r.txt'))
         assert written.name == 'r.txt'
         assert written.read_text(encoding='utf-8').startswith('╔')        # TXT 报告的边框
+
+
+class TestPlatformUrlDedup:
+    """回归:去重只看名字。上游三个库给同一个网址起了不同的名字(`YouTube` / `YouTube User`、
+    `Chess` 与精选的 `Chess.com`),190 个平台是重复收录 —— 同一个账号在结果里出现两次,
+    同一个地址被请求两次,平台总数也虚高。"""
+
+    @pytest.mark.parametrize('url', [
+        'https://example.com/u/{}',
+        'http://example.com/u/{}',
+        'https://www.example.com/u/{}',
+        'https://example.com/u/{}/',
+        'HTTPS://WWW.Example.com/U/{}/',
+    ])
+    def test_url_key_ignores_scheme_www_trailing_slash_and_case(self, url):
+        assert gt._platform_url_key(url) == 'example.com/u/{}'
+
+    def test_url_key_keeps_real_differences(self):
+        keys = {gt._platform_url_key(u) for u in (
+            'https://example.com/u/{}', 'https://example.com/users/{}',
+            'https://api.example.com/u/{}', 'https://{}.example.com', 'https://example.com/u/{}?tab=about')}
+        assert len(keys) == 5
+
+    def test_dedup_drops_same_url_under_another_name(self):
+        plats = [gt.Platform('YouTube', 'https://www.youtube.test/@{}', 'video'),
+                 gt.Platform('YouTube User', 'https://youtube.test/@{}/', 'other'),
+                 gt.Platform('Vimeo', 'https://vimeo.test/{}', 'video')]
+        assert [p.name for p in gt._dedup_platforms(plats)] == ['YouTube', 'Vimeo']
+
+    def test_merge_prefers_curated_over_extended_with_same_url(self):
+        curated = [gt.Platform('Chess.com', 'https://www.chess.test/member/{}', 'gaming')]
+        extended = [gt.Platform('Chess', 'http://chess.test/member/{}/', 'other', (b'nope',)),
+                    gt.Platform('Lichess', 'https://lichess.test/@/{}', 'gaming')]
+        merged = gt._merge_platforms(curated, extended)
+        assert [p.name for p in merged] == ['Chess.com', 'Lichess']
+        assert merged[0] == curated[0]
+
+    def test_merge_drops_repeats_inside_extended(self):
+        extended = [gt.Platform('Linktree', 'https://linktr.test/{}', 'social'),
+                    gt.Platform('linktr.ee', 'https://linktr.test/{}', 'other')]
+        assert [p.name for p in gt._merge_platforms([], extended)] == ['Linktree']
+
+    def test_shipped_platforms_have_unique_requestable_urls(self):
+        import urllib.parse
+        from collections import Counter
+        platforms = gt.PLATFORMS
+        keys = [gt._platform_url_key(p.url) for p in platforms]
+        repeated = sorted(k for k, n in Counter(keys).items() if n > 1)
+        assert repeated == []
+        for p in platforms:
+            assert p.url.startswith(('http://', 'https://')), p.name
+            host = urllib.parse.urlsplit(p.url.replace('{}', 'u')).hostname or ''
+            assert host and not host.endswith(('.onion', '.i2p')), p.name   # 暗网地址普通请求到不了
+
+    def test_shipped_json_has_no_entry_shadowed_by_a_curated_url(self):
+        """数据文件里不应留着「和精选平台同一个地址、只是名字不同」的条目(运行时会被丢掉,留着只是误导)。"""
+        curated_urls = {gt._platform_url_key(p.url) for p in gt._CURATED_PLATFORMS}
+        curated_names = {p.name.lower().strip() for p in gt._CURATED_PLATFORMS}
+        shadowed = [p.name for p in gt._load_platforms_json(gt._PLATFORMS_JSON)
+                    if gt._platform_url_key(p.url) in curated_urls and p.name.lower().strip() not in curated_names]
+        assert shadowed == []

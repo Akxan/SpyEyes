@@ -2,14 +2,14 @@
 layout: default
 home: true
 title: "SpyEyes — All-in-One OSINT Toolkit"
-description: "SpyEyes is a free, open-source OSINT command-line toolkit in Python: username search across 3,164 sites, subdomain enumeration, domain email harvesting, IP geolocation, phone lookup, WHOIS and MX — no API keys required."
+description: "SpyEyes is a free, open-source OSINT command-line toolkit in Python: username search across 2,963 sites, subdomain enumeration, domain email harvesting, IP geolocation, phone lookup, WHOIS and MX — no API keys required."
 lang: en
 ---
 
 <section class="hero">
   <p class="eyebrow">Free &amp; open source · Python CLI · English / 简体中文</p>
   <h1>SpyEyes — the all-in-one <span>OSINT toolkit</span></h1>
-  <p class="lead"><strong>SpyEyes is a free, open-source OSINT (open-source intelligence) toolkit for the command line, written in Python.</strong> Username search across 3,164 websites, subdomain enumeration, domain email harvesting, IP, phone, WHOIS and MX lookups — one install, no API keys.</p>
+  <p class="lead"><strong>SpyEyes is a free, open-source OSINT (open-source intelligence) toolkit for the command line, written in Python.</strong> Username search across 2,963 websites, subdomain enumeration, domain email harvesting, IP, phone, WHOIS and MX lookups — one install, no API keys.</p>
   <div class="install"><span class="prompt">$ </span>pipx install git+https://github.com/Akxan/SpyEyes.git</div>
   <div class="actions">
     <a class="btn primary" href="https://github.com/Akxan/SpyEyes">View on GitHub</a>
@@ -17,7 +17,7 @@ lang: en
     <a class="btn" href="https://github.com/Akxan/SpyEyes/releases/latest">Latest release</a>
   </div>
   <ul class="facts">
-    <li><b>3,164</b><span>sites per username scan</span></li>
+    <li><b>2,963</b><span>sites per username scan</span></li>
     <li><b>14</b><span>commands</span></li>
     <li><b>8</b><span>report formats</span></li>
     <li><b>0</b><span>API keys required</span></li>
@@ -31,7 +31,7 @@ One tool for the everyday reconnaissance pass — each command works on its own 
 <ul class="cards">
   <li>
     <h3>👤 Username search</h3>
-    <p>Check one username across 3,164 websites — social networks, forums, code hosts, Chinese- and Spanish-language platforms — with 150 threads. <code>spyeyes user torvalds</code></p>
+    <p>Check one username across 2,963 websites — social networks, forums, code hosts, Chinese- and Spanish-language platforms — with 150 threads. <code>spyeyes user torvalds</code></p>
   </li>
   <li>
     <h3>🌐 Subdomain enumeration</h3>
@@ -69,8 +69,8 @@ Username scanners are only useful if a "found" means found. SpyEyes checks its o
 ```bash
 pipx install git+https://github.com/Akxan/SpyEyes.git
 
-spyeyes user torvalds                         # username search across 3,164 sites
-spyeyes user torvalds --quick                 # skip the long tail (~1,390 sites)
+spyeyes user torvalds                         # username search across 2,963 sites
+spyeyes user torvalds --quick                 # skip the long tail (~1,300 sites)
 spyeyes subdomain example.com --alive-only    # subdomain enumeration
 spyeyes domain-emails example.com             # harvest a domain's email addresses
 spyeyes investigate example.com --save dossier.html
@@ -83,7 +83,7 @@ Requires Python 3.10+. Runs on macOS, Linux, Windows and Termux. Prefer a source
 
 | Command | What it does |
 |---|---|
-| `user` | Check one username across 3,164 websites (merged from Maigret, Sherlock and WhatsMyName) |
+| `user` | Check one username across 2,963 websites (merged from Maigret, Sherlock and WhatsMyName) |
 | `permute` | Generate username variations from a real name, optionally scan each one |
 | `subdomain` | Enumerate subdomains: 6 passive sources + DNS bruteforce + HTTP probe; `--batch` for many domains |
 | `diff` | Compare two subdomain scans — added, removed and changed hosts |
@@ -121,7 +121,7 @@ Requires Python 3.10+. Runs on macOS, Linux, Windows and Termux. Prefer a source
 
 ## 中文简介
 
-**SpyEyes 是一款免费开源的 OSINT(开源情报)命令行工具,用 Python 编写。** 一次安装包含 14 个命令:用户名扫描(3164 个平台)、子域名枚举、域名邮箱挖掘、IP 归属地、电话号码解析、WHOIS、MX、邮箱验证,以及一条命令出整合档案的 `investigate`。支持 8 种报告格式,无需任何 API key,界面与报告内容中英双语。
+**SpyEyes 是一款免费开源的 OSINT(开源情报)命令行工具,用 Python 编写。** 一次安装包含 14 个命令:用户名扫描(2963 个平台)、子域名枚举、域名邮箱挖掘、IP 归属地、电话号码解析、WHOIS、MX、邮箱验证,以及一条命令出整合档案的 `investigate`。支持 8 种报告格式,无需任何 API key,界面与报告内容中英双语。
 
 用户名扫描会对每个命中做复查:用随机乱码用户名再查一次,乱码也"存在"的平台标为"无法确认",不计入命中;被拦截的平台标为"被拦截",而不是"未找到"。
 
@@ -136,7 +136,7 @@ Requires Python 3.10+. Runs on macOS, Linux, Windows and Termux. Prefer a source
     {
       "@type": "SoftwareApplication",
       "name": "SpyEyes",
-      "description": "Free, open-source OSINT command-line toolkit written in Python: username search across 3,164 websites, subdomain enumeration, domain email harvesting, IP geolocation, phone number lookup, WHOIS, MX and email validation, with 8 report formats.",
+      "description": "Free, open-source OSINT command-line toolkit written in Python: username search across 2,963 websites, subdomain enumeration, domain email harvesting, IP geolocation, phone number lookup, WHOIS, MX and email validation, with 8 report formats.",
       "applicationCategory": "SecurityApplication",
       "operatingSystem": "macOS, Linux, Windows, Android (Termux)",
       "programmingLanguage": "Python",

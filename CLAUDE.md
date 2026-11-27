@@ -44,7 +44,7 @@ python tools/build_platforms.py --no-fetch --cache-dir .cache   # 离线复用�
 CI(`.github/workflows/ci.yml`):`lint`(Python 3.14)通过后才跑 `test` 和 `package`。`test` 的矩阵为
 Linux × {3.10–3.14}、macOS × {3.10, 3.14}、Windows × {3.10, 3.14};Codecov 只从 Ubuntu × 3.14 上传
 (需要仓库密钥 `CODECOV_TOKEN`,没有时上传被拒但不报错)。`package` 用 `python -m build` 打出 wheel,
-装进干净的虚拟环境、在检出目录之外运行,确认加载到 3000+ 平台 —— wheel 漏掉 `data/platforms.json` 时
+装进干净的虚拟环境、在检出目录之外运行,确认加载到 2500+ 平台 —— wheel 漏掉 `data/platforms.json` 时
 程序不报错、只会悄悄剩下精选的 200 来个平台,`pip install -e .` 测不出来。
 第三方 Action 固定到提交 SHA(行尾注释标版本,Dependabot 会更新);工作流权限是 `contents: read`。
 提交前把 ruff / mypy / bandit / pytest 用 `&&` 串起来跑,任何一步失败都不要提交。
@@ -171,9 +171,10 @@ MVP 只支持 domain。阶段 1 并发跑 whois / mx / subdomain / domain-emails
 - 旧版 `~/.ghosttrack/` 首次运行时自动迁移(`_migrate_legacy_config`)。
 
 ### 平台数据
-3164 个用户名平台 = 精选 `PLATFORMS` 列表(去重后 209 个,含全部中文 / 西语 / 18+ 手选)
-**运行时合并** `spyeyes/data/platforms.json`(3054 个,来自 Maigret/Sherlock/WhatsMyName;
-重名时精选优先)。
+2963 个用户名平台 = 精选 `PLATFORMS` 列表(去重后 209 个,含全部中文 / 西语 / 18+ 手选)
+**运行时合并** `spyeyes/data/platforms.json`(2852 个,来自 Maigret/Sherlock/WhatsMyName;
+重名或同地址时精选优先)。去重同时按名字和地址模板(`_platform_url_key`:忽略 http/https、`www.`、
+结尾的 `/`、大小写)—— 上游三个库会给同一个网址起不同的名字,只按名字去重会让同一个账号在结果里出现两次。
 - `PLATFORMS` 定义后即被删除;`spyeyes.PLATFORMS` 走 PEP 562 `__getattr__` →
   `_get_platforms()`(懒加载,缓存在 `_PLATFORMS_CACHE`)。测试需要自定义列表时 patch
   `_PLATFORMS_CACHE`,而不是 `PLATFORMS`。
@@ -195,7 +196,8 @@ MVP 只支持 domain。阶段 1 并发跑 whois / mx / subdomain / domain-emails
   在内存里重建一遍做比对,并抽样用真实网站验证(一个乱码名 + 一个常见名,看误报和命中的变化)。
   不要凭印象判断上游字段的含义 —— 两次大错都是这么来的。
 - 扫描模式菜单和 `--quick` 帮助里写着各类平台数量(`mode.*`),`TestShippedPlatformData` 会拿它们和数据比对;
-  README / 教程里的"48 中文圈 + 33 西语圈 + 734 论坛"和类别表要手动同步。
+  README / 教程里的"45 中文圈 + 33 西语圈 + 704 论坛"、类别表、总数 2963(README、教程、`docs/index.md`、
+  `docs/_config.yml`、`pyproject.toml`、模块文档字符串)要手动同步;仓库描述和社交预览图用的是约数"2,900+"。
 - 路径用 `os.path.realpath(__file__)`,**不要**用 `abspath` —— `abspath` 在 brew/pipx 软链
   安装下会找不到 data 目录,静默丢掉整份 JSON。不要改。
 

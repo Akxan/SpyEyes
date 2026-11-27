@@ -9,7 +9,7 @@
 title: SpyEyes — All-in-One OSINT Toolkit
 tagline: Open-source OSINT CLI in Python
 description: >-
-  Free, open-source OSINT command-line toolkit in Python: username search across 3,164 sites,
+  Free, open-source OSINT command-line toolkit in Python: username search across 2,963 sites,
   subdomain enumeration, domain email harvesting, IP geolocation, phone lookup, WHOIS and MX.
   No API keys required. English / 简体中文.
 lang: en

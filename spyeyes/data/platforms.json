@@ -25,19 +25,6 @@
   "category": "video"
  },
  {
-  "name": "YouTube User",
-  "url": "https://www.youtube.com/@{}/about",
-  "not_found": [
-   "404 Not Found"
-  ],
-  "must_contain": [
-   "visitorData",
-   "userAgent"
-  ],
-  "regex_check": "^[^\\/]+$",
-  "category": "video"
- },
- {
   "name": "Instagram",
   "url": "https://www.instagram.com/{}/",
   "not_found": [
@@ -100,14 +87,6 @@
   "must_contain": [],
   "regex_check": "",
   "category": "writing"
- },
- {
-  "name": "GooglePlayStore",
-  "url": "https://play.google.com/store/apps/developer?id={}",
-  "not_found": [],
-  "must_contain": [],
-  "regex_check": "",
-  "category": "other"
  },
  {
   "name": "Wikipedia",
@@ -638,18 +617,6 @@
   "regex_check": ""
  },
  {
-  "name": "Blogger (by GAIA id)",
-  "url": "https://www.blogger.com/profile/{}",
-  "not_found": [
-   "/edit-profile.g"
-  ],
-  "must_contain": [
-   "><head profile="
-  ],
-  "regex_check": "",
-  "category": "writing"
- },
- {
   "name": "CNET",
   "url": "https://www.cnet.com/profiles/{}/",
   "not_found": [
@@ -888,14 +855,6 @@
   "must_contain": [],
   "regex_check": "",
   "category": "art"
- },
- {
-  "name": "Academia.edu",
-  "url": "https://independent.academia.edu/{}",
-  "not_found": [],
-  "must_contain": [],
-  "regex_check": "^[^\\.]+$",
-  "category": "other"
  },
  {
   "name": "DiscussPython",
@@ -1178,14 +1137,6 @@
   ],
   "regex_check": "",
   "category": "forum"
- },
- {
-  "name": "OK",
-  "url": "https://ok.ru/{}",
-  "not_found": [],
-  "must_contain": [],
-  "regex_check": "^[a-zA-Z][a-zA-Z0-9_.-]*$",
-  "category": "social"
  },
  {
   "name": "Snapchat",
@@ -1658,18 +1609,6 @@
   "category": "other"
  },
  {
-  "name": "Douban",
-  "url": "https://www.douban.com/people/{}/",
-  "not_found": [
-   "返回首页"
-  ],
-  "must_contain": [
-   "db-usr-profile"
-  ],
-  "regex_check": "",
-  "category": "chinese"
- },
- {
   "name": "Upwork",
   "url": "https://upwork.com/fl/{}",
   "not_found": [],
@@ -1929,17 +1868,6 @@
   "regex_check": ""
  },
  {
-  "name": "kofi",
-  "url": "https://ko-fi.com/{}",
-  "not_found": [
-   "Make income from your art!",
-   "https://storage.ko-fi.com/cdn/og.png"
-  ],
-  "must_contain": [],
-  "regex_check": "^[^\\.]+$",
-  "category": "funding"
- },
- {
   "name": "Ustream",
   "url": "http://www.ustream.tv/channel/adam{}",
   "not_found": [],
@@ -1994,14 +1922,6 @@
   "category": "other"
  },
  {
-  "name": "DEV Community",
-  "url": "https://dev.to/{}",
-  "not_found": [],
-  "must_contain": [],
-  "regex_check": "^[a-zA-Z][a-zA-Z0-9_-]*$",
-  "category": "code"
- },
- {
   "name": "ReverbNation",
   "url": "https://www.reverbnation.com/{}",
   "not_found": [
@@ -2050,18 +1970,6 @@
   ],
   "regex_check": "",
   "category": "other"
- },
- {
-  "name": "ProductHunt",
-  "url": "https://www.producthunt.com/@{}",
-  "not_found": [
-   "We seem to have lost this page"
-  ],
-  "must_contain": [
-   ":{\"data\":{\"profile\":{\"__typename\""
-  ],
-  "regex_check": "",
-  "category": "code"
  },
  {
   "name": "HubPages",
@@ -2202,30 +2110,12 @@
   "category": "other"
  },
  {
-  "name": "HabrCareer",
-  "url": "https://career.habr.com/{}",
-  "not_found": [
-   "<h1>Ошибка 404</h1>"
-  ],
-  "must_contain": [],
-  "regex_check": "",
-  "category": "forum"
- },
- {
   "name": "Freelance.habr",
   "url": "https://freelance.habr.com/freelancers/{}",
   "not_found": [],
   "must_contain": [],
   "regex_check": "",
   "category": "forum"
- },
- {
-  "name": "Toster",
-  "url": "https://qna.habr.com/user/{}",
-  "not_found": [],
-  "must_contain": [],
-  "regex_check": "",
-  "category": "code"
  },
  {
   "name": "Habr",
@@ -2247,20 +2137,6 @@
   ],
   "regex_check": "",
   "category": "forum"
- },
- {
-  "name": "codeberg.org",
-  "url": "https://codeberg.org/{}",
-  "not_found": [
-   "og:description",
-   " ui centered image"
-  ],
-  "must_contain": [
-   "user profile",
-   " username text center"
-  ],
-  "regex_check": "",
-  "category": "code"
  },
  {
   "name": "Codecanyon",
@@ -2494,16 +2370,6 @@
   "not_found": [],
   "must_contain": [],
   "regex_check": "",
-  "category": "other"
- },
- {
-  "name": "Speakerdeck",
-  "url": "https://speakerdeck.com/{}",
-  "not_found": [
-   "User Not Found"
-  ],
-  "must_contain": [],
-  "regex_check": "^[^\\.]+$",
   "category": "other"
  },
  {
@@ -6567,14 +6433,6 @@
   "category": "adult"
  },
  {
-  "name": "123rf",
-  "url": "https://ru.123rf.com/profile_{}",
-  "not_found": [],
-  "must_contain": [],
-  "regex_check": "",
-  "category": "art"
- },
- {
   "name": "linuxfoundation",
   "url": "https://forum.linuxfoundation.org/profile/{}",
   "not_found": [],
@@ -6668,14 +6526,6 @@
   ],
   "regex_check": "",
   "category": "forum"
- },
- {
-  "name": "{username}.ddns.net",
-  "url": "{}.ddns.net",
-  "not_found": [],
-  "must_contain": [],
-  "regex_check": "",
-  "category": "other"
  },
  {
   "name": "Rust-lang",
@@ -6808,16 +6658,6 @@
   "must_contain": [
    "donation_first_name"
   ],
-  "regex_check": "",
-  "category": "other"
- },
- {
-  "name": "Freelancer.com",
-  "url": "https://www.freelancer.com/api/users/0.1/users?usernames%5B%5D={}&compact=true",
-  "not_found": [
-   "\"users\":{}"
-  ],
-  "must_contain": [],
   "regex_check": "",
   "category": "other"
  },
@@ -6990,24 +6830,6 @@
   "regex_check": ""
  },
  {
-  "name": "Chess",
-  "url": "https://www.chess.com/member/{}",
-  "not_found": [
-   "error image",
-   "        <h1>404 Page not found</h1>",
-   "_404-header",
-   "_404-inner-container",
-   " no-nav ",
-   "not found."
-  ],
-  "must_contain": [
-   "\"player_id\":",
-   "\"@id\":\"https://api.chess.com/pub/player/"
-  ],
-  "regex_check": "",
-  "category": "gaming"
- },
- {
   "name": "OpenCollective",
   "url": "https://opencollective.com/{}",
   "not_found": [
@@ -7077,14 +6899,6 @@
   ],
   "category": "other",
   "regex_check": ""
- },
- {
-  "name": "Ultimate-Guitar",
-  "url": "https://ultimate-guitar.com/u/{}",
-  "not_found": [],
-  "must_contain": [],
-  "regex_check": "",
-  "category": "music"
  },
  {
   "name": "SublimeForum",
@@ -7739,14 +7553,6 @@
   "must_contain": [],
   "regex_check": "",
   "category": "other"
- },
- {
-  "name": "Hackaday",
-  "url": "https://hackaday.io/{}",
-  "not_found": [],
-  "must_contain": [],
-  "regex_check": "",
-  "category": "code"
  },
  {
   "name": "Metal-archives",
@@ -8417,16 +8223,6 @@
   ],
   "regex_check": "",
   "category": "forum"
- },
- {
-  "name": "Star Citizen",
-  "url": "https://robertsspaceindustries.com/citizens/{}",
-  "not_found": [
-   "404"
-  ],
-  "must_contain": [],
-  "regex_check": "",
-  "category": "other"
  },
  {
   "name": "Star Citizens Community",
@@ -9589,14 +9385,6 @@
   "category": "other"
  },
  {
-  "name": "ArchiveOfOurOwn",
-  "url": "https://archiveofourown.org/users/{}",
-  "not_found": [],
-  "must_contain": [],
-  "regex_check": "^[a-zA-Z0-9_]{3,40}$",
-  "category": "writing"
- },
- {
   "name": "forums.steinberg.net",
   "url": "https://forums.steinberg.net/u/{}/summary",
   "not_found": [
@@ -10646,14 +10434,6 @@
   "category": "other"
  },
  {
-  "name": "Drive2",
-  "url": "https://www.drive2.ru/users/{}",
-  "not_found": [],
-  "must_contain": [],
-  "regex_check": "",
-  "category": "other"
- },
- {
   "name": "Empowher",
   "url": "https://www.empowher.com/users/{}",
   "not_found": [],
@@ -11108,16 +10888,6 @@
   ],
   "category": "other",
   "regex_check": ""
- },
- {
-  "name": "Code Sandbox",
-  "url": "https://codesandbox.io/u/{}",
-  "not_found": [
-   "Could not find user with username"
-  ],
-  "must_contain": [],
-  "regex_check": "^[a-zA-Z0-9_-]{3,30}$",
-  "category": "code"
  },
  {
   "name": "Picsart",
@@ -11956,14 +11726,6 @@
   "regex_check": ""
  },
  {
-  "name": "Warrior Forum",
-  "url": "https://www.warriorforum.com/members/{}.html",
-  "not_found": [],
-  "must_contain": [],
-  "regex_check": "",
-  "category": "forum"
- },
- {
   "name": "FIFA FORUMS",
   "url": "https://fifaforums.easports.com/en/profile/discussions/{}",
   "not_found": [],
@@ -12526,16 +12288,6 @@
   "category": "forum"
  },
  {
-  "name": "AdvancedCustomFields",
-  "url": "https://support.advancedcustomfields.com/forums/users/{}",
-  "not_found": [
-   "Sorry, page not found"
-  ],
-  "must_contain": [],
-  "regex_check": "",
-  "category": "forum"
- },
- {
   "name": "community.asterisk.org",
   "url": "https://community.asterisk.org/u/{}/summary",
   "not_found": [
@@ -12818,22 +12570,6 @@
   "regex_check": ""
  },
  {
-  "name": "notabug.org",
-  "url": "https://notabug.org/{}",
-  "not_found": [],
-  "must_contain": [],
-  "regex_check": "",
-  "category": "code"
- },
- {
-  "name": "NN.RU",
-  "url": "https://{}.www.nn.ru/",
-  "not_found": [],
-  "must_contain": [],
-  "regex_check": "^[^\\.]+$",
-  "category": "other"
- },
- {
   "name": "forums.visual-paradigm.com",
   "url": "https://forums.visual-paradigm.com/u/{}/summary",
   "not_found": [
@@ -12902,14 +12638,6 @@
   "not_found": [],
   "must_contain": [],
   "regex_check": "",
-  "category": "social"
- },
- {
-  "name": "mastodon.social",
-  "url": "https://mastodon.social/@{}",
-  "not_found": [],
-  "must_contain": [],
-  "regex_check": "^[a-zA-Z0-9_]+$",
   "category": "social"
  },
  {
@@ -13001,14 +12729,6 @@
   "not_found": [],
   "must_contain": [],
   "regex_check": "",
-  "category": "other"
- },
- {
-  "name": "social.tchncs.de",
-  "url": "https://social.tchncs.de/@{}",
-  "not_found": [],
-  "must_contain": [],
-  "regex_check": "^[a-zA-Z0-9_]+$",
   "category": "other"
  },
  {
@@ -13237,16 +12957,6 @@
   ],
   "regex_check": "",
   "category": "art"
- },
- {
-  "name": "codeforces.com",
-  "url": "http://codeforces.com/profile/{}",
-  "not_found": [],
-  "must_contain": [
-   "Contest rating"
-  ],
-  "regex_check": "",
-  "category": "code"
  },
  {
   "name": "Open Game Art",
@@ -14481,18 +14191,6 @@
   "category": "gaming"
  },
  {
-  "name": "Steamidfinder (by id)",
-  "url": "https://steamidfinder.com/lookup/{}",
-  "not_found": [
-   "could not be found."
-  ],
-  "must_contain": [
-   "se our custom tools to build a Steam profile badge"
-  ],
-  "regex_check": "",
-  "category": "gaming"
- },
- {
   "name": "PromptBase",
   "url": "https://promptbase.com/profile/{}",
   "not_found": [
@@ -14583,14 +14281,6 @@
   "category": "other"
  },
  {
-  "name": "BabyBlog.ru",
-  "url": "https://www.babyblog.ru/user/{}",
-  "not_found": [],
-  "must_contain": [],
-  "regex_check": "",
-  "category": "writing"
- },
- {
   "name": "ViewBug",
   "url": "https://www.viewbug.com/member/{}",
   "not_found": [
@@ -14634,14 +14324,6 @@
  {
   "name": "Soop",
   "url": "https://www.sooplive.co.kr/station/{}",
-  "not_found": [],
-  "must_contain": [],
-  "regex_check": "",
-  "category": "other"
- },
- {
-  "name": "LOR",
-  "url": "https://www.linux.org.ru/people/{}/profile",
   "not_found": [],
   "must_contain": [],
   "regex_check": "",
@@ -14920,16 +14602,6 @@
   "must_contain": [],
   "regex_check": "",
   "category": "chinese"
- },
- {
-  "name": "Oper",
-  "url": "https://www.oper.ru/visitors/info.php?t={}",
-  "not_found": [
-   "Нет такого пользователя"
-  ],
-  "must_contain": [],
-  "regex_check": "",
-  "category": "other"
  },
  {
   "name": "mastodon.xyz",
@@ -15699,16 +15371,6 @@
   "category": "other"
  },
  {
-  "name": "Image Fap",
-  "url": "https://www.imagefap.com/profile/{}",
-  "not_found": [
-   "Not found"
-  ],
-  "must_contain": [],
-  "regex_check": "",
-  "category": "adult"
- },
- {
   "name": "Windowsforum",
   "url": "https://windowsforum.com/members/?username={}",
   "not_found": [
@@ -15832,14 +15494,6 @@
   ],
   "regex_check": "",
   "category": "forum"
- },
- {
-  "name": "Pokemon Showdown",
-  "url": "https://pokemonshowdown.com/users/{}",
-  "not_found": [],
-  "must_contain": [],
-  "regex_check": "",
-  "category": "gaming"
  },
  {
   "name": "Partyflock",
@@ -16060,14 +15714,6 @@
   "must_contain": [],
   "regex_check": "",
   "category": "forum"
- },
- {
-  "name": "Designspiration",
-  "url": "https://designspiration.com/{}/",
-  "not_found": [],
-  "must_contain": [],
-  "regex_check": "",
-  "category": "art"
  },
  {
   "name": "forum.garudalinux.org",
@@ -16404,14 +16050,6 @@
   "category": "forum"
  },
  {
-  "name": "mstdn.io",
-  "url": "https://mstdn.io/@{}",
-  "not_found": [],
-  "must_contain": [],
-  "regex_check": "",
-  "category": "social"
- },
- {
   "name": "7dach",
   "url": "https://7dach.ru/profile/{}",
   "not_found": [
@@ -16447,14 +16085,6 @@
  {
   "name": "Etxt",
   "url": "https://www.etxt.ru/{}.html",
-  "not_found": [],
-  "must_contain": [],
-  "regex_check": "",
-  "category": "other"
- },
- {
-  "name": "d3",
-  "url": "https://d3.ru/user/{}/posts",
   "not_found": [],
   "must_contain": [],
   "regex_check": "",
@@ -16697,16 +16327,6 @@
   "category": "forum"
  },
  {
-  "name": "Au",
-  "url": "https://au.ru/user/{}/",
-  "not_found": [
-   "<title>Пользователь не найден</title"
-  ],
-  "must_contain": [],
-  "regex_check": "",
-  "category": "other"
- },
- {
   "name": "bitpapa.com",
   "url": "https://bitpapa.com/ru/user/{}",
   "not_found": [
@@ -16872,14 +16492,6 @@
   "must_contain": [],
   "regex_check": "",
   "category": "forum"
- },
- {
-  "name": "Kwejk",
-  "url": "https://kwejk.pl/uzytkownik/{}#/tablica/",
-  "not_found": [],
-  "must_contain": [],
-  "regex_check": "",
-  "category": "other"
  },
  {
   "name": "eGPU",
@@ -18500,16 +18112,6 @@
   "category": "art"
  },
  {
-  "name": "Hudson Rock",
-  "url": "https://cavalier.hudsonrock.com/api/json/v2/osint-tools/search-by-username?username={}",
-  "not_found": [
-   "This username is not associated"
-  ],
-  "must_contain": [],
-  "regex_check": "",
-  "category": "other"
- },
- {
   "name": "ifish.net",
   "url": "https://ifish.net/members/?username={}",
   "not_found": [
@@ -18711,14 +18313,6 @@
   "must_contain": [],
   "regex_check": "",
   "category": "other"
- },
- {
-  "name": "101010.pl",
-  "url": "https://101010.pl/@{}",
-  "not_found": [],
-  "must_contain": [],
-  "regex_check": "",
-  "category": "social"
  },
  {
   "name": "House-Mixes.com",
@@ -18937,14 +18531,6 @@
   "category": "forum"
  },
  {
-  "name": "Gpodder",
-  "url": "https://gpodder.net/user/{}",
-  "not_found": [],
-  "must_contain": [],
-  "regex_check": "",
-  "category": "music"
- },
- {
   "name": "Dissenter",
   "url": "https://dissenter.com/user/{}",
   "not_found": [
@@ -19025,14 +18611,6 @@
   "must_contain": [],
   "regex_check": "",
   "category": "social"
- },
- {
-  "name": "Queer",
-  "url": "https://queer.pl/user/{}",
-  "not_found": [],
-  "must_contain": [],
-  "regex_check": "",
-  "category": "other"
  },
  {
   "name": "forum.ss-iptv.com",
@@ -21534,16 +21112,6 @@
   "category": "other"
  },
  {
-  "name": "Admire Me",
-  "url": "https://admireme.vip/{}",
-  "not_found": [
-   "Page Not Found"
-  ],
-  "must_contain": [],
-  "regex_check": "",
-  "category": "adult"
- },
- {
   "name": "Bayoushooter",
   "url": "https://www.bayoushooter.com/members/?username={}",
   "not_found": [
@@ -21824,16 +21392,6 @@
   "must_contain": [],
   "regex_check": "",
   "category": "forum"
- },
- {
-  "name": "YaPishu.net",
-  "url": "https://yapishu.net/user/{}",
-  "not_found": [],
-  "must_contain": [
-   "for_profile"
-  ],
-  "regex_check": "",
-  "category": "other"
  },
  {
   "name": "Parkrocker",
@@ -22187,14 +21745,6 @@
   "must_contain": [],
   "regex_check": "",
   "category": "forum"
- },
- {
-  "name": "Artistsnclients",
-  "url": "https://artistsnclients.com/people/{}",
-  "not_found": [],
-  "must_contain": [],
-  "regex_check": "",
-  "category": "other"
  },
  {
   "name": "Artpersona",
@@ -23833,14 +23383,6 @@
   "category": "other"
  },
  {
-  "name": "JoplinApp",
-  "url": "https://discourse.joplinapp.org/u/{}",
-  "not_found": [],
-  "must_contain": [],
-  "regex_check": "",
-  "category": "other"
- },
- {
   "name": "Justforfans",
   "url": "https://justfor.fans/{}",
   "not_found": [
@@ -24962,18 +24504,6 @@
   "category": "other"
  },
  {
-  "name": "Rigcz.club",
-  "url": "https://rigcz.club/@{}",
-  "not_found": [
-   "The page you are looking for isn't here."
-  ],
-  "must_contain": [
-   "@rigcz.club"
-  ],
-  "regex_check": "",
-  "category": "other"
- },
- {
   "name": "Rngf",
   "url": "http://www.rngf.ru/profile.php?mode=viewprofile&u={}",
   "not_found": [
@@ -25028,18 +24558,6 @@
   "category": "other"
  },
  {
-  "name": "Rumblechannel",
-  "url": "https://rumble.com/c/{}",
-  "not_found": [
-   "404 - Not found"
-  ],
-  "must_contain": [
-   "href=https://rumble.com/c/"
-  ],
-  "regex_check": "",
-  "category": "video"
- },
- {
   "name": "Rumbleuser",
   "url": "https://rumble.com/user/{}",
   "not_found": [
@@ -25072,16 +24590,6 @@
   "must_contain": [
    "reputation_graf",
    "заблокирован"
-  ],
-  "regex_check": "",
-  "category": "other"
- },
- {
-  "name": "Salon24.pl",
-  "url": "https://www.salon24.pl/u/{}/",
-  "not_found": [],
-  "must_contain": [
-   "- salon24.pl</title>"
   ],
   "regex_check": "",
   "category": "other"
@@ -25339,16 +24847,6 @@
  },
  {
   "name": "Steamid",
-  "url": "https://steamid.uk/profile/{}",
-  "not_found": [
-   "<div class=\"alert alert-warning\">Profile not found</div>"
-  ],
-  "must_contain": [],
-  "regex_check": "",
-  "category": "gaming"
- },
- {
-  "name": "Steamid (by id)",
   "url": "https://steamid.uk/profile/{}",
   "not_found": [
    "<div class=\"alert alert-warning\">Profile not found</div>"
@@ -31645,66 +31143,6 @@
   "category": "adult"
  },
  {
-  "name": "HiddenAnswers",
-  "url": "http://answerszuvs3gg2l64e6hmnryudl5zgrmwm3vh65hzszdghblddvfiqd.onion/user/{}",
-  "not_found": [
-   "Page not found"
-  ],
-  "must_contain": [
-   "qa-part-form-profile"
-  ],
-  "regex_check": "",
-  "category": "other"
- },
- {
-  "name": "{username}.com",
-  "url": "{}.com",
-  "not_found": [],
-  "must_contain": [],
-  "regex_check": "",
-  "category": "other"
- },
- {
-  "name": "{username}.pro",
-  "url": "{}.pro",
-  "not_found": [],
-  "must_contain": [],
-  "regex_check": "",
-  "category": "other"
- },
- {
-  "name": "{username}.me",
-  "url": "{}.me",
-  "not_found": [],
-  "must_contain": [],
-  "regex_check": "",
-  "category": "other"
- },
- {
-  "name": "{username}.biz",
-  "url": "{}.biz",
-  "not_found": [],
-  "must_contain": [],
-  "regex_check": "",
-  "category": "other"
- },
- {
-  "name": "{username}.email",
-  "url": "{}.email",
-  "not_found": [],
-  "must_contain": [],
-  "regex_check": "",
-  "category": "other"
- },
- {
-  "name": "{username}.guru",
-  "url": "{}.guru",
-  "not_found": [],
-  "must_contain": [],
-  "regex_check": "",
-  "category": "other"
- },
- {
   "name": "galactictalk.org",
   "url": "https://galactictalk.org/u/{}",
   "not_found": [
@@ -31880,31 +31318,6 @@
  {
   "name": "sign-forum.ru",
   "url": "https://sign-forum.ru/search.php?author={}",
-  "not_found": [
-   "Подходящих тем или сообщений не найдено."
-  ],
-  "must_contain": [
-   "postprofile",
-   " username-coloured"
-  ],
-  "regex_check": "",
-  "category": "forum"
- },
- {
-  "name": "DarkNet Trust",
-  "url": "http://dntrustmucd4mwec.onion/u/{}",
-  "not_found": [
-   "notify notify-red mx-auto text-center"
-  ],
-  "must_contain": [
-   "profiles"
-  ],
-  "regex_check": "",
-  "category": "other"
- },
- {
-  "name": "i2pforum",
-  "url": "http://i2pforum.i2p/search.php?author={}",
   "not_found": [
    "Подходящих тем или сообщений не найдено."
   ],
@@ -32104,14 +31517,6 @@
   "must_contain": [],
   "regex_check": "",
   "category": "other"
- },
- {
-  "name": "cnblogs.com",
-  "url": "https://cnblogs.com/{}",
-  "not_found": [],
-  "must_contain": [],
-  "regex_check": "",
-  "category": "chinese"
  },
  {
   "name": "commons.commondreams.org",
@@ -32594,14 +31999,6 @@
   "category": "forum"
  },
  {
-  "name": "forum.leasehackr.com",
-  "url": "https://forum.leasehackr.com/u/{}/summary",
-  "not_found": [],
-  "must_contain": [],
-  "regex_check": "",
-  "category": "forum"
- },
- {
   "name": "forum.mattermost.org",
   "url": "https://forum.mattermost.org/u/{}",
   "not_found": [],
@@ -32652,14 +32049,6 @@
  {
   "name": "forums.lawrencesystems.com",
   "url": "https://forums.lawrencesystems.com/u/{}",
-  "not_found": [],
-  "must_contain": [],
-  "regex_check": "",
-  "category": "forum"
- },
- {
-  "name": "forums.mmorpg.com",
-  "url": "https://forums.mmorpg.com/profile/{}",
   "not_found": [],
   "must_contain": [],
   "regex_check": "",
@@ -32818,14 +32207,6 @@
   "category": "other"
  },
  {
-  "name": "mintme.com",
-  "url": "https://mintme.com/token/{}",
-  "not_found": [],
-  "must_contain": [],
-  "regex_check": "",
-  "category": "other"
- },
- {
   "name": "uviu.com",
   "url": "https://www.uviu.com/model/{}",
   "not_found": [
@@ -32926,14 +32307,6 @@
   "must_contain": [],
   "regex_check": "",
   "category": "spanish"
- },
- {
-  "name": "patch.com",
-  "url": "https://patch.com/users/{}",
-  "not_found": [],
-  "must_contain": [],
-  "regex_check": "",
-  "category": "other"
  },
  {
   "name": "pcgamingwiki.com",
@@ -33088,14 +32461,6 @@
   "category": "other"
  },
  {
-  "name": "steller.co",
-  "url": "https://steller.co/{}",
-  "not_found": [],
-  "must_contain": [],
-  "regex_check": "",
-  "category": "other"
- },
- {
   "name": "strategywiki.org",
   "url": "https://strategywiki.org/wiki/User:{}",
   "not_found": [],
@@ -33178,14 +32543,6 @@
   "must_contain": [],
   "regex_check": "",
   "category": "other"
- },
- {
-  "name": "v2ex.com",
-  "url": "https://v2ex.com/member/{}",
-  "not_found": [],
-  "must_contain": [],
-  "regex_check": "",
-  "category": "chinese"
  },
  {
   "name": "vidamora.com",
@@ -34211,14 +33568,6 @@
   "category": "social"
  },
  {
-  "name": "PentesterLab",
-  "url": "https://pentesterlab.com/profile/{}",
-  "not_found": [],
-  "must_contain": [],
-  "regex_check": "",
-  "category": "other"
- },
- {
   "name": "CTFtime",
   "url": "https://ctftime.org/team/{}",
   "not_found": [],
@@ -34659,16 +34008,6 @@
   "category": "video"
  },
  {
-  "name": "BitPapa",
-  "url": "https://bitpapa.com/ru/user/{}",
-  "not_found": [],
-  "must_contain": [
-   "avgEscrowReleaseTime"
-  ],
-  "regex_check": "",
-  "category": "other"
- },
- {
   "name": "minfin.com.ua",
   "url": "https://minfin.com.ua/users/{}/",
   "not_found": [
@@ -34697,16 +34036,6 @@
   "category": "video"
  },
  {
-  "name": "AirNFTs",
-  "url": "https://app.airnfts.com/creators/{}",
-  "not_found": [],
-  "must_contain": [
-   "accountCreatedAt"
-  ],
-  "regex_check": "",
-  "category": "other"
- },
- {
   "name": "GreasyFork",
   "url": "https://greasyfork.org/en/users?q={}",
   "not_found": [
@@ -34719,32 +34048,12 @@
   "category": "code"
  },
  {
-  "name": "7Cups",
-  "url": "https://www.7cups.com/@{}",
-  "not_found": [],
-  "must_contain": [],
-  "regex_check": "",
-  "category": "other"
- },
- {
   "name": "9GAG",
   "url": "https://www.9gag.com/u/{}",
   "not_found": [],
   "must_contain": [],
   "regex_check": "",
   "category": "other"
- },
- {
-  "name": "AdmireMe.VIP",
-  "url": "https://admireme.vip/{}/",
-  "not_found": [
-   "<title>Page Not Found |"
-  ],
-  "must_contain": [
-   "creator-stat subscriber"
-  ],
-  "category": "adult",
-  "regex_check": ""
  },
  {
   "name": "Airliners",
@@ -34759,30 +34068,12 @@
   "regex_check": ""
  },
  {
-  "name": "AniWorld",
-  "url": "https://aniworld.to/user/profil/{}",
-  "not_found": [
-   "Dieses Profil ist nicht verfügbar"
-  ],
-  "must_contain": [],
-  "regex_check": "",
-  "category": "other"
- },
- {
   "name": "Anilist",
   "url": "https://anilist.co/user/{}/",
   "not_found": [],
   "must_contain": [],
   "regex_check": "^[A-Za-z0-9]{2,20}$",
   "category": "gaming"
- },
- {
-  "name": "Apple Developer",
-  "url": "https://developer.apple.com/forums/profile/{}",
-  "not_found": [],
-  "must_contain": [],
-  "regex_check": "",
-  "category": "forum"
  },
  {
   "name": "Apple Discussions",
@@ -34803,14 +34094,6 @@
   "category": "other"
  },
  {
-  "name": "Archive of Our Own",
-  "url": "https://archiveofourown.org/users/{}",
-  "not_found": [],
-  "must_contain": [],
-  "regex_check": "^[^.]*?$",
-  "category": "writing"
- },
- {
   "name": "Archive.org",
   "url": "https://archive.org/details/@{}",
   "not_found": [
@@ -34821,22 +34104,6 @@
   "must_contain": [],
   "regex_check": "",
   "category": "other"
- },
- {
-  "name": "BioHacking",
-  "url": "https://forum.dangerousthings.com/u/{}",
-  "not_found": [],
-  "must_contain": [],
-  "regex_check": "",
-  "category": "forum"
- },
- {
-  "name": "Bitwarden Forum",
-  "url": "https://community.bitwarden.com/u/{}/summary",
-  "not_found": [],
-  "must_contain": [],
-  "regex_check": "^(?![.-])[a-zA-Z0-9_.-]{3,20}$",
-  "category": "forum"
  },
  {
   "name": "BoardGameGeek",
@@ -34854,16 +34121,6 @@
   "name": "BraveCommunity",
   "url": "https://community.brave.com/u/{}/",
   "not_found": [],
-  "must_contain": [],
-  "regex_check": "",
-  "category": "forum"
- },
- {
-  "name": "BreachSta.rs Forum",
-  "url": "https://breachsta.rs/profile/{}",
-  "not_found": [
-   "<title>Error - BreachStars</title>"
-  ],
   "must_contain": [],
   "regex_check": "",
   "category": "forum"
@@ -34903,22 +34160,6 @@
   ],
   "category": "forum",
   "regex_check": ""
- },
- {
-  "name": "CashApp",
-  "url": "https://cash.app/${}",
-  "not_found": [],
-  "must_contain": [],
-  "regex_check": "",
-  "category": "other"
- },
- {
-  "name": "Chaos",
-  "url": "https://chaos.social/@{}",
-  "not_found": [],
-  "must_contain": [],
-  "regex_check": "",
-  "category": "other"
  },
  {
   "name": "Choice Community",
@@ -34993,38 +34234,6 @@
   "regex_check": ""
  },
  {
-  "name": "Credly",
-  "url": "https://www.credly.com/users/{}",
-  "not_found": [],
-  "must_contain": [],
-  "regex_check": "",
-  "category": "other"
- },
- {
-  "name": "CryptoHack",
-  "url": "https://cryptohack.org/user/{}/",
-  "not_found": [],
-  "must_contain": [],
-  "regex_check": "",
-  "category": "other"
- },
- {
-  "name": "Cryptomator Forum",
-  "url": "https://community.cryptomator.org/u/{}",
-  "not_found": [],
-  "must_contain": [],
-  "regex_check": "",
-  "category": "forum"
- },
- {
-  "name": "CyberDefenders",
-  "url": "https://cyberdefenders.org/p/{}",
-  "not_found": [],
-  "must_contain": [],
-  "regex_check": "^[^\\/:*?\"<>|@]{3,50}$",
-  "category": "other"
- },
- {
   "name": "DMOJ",
   "url": "https://dmoj.ca/user/{}",
   "not_found": [
@@ -35045,14 +34254,6 @@
   ],
   "category": "forum",
   "regex_check": ""
- },
- {
-  "name": "Eintracht Frankfurt Forum",
-  "url": "https://community.eintracht.de/fans/{}",
-  "not_found": [],
-  "must_contain": [],
-  "regex_check": "^[^.]*?$",
-  "category": "forum"
  },
  {
   "name": "Envato Forum",
@@ -35085,24 +34286,6 @@
   "regex_check": ""
  },
  {
-  "name": "FortniteTracker",
-  "url": "https://fortnitetracker.com/profile/all/{}",
-  "not_found": [],
-  "must_contain": [],
-  "regex_check": "",
-  "category": "other"
- },
- {
-  "name": "Forum Ophilia",
-  "url": "https://www.forumophilia.com/profile.php?mode=viewprofile&u={}",
-  "not_found": [
-   "that user does not exist"
-  ],
-  "must_contain": [],
-  "regex_check": "",
-  "category": "forum"
- },
- {
   "name": "Freelancer",
   "url": "https://www.freelancer.com/api/users/0.1/users?usernames%5B%5D={}&compact=true",
   "not_found": [
@@ -35113,14 +34296,6 @@
   ],
   "category": "other",
   "regex_check": ""
- },
- {
-  "name": "GNOME VCS",
-  "url": "https://gitlab.gnome.org/{}",
-  "not_found": [],
-  "must_contain": [],
-  "regex_check": "^(?!-)[a-zA-Z0-9_.-]{2,255}(?<!\\.)$",
-  "category": "code"
  },
  {
   "name": "GeeksForGeeks",
@@ -35135,32 +34310,8 @@
   "regex_check": ""
  },
  {
-  "name": "Genius (Artists)",
-  "url": "https://genius.com/artists/{}",
-  "not_found": [],
-  "must_contain": [],
-  "regex_check": "^[a-zA-Z0-9]{5,50}$",
-  "category": "other"
- },
- {
-  "name": "Genius (Users)",
-  "url": "https://genius.com/{}",
-  "not_found": [],
-  "must_contain": [],
-  "regex_check": "^[a-zA-Z0-9]*?$",
-  "category": "other"
- },
- {
   "name": "GetMyUni",
   "url": "https://www.getmyuni.com/user/{}",
-  "not_found": [],
-  "must_contain": [],
-  "regex_check": "",
-  "category": "other"
- },
- {
-  "name": "Giant Bomb",
-  "url": "https://www.giantbomb.com/profile/{}/",
   "not_found": [],
   "must_contain": [],
   "regex_check": "",
@@ -35207,32 +34358,6 @@
   "regex_check": ""
  },
  {
-  "name": "HackerSploit",
-  "url": "https://forum.hackersploit.org/u/{}",
-  "not_found": [],
-  "must_contain": [],
-  "regex_check": "",
-  "category": "forum"
- },
- {
-  "name": "HackMD",
-  "url": "https://hackmd.io/@{}",
-  "not_found": [],
-  "must_contain": [],
-  "regex_check": "",
-  "category": "other"
- },
- {
-  "name": "Heavy-R",
-  "url": "https://www.heavy-r.com/user/{}",
-  "not_found": [
-   "Channel not found"
-  ],
-  "must_contain": [],
-  "regex_check": "",
-  "category": "other"
- },
- {
   "name": "Houzz",
   "url": "https://www.houzz.com/user/{}",
   "not_found": [
@@ -35269,14 +34394,6 @@
   "regex_check": ""
  },
  {
-  "name": "Hugging Face",
-  "url": "https://huggingface.co/{}",
-  "not_found": [],
-  "must_contain": [],
-  "regex_check": "",
-  "category": "code"
- },
- {
   "name": "IRC-Galleria",
   "url": "https://irc-galleria.net/user/{}",
   "not_found": [],
@@ -35285,35 +34402,9 @@
   "category": "other"
  },
  {
-  "name": "Icons8 Community",
-  "url": "https://community.icons8.com/u/{}/summary",
-  "not_found": [],
-  "must_contain": [],
-  "regex_check": "",
-  "category": "forum"
- },
- {
-  "name": "Ionic Forum",
-  "url": "https://forum.ionicframework.com/u/{}",
-  "not_found": [],
-  "must_contain": [],
-  "regex_check": "",
-  "category": "forum"
- },
- {
   "name": "Joplin Forum",
   "url": "https://discourse.joplinapp.org/u/{}",
   "not_found": [],
-  "must_contain": [],
-  "regex_check": "",
-  "category": "forum"
- },
- {
-  "name": "Jupyter Community Forum",
-  "url": "https://discourse.jupyter.org/u/{}/summary",
-  "not_found": [
-   "Oops! That page doesn’t exist or is private."
-  ],
   "must_contain": [],
   "regex_check": "",
   "category": "forum"
@@ -35351,60 +34442,6 @@
   "regex_check": ""
  },
  {
-  "name": "LemmyWorld",
-  "url": "https://lemmy.world/u/{}",
-  "not_found": [
-   "<h1>Error!</h1>"
-  ],
-  "must_contain": [],
-  "regex_check": "",
-  "category": "other"
- },
- {
-  "name": "Linktree",
-  "url": "https://linktr.ee/{}",
-  "not_found": [
-   "\"statusCode\":404"
-  ],
-  "must_contain": [
-   "\"uuid\":"
-  ],
-  "category": "other",
-  "regex_check": ""
- },
- {
-  "name": "LinuxFR.org",
-  "url": "https://linuxfr.org/users/{}",
-  "not_found": [],
-  "must_contain": [],
-  "regex_check": "",
-  "category": "other"
- },
- {
-  "name": "Listed",
-  "url": "https://listed.to/@{}",
-  "not_found": [],
-  "must_contain": [],
-  "regex_check": "",
-  "category": "other"
- },
- {
-  "name": "MMORPG Forum",
-  "url": "https://forums.mmorpg.com/profile/{}",
-  "not_found": [],
-  "must_contain": [],
-  "regex_check": "",
-  "category": "forum"
- },
- {
-  "name": "MuseScore",
-  "url": "https://musescore.com/{}",
-  "not_found": [],
-  "must_contain": [],
-  "regex_check": "",
-  "category": "other"
- },
- {
   "name": "Needrom",
   "url": "https://www.needrom.com/author/{}/",
   "not_found": [],
@@ -35415,50 +34452,6 @@
  {
   "name": "Ninja Kiwi",
   "url": "https://ninjakiwi.com/profile/{}",
-  "not_found": [],
-  "must_contain": [],
-  "regex_check": "",
-  "category": "other"
- },
- {
-  "name": "NintendoLife",
-  "url": "https://www.nintendolife.com/users/{}",
-  "not_found": [],
-  "must_contain": [],
-  "regex_check": "",
-  "category": "gaming"
- },
- {
-  "name": "NitroType",
-  "url": "https://www.nitrotype.com/racer/{}",
-  "not_found": [
-   "<title>Nitro Type | Competitive Typing Game | Race Your Friends</title>"
-  ],
-  "must_contain": [],
-  "regex_check": "",
-  "category": "other"
- },
- {
-  "name": "ObservableHQ",
-  "url": "https://observablehq.com/@{}",
-  "not_found": [
-   "Page not found"
-  ],
-  "must_contain": [],
-  "regex_check": "",
-  "category": "other"
- },
- {
-  "name": "Open Collective",
-  "url": "https://opencollective.com/{}",
-  "not_found": [],
-  "must_contain": [],
-  "regex_check": "",
-  "category": "funding"
- },
- {
-  "name": "OpenGameArt",
-  "url": "https://opengameart.org/users/{}",
   "not_found": [],
   "must_contain": [],
   "regex_check": "",
@@ -35485,64 +34478,6 @@
   "regex_check": ""
  },
  {
-  "name": "HotUKdeals",
-  "url": "https://www.hotukdeals.com/profile/{}",
-  "not_found": [],
-  "must_contain": [],
-  "regex_check": "",
-  "category": "other"
- },
- {
-  "name": "PepperNL",
-  "url": "https://nl.pepper.com/profile/{}",
-  "not_found": [],
-  "must_contain": [],
-  "regex_check": "",
-  "category": "other"
- },
- {
-  "name": "PepperPL",
-  "url": "https://www.pepper.pl/profile/{}",
-  "not_found": [],
-  "must_contain": [],
-  "regex_check": "",
-  "category": "other"
- },
- {
-  "name": "PepperealsUS",
-  "url": "https://www.pepperdeals.com/profile/{}",
-  "not_found": [],
-  "must_contain": [],
-  "regex_check": "",
-  "category": "other"
- },
- {
-  "name": "PlayStore",
-  "url": "https://play.google.com/store/apps/developer?id={}",
-  "not_found": [],
-  "must_contain": [],
-  "regex_check": "",
-  "category": "other"
- },
- {
-  "name": "PocketStars",
-  "url": "https://pocketstars.com/{}",
-  "not_found": [
-   "Join Your Favorite Adult Stars"
-  ],
-  "must_contain": [],
-  "regex_check": "",
-  "category": "adult"
- },
- {
-  "name": "Pornhub",
-  "url": "https://pornhub.com/users/{}",
-  "not_found": [],
-  "must_contain": [],
-  "regex_check": "",
-  "category": "adult"
- },
- {
   "name": "pypi",
   "url": "https://pypi.org/user/{}/",
   "not_found": [
@@ -35555,30 +34490,12 @@
   "regex_check": ""
  },
  {
-  "name": "Python.org Discussions",
-  "url": "https://discuss.python.org/u/{}/summary",
-  "not_found": [
-   "Oops! That page doesn’t exist or is private."
-  ],
-  "must_contain": [],
-  "regex_check": "",
-  "category": "forum"
- },
- {
   "name": "Rate Your Music",
   "url": "https://rateyourmusic.com/~{}",
   "not_found": [],
   "must_contain": [],
   "regex_check": "",
   "category": "other"
- },
- {
-  "name": "Rclone Forum",
-  "url": "https://forum.rclone.org/u/{}",
-  "not_found": [],
-  "must_contain": [],
-  "regex_check": "",
-  "category": "forum"
  },
  {
   "name": "redbubble",
@@ -35605,14 +34522,6 @@
   "regex_check": ""
  },
  {
-  "name": "Replit.com",
-  "url": "https://replit.com/@{}",
-  "not_found": [],
-  "must_contain": [],
-  "regex_check": "",
-  "category": "code"
- },
- {
   "name": "RocketTube",
   "url": "https://www.rockettube.com/{}",
   "not_found": [
@@ -35623,78 +34532,12 @@
   "category": "other"
  },
  {
-  "name": "Ruby Forums",
-  "url": "https://ruby-forum.com/u/{}/summary",
-  "not_found": [
-   "Oops! That page doesn’t exist or is private."
-  ],
-  "must_contain": [],
-  "regex_check": "",
-  "category": "forum"
- },
- {
-  "name": "Rumble",
-  "url": "https://rumble.com/user/{}",
-  "not_found": [],
-  "must_contain": [],
-  "regex_check": "",
-  "category": "video"
- },
- {
-  "name": "Sketchfab",
-  "url": "https://sketchfab.com/{}",
-  "not_found": [],
-  "must_contain": [],
-  "regex_check": "",
-  "category": "other"
- },
- {
-  "name": "slant",
-  "url": "https://www.slant.co/users/{}",
-  "not_found": [
-   "404 - Page Not Found - Slant"
-  ],
-  "must_contain": [
-   "s Profile - Slant"
-  ],
-  "category": "other",
-  "regex_check": ""
- },
- {
   "name": "Splice",
   "url": "https://splice.com/{}",
   "not_found": [],
   "must_contain": [],
   "regex_check": "",
   "category": "other"
- },
- {
-  "name": "SportsRU",
-  "url": "https://www.sports.ru/profile/{}/",
-  "not_found": [],
-  "must_contain": [],
-  "regex_check": "",
-  "category": "other"
- },
- {
-  "name": "Steam Community (Group)",
-  "url": "https://steamcommunity.com/groups/{}",
-  "not_found": [
-   "No group could be retrieved for the given URL"
-  ],
-  "must_contain": [],
-  "regex_check": "",
-  "category": "forum"
- },
- {
-  "name": "Steam Community (User)",
-  "url": "https://steamcommunity.com/id/{}/",
-  "not_found": [
-   "The specified profile could not be found"
-  ],
-  "must_contain": [],
-  "regex_check": "",
-  "category": "forum"
  },
  {
   "name": "Strava",
@@ -35717,31 +34560,11 @@
   "category": "other"
  },
  {
-  "name": "Tenor",
-  "url": "https://tenor.com/users/{}",
-  "not_found": [
-   "class=\"error-page container page\""
-  ],
-  "must_contain": [
-   "class=\"ProfilePage page\""
-  ],
-  "category": "other",
-  "regex_check": ""
- },
- {
   "name": "TnAFlix",
   "url": "https://www.tnaflix.com/profile/{}",
   "not_found": [],
   "must_contain": [],
   "regex_check": "",
-  "category": "other"
- },
- {
-  "name": "TrashboxRU",
-  "url": "https://trashbox.ru/users/{}",
-  "not_found": [],
-  "must_contain": [],
-  "regex_check": "^[A-Za-z0-9_-]{3,16}$",
   "category": "other"
  },
  {
@@ -35791,22 +34614,6 @@
   "regex_check": ""
  },
  {
-  "name": "WICG Forum",
-  "url": "https://discourse.wicg.io/u/{}/summary",
-  "not_found": [],
-  "must_contain": [],
-  "regex_check": "^(?![.-])[a-zA-Z0-9_.-]{3,20}$",
-  "category": "forum"
- },
- {
-  "name": "WolframalphaForum",
-  "url": "https://community.wolfram.com/web/{}/home",
-  "not_found": [],
-  "must_contain": [],
-  "regex_check": "",
-  "category": "forum"
- },
- {
   "name": "YandexMusic",
   "url": "https://music.yandex/users/{}/playlists",
   "not_found": [
@@ -35821,38 +34628,6 @@
  {
   "name": "authorSTREAM",
   "url": "http://www.authorstream.com/{}/",
-  "not_found": [],
-  "must_contain": [],
-  "regex_check": "",
-  "category": "other"
- },
- {
-  "name": "babyblogRU",
-  "url": "https://www.babyblog.ru/user/{}",
-  "not_found": [],
-  "must_contain": [],
-  "regex_check": "",
-  "category": "writing"
- },
- {
-  "name": "chaos.social",
-  "url": "https://chaos.social/@{}",
-  "not_found": [],
-  "must_contain": [],
-  "regex_check": "",
-  "category": "other"
- },
- {
-  "name": "d3RU",
-  "url": "https://d3.ru/user/{}/posts",
-  "not_found": [],
-  "must_contain": [],
-  "regex_check": "",
-  "category": "other"
- },
- {
-  "name": "datingRU",
-  "url": "http://dating.ru/{}",
   "not_found": [],
   "must_contain": [],
   "regex_check": "",
@@ -35875,30 +34650,6 @@
   "must_contain": [],
   "regex_check": "",
   "category": "forum"
- },
- {
-  "name": "irecommend",
-  "url": "https://irecommend.ru/users/{}",
-  "not_found": [],
-  "must_contain": [],
-  "regex_check": "",
-  "category": "other"
- },
- {
-  "name": "jbzd.com.pl",
-  "url": "https://jbzd.com.pl/uzytkownik/{}",
-  "not_found": [],
-  "must_contain": [],
-  "regex_check": "",
-  "category": "other"
- },
- {
-  "name": "nairaland.com",
-  "url": "https://www.nairaland.com/{}",
-  "not_found": [],
-  "must_contain": [],
-  "regex_check": "",
-  "category": "other"
  },
  {
   "name": "nnru",
@@ -35933,63 +34684,12 @@
   "category": "forum"
  },
  {
-  "name": "satsisRU",
-  "url": "https://satsis.info/user/{}",
-  "not_found": [],
-  "must_contain": [],
-  "regex_check": "",
-  "category": "other"
- },
- {
-  "name": "sessionize",
-  "url": "https://sessionize.com/{}",
-  "not_found": [],
-  "must_contain": [],
-  "regex_check": "",
-  "category": "other"
- },
- {
   "name": "svidbook",
   "url": "https://www.svidbook.ru/user/{}",
   "not_found": [],
   "must_contain": [],
   "regex_check": "",
   "category": "social"
- },
- {
-  "name": "uid",
-  "url": "http://uid.me/{}",
-  "not_found": [],
-  "must_contain": [],
-  "regex_check": "",
-  "category": "other"
- },
- {
-  "name": "BabyRu",
-  "url": "https://www.baby.ru/u/{}",
-  "not_found": [
-   "Страница, которую вы искали, не найдена",
-   "Доступ с вашего IP-адреса временно ограничен"
-  ],
-  "must_contain": [],
-  "regex_check": "",
-  "category": "other"
- },
- {
-  "name": "addons.wago.io",
-  "url": "https://addons.wago.io/user/{}",
-  "not_found": [],
-  "must_contain": [],
-  "regex_check": "",
-  "category": "other"
- },
- {
-  "name": "CurseForge",
-  "url": "https://www.curseforge.com/members/{}/projects",
-  "not_found": [],
-  "must_contain": [],
-  "regex_check": "",
-  "category": "other"
  },
  {
   "name": "247CTF",
@@ -36071,18 +34771,6 @@
   ],
   "must_contain": [
    "Glamour Escorts "
-  ],
-  "category": "adult",
-  "regex_check": ""
- },
- {
-  "name": "adultism",
-  "url": "https://www.adultism.com/profile/{}",
-  "not_found": [
-   "<title> Not Found"
-  ],
-  "must_contain": [
-   "Last login:"
   ],
   "category": "adult",
   "regex_check": ""
@@ -36172,18 +34860,6 @@
   "regex_check": ""
  },
  {
-  "name": "Archive Of Our Own Account",
-  "url": "https://archiveofourown.org/users/{}",
-  "not_found": [
-   "class=\"system errors error-404 region\""
-  ],
-  "must_contain": [
-   "class=\"user home\""
-  ],
-  "category": "writing",
-  "regex_check": ""
- },
- {
   "name": "ArchWiki",
   "url": "https://wiki.archlinux.org/api.php?action=query&format=json&list=users&ususers={}&usprop=cancreate&formatversion=2&errorformat=html&errorsuselocal=true&uselang=en",
   "not_found": [
@@ -36205,18 +34881,6 @@
    "\"id\":"
   ],
   "category": "forum",
-  "regex_check": ""
- },
- {
-  "name": "Arduino (Project Hub)",
-  "url": "https://projecthub.arduino.cc/{}",
-  "not_found": [
-   "\"userInfo\":null"
-  ],
-  "must_contain": [
-   "\"userInfo\":{"
-  ],
-  "category": "other",
   "regex_check": ""
  },
  {
@@ -36265,18 +34929,6 @@
    "Лоты пользователя "
   ],
   "category": "other",
-  "regex_check": ""
- },
- {
-  "name": "Avid Community",
-  "url": "https://community.avid.com/members/{}/default.aspx",
-  "not_found": [
-   "The user you requested cannot be found."
-  ],
-  "must_contain": [
-   "My Activity"
-  ],
-  "category": "forum",
   "regex_check": ""
  },
  {
@@ -36335,18 +34987,6 @@
   ],
   "must_contain": [
    "<title>Profile"
-  ],
-  "category": "other",
-  "regex_check": ""
- },
- {
-  "name": "Beacons",
-  "url": "https://beacons.ai/{}",
-  "not_found": [
-   "The page you are looking for does not seem to exist anymore"
-  ],
-  "must_contain": [
-   " - Link in Bio &amp; Creator Tools | Beacons</title>"
   ],
   "category": "other",
   "regex_check": ""
@@ -36542,18 +35182,6 @@
   "regex_check": ""
  },
  {
-  "name": "Calendy",
-  "url": "https://calendly.com/{}",
-  "not_found": [
-   "Sorry, but the page you were looking for could not be found."
-  ],
-  "must_contain": [
-   "og:author"
-  ],
-  "category": "other",
-  "regex_check": ""
- },
- {
   "name": "Cameo",
   "url": "https://www.cameo.com/{}",
   "not_found": [],
@@ -36573,18 +35201,6 @@
    "created_at"
   ],
   "category": "forum",
-  "regex_check": ""
- },
- {
-  "name": "Chamsko",
-  "url": "https://www.chamsko.pl/profil/{}",
-  "not_found": [
-   "Strona nie istnieje."
-  ],
-  "must_contain": [
-   "W serwisie od"
-  ],
-  "category": "other",
   "regex_check": ""
  },
  {
@@ -36660,18 +35276,6 @@
   "regex_check": ""
  },
  {
-  "name": "Community Adobe",
-  "url": "https://community.adobe.com/t5/forums/searchpage/tab/user?q={}",
-  "not_found": [
-   "No search results found."
-  ],
-  "must_contain": [
-   "UserSearchItemContainer"
-  ],
-  "category": "forum",
-  "regex_check": ""
- },
- {
   "name": "cowboys4angels",
   "url": "https://cowboys4angels.com/cowboy/{}/",
   "not_found": [
@@ -36691,30 +35295,6 @@
   ],
   "must_contain": [
    "\"name\":"
-  ],
-  "category": "other",
-  "regex_check": ""
- },
- {
-  "name": "Cytoid",
-  "url": "https://cytoid.io/profile/{}",
-  "not_found": [
-   "Profile not found"
-  ],
-  "must_contain": [
-   "Joined"
-  ],
-  "category": "other",
-  "regex_check": ""
- },
- {
-  "name": "Daily Kos",
-  "url": "https://www.dailykos.com/user/{}",
-  "not_found": [
-   "Page not found! (404)"
-  ],
-  "must_contain": [
-   "id=\"userData\""
   ],
   "category": "other",
   "regex_check": ""
@@ -37400,18 +35980,6 @@
   "regex_check": ""
  },
  {
-  "name": "Giphy (Channel)",
-  "url": "https://giphy.com/channel/{}",
-  "not_found": [
-   "404 Not Found"
-  ],
-  "must_contain": [
-   "\\\"user_id\\\""
-  ],
-  "category": "other",
-  "regex_check": ""
- },
- {
   "name": "GitHub (Gists)",
   "url": "https://api.github.com/users/{}/gists",
   "not_found": [
@@ -37460,18 +36028,6 @@
   "regex_check": ""
  },
  {
-  "name": "Goodgame_Russia",
-  "url": "https://goodgame.ru/channel/{}/",
-  "not_found": [
-   "Такой страницы не существует"
-  ],
-  "must_contain": [
-   "channel_id"
-  ],
-  "category": "other",
-  "regex_check": ""
- },
- {
   "name": "gpodder.net",
   "url": "https://gpodder.net/user/{}/",
   "not_found": [
@@ -37505,18 +36061,6 @@
    "display_name"
   ],
   "category": "social",
-  "regex_check": ""
- },
- {
-  "name": "Greasy Fork",
-  "url": "https://greasyfork.org/en/users?q={}",
-  "not_found": [
-   "<p>No users!</p>"
-  ],
-  "must_contain": [
-   "class=\"user-list\""
-  ],
-  "category": "other",
   "regex_check": ""
  },
  {
@@ -37652,18 +36196,6 @@
   "regex_check": ""
  },
  {
-  "name": "Habr (User)",
-  "url": "https://habr.com/ru/users/{}/",
-  "not_found": [
-   "tm-error-message"
-  ],
-  "must_contain": [
-   "tm-page tm-user"
-  ],
-  "category": "forum",
-  "regex_check": ""
- },
- {
   "name": "Habtium",
   "url": "https://habtium.es/{}",
   "not_found": [
@@ -37695,18 +36227,6 @@
   ],
   "must_contain": [
    "\"username\":"
-  ],
-  "category": "other",
-  "regex_check": ""
- },
- {
-  "name": "Hacker News",
-  "url": "https://news.ycombinator.com/user?id={}",
-  "not_found": [
-   "No such user."
-  ],
-  "must_contain": [
-   "created:"
   ],
   "category": "other",
   "regex_check": ""
@@ -37964,18 +36484,6 @@
   "regex_check": ""
  },
  {
-  "name": "Joe Monster",
-  "url": "https://joemonster.org/bojownik/{}",
-  "not_found": [
-   "Nie wiem jak ci to powiedzieć"
-  ],
-  "must_contain": [
-   "jest prywatny"
-  ],
-  "category": "other",
-  "regex_check": ""
- },
- {
   "name": "kipin",
   "url": "https://kipin.app/{}",
   "not_found": [
@@ -38120,18 +36628,6 @@
   "regex_check": ""
  },
  {
-  "name": "LINE",
-  "url": "https://line.me/R/ti/p/@{}?from=page",
-  "not_found": [
-   "404 Not Found"
-  ],
-  "must_contain": [
-   "Add LINE Friends via QR Code"
-  ],
-  "category": "other",
-  "regex_check": ""
- },
- {
   "name": "linux.org.ru",
   "url": "https://www.linux.org.ru/people/{}/profile",
   "not_found": [
@@ -38153,18 +36649,6 @@
    "<title>Магазин мастера"
   ],
   "category": "other",
-  "regex_check": ""
- },
- {
-  "name": "lobste.rs",
-  "url": "https://lobste.rs/u/{}",
-  "not_found": [
-   "The resource you requested was not found, or the story has been deleted."
-  ],
-  "must_contain": [
-   "Joined"
-  ],
-  "category": "code",
   "regex_check": ""
  },
  {
@@ -38237,18 +36721,6 @@
    "Bekijk Profiel:"
   ],
   "category": "forum",
-  "regex_check": ""
- },
- {
-  "name": "Massage Anywhere",
-  "url": "https://www.massageanywhere.com/profile/{}",
-  "not_found": [
-   "<title>MassageAnywhere.com: Search Results</title>"
-  ],
-  "must_contain": [
-   "<title>MassageAnywhere.com Profile for "
-  ],
-  "category": "other",
   "regex_check": ""
  },
  {
@@ -38343,18 +36815,6 @@
   ],
   "must_contain": [
    "- DEF CON Social</title>"
-  ],
-  "category": "social",
-  "regex_check": ""
- },
- {
-  "name": "Mastodon-mastodon",
-  "url": "https://mastodon.social/@{}",
-  "not_found": [
-   "The page you are looking for isn't here."
-  ],
-  "must_contain": [
-   "profile:username"
   ],
   "category": "social",
   "regex_check": ""
@@ -38456,30 +36916,6 @@
   "regex_check": ""
  },
  {
-  "name": "MCUUID (Minecraft)",
-  "url": "https://playerdb.co/api/player/minecraft/{}",
-  "not_found": [
-   "minecraft.api_failure"
-  ],
-  "must_contain": [
-   "Successfully found player by given ID."
-  ],
-  "category": "gaming",
-  "regex_check": ""
- },
- {
-  "name": "meet me",
-  "url": "https://www.meetme.com/{}",
-  "not_found": [
-   "<title>MeetMe - Chat and Meet New People</title"
-  ],
-  "must_contain": [
-   "<title>Meet people like "
-  ],
-  "category": "adult",
-  "regex_check": ""
- },
- {
   "name": "Meta-Wiki (Wikimedia)",
   "url": "https://meta.wikimedia.org/wiki/Special:CentralAuth?target={}",
   "not_found": [
@@ -38501,18 +36937,6 @@
    "class=\"c-pageProfile-wrapper\""
   ],
   "category": "other",
-  "regex_check": ""
- },
- {
-  "name": "Minecraft List",
-  "url": "https://minecraftlist.com/players/{}",
-  "not_found": [
-   "0 Minecraft servers recently"
-  ],
-  "must_contain": [
-   "-->was seen on<!--"
-  ],
-  "category": "gaming",
   "regex_check": ""
  },
  {
@@ -38708,18 +37132,6 @@
   "regex_check": ""
  },
  {
-  "name": "MYM",
-  "url": "https://mym.fans/{}",
-  "not_found": [
-   "class=\"page page-404\""
-  ],
-  "must_contain": [
-   "class=\"page profile\""
-  ],
-  "category": "other",
-  "regex_check": ""
- },
- {
   "name": "MyNickname",
   "url": "https://mynickname.com/en/search?q={}",
   "not_found": [
@@ -38756,18 +37168,6 @@
   "regex_check": ""
  },
  {
-  "name": "myWishBoard",
-  "url": "https://mywishboard.com/@{}",
-  "not_found": [
-   "class=\"MwbError\""
-  ],
-  "must_contain": [
-   "class=\"MwbUserHeader\""
-  ],
-  "category": "other",
-  "regex_check": ""
- },
- {
   "name": "naija_planet",
   "url": "https://naijaplanet.com/{}",
   "not_found": [
@@ -38775,18 +37175,6 @@
   ],
   "must_contain": [
    "dating Profile, "
-  ],
-  "category": "other",
-  "regex_check": ""
- },
- {
-  "name": "nairaland",
-  "url": "https://www.nairaland.com/{}",
-  "not_found": [
-   "404: Page Not Found"
-  ],
-  "must_contain": [
-   "s Profile"
   ],
   "category": "other",
   "regex_check": ""
@@ -38871,18 +37259,6 @@
   ],
   "must_contain": [
    "class=\"user profile\""
-  ],
-  "category": "other",
-  "regex_check": ""
- },
- {
-  "name": "oglaszamy24h.pl",
-  "url": "https://oglaszamy24h.pl/profil,{}",
-  "not_found": [
-   "Nieprawidłowy link, w bazie danych nie istnieje użytkownik o podanym loginie"
-  ],
-  "must_contain": [
-   "Profil użytkownika:"
   ],
   "category": "other",
   "regex_check": ""
@@ -38984,18 +37360,6 @@
   "regex_check": ""
  },
  {
-  "name": "Our Freedom Book",
-  "url": "https://www.ourfreedombook.com/{}",
-  "not_found": [
-   "Sorry, page not found"
-  ],
-  "must_contain": [
-   "meta property=\"og:"
-  ],
-  "category": "other",
-  "regex_check": ""
- },
- {
   "name": "palnet",
   "url": "https://www.palnet.io/@{}/",
   "not_found": [
@@ -39015,30 +37379,6 @@
   ],
   "must_contain": [
    "People to Follow"
-  ],
-  "category": "social",
-  "regex_check": ""
- },
- {
-  "name": "Parler archived posts",
-  "url": "http://archive.org/wayback/available?url=https://parler.com/profile/{}/posts",
-  "not_found": [
-   "\"archived_snapshots\": {}"
-  ],
-  "must_contain": [
-   "\"archived_snapshots\": {\"closest\""
-  ],
-  "category": "social",
-  "regex_check": ""
- },
- {
-  "name": "Parler archived profile",
-  "url": "http://archive.org/wayback/available?url=https://parler.com/profile/{}",
-  "not_found": [
-   "\"archived_snapshots\": {}"
-  ],
-  "must_contain": [
-   "\"archived_snapshots\": {\"closest\""
   ],
   "category": "social",
   "regex_check": ""
@@ -39087,18 +37427,6 @@
   ],
   "must_contain": [
    "\"tldr\":"
-  ],
-  "category": "other",
-  "regex_check": ""
- },
- {
-  "name": "Pewex",
-  "url": "https://retro.pewex.pl/user/{}",
-  "not_found": [
-   "Nie znaleziono użytkownika o podanym loginie."
-  ],
-  "must_contain": [
-   "Zamieszcza eksponaty od:"
   ],
   "category": "other",
   "regex_check": ""
@@ -39176,30 +37504,6 @@
   "regex_check": ""
  },
  {
-  "name": "Polchat.pl",
-  "url": "https://polczat.pl/forum/profile/{}/",
-  "not_found": [
-   "Wybrany użytkownik nie istnieje."
-  ],
-  "must_contain": [
-   "Historia wpisów"
-  ],
-  "category": "forum",
-  "regex_check": ""
- },
- {
-  "name": "Poll Everywhere",
-  "url": "https://pollev.com/proxy/api/users/{}",
-  "not_found": [
-   "ResourceNotFound"
-  ],
-  "must_contain": [
-   "name"
-  ],
-  "category": "other",
-  "regex_check": ""
- },
- {
   "name": "popl",
   "url": "https://poplme.co/{}",
   "not_found": [
@@ -39217,28 +37521,6 @@
   "not_found": [],
   "must_contain": [
    "class=\"topProfileHeader\""
-  ],
-  "category": "adult",
-  "regex_check": ""
- },
- {
-  "name": "Pornhub (Pornstar)",
-  "url": "https://www.pornhub.com/pornstar/{}",
-  "not_found": [],
-  "must_contain": [
-   "class=\"topProfileHeader\""
-  ],
-  "category": "adult",
-  "regex_check": ""
- },
- {
-  "name": "Pornhub (User)",
-  "url": "https://www.pornhub.com/users/{}",
-  "not_found": [
-   "<title>Page Not Found</title>"
-  ],
-  "must_contain": [
-   "id=\"topProfileHeader\""
   ],
   "category": "adult",
   "regex_check": ""
@@ -39472,18 +37754,6 @@
   "regex_check": ""
  },
  {
-  "name": "RuTracker.org",
-  "url": "https://rutracker.org/forum/profile.php?mode=viewprofile&u={}",
-  "not_found": [
-   "Пользователь не найден"
-  ],
-  "must_contain": [
-   "Профиль пользователя"
-  ],
-  "category": "forum",
-  "regex_check": ""
- },
- {
   "name": "ruVoIP.net",
   "url": "https://ruvoip.net/members/{}/",
   "not_found": [
@@ -39592,30 +37862,6 @@
   "regex_check": ""
  },
  {
-  "name": "setlist.fm",
-  "url": "https://www.setlist.fm/user/{}",
-  "not_found": [
-   "Sorry, the page you requested doesn't exist"
-  ],
-  "must_contain": [
-   "s setlist.fm | setlist.fm</title>"
-  ],
-  "category": "other",
-  "regex_check": ""
- },
- {
-  "name": "SFD",
-  "url": "https://www.sfd.pl/profile/{}",
-  "not_found": [
-   "Brak aktywnego profilu na forum"
-  ],
-  "must_contain": [
-   "Tematy użytkownika"
-  ],
-  "category": "other",
-  "regex_check": ""
- },
- {
   "name": "Shesfreaky",
   "url": "https://www.shesfreaky.com/profile/{}/",
   "not_found": [],
@@ -39674,18 +37920,6 @@
   "regex_check": ""
  },
  {
-  "name": "skeb",
-  "url": "https://skeb.jp/@{}",
-  "not_found": [
-   "Skeb - Request Box"
-  ],
-  "must_contain": [
-   ") | Skeb"
-  ],
-  "category": "other",
-  "regex_check": ""
- },
- {
   "name": "SlackHoles",
   "url": "https://slackholes.com/actor/{}/",
   "not_found": [
@@ -39717,18 +37951,6 @@
   ],
   "must_contain": [
    "creatorLink"
-  ],
-  "category": "other",
-  "regex_check": ""
- },
- {
-  "name": "soc.citizen4.eu",
-  "url": "https://soc.citizen4.eu/profile/{}/profile",
-  "not_found": [
-   "Nie znaleziono"
-  ],
-  "must_contain": [
-   "@soc.citizen4.eu"
   ],
   "category": "other",
   "regex_check": ""
@@ -39791,18 +38013,6 @@
    ") on Speaker Deck</title>"
   ],
   "category": "other",
-  "regex_check": ""
- },
- {
-  "name": "speedrun",
-  "url": "https://www.speedrun.com/user/{}/",
-  "not_found": [
-   "<title>speedrun.com"
-  ],
-  "must_contain": [
-   "Runs - "
-  ],
-  "category": "gaming",
   "regex_check": ""
  },
  {
@@ -39936,18 +38146,6 @@
   "regex_check": ""
  },
  {
-  "name": "Suzuri",
-  "url": "https://suzuri.jp/{}",
-  "not_found": [
-   "Push Space-key"
-  ],
-  "must_contain": [
-   "Items"
-  ],
-  "category": "other",
-  "regex_check": ""
- },
- {
   "name": "tabletoptournament",
   "url": "https://www.tabletoptournaments.net/eu/player/{}",
   "not_found": [
@@ -40044,16 +38242,6 @@
   "regex_check": ""
  },
  {
-  "name": "TF2 Backpack Examiner",
-  "url": "http://www.tf2items.com/id/{}/",
-  "not_found": [],
-  "must_contain": [
-   "<title>TF2 Backpack -"
-  ],
-  "category": "other",
-  "regex_check": ""
- },
- {
   "name": "theguardian",
   "url": "https://www.theguardian.com/profile/{}",
   "not_found": [
@@ -40061,18 +38249,6 @@
   ],
   "must_contain": [
    "<h2 class=\"dcr-1ln6kec\">"
-  ],
-  "category": "other",
-  "regex_check": ""
- },
- {
-  "name": "thoughts",
-  "url": "https://thoughts.com/members/{}/",
-  "not_found": [
-   "<title>Page not found"
-  ],
-  "must_contain": [
-   "<span class=\"activity"
   ],
   "category": "other",
   "regex_check": ""
@@ -40162,42 +38338,6 @@
   "regex_check": ""
  },
  {
-  "name": "Twitter archived profile",
-  "url": "http://archive.org/wayback/available?url=https://twitter.com/{}",
-  "not_found": [
-   "\"archived_snapshots\": {}"
-  ],
-  "must_contain": [
-   "\"archived_snapshots\": {\"closest\""
-  ],
-  "category": "social",
-  "regex_check": ""
- },
- {
-  "name": "Twitter archived tweets",
-  "url": "http://archive.org/wayback/available?url=https://twitter.com/{}/status/*",
-  "not_found": [
-   "\"archived_snapshots\": {}"
-  ],
-  "must_contain": [
-   "\"archived_snapshots\": {\"closest\""
-  ],
-  "category": "social",
-  "regex_check": ""
- },
- {
-  "name": "twpro",
-  "url": "https://twpro.jp/{}",
-  "not_found": [
-   "をご確認ください。"
-  ],
-  "must_contain": [
-   "おとなりさん"
-  ],
-  "category": "other",
-  "regex_check": ""
- },
- {
   "name": "Ubisoft",
   "url": "https://discussions.ubisoft.com/user/{}",
   "not_found": [
@@ -40246,18 +38386,6 @@
   "regex_check": ""
  },
  {
-  "name": "Ultras Diary",
-  "url": "http://ultrasdiary.pl/u/{}/",
-  "not_found": [
-   "Ile masz wyjazdów?"
-  ],
-  "must_contain": [
-   "Mecze wyjazdowe:"
-  ],
-  "category": "other",
-  "regex_check": ""
- },
- {
   "name": "Unlisted Videos",
   "url": "https://unlistedvideos.com/search.php?user={}",
   "not_found": [
@@ -40265,18 +38393,6 @@
   ],
   "must_contain": [
    "Date submitted"
-  ],
-  "category": "other",
-  "regex_check": ""
- },
- {
-  "name": "USA Life",
-  "url": "https://usa.life/{}",
-  "not_found": [
-   "Sorry, page not found"
-  ],
-  "must_contain": [
-   "Please log in to like, share and comment"
   ],
   "category": "other",
   "regex_check": ""
@@ -40436,18 +38552,6 @@
   "regex_check": ""
  },
  {
-  "name": "wego",
-  "url": "https://wego.social/{}",
-  "not_found": [
-   "Sorry, page not found!"
-  ],
-  "must_contain": [
-   "Following</span>"
-  ],
-  "category": "other",
-  "regex_check": ""
- },
- {
   "name": "weheartit",
   "url": "https://weheartit.com/{}",
   "not_found": [
@@ -40482,18 +38586,6 @@
   "regex_check": ""
  },
  {
-  "name": "Wimkin-PublicProfile",
-  "url": "https://wimkin.com/{}",
-  "not_found": [
-   " The page you are looking for cannot be found."
-  ],
-  "must_contain": [
-   "is on WIMKIN"
-  ],
-  "category": "other",
-  "regex_check": ""
- },
- {
   "name": "WordPress.com (Deleted)",
   "url": "https://public-api.wordpress.com/rest/v1.1/sites/{}.wordpress.com",
   "not_found": [
@@ -40501,30 +38593,6 @@
   ],
   "must_contain": [
    "\"message\":\"API calls to this endpoint have been disabled.\""
-  ],
-  "category": "writing",
-  "regex_check": ""
- },
- {
-  "name": "WordPress.com (Private)",
-  "url": "https://public-api.wordpress.com/rest/v1.1/sites/{}.wordpress.com",
-  "not_found": [
-   "\"error\":\"unknown_blog\""
-  ],
-  "must_contain": [
-   "\"message\":\"User cannot access this private blog.\""
-  ],
-  "category": "writing",
-  "regex_check": ""
- },
- {
-  "name": "WordPress.com (Public)",
-  "url": "https://public-api.wordpress.com/rest/v1.1/sites/{}.wordpress.com",
-  "not_found": [
-   "\"error\":\"unknown_blog\""
-  ],
-  "must_contain": [
-   "\"ID\":"
   ],
   "category": "writing",
   "regex_check": ""
@@ -40539,18 +38607,6 @@
    "\"error\":\"That username is already in use."
   ],
   "category": "forum",
-  "regex_check": ""
- },
- {
-  "name": "WordPress.org (Profiles)",
-  "url": "https://login.wordpress.org/wp-json/wporg/v1/username-available/{}",
-  "not_found": [
-   "\"available\":true"
-  ],
-  "must_contain": [
-   "\"error\":\"That username is already in use."
-  ],
-  "category": "writing",
   "regex_check": ""
  },
  {
@@ -40638,28 +38694,6 @@
   "regex_check": ""
  },
  {
-  "name": "YouTube User2",
-  "url": "https://www.youtube.com/@{}",
-  "not_found": [
-   "<title>404 Not Found</title>"
-  ],
-  "must_contain": [
-   "canonicalBaseUrl"
-  ],
-  "category": "video",
-  "regex_check": ""
- },
- {
-  "name": "Zbiornik",
-  "url": "https://mini.zbiornik.com/{}",
-  "not_found": [],
-  "must_contain": [
-   "INFO"
-  ],
-  "category": "other",
-  "regex_check": ""
- },
- {
   "name": "Zenn",
   "url": "https://zenn.dev/{}",
   "not_found": [
@@ -40726,16 +38760,6 @@
   "must_contain": [
    "Activity</h4>"
   ],
-  "category": "other",
-  "regex_check": ""
- },
- {
-  "name": "zoomitir",
-  "url": "https://www.zoomit.ir/user/{}/",
-  "not_found": [
-   "<title>خطای ۴۰۴ - صفحه یافت نشد</title>"
-  ],
-  "must_contain": [],
   "category": "other",
   "regex_check": ""
  },

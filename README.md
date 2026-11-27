@@ -10,11 +10,11 @@
 [![codecov](https://codecov.io/gh/Akxan/SpyEyes/branch/main/graph/badge.svg)](https://codecov.io/gh/Akxan/SpyEyes)
 [![License: Apache 2.0](https://img.shields.io/badge/License-Apache_2.0-blue.svg)](https://opensource.org/licenses/Apache-2.0)
 [![Python](https://img.shields.io/badge/Python-3.10%2B-blue.svg?logo=python&logoColor=white)](https://www.python.org/)
-[![Tests](https://img.shields.io/badge/tests-1472%20passed-success.svg)](tests/)
-[![Platforms](https://img.shields.io/badge/platforms-3164-orange.svg)](#-comparison-with-similar-tools)
+[![Tests](https://img.shields.io/badge/tests-1493%20passed-success.svg)](tests/)
+[![Platforms](https://img.shields.io/badge/platforms-2963-orange.svg)](#-comparison-with-similar-tools)
 [![Reports](https://img.shields.io/badge/reports-8%20formats-9cf.svg)](#-report-formats-8-types)
 [![Commands](https://img.shields.io/badge/commands-14-blueviolet.svg)](docs/TUTORIAL.md)
-[![Version](https://img.shields.io/badge/version-1.8.7-blueviolet.svg)](docs/CHANGELOG.md)
+[![Version](https://img.shields.io/badge/version-1.8.8-blueviolet.svg)](docs/CHANGELOG.md)
 [![Docs](https://img.shields.io/badge/docs-online-blue.svg)](https://akxan.github.io/SpyEyes/)
 [![Platform](https://img.shields.io/badge/platform-macOS%20%7C%20Linux%20%7C%20Windows%20%7C%20Termux-lightgrey)](#-installation)
 [![PRs Welcome](https://img.shields.io/badge/PRs-welcome-brightgreen.svg)](docs/CONTRIBUTING.md)
@@ -37,7 +37,7 @@
 
 **SpyEyes is a free, open-source OSINT (open-source intelligence) toolkit for the command line, written in Python.** One install gives you 14 commands that cover the everyday reconnaissance workflow:
 
-- **Username search** — check one username across **3,164 websites** (social networks, forums, code hosts, Chinese- and Spanish-language platforms), with hit verification to filter false positives
+- **Username search** — check one username across **2,963 websites** (social networks, forums, code hosts, Chinese- and Spanish-language platforms), with hit verification to filter false positives
 - **Subdomain enumeration** — 6 passive sources (crt.sh, CertSpotter, HackerTarget, AlienVault OTX, Wayback Machine, optional subfinder) + DNS bruteforce + HTTP probing
 - **Domain email harvesting** — 6 free sources plus an in-domain crawler, no sign-up
 - **IP geolocation, phone number lookup, WHOIS, MX records, email validation**
@@ -60,7 +60,7 @@ Built for **security researchers, penetration testers, bug bounty hunters, SOC a
 ### 💎 Highlights
 
 - **14 commands in one tool, fully bilingual**: UI, error messages and **report content** all follow `--lang`
-- **3164 username platforms**: merged from Maigret + Sherlock + WhatsMyName, including 48 Chinese-region + 33 Spanish-region + 734 forums; 150-thread concurrency, full scan in ~20 s; keyword + `must_contain` double check + block detection + hit verification (each hit is re-checked with a random gibberish username; sites that say "exists" for anything are not counted); `permute` variations and `--recursive` follow-up scans
+- **2963 username platforms**: merged from Maigret + Sherlock + WhatsMyName, including 45 Chinese-region + 33 Spanish-region + 704 forums; 150-thread concurrency, full scan in ~20 s; keyword + `must_contain` double check + block detection + hit verification (each hit is re-checked with a random gibberish username; sites that say "exists" for anything are not counted); `permute` variations and `--recursive` follow-up scans
 - **Subdomains from 7 dimensions**: 6 passive sources (crt.sh / CertSpotter / HackerTarget / OTX / Wayback / optional subfinder with 30+ sources) + DNS bruteforce + JS/HTML host extraction + DNS validation + HTTP probe + wildcard detection; `--alive-only` adds an HTTP filter automatically under wildcard DNS / DNS hijacking
 - **Domain email harvest — free, no sign-up**: crt.sh + WHOIS + Bing + DuckDuckGo + Wayback + GitHub run concurrently, plus a parallel multi-target crawler (in-domain URLs only) and `--guess` name-pattern generation
 - **`investigate` dossier**: give it one domain — WHOIS + MX + subdomains + domain emails run concurrently, then it pivots automatically (alive-subdomain IPs → IP enrichment; personal-looking emails → username scan) into one consolidated report and relationship graph
@@ -69,7 +69,7 @@ Built for **security researchers, penetration testers, bug bounty hunters, SOC a
 - **Low-friction daily use**: one `~/.spyeyes/env` file for all API keys; live progress for every long-running step; interactive-mode reports default to `<project_root>/Downloads/` (source) or `~/Downloads/spyeyes/` (packaged install)
 - **Update check + one-click upgrade**: 24 h-cached check against GitHub Releases; `spyeyes upgrade` detects pip / pipx / source installs and only upgrades PEP 668 environments (e.g. Homebrew) after you confirm
 - **Calm colors**: body text in your terminal's own color, color only as accents — readable on dark / light backgrounds and on Windows; `SPYEYES_THEME=classic` restores the old bright green, `--no-color` / `NO_COLOR` turns color off
-- **1,472 pytest tests** (88% line coverage): ruff / mypy / bandit clean, CI on Linux × Python 3.10–3.14 and macOS / Windows × Python 3.10 & 3.14
+- **1,493 pytest tests** (88% line coverage): ruff / mypy / bandit clean, CI on Linux × Python 3.10–3.14 and macOS / Windows × Python 3.10 & 3.14
 
 ---
 
@@ -96,8 +96,8 @@ Built for **security researchers, penetration testers, bug bounty hunters, SOC a
 - 12 number type categories (mobile / landline / VoIP / pager ...)
 
 ### 👤 Username Scan
-- **3164 platforms** (Maigret + Sherlock + WhatsMyName, with Maigret engine resolution)
-- **48 Chinese-region** + **33 Spanish-region** + **734 forums**
+- **2963 platforms** (Maigret + Sherlock + WhatsMyName, with Maigret engine resolution)
+- **45 Chinese-region** + **33 Spanish-region** + **704 forums**
 - **150-thread concurrent**, full ~20s, quick mode ~10s
 - Dual detection: not-found patterns + must-contain + block detection (WAF challenges / rate limits are not reported as "not found")
 - **Hit verification**: every hit is re-checked with a random gibberish username; sites where gibberish also "exists" are marked *unverifiable* and not counted
@@ -167,7 +167,7 @@ Built for **security researchers, penetration testers, bug bounty hunters, SOC a
 | [theHarvester](https://github.com/laramies/theHarvester) | ✅ | ❌ | ❌ | ✅ | ❌ | ✅ | ✅ | ✅ (some paid) | ❌ | ❌ | 1-2 | ❌ |
 | [Subfinder](https://github.com/projectdiscovery/subfinder) | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ✅ | ❌ | ❌ | ✅ | 1 | ❌ |
 | [Recon-ng](https://github.com/lanmaster53/recon-ng) | ✅ | ❌ | ✅ | ✅ | ✅ | ✅ | ✅ | ❌ | ❌ | ❌ | 1 | ❌ |
-| **SpyEyes** | ✅ | ✅ | ✅ **(3164)** | ✅ | ✅ | ✅ | ✅ **(7 dim)** | ✅ **(6 free)** | ✅ | ✅ | **8** | ✅ |
+| **SpyEyes** | ✅ | ✅ | ✅ **(2963)** | ✅ | ✅ | ✅ | ✅ **(7 dim)** | ✅ **(6 free)** | ✅ | ✅ | **8** | ✅ |
 
 > 💡 **Positioning**: SpyEyes is an **all-in-one, bilingual, report-rich** OSINT toolkit. For username search alone, Maigret extracts more detail per site; SpyEyes covers the whole reconnaissance pass — 14 commands, 8 export formats, English / 简体中文 — in one tool.
 
@@ -504,7 +504,7 @@ mypy spyeyes tools/build_platforms.py --ignore-missing-imports
 bandit -c pyproject.toml -r spyeyes/ tools/ -ll
 ```
 
-- ✅ **1,472 tests**, all network access mocked (no real requests)
+- ✅ **1,493 tests**, all network access mocked (no real requests)
 - ✅ Pure functions + HTTP mocking + edge cases + SSRF/ReDoS defenses + 8 report formats × 2 languages + en/zh translation key parity
 - ✅ GitHub Actions: Linux × Python 3.10–3.14, macOS / **Windows** × Python 3.10 & 3.14
 - ✅ Dedicated lint job (ruff + mypy + bandit) gates the test matrix
@@ -518,7 +518,7 @@ SpyEyes/
 ├── spyeyes/                    # Main package
 │   ├── __init__.py             # Main code (all features + i18n + __version__)
 │   ├── __main__.py             # python -m spyeyes entry point
-│   └── data/platforms.json     # 3164-platform database (Maigret + Sherlock + WhatsMyName merged)
+│   └── data/platforms.json     # 2963-platform database (Maigret + Sherlock + WhatsMyName merged)
 ├── README.md                   # English README (you are here)
 ├── README.zh-CN.md             # 简体中文 README
 ├── CLAUDE.md                   # Architecture conventions / dev notes
@@ -570,12 +570,12 @@ Yes. SpyEyes is free and open source under the Apache-2.0 license, and every com
 
 ### How is SpyEyes different from Sherlock or Maigret?
 
-Sherlock and Maigret are username-search tools. SpyEyes reuses their site lists (merged with WhatsMyName — 3,164 sites in total) and adds subdomain enumeration, domain email harvesting, IP / phone / WHOIS / MX lookups, an `investigate` workflow and 8 report formats in the same CLI. If you only need username search and want the profile details Maigret extracts from each site, use Maigret; if you want one tool for the whole reconnaissance pass, use SpyEyes.
+Sherlock and Maigret are username-search tools. SpyEyes reuses their site lists (merged with WhatsMyName — 2,963 sites in total) and adds subdomain enumeration, domain email harvesting, IP / phone / WHOIS / MX lookups, an `investigate` workflow and 8 report formats in the same CLI. If you only need username search and want the profile details Maigret extracts from each site, use Maigret; if you want one tool for the whole reconnaissance pass, use SpyEyes.
 
 ### How do I find every account that uses a username?
 
 ```bash
-spyeyes user torvalds                 # scan all 3,164 sites (~30 s)
+spyeyes user torvalds                 # scan all 2,963 sites (~30 s)
 spyeyes user torvalds --quick         # skip the long tail (~1,400 sites)
 spyeyes user torvalds --save r.html   # save an HTML report
 ```

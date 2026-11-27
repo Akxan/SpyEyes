@@ -8,15 +8,48 @@ This project adheres to [Keep a Changelog](https://keepachangelog.com/en/1.1.0/)
 
 ## [Unreleased]
 
+### Planned
+- 代理支持 (`--proxy http://...` / SOCKS5 / Tor / I2P，借鉴 Maigret)
+- IP / 用户名批量输入(`--batch ips.txt`;子域名已在 v1.5.0 支持 `--batch`)
+- HIBP (Have I Been Pwned) 邮箱泄露集成
+- 首次 upload 到 PyPI（package 重构已完成，`pip install .` 已 work，剩 `twine upload`）
+- Docker 镜像
+- curl_cffi 浏览器指纹伪装可选（`spyeyes[stealth]`，绕过 Cloudflare）
+- `investigate` v2:扩到 email / ip / username 实体 + 双向 pivot(配合"已访问集合"防环)
+- `investigate` 报告:PDF / XMind 专用版式(目前走通用表格;D3 关系图已支持)
+- `investigate --budget` 真·硬超时(需要给阶段 1 原子任务加可取消的超时管道)
+
+---
+
+## [1.8.8] — 2026-11-27
+
+🧹 **平台数据整顿版** —— 修正 1110 个论坛平台的检测规则,清掉 200 个重复或无法访问的平台,修复 7 个会崩溃或写错报告的 bug;测试翻倍,文档站点改版。
+
+### ⚠️ 行为变化(升级前请留意)
+
+- **平台总数从 3164 变为 2963**:去掉的是同一网址的重复条目和永远请求不成功的条目,没有减少实际覆盖的网站。
+  `--quick` 现在扫约 1301 个平台(原 ~1411)。同一个账号不会再在结果里出现两次,所以命中数可能略有减少。
+- **论坛平台的结果会变**:XenForo / phpBB / vBulletin / Discourse / uCoz 等 1110 个论坛现在用正确的规则判断,
+  以前的命中有不少是误报。
+- **西语圈平台数 58 → 33**:27 个 `.co` 域名的平台(HuggingFace、VSCO 等)不再算西语圈。
+  `--category spanish` 和菜单里"仅中文 + 西语圈"扫描的平台相应减少。
+- **Markdown 报告里的 `<` `>` 写成 `&lt;` `&gt;`**:防止对方可控的内容(WHOIS、网页标题)在报告里变成真的 HTML 标签。
+- **交互菜单保存报告**:自己输入不带后缀的文件名时,会自动补上所选格式的后缀(以前一律写成 JSON)。
+
 ### 🐛 修复(平台数据)
 
+- **清理重复和无法访问的平台,总数 3164 → 2963**:上游三个库给同一个网址起了不同的名字
+  (`YouTube` 与 `YouTube User`、`Linktree` 与 `linktr.ee`、`Chess` 与精选的 `Chess.com`),只按名字去重拦不住,
+  有 190 个平台是重复收录 —— 同一个账号会在结果里出现两次,同一个地址被请求两次。现在同时按名字和地址模板去重
+  (运行时、构建脚本、数据文件都处理了)。另有 10 个平台永远请求不成功(7 个是 Maigret 的 DNS 查询条目,
+  地址形如 `{}.com`;3 个是 Tor / I2P 暗网地址),已移除。
 - **1110 个论坛平台的检测规则有误或缺失**(占全部平台 35%):Maigret 的论坛引擎模板把"用户不存在"提示放在
   `engine.site` 里,构建脚本却把引擎的识别指纹(如 `XenForo`、`content="Discourse"`,每个页面都有)当成了
   "必须包含",并漏掉了真正的规则。XenForo / phpBB / vBulletin / Discourse / Flarum 等 460 条因此带着一条永远成立的
   规则,uCoz 的 633 条一条规则都没有。已按当时的上游数据逐条修正。抽样 197 个论坛实测:不存在的用户名误报
   47 → 10,判断正确 11 → 24。全库"只看状态码"的平台从 1415 个降到 843 个。
 - **`.co` 域名不再算西语圈**:HuggingFace、VSCO、Carrd 等 27 个平台被错归进"西语圈",已重新归类。
-  西语圈平台数 58 → 33,`--quick` 的平台数 ~1411 → ~1390,菜单、帮助和文档里的数量同步更新。
+  西语圈平台数 58 → 33,菜单、帮助和文档里的数量同步更新。
 - 每类检测规则的上限从 3 条提高到 8 条(论坛的提示按语言列,3 条会截掉非英语的);42 个被截断的条目已补全。
 - Rutracker 的地址模板里残留未展开的占位符,该平台一直请求失败,已修。
 - 构建脚本 `tools/build_platforms.py`:跳过 DNS / Tor / I2P 类条目和无法请求的地址;
@@ -36,7 +69,7 @@ This project adheres to [Keep a Changelog](https://keepachangelog.com/en/1.1.0/)
 
 ### 🧪 测试与工程
 
-- **测试从 731 个增加到 1472 个,行覆盖率从 66% 提高到 88%**:终端打印、交互菜单、语言解析、
+- **测试从 731 个增加到 1493 个,行覆盖率从 66% 提高到 88%**:终端打印、交互菜单、语言解析、
   HTTP 与 DNS 底层函数、SMTP 验证、各报告格式的用户名与变形分支此前基本没有被测试执行过。
 
 - **测试禁止真实联网**:从 socket 层拦截连接和 DNS 查询,发起真实网络访问的测试会失败。
@@ -44,7 +77,7 @@ This project adheres to [Keep a Changelog](https://keepachangelog.com/en/1.1.0/)
 - 测试隔离补全:每个测试后还原环境变量;隔离旧版配置目录 `~/.ghosttrack`。
 - 修掉 6 个"改了代码也照过"的测试,均经变异检查确认现在能抓住对应的 bug。
 - 源码里 U+2028 / U+2029 的不可见字面量改为转义写法(编辑器规范化后安全校验会悄悄失效)。
-- **CI 真正测试打包**:新增任务构建 wheel、装进干净环境、在源码目录之外运行并确认加载到 3000+ 平台。
+- **CI 真正测试打包**:新增任务构建 wheel、装进干净环境、在源码目录之外运行并确认加载到 2500+ 平台。
   原来的"冒烟测试"是可编辑安装,测不出 wheel 漏掉数据文件。
 - CI 权限收紧为只读,第三方 Action 固定到提交 SHA;Codecov 上传接上令牌(此前一直被拒且不报错)。
 - 新增 `MANIFEST.in`:sdist 以前不带 `tests/conftest.py` 和中文 README。
@@ -54,17 +87,6 @@ This project adheres to [Keep a Changelog](https://keepachangelog.com/en/1.1.0/)
 - 文档站点 https://akxan.github.io/SpyEyes/ 改版:自定义落地页替换默认主题 —— 首屏、功能卡片、
   命令表、可折叠的 FAQ、中文简介;明暗配色跟随系统;不加载任何外部字体或脚本。
 - 修复站点上"Contributing"页面 404;新增社交分享预览图。
-
-### Planned
-- 代理支持 (`--proxy http://...` / SOCKS5 / Tor / I2P，借鉴 Maigret)
-- IP / 用户名批量输入(`--batch ips.txt`;子域名已在 v1.5.0 支持 `--batch`)
-- HIBP (Have I Been Pwned) 邮箱泄露集成
-- 首次 upload 到 PyPI（package 重构已完成，`pip install .` 已 work，剩 `twine upload`）
-- Docker 镜像
-- curl_cffi 浏览器指纹伪装可选（`spyeyes[stealth]`，绕过 Cloudflare）
-- `investigate` v2:扩到 email / ip / username 实体 + 双向 pivot(配合"已访问集合"防环)
-- `investigate` 报告:PDF / XMind 专用版式(目前走通用表格;D3 关系图已支持)
-- `investigate --budget` 真·硬超时(需要给阶段 1 原子任务加可取消的超时管道)
 
 ---
 
@@ -2590,7 +2612,8 @@ export SPYEYES_PHONE_API_KEY="numverify:..." # 可选实时 HLR 电话运营商
 
 ---
 
-[Unreleased]: https://github.com/Akxan/SpyEyes/compare/v1.8.7...HEAD
+[Unreleased]: https://github.com/Akxan/SpyEyes/compare/v1.8.8...HEAD
+[1.8.8]: https://github.com/Akxan/SpyEyes/compare/v1.8.7...v1.8.8
 [1.8.7]: https://github.com/Akxan/SpyEyes/compare/v1.8.6...v1.8.7
 [1.8.6]: https://github.com/Akxan/SpyEyes/compare/v1.8.5...v1.8.6
 [1.8.5]: https://github.com/Akxan/SpyEyes/compare/v1.8.4...v1.8.5

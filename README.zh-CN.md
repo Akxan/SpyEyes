@@ -10,11 +10,11 @@
 [![codecov](https://codecov.io/gh/Akxan/SpyEyes/branch/main/graph/badge.svg)](https://codecov.io/gh/Akxan/SpyEyes)
 [![License: Apache 2.0](https://img.shields.io/badge/License-Apache_2.0-blue.svg)](https://opensource.org/licenses/Apache-2.0)
 [![Python](https://img.shields.io/badge/Python-3.10%2B-blue.svg?logo=python&logoColor=white)](https://www.python.org/)
-[![Tests](https://img.shields.io/badge/tests-1472%20passed-success.svg)](tests/)
-[![Platforms](https://img.shields.io/badge/platforms-3164-orange.svg)](#-与同类工具对比)
+[![Tests](https://img.shields.io/badge/tests-1493%20passed-success.svg)](tests/)
+[![Platforms](https://img.shields.io/badge/platforms-2963-orange.svg)](#-与同类工具对比)
 [![Reports](https://img.shields.io/badge/reports-8%20formats-9cf.svg)](#-报告格式8-种)
 [![Commands](https://img.shields.io/badge/commands-14-blueviolet.svg)](docs/TUTORIAL.md)
-[![Version](https://img.shields.io/badge/version-1.8.7-blueviolet.svg)](docs/CHANGELOG.md)
+[![Version](https://img.shields.io/badge/version-1.8.8-blueviolet.svg)](docs/CHANGELOG.md)
 [![Docs](https://img.shields.io/badge/docs-online-blue.svg)](https://akxan.github.io/SpyEyes/)
 [![Platform](https://img.shields.io/badge/platform-macOS%20%7C%20Linux%20%7C%20Windows%20%7C%20Termux-lightgrey)](#-安装)
 [![PRs Welcome](https://img.shields.io/badge/PRs-welcome-brightgreen.svg)](docs/CONTRIBUTING.md)
@@ -35,14 +35,14 @@
 
 ## 📖 项目简介
 
-**SpyEyes** 是一款用 Python 编写的命令行 **OSINT(开源情报)信息收集工具**,专为中文用户深度优化。**14 个子命令**,核心能力:IP 追踪 / 电话号码解析 / 用户名扫描(**3164 个平台 / 中英双语**)/ 域名 WHOIS / MX 查询 / 邮箱有效性验证 / **子域名枚举**(6 被动源 + 字典爆破 + JS 提取)/ **域名邮箱挖掘**(6 源全免费并发 + 深度爬虫)/ **Diff 监控**(对比两次扫描)/ **批量域名输入**(`--batch`)/ **综合调查**(`investigate`,一个域名自动多源并发 + 单向 pivot 出整合档案)/ **一键升级**(`upgrade`)/ **8 种 Editorial 风报告**。
+**SpyEyes** 是一款用 Python 编写的命令行 **OSINT(开源情报)信息收集工具**,专为中文用户深度优化。**14 个子命令**,核心能力:IP 追踪 / 电话号码解析 / 用户名扫描(**2963 个平台 / 中英双语**)/ 域名 WHOIS / MX 查询 / 邮箱有效性验证 / **子域名枚举**(6 被动源 + 字典爆破 + JS 提取)/ **域名邮箱挖掘**(6 源全免费并发 + 深度爬虫)/ **Diff 监控**(对比两次扫描)/ **批量域名输入**(`--batch`)/ **综合调查**(`investigate`,一个域名自动多源并发 + 单向 pivot 出整合档案)/ **一键升级**(`upgrade`)/ **8 种 Editorial 风报告**。
 
 适合 **网络安全研究人员、渗透测试工程师、SOC 分析师、技术调查员、红队蓝队成员、CTF 玩家** 以及任何对开源情报感兴趣的开发者使用。
 
 ### 💎 项目亮点
 
 - **一站式 14 个命令,中英双语**:界面、错误信息、**报告内容**全部跟随 `--lang` 切换
-- **3164 个用户名平台**:合并 Maigret + Sherlock + WhatsMyName,含 48 中文圈 + 33 西语圈 + 734 论坛;150 线程并发,全量 ~20 秒;关键词 + `must_contain` 双重检测 + 拦截识别 + 命中复查(乱码用户名再查一次,对谁都说"存在"的平台不计入);支持 `permute` 变形与 `--recursive` 递归
+- **2963 个用户名平台**:合并 Maigret + Sherlock + WhatsMyName,含 45 中文圈 + 33 西语圈 + 704 论坛;150 线程并发,全量 ~20 秒;关键词 + `must_contain` 双重检测 + 拦截识别 + 命中复查(乱码用户名再查一次,对谁都说"存在"的平台不计入);支持 `permute` 变形与 `--recursive` 递归
 - **子域名 7 维度收集**:6 个被动源(crt.sh / CertSpotter / HackerTarget / OTX / Wayback / 可选 subfinder 30+ 源)+ DNS 字典爆破 + JS/HTML host 提取 + DNS 验证 + HTTP probe + Wildcard 检测;`--alive-only` 在泛解析 / DNS 劫持环境下自动加 HTTP 过滤
 - **域名邮箱挖掘,全免费、无需注册**:crt.sh + WHOIS + Bing + DuckDuckGo + Wayback + GitHub 6 源并发,再加多目标并行爬虫(只请求本域地址)和 `--guess` 姓名模式生成
 - **`investigate` 综合调查**:输入一个域名,并发跑 WHOIS + MX + 子域名 + 域名邮箱,再自动接力(活跃子域 IP → IP 情报;像真人的邮箱 → 用户名扫描),输出整合档案和关系图
@@ -51,7 +51,7 @@
 - **日常使用省心**:`~/.spyeyes/env` 一个文件配好全部 API key;所有耗时操作都有进度反馈;交互模式报告默认存到 `<项目根>/Downloads/`(源码)或 `~/Downloads/spyeyes/`(打包安装)
 - **自动检查更新 + 一键升级**:24 h 缓存比对 GitHub Release;`spyeyes upgrade` 自动识别 pip / pipx / 源码安装,Homebrew 等 PEP 668 环境经你确认后才升级
 - **柔和配色**:正文用终端本色,颜色只做点缀,深色 / 浅色背景与 Windows 都清晰;`SPYEYES_THEME=classic` 找回旧版亮绿,`--no-color` / `NO_COLOR` 关闭颜色
-- **1472 个 pytest 测试**(行覆盖率 88%):ruff / mypy / bandit 全清,CI 覆盖 Linux × Python 3.10–3.14,macOS / Windows × Python 3.10 与 3.14
+- **1493 个 pytest 测试**(行覆盖率 88%):ruff / mypy / bandit 全清,CI 覆盖 Linux × Python 3.10–3.14,macOS / Windows × Python 3.10 与 3.14
 
 ---
 
@@ -78,8 +78,8 @@
 - 12 种号码类型识别（移动 / 固话 / VoIP / 寻呼机 ...）
 
 ### 👤 用户名扫描
-- **3164 个平台**（合并 Maigret + Sherlock + WhatsMyName，含 Maigret engine 解析）
-- **48 中文圈**（陆/台/港/星/马）+ **33 西语圈**（西班牙/拉美）+ **734 论坛**
+- **2963 个平台**（合并 Maigret + Sherlock + WhatsMyName，含 Maigret engine 解析）
+- **45 中文圈**（陆/台/港/星/马）+ **33 西语圈**（西班牙/拉美）+ **704 论坛**
 - **150 线程并发**，全部扫完 ~20 秒（quick 模式 ~10 秒）
 - 内容关键词 + `must_contain` 双重检测 + 拦截识别(WAF 质询 / 限流不会被当成"未找到")
 - **命中复查**:每个命中再用一个随机乱码用户名查一次,乱码也"存在"的平台标为「无法确认」,不计入命中
@@ -149,7 +149,7 @@
 | [theHarvester](https://github.com/laramies/theHarvester) | ✅ | ❌ | ❌ | ✅ | ❌ | ✅ | ✅ | ✅(部分商业) | ❌ | ❌ | 1-2 | ❌ |
 | [Subfinder](https://github.com/projectdiscovery/subfinder) | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ✅ | ❌ | ❌ | ✅ | 1 | ❌ |
 | [Recon-ng](https://github.com/lanmaster53/recon-ng) | ✅ | ❌ | ✅ | ✅ | ✅ | ✅ | ✅ | ❌ | ❌ | ❌ | 1 | ❌ |
-| **SpyEyes** | ✅ | ✅ | ✅ **(3164)** | ✅ | ✅ | ✅ | ✅ **(7 维度)** | ✅ **(6 源全免费)** | ✅ | ✅ | **8** | ✅ |
+| **SpyEyes** | ✅ | ✅ | ✅ **(2963)** | ✅ | ✅ | ✅ | ✅ **(7 维度)** | ✅ **(6 源全免费)** | ✅ | ✅ | **8** | ✅ |
 
 > 💡 **定位说明**:SpyEyes **不是**为了在用户名扫描深度上跟 Sherlock 卷,而是做**轻量级一站式 + 中文优先 + 报告丰富**的 OSINT 工具。
 > - 只查用户名 → Sherlock / Maigret 更专业
@@ -546,7 +546,7 @@ bandit -c pyproject.toml -r spyeyes/ tools/ -ll
 ```
 
 当前测试覆盖：
-- ✅ **1472 个测试**，全部 mock 网络（不发真实请求）
+- ✅ **1493 个测试**，全部 mock 网络（不发真实请求）
 - ✅ 覆盖纯函数 + HTTP mock + 边界条件 + SSRF/ReDoS 防御 + 8 种报告格式 × 2 种语言 + 中英翻译 key 一致性
 - ✅ GitHub Actions：Linux × Python 3.10–3.14，macOS / **Windows** × Python 3.10 与 3.14
 - ✅ 独立 lint job（ruff + mypy + bandit），通过后才跑测试矩阵
@@ -560,7 +560,7 @@ SpyEyes/
 ├── spyeyes/                    # 主包
 │   ├── __init__.py             # 主代码（含全部功能 + i18n + __version__）
 │   ├── __main__.py             # python -m spyeyes 入口
-│   └── data/platforms.json     # 3164 平台数据库（合并 Maigret + Sherlock + WhatsMyName）
+│   └── data/platforms.json     # 2963 平台数据库（合并 Maigret + Sherlock + WhatsMyName）
 ├── README.md                   # English README(主入口)
 ├── README.zh-CN.md             # 你正在看的这个（简体中文）
 ├── CLAUDE.md                   # 架构约定 / 开发须知

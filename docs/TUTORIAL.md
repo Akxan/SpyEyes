@@ -42,7 +42,7 @@ SpyEyes 是一个用 Python 编写的命令行 OSINT 工具，作为 Python 包�
 | IP 地址归属查询 | 公开 API：`ipwho.is`（HTTPS，含国家中文名） | 是 |
 | 查看本机出口 IP | 公开 API：`api.ipify.org` | 是 |
 | 电话号码解析 | 本地 `phonenumbers` 库（中文运营商/归属地） | 否 |
-| 用户名社交平台扫描 | **3164 个**平台 HTTP 探测（Maigret + Sherlock + WhatsMyName），**150 线程并发 + 内容关键词** | 是 |
+| 用户名社交平台扫描 | **2963 个**平台 HTTP 探测（Maigret + Sherlock + WhatsMyName），**150 线程并发 + 内容关键词** | 是 |
 | 域名 WHOIS 查询 | `python-whois` 库（直连 RDAP / WHOIS 服务器） | 是 |
 | 域名 MX 记录查询 | `dnspython`，使用系统 DNS 解析 | 是 |
 | 邮箱有效性验证 | 本地正则 + MX 记录检查 | 是 |
@@ -444,7 +444,7 @@ python3 -m spyeyes --lang zh user torvalds  # 强制中文输出
 
 ### ④ 用户名追踪
 
-**作用**：把你输入的用户名拼到 **3164 个主流社交/技术平台** 的 URL 中并发访问，按区域和主题分组返回命中结果。数据库整合自三大上游：[Maigret](https://github.com/soxoj/maigret) + [Sherlock](https://github.com/sherlock-project/sherlock) + [WhatsMyName](https://github.com/WebBreacher/WhatsMyName)，加上手工 curated 的中文/西语区精选。
+**作用**：把你输入的用户名拼到 **2963 个主流社交/技术平台** 的 URL 中并发访问，按区域和主题分组返回命中结果。数据库整合自三大上游：[Maigret](https://github.com/soxoj/maigret) + [Sherlock](https://github.com/sherlock-project/sherlock) + [WhatsMyName](https://github.com/WebBreacher/WhatsMyName)，加上手工 curated 的中文/西语区精选。
 
 **操作示范**：
 
@@ -458,10 +458,10 @@ python3 -m spyeyes --lang zh user torvalds  # 强制中文输出
 ```
 ========== 用户名扫描结果 ==========
 
- 共扫描 3164 个平台，命中 317 个：
+ 共扫描 2963 个平台，命中 317 个：
  （仅显示命中；用 --all 查看未命中）
 
- ┌─ 代码与开发 (26/116) ─
+ ┌─ 代码与开发 (26/104) ─
  [ + ] GitHub                         https://github.com/torvalds
  [ + ] GitLab                         https://gitlab.com/torvalds
  [ + ] Bitbucket                      https://bitbucket.org/torvalds
@@ -479,28 +479,28 @@ python3 -m spyeyes --lang zh user torvalds  # 强制中文输出
  ...
 ```
 
-**平台分类（13 大类，3164 总数）**：
+**平台分类（13 大类，2963 总数）**：
 
 | 类别 | 数量 | 典型平台 |
 |---|---:|---|
-| `code` | 116 | GitHub / GitLab / LeetCode / CodePen ... |
-| `social` | 99 | Twitter / Facebook / Mastodon / Bluesky ... |
-| `forum` | 734 | Reddit / Quora / Disqus + 各国论坛 |
-| `video` | 25 | YouTube / TikTok / Twitch / Vimeo ... |
-| `music` | 22 | SoundCloud / Bandcamp / Last.fm ... |
-| `writing` | 51 | Medium / Substack / 简书 ... |
-| `art` | 59 | DeviantArt / ArtStation / Behance ... |
-| `gaming` | 99 | Steam / Itch.io / Lichess ... |
-| `funding` | 13 | Patreon / Ko-fi / OpenCollective ... |
-| **`chinese`** | **48** | 微博 · 知乎 · CSDN · V2EX · 简书 · Dcard · Mobile01 · 巴哈姆特 · PIXNET · LIHKG · Shopee TW/SG/MY · ... |
+| `code` | 104 | GitHub / GitLab / LeetCode / CodePen ... |
+| `social` | 90 | Twitter / Facebook / Mastodon / Bluesky ... |
+| `forum` | 704 | Reddit / Quora / Disqus + 各国论坛 |
+| `video` | 22 | YouTube / TikTok / Twitch / Vimeo ... |
+| `music` | 20 | SoundCloud / Bandcamp / Last.fm ... |
+| `writing` | 42 | Medium / Substack / 简书 ... |
+| `art` | 57 | DeviantArt / ArtStation / Behance ... |
+| `gaming` | 91 | Steam / Itch.io / Lichess ... |
+| `funding` | 11 | Patreon / Ko-fi / OpenCollective ... |
+| **`chinese`** | **45** | 微博 · 知乎 · CSDN · V2EX · 简书 · Dcard · Mobile01 · 巴哈姆特 · PIXNET · LIHKG · Shopee TW/SG/MY · ... |
 | **`spanish`** | **33** | Wallapop · MercadoLibre AR/MX/BR · Menéame · Taringa · Forocoches · Hispachan · Forosperu · Xataka · ... |
-| **`adult`** | **91** | OnlyFans · Fansly · Chaturbate · Pornhub · XVideos · 等成人/约会/CAM 平台（OSINT 用途独立分类） |
-| `other` | 1774 | Maigret 长尾（小众/地区性）；`--quick` 跳过这一类，只扫其余 ~1390 个 |
+| **`adult`** | **82** | OnlyFans · Fansly · Chaturbate · Pornhub · XVideos · 等成人/约会/CAM 平台（OSINT 用途独立分类） |
+| `other` | 1662 | Maigret 长尾（小众/地区性）；`--quick` 跳过这一类，只扫其余 ~1301 个 |
 
 **性能 / 调优**：
 
-- 默认 **150 线程并发**（v1.2.0 从 100 升级），~20 秒完成 3164 平台全扫描；可用 `--workers N` 调节（1-200），单平台超时 `--timeout`（默认 5 秒）
-- 默认**只显示命中**（不然 3164 行太多）—— CLI 加 `--all` 查看完整报告（含未命中）
+- 默认 **150 线程并发**（v1.2.0 从 100 升级），~20 秒完成 2963 平台全扫描；可用 `--workers N` 调节（1-200），单平台超时 `--timeout`（默认 5 秒）
+- 默认**只显示命中**（不然 2963 行太多）—— CLI 加 `--all` 查看完整报告（含未命中）
 - **三重检测逻辑**：HTTP 200 → 不含 `not_found` 模式（如 "page not found"） → 含 `must_contain` 模式（如平台特征 HTML）
 - **v1.2.0 菜单流程**：进入 `[4]` 后先选策略：
   - `1` 直接扫描原始用户名
@@ -510,7 +510,7 @@ python3 -m spyeyes --lang zh user torvalds  # 强制中文输出
 
 **重要说明**：
 
-> ⚠️ **3164 平台中约 1774 个为 `other` 长尾（主要来自 Maigret）**，许多是小众/地区性站点。命中率因平台而异：
+> ⚠️ **2963 平台中约 1662 个为 `other` 长尾（主要来自 Maigret）**，许多是小众/地区性站点。命中率因平台而异：
 > - 主流平台（GitHub / Twitter / Reddit）：精度 95%+
 > - 中文/西语精选区域：精度 85%+（手工 curate 过）
 > - Maigret 长尾：精度 70-80%（部分有 must_contain 验证）
@@ -1126,7 +1126,7 @@ python3 -m spyeyes upgrade --check
 | `--workers N` | 并发线程数，默认 **150**（已优化到 Sherlock 级速度），范围 1-200 |
 | `--timeout T` | 单平台 HTTP 超时秒数，默认 5 |
 | `--all` | 显示所有平台（含未命中），默认仅显示命中 |
-| `--quick` | 跳过 "other" 长尾，仅扫主流 ~1390 个 |
+| `--quick` | 跳过 "other" 长尾，仅扫主流 ~1301 个 |
 | `--category CAT,CAT,...` | 只扫指定类别：`code` / `social` / `chinese` / `spanish` / `forum` / 等 |
 | `--recursive` | **v1.1.0**：递归扫描——抓取命中页面提取次级用户名继续扫 |
 | `--depth N` | **v1.1.0**：递归深度（0-2，默认 2，仅与 `--recursive` 配合） |
@@ -1388,7 +1388,7 @@ python3 tools/build_platforms.py
 ## 已知限制
 
 1. **数据语言**：`ipwho.is` 返回的城市/地区名仍为英文（国家名已通过本地映射表译成中文）
-2. **用户名扫描准确率有限**：约 1774 个 `other` 长尾平台（主要来自 Maigret）仅做基本检测;命中复查能滤掉"对谁都说存在"的平台,但规则过时造成的漏判仍然存在
+2. **用户名扫描准确率有限**：约 1662 个 `other` 长尾平台（主要来自 Maigret）仅做基本检测;命中复查能滤掉"对谁都说存在"的平台,但规则过时造成的漏判仍然存在
 3. **登录墙平台**：LinkedIn / Instagram / TikTok 强反爬，命中率较低
 4. **WHOIS 速度**：跨地区查询某些 TLD 时较慢（10-15 秒）
 5. **无代理支持**：默认走系统直连，无内置 HTTP/SOCKS 代理选项

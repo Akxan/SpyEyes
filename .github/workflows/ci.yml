@@ -133,7 +133,7 @@ jobs:
           total = len(spyeyes.PLATFORMS)
           curated = len(spyeyes._CURATED_PLATFORMS)
           # wheel 里漏掉 data/platforms.json 时不会报错,只会悄悄剩下精选的 200 来个平台
-          assert total > 3000, f'only {total} platforms loaded - is data/platforms.json in the wheel?'
+          assert total > 2500, f'only {total} platforms loaded - is data/platforms.json in the wheel?'
           print(f'spyeyes {spyeyes.__version__}: {total} platforms ({curated} curated)')
           PY
       - name: sdist is complete enough to run the tests

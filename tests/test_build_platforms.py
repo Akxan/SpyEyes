@@ -420,3 +420,40 @@ class TestBuildSanityChecks:
         with pytest.raises(RuntimeError):
             bp.build()
         assert out.read_text() == '"existing"'
+
+
+class TestDedupByUrl:
+    """回归:上游三个库给同一个网址起不同的名字,按名字去重拦不住。"""
+
+    def _item(self, name, url, nf=0, mc=0, category='other'):
+        return {'name': name, 'url': url, 'not_found': ['x'] * nf, 'must_contain': ['y'] * mc, 'category': category}
+
+    def test_entry_with_more_rules_wins(self):
+        items = [self._item('Calendy', 'https://calendly.com/{}', nf=1),
+                 self._item('Calendly', 'https://www.calendly.com/{}/', nf=1, mc=2)]
+        assert [i['name'] for i in bp.dedup_by_url(items)] == ['Calendly']
+
+    def test_tie_goes_to_the_one_with_a_real_category(self):
+        items = [self._item('Giphy (Channel)', 'https://giphy.com/channel/{}', nf=1),
+                 self._item('Giphy', 'https://giphy.com/channel/{}', nf=1, category='video')]
+        assert [i['name'] for i in bp.dedup_by_url(items)] == ['Giphy']
+
+    def test_full_tie_keeps_the_first_and_order_is_preserved(self):
+        items = [self._item('B', 'https://b.com/{}'), self._item('A1', 'https://a.com/{}'),
+                 self._item('A2', 'http://a.com/{}'), self._item('C', 'https://c.com/{}')]
+        assert [i['name'] for i in bp.dedup_by_url(items)] == ['B', 'A1', 'C']
+
+    def test_different_paths_are_not_merged(self):
+        items = [self._item('Steam', 'https://steamcommunity.com/id/{}'),
+                 self._item('Steam (Group)', 'https://steamcommunity.com/groups/{}')]
+        assert len(bp.dedup_by_url(items)) == 2
+
+    @pytest.mark.parametrize('url', ['https://Example.com/U/{}', 'http://www.example.com/u/{}/',
+                                     'https://{}.example.com', 'https://example.com/a?b={}'])
+    def test_url_key_matches_the_runtime_one(self, url):
+        import spyeyes
+        assert bp.url_key(url) == spyeyes._platform_url_key(url)
+
+    @pytest.mark.parametrize('url', ['http://abcdefghijklmnop.onion/u/{}', 'http://forum.i2p/search.php?author={}'])
+    def test_darknet_addresses_are_not_probeable(self, url):
+        assert bp.is_probeable_url(url) is False
