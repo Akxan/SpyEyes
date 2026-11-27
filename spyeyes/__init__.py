@@ -6192,7 +6192,7 @@ def _flatten_value(v: Any, _depth: int = 0) -> str:
     return str(v)
 
 
-def _md_escape(s: Any) -> str:
+def _md_single_line(s: Any) -> str:
     """转义 markdown 表格 cell：
     - `|`：表格列分隔符
     - `\\r` `\\n`：避免注入伪标题
@@ -6212,6 +6212,14 @@ def _md_escape(s: Any) -> str:
             .replace('\u2029', ' ')
             .replace('`', '\\`')
             .strip())
+
+
+def _md_escape(s: Any) -> str:
+    """Markdown 报告里的不可信文本:_md_single_line + 把 `<` `>` 写成实体。
+    Markdown 允许内嵌 HTML,渲染器(GitHub / Obsidian / Jekyll / markdown-it)会把 `<script>`、
+    `<img onerror=…>` 当成真标签输出 —— 而 WHOIS 的注册组织、网页标题、平台名都是对方可控的。
+    (PDF 走 _pdf_esc,它自己处理尖括号,不能先变成实体。)"""
+    return _md_single_line(s).replace('<', '&lt;').replace('>', '&gt;')
 
 
 def _to_markdown(prefix: str, data: Any) -> str:
@@ -6634,9 +6642,9 @@ _PDF_LT, _PDF_GT = '\ue000', '\ue001'
 
 
 def _pdf_esc(s: Any) -> str:
-    """要拼进 _pdf_story 模板的用户文本:单行化(同 _md_escape)+ 尖括号换成占位符,
+    """要拼进 _pdf_story 模板的用户文本:单行化(同 _md_single_line)+ 尖括号换成占位符,
     交给 _pdf_para_text 还原成 `&lt;` / `&gt;`。表格单元格走 _pdf_para,不需要这个。"""
-    return _md_escape(s).replace('<', _PDF_LT).replace('>', _PDF_GT)
+    return _md_single_line(s).replace('<', _PDF_LT).replace('>', _PDF_GT)
 
 
 def _pdf_para_text(raw: Any) -> str:
@@ -7120,8 +7128,10 @@ def _is_permute_scan(data: Any) -> bool:
     与 permute_only 区分（后者是 `{'name': ..., 'permutations': [...]}`）。"""
     if not isinstance(data, dict) or '_error' in data or not data:
         return False
-    # permute_only 标志键（明确排除）
-    if 'permutations' in data or 'name' in data:
+    # 排除「仅生成变形」的形态。按形状判断(permutations 是列表),不能看到 name / permutations
+    # 这两个 key 就排除 —— 变形本身可以叫 name(`permute "Name Smith" --scan`),
+    # 那样报告会退化成通用字段表,还把 _statuses 带出来
+    if _is_permute_only(data):
         return False
     # 所有 value 必须是 dict（track_username 结果），且至少一个含真实数据
     return (all(isinstance(v, dict) for v in data.values())
@@ -8716,7 +8726,9 @@ def _to_graph_html(prefix: str, data: Any) -> str:
     html_lang = 'zh' if get_lang() == 'zh' else 'en'
     graph_title = _html_escape(t('report.graph_title'))
     graph_help_safe = _html_escape(t('report.graph_help'))
-    found_n_safe = _html_escape(t('report.graph_found', n=len(nodes) - 1))
+    # 只数「发现的东西」:不含中心节点(group 1:查询的用户名 / 域名 / 每个变形)和错误提示节点
+    found_n = sum(1 for n in nodes if n.get('group') != 1 and n.get('id') != 'err')
+    found_n_safe = _html_escape(t('report.graph_found', n=found_n))
     legend_q = _html_escape(t('report.legend_query'))
     legend_h = _html_escape(t('report.legend_hit'))
     legend_o = _html_escape(t('report.legend_other'))
