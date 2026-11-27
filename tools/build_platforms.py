@@ -383,7 +383,14 @@ def parse_sherlock(raw: dict) -> list:
 
 
 def parse_wmn(raw: dict) -> list:
-    """WhatsMyName 格式：{sites: [{name, uri_check, m_string?, e_string?, ...}]}"""
+    """WhatsMyName 格式：{sites: [{name, uri_check, e_code, e_string, m_code, m_string, ...}]}
+
+    字段含义（上游 schema，别按首字母猜）：
+      e_string / e_code = 账号**存在**（exists）时响应里出现的字符串 / 状态码
+      m_string / m_code = 账号**不存在**（missing）时响应里出现的字符串 / 状态码
+    所以 e_string → must_contain，m_string → not_found。
+    v1.1.0 ~ v1.8.6 把两者接反了（把 m 读成 "must contain"）：587 个平台对真实账号
+    恒报「未找到」，对「不存在也返回 200」的站点反而报「找到」。"""
     out = []
     for site in raw.get("sites", []):
         if site.get("known_accounts") and not site.get("uri_check"):
@@ -395,13 +402,13 @@ def parse_wmn(raw: dict) -> list:
             url = normalize_url(url)
         if "{}" not in url:
             continue
-        # m_string = "must contain"; e_string = error/not found
-        not_found = []
-        if site.get("e_string") and isinstance(site["e_string"], str):
-            not_found = [site["e_string"]]
+        # e_string = exists（存在标志）→ must_contain；m_string = missing（不存在标志）→ not_found
         must_contain = []
+        if site.get("e_string") and isinstance(site["e_string"], str):
+            must_contain = [site["e_string"]]
+        not_found = []
         if site.get("m_string") and isinstance(site["m_string"], str):
-            must_contain = [site["m_string"]]
+            not_found = [site["m_string"]]
         out.append({
             "name": site.get("name", "Unknown"),
             "url": url,

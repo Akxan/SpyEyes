@@ -773,10 +773,12 @@ TRANSLATIONS: dict = {
         'msg.hits':                   '{n} hits',
         'msg.more':                   '... +{n} more',
         'username.note_label':        'note',
-        'username.note_waf':          '{n} WAF-blocked',
+        'username.note_waf':          '{n} blocked (WAF / rate limit)',
         'username.note_skipped':      '{n} skipped (regex)',
         'username.note_neterr':       '{n} network errors',
-        'username.tag_waf':           '[ WAF blocked ]',
+        'username.tag_waf':           '[ blocked ]',
+        'username.note_unverifiable': '{n} unverifiable (site says "exists" for any name)',
+        'username.tag_unverifiable':  '[ unverifiable ]',
         'username.tag_skipped':       '[ skipped ]',
         'warn.quick_ignored':         '--quick ignored when --category is set',
         'report.variations_scanned':  '{n} variations scanned',
@@ -1139,10 +1141,12 @@ TRANSLATIONS: dict = {
         'msg.hits':                   '命中 {n} 个',
         'msg.more':                   '... 另有 {n} 个',
         'username.note_label':        '提示',
-        'username.note_waf':          '{n} 个被 WAF 拦截',
+        'username.note_waf':          '{n} 个被拦截(WAF / 限流)',
         'username.note_skipped':      '{n} 个跳过(格式不符)',
         'username.note_neterr':       '{n} 个网络错误',
-        'username.tag_waf':           '[ WAF 拦截 ]',
+        'username.tag_waf':           '[ 被拦截 ]',
+        'username.note_unverifiable': '{n} 个无法确认(该站对任何用户名都显示存在)',
+        'username.tag_unverifiable':  '[ 无法确认 ]',
         'username.tag_skipped':       '[ 已跳过 ]',
         'warn.quick_ignored':         '已指定 --category,--quick 被忽略',
         'report.variations_scanned':  '共扫描 {n} 个变形',
@@ -2062,6 +2066,9 @@ WAF_FINGERPRINTS = (
 )
 
 
+WAF_SNIFF_BYTES = 8192  # WAF 指纹只看响应体开头这么多字节
+
+
 def _detect_waf(body) -> bool:
     """检查响应体前 8KB 是否含已知 WAF 指纹。
     contract: body 应是 bytes（_check_username 总是传 bytes），但防御性接受 str。"""
@@ -2069,8 +2076,68 @@ def _detect_waf(body) -> bool:
         body = body.encode('utf-8', errors='replace')
     if not isinstance(body, (bytes, bytearray)):
         return False
-    sample = body[:8192].lower()
+    sample = body[:WAF_SNIFF_BYTES].lower()
     return any(fp in sample for fp in WAF_FINGERPRINTS)
+
+
+# 非 200 响应里「多半是被拦了，而不是用户不存在」的状态码。
+# 之前非 200 一律算「未找到」，而拦截页恰恰很少是 200（Cloudflare 质询 403 / 503、限流 429），
+# 等于 WAF 识别几乎从不生效，用户分不清「没有这个账号」和「站点没让我们看」。
+#   硬拦截：状态码本身就说明对方拒绝回答（429 限流；999 是 LinkedIn 对自动化请求的专用码）
+#   软拦截：403 / 503 也可能是站点对「用户不存在 / 无权查看」的正常回应，要有拦截证据才算
+_HARD_BLOCK_STATUSES = frozenset({429, 999})
+_SOFT_BLOCK_STATUSES = frozenset({403, 503})
+
+# 拦截页的响应头标志（HEAD 请求没有响应体，只能看头）：
+#   cf-mitigated: challenge             Cloudflare 质询页
+#   x-amzn-waf-action: challenge|captcha AWS WAF
+_WAF_HEADER_VALUES = {
+    'cf-mitigated': ('challenge',),
+    'x-amzn-waf-action': ('challenge', 'captcha'),
+}
+
+
+def _has_waf_headers(resp) -> bool:
+    """响应头里有没有 WAF 质询标志。"""
+    headers = getattr(resp, 'headers', None)
+    if headers is None:
+        return False
+    for name, values in _WAF_HEADER_VALUES.items():
+        value = headers.get(name)
+        if isinstance(value, str) and value.strip().lower() in values:
+            return True
+    return False
+
+
+def _read_body_prefix(resp, limit: int) -> bytes:
+    """从 stream=True 的响应里读前 limit 字节。
+    循环读保证拿满（chunked encoding 下单次 read 可能短读取）；HEAD 响应没有响应体，返回 b''。
+    读取出错向上抛，由调用方决定怎么归类。"""
+    chunks = []
+    remaining = limit
+    while remaining > 0:
+        chunk = resp.raw.read(remaining, decode_content=True)
+        # 非 bytes（如测试替身）也当作读完，避免 len() 为 0 时死循环
+        if not chunk or not isinstance(chunk, (bytes, bytearray)):
+            break
+        chunks.append(chunk)
+        remaining -= len(chunk)
+    return b''.join(chunks)
+
+
+def _is_blocked_response(resp) -> bool:
+    """非 200 响应是不是「被反爬 / 限流拦了」。True → 该报 STATUS_WAF，而不是「未找到」。"""
+    code = resp.status_code
+    if code in _HARD_BLOCK_STATUSES:
+        return True
+    if code not in _SOFT_BLOCK_STATUSES:
+        return False
+    if _has_waf_headers(resp):
+        return True
+    try:
+        return _detect_waf(_read_body_prefix(resp, WAF_SNIFF_BYTES))
+    except (OSError, ValueError, requests.exceptions.RequestException):
+        return False
 
 
 # _check_username 返回 status 取值
@@ -2079,6 +2146,7 @@ STATUS_NOT_FOUND = 'not_found'
 STATUS_WAF = 'waf'                    # 被 CDN/反爬墙拦了，结果不可信
 STATUS_INVALID_USERNAME = 'invalid'   # 用户名不符合该平台 regex 规则
 STATUS_NETWORK_ERROR = 'network_err'  # 超时/连接失败
+STATUS_UNVERIFIABLE = 'unverifiable'  # 该平台对随机乱码用户名也报「找到」→ 这次命中说明不了任何问题
 
 # username 长度上限（ReDoS 实际防护）：
 # data/platforms.json 是 contributor-controlled，无法静态识别所有恶意 regex
@@ -2136,7 +2204,8 @@ def _check_username(platform: 'Platform', username: str, timeout: float):
     1. **regex_check 预过滤**：username 不符合平台规则 → 跳过 HTTP，节省时间
     2. **HEAD 请求**：仅检测 status_code 的平台跳过 body 下载
     3. **stream + 64KB 读取**：需 body 检测的只读前 64 KB
-    4. **WAF 检测**：识别 Cloudflare/AWS WAF 等拦截，避免误报
+    4. **WAF 检测**：识别 Cloudflare/AWS WAF 等拦截，避免误报；拦截页多半不是 200，
+       所以 403 / 429 / 503 也要判（见 _is_blocked_response），不能直接算「未找到」
     """
     # 深度防御：track_username 入口已限制长度 + 已 strip，但 _check_username
     # 是公开的私有 API（_前缀），测试或未来扩展可能直接调用 → 这里再做一次防护
@@ -2167,23 +2236,27 @@ def _check_username(platform: 'Platform', username: str, timeout: float):
         resp = safe_get(full_url, timeout=timeout, method='HEAD', allow_redirects=True)
         if resp is None:
             return platform, None, STATUS_NETWORK_ERROR
-        # 405/501：平台不支持 HEAD（如 GitHub、Twitter），回退 GET 避免假阴性
-        if resp.status_code in (405, 501):
+        # 换 GET 再看一次的两种情况：
+        #   405/501：平台不支持 HEAD（如 GitHub、Twitter），不回退就是假阴性
+        #   403/503 且响应头看不出是不是拦截：不少站点对 HEAD 一律拒绝而 GET 正常；
+        #   真是拦截页的话也要靠响应体里的指纹来确认（HEAD 没有响应体）
+        if resp.status_code in (405, 501) or (
+                resp.status_code in _SOFT_BLOCK_STATUSES and not _has_waf_headers(resp)):
             resp.close()  # 关闭原 HEAD response 释放连接到 pool
             resp = safe_get(full_url, timeout=timeout, stream=True, allow_redirects=True)
             if resp is None:
                 return platform, None, STATUS_NETWORK_ERROR
-            try:
-                if resp.status_code != 200:
-                    return platform, None, STATUS_NOT_FOUND
-                return platform, full_url, STATUS_FOUND
-            finally:
-                resp.close()
-        # HEAD 成功路径也必须 close，否则 150 线程 × 千平台下连接池被 GC 才回收
+        # 成功路径也必须 close，否则 150 线程 × 千平台下连接池被 GC 才回收
         try:
             if resp.status_code != 200:
-                return platform, None, STATUS_NOT_FOUND
+                status = STATUS_WAF if _is_blocked_response(resp) else STATUS_NOT_FOUND
+                return platform, None, status
+            # GET 回退拿到了响应体（HEAD 为空）→ 顺手排除「200 的拦截页」
+            if _detect_waf(_read_body_prefix(resp, WAF_SNIFF_BYTES)):
+                return platform, None, STATUS_WAF
             return platform, full_url, STATUS_FOUND
+        except (OSError, ValueError, requests.exceptions.RequestException):
+            return platform, None, STATUS_NETWORK_ERROR
         finally:
             resp.close()
 
@@ -2191,20 +2264,11 @@ def _check_username(platform: 'Platform', username: str, timeout: float):
     resp = safe_get(full_url, timeout=timeout, stream=True, allow_redirects=True)
     if resp is None:
         return platform, None, STATUS_NETWORK_ERROR
-    if resp.status_code != 200:
-        resp.close()
-        return platform, None, STATUS_NOT_FOUND
     try:
-        # 循环读取保证拿满 64KB（chunked encoding 下单次 read 可能短读取）
-        chunks = []
-        remaining = 65536
-        while remaining > 0:
-            chunk = resp.raw.read(remaining, decode_content=True)
-            if not chunk:
-                break
-            chunks.append(chunk)
-            remaining -= len(chunk)
-        body = b''.join(chunks).lower()
+        if resp.status_code != 200:
+            status = STATUS_WAF if _is_blocked_response(resp) else STATUS_NOT_FOUND
+            return platform, None, status
+        body = _read_body_prefix(resp, 65536).lower()
     except (OSError, ValueError, requests.exceptions.RequestException):
         return platform, None, STATUS_NETWORK_ERROR
     finally:
@@ -2222,6 +2286,28 @@ def _check_username(platform: 'Platform', username: str, timeout: float):
         if not any(pat in body for pat in platform.must_contain):
             return platform, None, STATUS_NOT_FOUND
     return platform, full_url, STATUS_FOUND
+
+
+def _make_control_username() -> str:
+    """生成复查用的乱码用户名：12 位小写字母数字、字母开头，实际存在的概率可忽略。"""
+    return 'zq' + secrets.token_hex(5)
+
+
+def _check_username_verified(platform: 'Platform', username: str, control: str, timeout: float):
+    """_check_username + 命中复查：命中后用乱码用户名对同一平台再查一次，乱码也「找到」
+    就说明这个平台分辨不了用户存不存在（登录墙 / 软 404 / 任意路径都回 200 / 规则过时 /
+    DNS 劫持），这次命中不作数 → STATUS_UNVERIFIABLE。
+
+    近半数平台没有内容规则、只看 HTTP 200；实测扫一个不存在的用户名，全库有数百个平台
+    报「找到」。逐站维护规则跟不上站点改版，用同一套判定去问一个必然不存在的名字，
+    是不依赖规则质量的校准办法。代价是每个命中多一次请求。
+    复查本身被拦 / 网络出错 / 乱码名不合该站格式时无法下结论，保留原命中。"""
+    result = _check_username(platform, username, timeout)
+    if result[2] != STATUS_FOUND or not control:
+        return result
+    if _check_username(platform, control, timeout)[2] == STATUS_FOUND:
+        return platform, None, STATUS_UNVERIFIABLE
+    return result
 
 
 def _print_scan_progress(done: int, total: int, found_count: int) -> None:
@@ -2268,12 +2354,15 @@ def _ask_scan_mode() -> Optional[list]:
 
 
 def track_username(username: str, *, max_workers: int = 150, timeout: float = 5,
-                   show_progress: bool = True, categories: Optional[list] = None) -> dict:
+                   show_progress: bool = True, categories: Optional[list] = None,
+                   verify_hits: bool = True) -> dict:
     """并发扫描平台，返回 {platform_name: url_or_None}（按 PLATFORMS 顺序）。
     - 空 username 返回 {'_error': ...}（与 track_ip 行为一致）。
     - 单 worker 抛任何异常不影响其它平台 —— 该平台标记 None 跳过。
     - show_progress=True 且 stderr 是 TTY 时显示进度条。
-    - categories=['code', 'chinese', ...] 只扫指定类别；未知类别会触发 _error。"""
+    - categories=['code', 'chinese', ...] 只扫指定类别；未知类别会触发 _error。
+    - verify_hits=True（默认）：每个命中用乱码用户名复查，分辨不了的平台不计入命中
+      （见 _check_username_verified）；False 则保留原始判定。"""
     username = (username or '').strip()
     if not username:
         return {'_error': t('err.empty_input')}
@@ -2300,8 +2389,10 @@ def track_username(username: str, *, max_workers: int = 150, timeout: float = 5,
     total = len(platforms_to_scan)
     found_count = 0
     done = 0
+    control = _make_control_username() if verify_hits else ''
     with ThreadPoolExecutor(max_workers=max_workers) as ex:
-        futures = {ex.submit(_check_username, p, username, timeout): p for p in platforms_to_scan}
+        futures = {ex.submit(_check_username_verified, p, username, control, timeout): p
+                   for p in platforms_to_scan}
         try:
             for fut in as_completed(futures):
                 try:
@@ -5110,6 +5201,8 @@ def print_username_results(results: dict, show_all: bool = False) -> None:
         notes = []
         if status_counts.get(STATUS_WAF, 0):
             notes.append(f"{Color.Mage}{t('username.note_waf', n=status_counts[STATUS_WAF])}{Color.Reset}")
+        if status_counts.get(STATUS_UNVERIFIABLE, 0):
+            notes.append(f"{Color.Ye}{t('username.note_unverifiable', n=status_counts[STATUS_UNVERIFIABLE])}{Color.Reset}")
         if status_counts.get(STATUS_INVALID_USERNAME, 0):
             notes.append(f"{Color.Bl}{t('username.note_skipped', n=status_counts[STATUS_INVALID_USERNAME])}{Color.Reset}")
         if status_counts.get(STATUS_NETWORK_ERROR, 0):
@@ -5154,6 +5247,8 @@ def print_username_results(results: dict, show_all: bool = False) -> None:
                 p_status = statuses.get(p.name, STATUS_NOT_FOUND)
                 if p_status == STATUS_WAF:
                     note = f"{Color.Mage}{t('username.tag_waf')}{Color.Reset}"
+                elif p_status == STATUS_UNVERIFIABLE:
+                    note = f"{Color.Ye}{t('username.tag_unverifiable')}{Color.Reset}"
                 elif p_status == STATUS_INVALID_USERNAME:
                     note = f"{Color.Bl}{t('username.tag_skipped')}{Color.Reset}"
                 else:

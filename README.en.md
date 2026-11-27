@@ -42,7 +42,7 @@ Designed for **security researchers, penetration testers, SOC analysts, threat h
 ### 💎 Highlights
 
 - **14 commands in one tool, fully bilingual**: UI, error messages and **report content** all follow `--lang`
-- **3164 username platforms**: merged from Maigret + Sherlock + WhatsMyName, including 48 Chinese-region + 58 Spanish-region + 733 forums; 150-thread concurrency, full scan in ~20 s; keyword + `must_contain` double check + WAF fingerprinting; `permute` variations and `--recursive` follow-up scans
+- **3164 username platforms**: merged from Maigret + Sherlock + WhatsMyName, including 48 Chinese-region + 58 Spanish-region + 733 forums; 150-thread concurrency, full scan in ~20 s; keyword + `must_contain` double check + block detection + hit verification (each hit is re-checked with a random gibberish username; sites that say "exists" for anything are not counted); `permute` variations and `--recursive` follow-up scans
 - **Subdomains from 7 dimensions**: 6 passive sources (crt.sh / CertSpotter / HackerTarget / OTX / Wayback / optional subfinder with 30+ sources) + DNS bruteforce + JS/HTML host extraction + DNS validation + HTTP probe + wildcard detection; `--alive-only` adds an HTTP filter automatically under wildcard DNS / DNS hijacking
 - **Domain email harvest — free, no sign-up**: crt.sh + WHOIS + Bing + DuckDuckGo + Wayback + GitHub run concurrently, plus a parallel multi-target crawler (in-domain URLs only) and `--guess` name-pattern generation
 - **`investigate` dossier**: give it one domain — WHOIS + MX + subdomains + domain emails run concurrently, then it pivots automatically (alive-subdomain IPs → IP enrichment; personal-looking emails → username scan) into one consolidated report and relationship graph
@@ -81,7 +81,8 @@ Designed for **security researchers, penetration testers, SOC analysts, threat h
 - **3164 platforms** (Maigret + Sherlock + WhatsMyName, with Maigret engine resolution)
 - **48 Chinese-region** + **58 Spanish-region** + **733 forums**
 - **150-thread concurrent**, full ~20s, quick mode ~10s
-- Dual detection: not-found patterns + must-contain + WAF detection
+- Dual detection: not-found patterns + must-contain + block detection (WAF challenges / rate limits are not reported as "not found")
+- **Hit verification**: every hit is re-checked with a random gibberish username; sites where gibberish also "exists" are marked *unverifiable* and not counted
 - Shows hits only by default, use `--all` for full report
 - `--recursive` for follow-up scans (depth 0-2), `permute` subcommand for username variations
 

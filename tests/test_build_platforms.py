@@ -156,14 +156,24 @@ class TestParseSherlock:
 
 class TestParseWmn:
     def test_basic(self):
+        """回归：e_string 是「存在标志」、m_string 是「不存在标志」。
+        v1.1.0 ~ v1.8.6 接反了（m 被读成 must contain），这条测试当时也按接反的写。
+        夹具取自 WhatsMyName 上游的 Chess.com 条目原文。"""
         raw = {'sites': [
-            {'name': 'GitHub', 'uri_check': 'https://github.com/{account}',
-             'e_string': '404', 'm_string': 'contributions'},
+            {'name': 'Chess.com', 'uri_check': 'https://api.chess.com/pub/player/{account}',
+             'e_code': 200, 'e_string': '"player_id":',
+             'm_code': 404, 'm_string': '"code":0'},
         ]}
         result = bp.parse_wmn(raw)
-        assert result[0]['url'] == 'https://github.com/{}'
-        assert result[0]['not_found'] == ['404']
-        assert result[0]['must_contain'] == ['contributions']
+        assert result[0]['url'] == 'https://api.chess.com/pub/player/{}'
+        assert result[0]['must_contain'] == ['"player_id":']
+        assert result[0]['not_found'] == ['"code":0']
+
+    def test_missing_strings_give_empty_rules(self):
+        raw = {'sites': [{'name': 'X', 'uri_check': 'https://x.com/{account}', 'e_code': 200}]}
+        result = bp.parse_wmn(raw)
+        assert result[0]['must_contain'] == []
+        assert result[0]['not_found'] == []
 
     def test_username_template(self):
         raw = {'sites': [{'name': 'X', 'uri_check': 'https://x.com/{username}'}]}

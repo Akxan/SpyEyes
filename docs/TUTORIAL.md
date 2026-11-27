@@ -513,7 +513,7 @@ python3 -m spyeyes --lang zh user torvalds  # 强制中文输出
 > - 主流平台（GitHub / Twitter / Reddit）：精度 95%+
 > - 中文/西语精选区域：精度 85%+（手工 curate 过）
 > - Maigret 长尾：精度 70-80%（部分有 must_contain 验证）
-> - 真正登录墙的平台（LinkedIn / Instagram）依然会误报「未找到」
+> - 登录墙平台（LinkedIn / Instagram 等）对任何用户名都返回同一个页面,无法判断 —— 命中复查会把它们标为「无法确认」,被拦截的标为「被拦截」,都不计入命中
 
 ---
 
@@ -1320,7 +1320,7 @@ SPYEYES_NO_HISTORY=1 python3 -m spyeyes ...    # 本次不记录（也可写进 
 
 ### Q4: 选项 4 用户名查询大量显示「未找到」
 
-**原因**：现代社交平台普遍有反爬机制。本项目已使用 Chrome User-Agent + `must_contain` 双重检测大幅降低误报，但 LinkedIn / Instagram / TikTok 等强登录墙平台仍可能误判。
+**原因**：现代社交平台普遍有反爬机制。本项目用 Chrome User-Agent + `must_contain` 双重检测,并对每个命中做复查(用随机乱码用户名再查一次,乱码也"存在"的平台不作数)。LinkedIn / Instagram / TikTok 等强登录墙平台分辨不了用户是否存在,会显示为「无法确认」或「被拦截」,而不是「未找到」。
 **解决**：
 - 用 `--all` 看完整结果而非默认压缩输出
 - 试试更高 `--workers` 加速
@@ -1387,7 +1387,7 @@ python3 tools/build_platforms.py
 ## 已知限制
 
 1. **数据语言**：`ipwho.is` 返回的城市/地区名仍为英文（国家名已通过本地映射表译成中文）
-2. **用户名扫描准确率有限**：约 1753 个 `other` 长尾平台（主要来自 Maigret）仅做基本检测，有 20-30% 误报
+2. **用户名扫描准确率有限**：约 1753 个 `other` 长尾平台（主要来自 Maigret）仅做基本检测;命中复查能滤掉"对谁都说存在"的平台,但规则过时造成的漏判仍然存在
 3. **登录墙平台**：LinkedIn / Instagram / TikTok 强反爬，命中率较低
 4. **WHOIS 速度**：跨地区查询某些 TLD 时较慢（10-15 秒）
 5. **无代理支持**：默认走系统直连，无内置 HTTP/SOCKS 代理选项

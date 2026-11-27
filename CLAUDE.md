@@ -169,10 +169,20 @@ MVP 只支持 domain。阶段 1 并发跑 whois / mx / subdomain / domain-emails
   `_PLATFORMS_CACHE`,而不是 `PLATFORMS`。
 - `_load_platforms_json` 是防御式的:坏条目跳过、空模式剔除(空 bytes 模式会匹配任何页面)、
   不在 `CATEGORY_ORDER` 里的类别归入 `'other'`。
+- WhatsMyName 的字段别按首字母猜:`e_string` = 账号**存在**时出现的字符串(→ `must_contain`),
+  `m_string` = **不存在**时出现的(→ `not_found`)。v1.1.0–v1.8.6 接反过,587 个平台因此查不到真实账号;
+  `TestWmnRulesNotInverted` 守护发布的数据。
 - `tools/build_platforms.py` 负责重建 JSON。重名取舍:检测模式更多者胜,平手时
   `maigret > whatsmyname > sherlock`。wheel 通过 `[tool.setuptools.package-data]` 打包该 JSON。
 - 路径用 `os.path.realpath(__file__)`,**不要**用 `abspath` —— `abspath` 在 brew/pipx 软链
   安装下会找不到 data 目录,静默丢掉整份 JSON。不要改。
+
+### 用户名判定(`_check_username` / `_check_username_verified`)
+- 非 200 不等于「未找到」:429 / 999 直接算被拦(`STATUS_WAF`);403 / 503 要有证据才算 ——
+  响应头(`cf-mitigated`、`x-amzn-waf-action`)或响应体里的 WAF 指纹;HEAD 遇到 403 / 503 会换 GET 再看一次。
+- **命中复查**:`track_username` 默认(`verify_hits=True`)对每个命中再用乱码用户名
+  (`_make_control_username()`)查一次,乱码也命中 → `STATUS_UNVERIFIABLE`,不计入命中。
+  这是对付「只看 HTTP 200」平台误报的办法 —— 实测借用上游内容规则反而大幅增加漏判,不要再走那条路。
 
 ### HTTP 工具
 - `_get_session()` 返回线程本地的 `requests.Session`(连接池 200,150 线程用户名扫描时复用连接)。
@@ -196,6 +206,8 @@ MVP 只支持 domain。阶段 1 并发跑 whois / mx / subdomain / domain-emails
 - 测试 mock `safe_get` / `requests` / `dns.resolver` / `whois.whois` / `subprocess.run` ——
   不要引入真实网络调用。`MagicMock()` 响应永远为真值,会掩盖上面的 `if resp:` bug;
   需要验证状态码语义时用真实的 `requests.Response()`。
+- 要测 `track_username` 的命中:mock 的 `safe_get` 若对所有地址都回 200,命中会被复查判成
+  `unverifiable`。让乱码名(patch `_make_control_username`)那次请求返回 404,或传 `verify_hits=False`。
 - CI 强制每个测试 `--timeout=15`(thread 方式)。遍历全部平台的循环必须很便宜
   (mock 掉 `safe_get`)或限定类别。
 - 修 bug 必须附回归测试,且该测试在旧代码上会失败。

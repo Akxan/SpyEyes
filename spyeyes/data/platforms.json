@@ -151,10 +151,10 @@
   "name": "Vimeo",
   "url": "https://vimeo.com/{}",
   "not_found": [
-   "og:type"
+   "VimeUhOh"
   ],
   "must_contain": [
-   "VimeUhOh"
+   "og:type"
   ],
   "category": "video",
   "regex_check": ""
@@ -293,10 +293,10 @@
   "name": "Spotify",
   "url": "https://open.spotify.com/user/{}",
   "not_found": [
-   "content=\"profile\""
+   "Page not found"
   ],
   "must_contain": [
-   "Page not found"
+   "content=\"profile\""
   ],
   "category": "music",
   "regex_check": ""
@@ -304,10 +304,10 @@
  {
   "name": "Flickr",
   "url": "https://www.flickr.com/photos/{}/",
-  "not_found": [
+  "not_found": [],
+  "must_contain": [
    "| Flickr"
   ],
-  "must_contain": [],
   "category": "art",
   "regex_check": ""
  },
@@ -331,10 +331,10 @@
   "name": "Medium",
   "url": "https://medium.com/@{}/about",
   "not_found": [
-   "Medium member since"
+   "Out of nothing, something"
   ],
   "must_contain": [
-   "Out of nothing, something"
+   "Medium member since"
   ],
   "category": "writing",
   "regex_check": ""
@@ -355,10 +355,10 @@
   "name": "Sourceforge",
   "url": "https://sourceforge.net/rest/u/{}/profile",
   "not_found": [
-   "\"username\":"
+   "id=\"message-image-404\""
   ],
   "must_contain": [
-   "id=\"message-image-404\""
+   "\"username\":"
   ],
   "category": "other",
   "regex_check": ""
@@ -375,10 +375,10 @@
   "name": "VK",
   "url": "https://vk.com/{}",
   "not_found": [
-   "content=\"profile\""
+   "404 Not Found"
   ],
   "must_contain": [
-   "404 Not Found"
+   "content=\"profile\""
   ],
   "category": "social",
   "regex_check": ""
@@ -413,10 +413,10 @@
   "name": "Researchgate",
   "url": "https://www.researchgate.net/profile/{}",
   "not_found": [
-   " | "
+   "20+ million researchers on ResearchGate"
   ],
   "must_contain": [
-   "20+ million researchers on ResearchGate"
+   " | "
   ],
   "category": "other",
   "regex_check": ""
@@ -425,10 +425,10 @@
   "name": "Scratch",
   "url": "https://api.scratch.mit.edu/accounts/checkusername/{}/",
   "not_found": [
-   "\"msg\":\"username exists\""
+   "\"msg\":\"valid username\""
   ],
   "must_contain": [
-   "\"msg\":\"valid username\""
+   "\"msg\":\"username exists\""
   ],
   "category": "other",
   "regex_check": ""
@@ -515,10 +515,10 @@
   "name": "GitLab",
   "url": "https://gitlab.com/api/v4/users?username={}",
   "not_found": [
-   "\"id\":"
+   "[]"
   ],
   "must_contain": [
-   "[]"
+   "\"id\":"
   ],
   "category": "code",
   "regex_check": ""
@@ -527,10 +527,10 @@
   "name": "Twitch",
   "url": "https://twitchtracker.com/{}",
   "not_found": [
-   "Overview</a>"
+   "<title>404 Page Not Found"
   ],
   "must_contain": [
-   "<title>404 Page Not Found"
+   "Overview</a>"
   ],
   "category": "video",
   "regex_check": ""
@@ -599,10 +599,10 @@
   "name": "Substack",
   "url": "https://substack.com/@{}",
   "not_found": [
-   "| Substack</title>"
+   "&quot; on Substack</title>"
   ],
   "must_contain": [
-   "&quot; on Substack</title>"
+   "| Substack</title>"
   ],
   "category": "writing",
   "regex_check": ""
@@ -611,10 +611,10 @@
   "name": "Blogger",
   "url": "https://www.blogger.com/profile/{}",
   "not_found": [
-   "shadow-light user-stats"
+   "Sorry, the blog you were looking for does not exist."
   ],
   "must_contain": [
-   "Sorry, the blog you were looking for does not exist."
+   "shadow-light user-stats"
   ],
   "category": "writing",
   "regex_check": ""
@@ -651,10 +651,10 @@
   "name": "tripadvisor",
   "url": "https://www.tripadvisor.com/Profile/{}",
   "not_found": [
-   "Contributions"
+   "This page is on vacation"
   ],
   "must_contain": [
-   "This page is on vacation"
+   "Contributions"
   ],
   "category": "other",
   "regex_check": ""
@@ -679,10 +679,10 @@
   "name": "Bandcamp",
   "url": "https://bandcamp.com/{}",
   "not_found": [
-   " collection | Bandcamp</title>"
+   "<h2>Sorry, that something isn’t here.</h2>"
   ],
   "must_contain": [
-   "<h2>Sorry, that something isn’t here.</h2>"
+   " collection | Bandcamp</title>"
   ],
   "category": "music",
   "regex_check": ""
@@ -691,10 +691,10 @@
   "name": "Imgur",
   "url": "https://api.imgur.com/account/v1/accounts/{}?client_id=546c25a59c58ad7",
   "not_found": [
-   "\"username\":"
+   "\"code\":\"404\""
   ],
   "must_contain": [
-   "\"code\":\"404\""
+   "\"username\":"
   ],
   "category": "art",
   "regex_check": ""
@@ -727,10 +727,10 @@
   "name": "themeforest",
   "url": "https://themeforest.net/user/{}",
   "not_found": [
-   "s profile on ThemeForest"
+   "Page Not Found | ThemeForest"
   ],
   "must_contain": [
-   "Page Not Found | ThemeForest"
+   "s profile on ThemeForest"
   ],
   "category": "other",
   "regex_check": ""
@@ -739,10 +739,10 @@
   "name": "MySpace",
   "url": "https://myspace.com/{}",
   "not_found": [
-   "<!-- Profile -->"
+   "<!-- 404 -->"
   ],
   "must_contain": [
-   "<!-- 404 -->"
+   "<!-- Profile -->"
   ],
   "category": "social",
   "regex_check": ""
@@ -884,10 +884,10 @@
   "name": "Livejournal",
   "url": "https://{}.livejournal.com",
   "not_found": [
-   "<link rel=\"canonical\" href=\""
+   "<title>Unknown Journal"
   ],
   "must_contain": [
-   "<title>Unknown Journal"
+   "<link rel=\"canonical\" href=\""
   ],
   "category": "other",
   "regex_check": ""
@@ -896,10 +896,10 @@
   "name": "Dribbble",
   "url": "https://dribbble.com/{}",
   "not_found": [
-   " | Dribbble"
+   "(404)</title>"
   ],
   "must_contain": [
-   "(404)</title>"
+   " | Dribbble"
   ],
   "category": "art",
   "regex_check": ""
@@ -908,10 +908,10 @@
   "name": "Quora",
   "url": "https://www.quora.com/profile/{}",
   "not_found": [
-   "Credentials"
+   "Page Not Found"
   ],
   "must_contain": [
-   "Page Not Found"
+   "Credentials"
   ],
   "category": "forum",
   "regex_check": ""
@@ -920,10 +920,10 @@
   "name": "OpenStreetMap",
   "url": "https://www.openstreetmap.org/user/{}",
   "not_found": [
-   "Mapper since:"
+   "does not exist"
   ],
   "must_contain": [
-   "does not exist"
+   "Mapper since:"
   ],
   "category": "other",
   "regex_check": ""
@@ -932,10 +932,10 @@
   "name": "Kickstarter",
   "url": "https://www.kickstarter.com/profile/{}",
   "not_found": [
-   "projects"
+   "Oops, Something went missing"
   ],
   "must_contain": [
-   "Oops, Something went missing"
+   "projects"
   ],
   "category": "funding",
   "regex_check": ""
@@ -980,10 +980,10 @@
   "name": "Fandom",
   "url": "https://www.fandom.com/u/{}",
   "not_found": [
-   "| Profile | Fandom"
+   "Not Found"
   ],
   "must_contain": [
-   "Not Found"
+   "| Profile | Fandom"
   ],
   "category": "gaming",
   "regex_check": ""
@@ -1016,10 +1016,10 @@
   "name": "Xing",
   "url": "https://www.xing.com/profile/{}",
   "not_found": [
-   "<meta data-rh="
+   "404 Not Found | XING"
   ],
   "must_contain": [
-   "404 Not Found | XING"
+   "<meta data-rh="
   ],
   "category": "other",
   "regex_check": ""
@@ -1028,10 +1028,10 @@
   "name": "DeviantArt",
   "url": "https://www.deviantart.com/{}",
   "not_found": [
-   " | DeviantArt</title>"
+   "DeviantArt: 404"
   ],
   "must_contain": [
-   "DeviantArt: 404"
+   " | DeviantArt</title>"
   ],
   "category": "art",
   "regex_check": ""
@@ -1089,10 +1089,10 @@
   "name": "BuzzFeed",
   "url": "https://www.buzzfeed.com/{}",
   "not_found": [
-   " on BuzzFeed</title><meta"
+   "We can't find the page you're looking for"
   ],
   "must_contain": [
-   "We can't find the page you're looking for"
+   " on BuzzFeed</title><meta"
   ],
   "category": "other",
   "regex_check": ""
@@ -1101,10 +1101,10 @@
   "name": "W3Schools",
   "url": "https://pathfinder-api.kai.w3spaces.com/public-profile-api/{}",
   "not_found": [
-   "\"userId\":"
+   "\"message\":\"Profile does not exists or not visible\""
   ],
   "must_contain": [
-   "\"message\":\"Profile does not exists or not visible\""
+   "\"userId\":"
   ],
   "category": "other",
   "regex_check": ""
@@ -1113,10 +1113,10 @@
   "name": "Naver",
   "url": "https://blog.naver.com/{}",
   "not_found": [
-   " : 네이버 블로그"
+   "페이지를 찾을 수 없습니다"
   ],
   "must_contain": [
-   "페이지를 찾을 수 없습니다"
+   " : 네이버 블로그"
   ],
   "category": "writing",
   "regex_check": ""
@@ -1157,10 +1157,10 @@
   "name": "Snapchat",
   "url": "https://www.snapchat.com/@{}",
   "not_found": [
-   "is on Snapchat!"
+   "NOT_FOUND"
   ],
   "must_contain": [
-   "NOT_FOUND"
+   "is on Snapchat!"
   ],
   "category": "social",
   "regex_check": ""
@@ -1169,10 +1169,10 @@
   "name": "Trello",
   "url": "https://trello.com/1/Members/{}",
   "not_found": [
-   "\"id\":"
+   "<h1>Oh no! 404!</h1>"
   ],
   "must_contain": [
-   "<h1>Oh no! 404!</h1>"
+   "\"id\":"
   ],
   "category": "social",
   "regex_check": ""
@@ -1193,10 +1193,10 @@
   "name": "Mixcloud",
   "url": "https://api.mixcloud.com/{}/",
   "not_found": [
-   "\"username\":"
+   "\"error\":"
   ],
   "must_contain": [
-   "\"error\":"
+   "\"username\":"
   ],
   "category": "music",
   "regex_check": ""
@@ -1369,10 +1369,10 @@
   "name": "Steam",
   "url": "https://steamcommunity.com/id/{}",
   "not_found": [
-   "g_rgProfileData ="
+   "Steam Community :: Error"
   ],
   "must_contain": [
-   "Steam Community :: Error"
+   "g_rgProfileData ="
   ],
   "category": "forum",
   "regex_check": ""
@@ -1409,10 +1409,10 @@
   "name": "about.me",
   "url": "https://about.me/{}",
   "not_found": [
-   " | about.me"
+   "<title>about.me</title>"
   ],
   "must_contain": [
-   "<title>about.me</title>"
+   " | about.me"
   ],
   "category": "other",
   "regex_check": ""
@@ -1421,10 +1421,10 @@
   "name": "Instructables",
   "url": "https://www.instructables.com/json-api/showAuthorExists?screenName={}",
   "not_found": [
-   "\"exists\": true"
+   "\"error\": \"Sorry, we couldn't find that one!\""
   ],
   "must_contain": [
-   "\"error\": \"Sorry, we couldn't find that one!\""
+   "\"exists\": true"
   ],
   "category": "other",
   "regex_check": ""
@@ -1501,10 +1501,10 @@
   "name": "HuggingFace",
   "url": "https://huggingface.co/{}",
   "not_found": [
-   "data-target=\"UserProfile\""
+   "content=\"404 – Hugging Face\""
   ],
   "must_contain": [
-   "content=\"404 – Hugging Face\""
+   "data-target=\"UserProfile\""
   ],
   "category": "spanish",
   "regex_check": ""
@@ -1535,10 +1535,10 @@
   "name": "itch.io",
   "url": "https://itch.io/profile/{}",
   "not_found": [
-   "class=\"user_data\""
+   "class=\"not_found_page page_widget base_widget\""
   ],
   "must_contain": [
-   "class=\"not_found_page page_widget base_widget\""
+   "class=\"user_data\""
   ],
   "category": "gaming",
   "regex_check": ""
@@ -1547,10 +1547,10 @@
   "name": "Bitbucket",
   "url": "https://bitbucket.org/!api/2.0/repositories/{}?page=1&pagelen=25&sort=-updated_on&q=&fields=-values.owner%2C-values.workspace",
   "not_found": [
-   "full_name"
+   "No workspace with identifier"
   ],
   "must_contain": [
-   "No workspace with identifier"
+   "full_name"
   ],
   "category": "code",
   "regex_check": ""
@@ -1559,10 +1559,10 @@
   "name": "Last.fm",
   "url": "https://www.last.fm/user/{}",
   "not_found": [
-   "class=\"header-info\""
+   "<h1>404 - Page Not Found</h1>"
   ],
   "must_contain": [
-   "<h1>404 - Page Not Found</h1>"
+   "class=\"header-info\""
   ],
   "category": "music",
   "regex_check": ""
@@ -1627,10 +1627,10 @@
   "name": "Pastebin",
   "url": "https://pastebin.com/u/{}",
   "not_found": [
-   "class=\"user-view\""
+   "Not Found (#404)"
   ],
   "must_contain": [
-   "Not Found (#404)"
+   "class=\"user-view\""
   ],
   "category": "other",
   "regex_check": ""
@@ -1659,10 +1659,10 @@
   "name": "Gamespot",
   "url": "https://www.gamespot.com/profile/{}/summary/activity/?ajax",
   "not_found": [
-   "\"success\":true"
+   "\"success\":false"
   ],
   "must_contain": [
-   "\"success\":false"
+   "\"success\":true"
   ],
   "category": "other",
   "regex_check": ""
@@ -1681,10 +1681,10 @@
   "name": "Figma",
   "url": "https://www.figma.com/api/profile/handle/{}",
   "not_found": [
-   "\"status\":200"
+   "\"status\":404"
   ],
   "must_contain": [
-   "\"status\":404"
+   "\"status\":200"
   ],
   "category": "other",
   "regex_check": ""
@@ -1736,10 +1736,10 @@
   "name": "tradingview",
   "url": "https://www.tradingview.com/u/{}/",
   "not_found": [
-   "— Trading Ideas &amp;"
+   "Page not found — TradingView"
   ],
   "must_contain": [
-   "Page not found — TradingView"
+   "— Trading Ideas &amp;"
   ],
   "category": "other",
   "regex_check": ""
@@ -1748,10 +1748,10 @@
   "name": "Discogs",
   "url": "https://api.discogs.com/users/{}",
   "not_found": [
-   "\"id\":"
+   "\"message\": \"User does not exist or may have been deleted.\""
   ],
   "must_contain": [
-   "\"message\": \"User does not exist or may have been deleted.\""
+   "\"id\":"
   ],
   "category": "other",
   "regex_check": ""
@@ -1780,10 +1780,10 @@
   "name": "CodePen",
   "url": "https://codepen.io/{}",
   "not_found": [
-   "property=\"og:url\""
+   "data-test-id=\"text-404\""
   ],
   "must_contain": [
-   "data-test-id=\"text-404\""
+   "property=\"og:url\""
   ],
   "category": "code",
   "regex_check": ""
@@ -1811,10 +1811,10 @@
   "name": "SmugMug",
   "url": "https://{}.smugmug.com",
   "not_found": [
-   "schema.org/Person"
+   "schema.org/Thing"
   ],
   "must_contain": [
-   "schema.org/Thing"
+   "schema.org/Person"
   ],
   "category": "other",
   "regex_check": ""
@@ -1833,10 +1833,10 @@
   "name": "Duolingo",
   "url": "https://www.duolingo.com/2017-06-30/users?username={}&_=1628308619574",
   "not_found": [
-   "joinedClassroomIds"
+   "\"users\" : []"
   ],
   "must_contain": [
-   "\"users\" : []"
+   "joinedClassroomIds"
   ],
   "category": "spanish",
   "regex_check": ""
@@ -1925,10 +1925,10 @@
   "name": "Gitee",
   "url": "https://gitee.com/{}",
   "not_found": [
-   "class=\"ui container user_page\""
+   "class=\"container error midCenter\""
   ],
   "must_contain": [
-   "class=\"container error midCenter\""
+   "class=\"ui container user_page\""
   ],
   "category": "code",
   "regex_check": ""
@@ -1936,10 +1936,10 @@
  {
   "name": "ImageShack",
   "url": "https://imageshack.com/user/{}",
-  "not_found": [
+  "not_found": [],
+  "must_contain": [
    "s Images</title>"
   ],
-  "must_contain": [],
   "category": "other",
   "regex_check": ""
  },
@@ -1977,10 +1977,10 @@
   "name": "HubPages",
   "url": "https://hubpages.com/@{}",
   "not_found": [
-   "name\">Followers"
+   "Sorry, that user does not exist"
   ],
   "must_contain": [
-   "Sorry, that user does not exist"
+   "name\">Followers"
   ],
   "category": "other",
   "regex_check": ""
@@ -1989,10 +1989,10 @@
   "name": "Note",
   "url": "https://note.com/{}",
   "not_found": [
-   "フォロワー"
+   "お探しのページが見つかりません。"
   ],
   "must_contain": [
-   "お探しのページが見つかりません。"
+   "フォロワー"
   ],
   "category": "other",
   "regex_check": ""
@@ -2001,10 +2001,10 @@
   "name": "Flipboard",
   "url": "https://flipboard.com/@{}",
   "not_found": [
-   ") on Flipboard"
+   "<title></title>"
   ],
   "must_contain": [
-   "<title></title>"
+   ") on Flipboard"
   ],
   "category": "other",
   "regex_check": ""
@@ -2021,10 +2021,10 @@
   "name": "ArtStation",
   "url": "https://www.artstation.com/{}",
   "not_found": [
-   "Portfolio"
+   "Page not found"
   ],
   "must_contain": [
-   "Page not found"
+   "Portfolio"
   ],
   "category": "art",
   "regex_check": ""
@@ -2067,10 +2067,10 @@
   "name": "Gitea",
   "url": "https://gitea.com/api/v1/users/{}",
   "not_found": [
-   "\"id\":"
+   "\"message\":\"user redirect does not exist"
   ],
   "must_contain": [
-   "\"message\":\"user redirect does not exist"
+   "\"id\":"
   ],
   "category": "other",
   "regex_check": ""
@@ -2089,10 +2089,10 @@
   "name": "diigo",
   "url": "https://www.diigo.com/interact_api/load_profile_info?name={}",
   "not_found": [
-   "regist_at"
+   "{}"
   ],
   "must_contain": [
-   "{}"
+   "regist_at"
   ],
   "category": "other",
   "regex_check": ""
@@ -2225,10 +2225,10 @@
   "name": "discuss.elastic.co",
   "url": "https://discuss.elastic.co/u/{}",
   "not_found": [
-   "<title>  Profile"
+   "Oops!"
   ],
   "must_contain": [
-   "Oops!"
+   "<title>  Profile"
   ],
   "category": "spanish",
   "regex_check": ""
@@ -2259,10 +2259,10 @@
   "name": "polygon",
   "url": "https://www.polygon.com/users/{}",
   "not_found": [
-   "- Polygon"
+   "404 Not found"
   ],
   "must_contain": [
-   "404 Not found"
+   "- Polygon"
   ],
   "category": "other",
   "regex_check": ""
@@ -2299,10 +2299,10 @@
   "name": "PCGamer",
   "url": "https://forums.pcgamer.com/members/{}/",
   "not_found": [
-   "Joined"
+   "Oops! We ran into some problems"
   ],
   "must_contain": [
-   "Oops! We ran into some problems"
+   "Joined"
   ],
   "category": "forum",
   "regex_check": ""
@@ -2355,10 +2355,10 @@
   "name": "Wattpad",
   "url": "https://www.wattpad.com/api/v3/users/{}",
   "not_found": [
-   "\"username\":"
+   "\"error_code\":"
   ],
   "must_contain": [
-   "\"error_code\":"
+   "\"username\":"
   ],
   "category": "writing",
   "regex_check": ""
@@ -3967,10 +3967,10 @@
   "name": "freeCodeCamp",
   "url": "https://api.freecodecamp.org/users/get-public-profile?username={}",
   "not_found": [
-   "\"user\":"
+   "{}"
   ],
   "must_contain": [
-   "{}"
+   "\"user\":"
   ],
   "category": "other",
   "regex_check": ""
@@ -3979,10 +3979,10 @@
   "name": "Letterboxd",
   "url": "https://letterboxd.com/{}/",
   "not_found": [
-   "’s profile on Letterboxd"
+   "Sorry, we can’t find the page you’ve requested."
   ],
   "must_contain": [
-   "Sorry, we can’t find the page you’ve requested."
+   "’s profile on Letterboxd"
   ],
   "category": "other",
   "regex_check": ""
@@ -3991,10 +3991,10 @@
   "name": "MyAnimeList",
   "url": "https://myanimelist.net/profile/{}",
   "not_found": [
-   "Profile - MyAnimeList.net"
+   "<title>404 Not Found"
   ],
   "must_contain": [
-   "<title>404 Not Found"
+   "Profile - MyAnimeList.net"
   ],
   "category": "gaming",
   "regex_check": ""
@@ -4023,10 +4023,10 @@
   "name": "Flightradar24",
   "url": "https://my.flightradar24.com/{}/",
   "not_found": [
-   "class=\"profile-card\" data-profile-user="
+   "class=\"main page-not-found-main"
   ],
   "must_contain": [
-   "class=\"main page-not-found-main"
+   "class=\"profile-card\" data-profile-user="
   ],
   "category": "other",
   "regex_check": ""
@@ -4089,10 +4089,10 @@
   "name": "JSFiddle",
   "url": "https://jsfiddle.net/user/{}/",
   "not_found": [
-   "Settings - JSFiddle - Code Playground"
+   "That page doesn't exist."
   ],
   "must_contain": [
-   "That page doesn't exist."
+   "Settings - JSFiddle - Code Playground"
   ],
   "category": "code",
   "regex_check": ""
@@ -4150,10 +4150,10 @@
   "name": "GOG",
   "url": "https://www.gog.com/u/{}",
   "not_found": [
-   "window.profilesData.profileUser"
+   "href=\"http://www.gog.com/404\""
   ],
   "must_contain": [
-   "href=\"http://www.gog.com/404\""
+   "window.profilesData.profileUser"
   ],
   "category": "other",
   "regex_check": ""
@@ -4162,10 +4162,10 @@
   "name": "Geocaching",
   "url": "https://www.geocaching.com/p/?u={}",
   "not_found": [
-   "class=\"hax-profile\""
+   "class=\"callout http-error\""
   ],
   "must_contain": [
-   "class=\"callout http-error\""
+   "class=\"hax-profile\""
   ],
   "category": "other",
   "regex_check": ""
@@ -4174,10 +4174,10 @@
   "name": "Coub",
   "url": "https://coub.com/api/v2/channels/{}",
   "not_found": [
-   "\"user_id\":"
+   "\"error\":\"Unhandled exception\""
   ],
   "must_contain": [
-   "\"error\":\"Unhandled exception\""
+   "\"user_id\":"
   ],
   "category": "other",
   "regex_check": ""
@@ -4345,10 +4345,10 @@
   "name": "Replit",
   "url": "https://replit.com/@{}",
   "not_found": [
-   "\"__typename\":\"User\""
+   "\"statusCode\":404"
   ],
   "must_contain": [
-   "\"statusCode\":404"
+   "\"__typename\":\"User\""
   ],
   "category": "code",
   "regex_check": ""
@@ -4380,10 +4380,10 @@
   "name": "Venmo",
   "url": "https://account.venmo.com/u/{}",
   "not_found": [
-   "profileInfo_username__"
+   "Sorry, the page you requested does not exist!"
   ],
   "must_contain": [
-   "Sorry, the page you requested does not exist!"
+   "profileInfo_username__"
   ],
   "category": "other",
   "regex_check": ""
@@ -4441,10 +4441,10 @@
   "name": "Teletype",
   "url": "https://teletype.in/@{}",
   "not_found": [
-   "class=\"layout__content m_main blog\""
+   "class=\"error\""
   ],
   "must_contain": [
-   "class=\"error\""
+   "class=\"layout__content m_main blog\""
   ],
   "category": "other",
   "regex_check": ""
@@ -4483,10 +4483,10 @@
   "name": "Mix",
   "url": "https://mix.com/{}/",
   "not_found": [
-   "<title>@"
+   "The best content from the open web, personalized."
   ],
   "must_contain": [
-   "The best content from the open web, personalized."
+   "<title>@"
   ],
   "category": "other",
   "regex_check": ""
@@ -4566,10 +4566,10 @@
   "name": "Weblate",
   "url": "https://hosted.weblate.org/user/{}/",
   "not_found": [
-   "class=\"user-page text-center\""
+   "<h2>Page Not Found</h2>"
   ],
   "must_contain": [
-   "<h2>Page Not Found</h2>"
+   "class=\"user-page text-center\""
   ],
   "category": "other",
   "regex_check": ""
@@ -4604,10 +4604,10 @@
   "name": "slides",
   "url": "https://slides.com/{}",
   "not_found": [
-   "Presentations by"
+   "You may have mistyped the address"
   ],
   "must_contain": [
-   "You may have mistyped the address"
+   "Presentations by"
   ],
   "category": "other",
   "regex_check": ""
@@ -4947,10 +4947,10 @@
   "name": "OpenSource",
   "url": "https://opensource.com/users/{}",
   "not_found": [
-   "\"contentID\":"
+   "\"errorCode\": \"404\""
   ],
   "must_contain": [
-   "\"errorCode\": \"404\""
+   "\"contentID\":"
   ],
   "category": "other",
   "regex_check": ""
@@ -5013,10 +5013,10 @@
   "name": "LibraryThing",
   "url": "https://www.librarything.com/profile/{}",
   "not_found": [
-   "<dt>Joined</dt>"
+   "Error: This user doesn't exist"
   ],
   "must_contain": [
-   "Error: This user doesn't exist"
+   "<dt>Joined</dt>"
   ],
   "category": "other",
   "regex_check": ""
@@ -5035,10 +5035,10 @@
   "name": "Kongregate",
   "url": "https://www.kongregate.com/accounts/{}",
   "not_found": [
-   "Member Since"
+   "Sorry, no account with that name was found"
   ],
   "must_contain": [
-   "Sorry, no account with that name was found"
+   "Member Since"
   ],
   "category": "other",
   "regex_check": ""
@@ -5047,10 +5047,10 @@
   "name": "freesound",
   "url": "https://freesound.org/people/{}/section/stats/?ajax=1",
   "not_found": [
-   "forum posts"
+   "<h1>Page not found</h1>"
   ],
   "must_contain": [
-   "<h1>Page not found</h1>"
+   "forum posts"
   ],
   "category": "other",
   "regex_check": ""
@@ -5161,10 +5161,10 @@
   "name": "Soup",
   "url": "https://www.soup.io/author/{}",
   "not_found": [
-   "Author at Soup.io"
+   "Soup.io - News, Sports, Entertainment, TV, Tech, Gaming"
   ],
   "must_contain": [
-   "Soup.io - News, Sports, Entertainment, TV, Tech, Gaming"
+   "Author at Soup.io"
   ],
   "category": "other",
   "regex_check": ""
@@ -5204,10 +5204,10 @@
   "name": "Hackster",
   "url": "https://www.hackster.io/{}",
   "not_found": [
-   "data-hypernova-key=\"UserProfile\""
+   "id=\"error\""
   ],
   "must_contain": [
-   "id=\"error\""
+   "data-hypernova-key=\"UserProfile\""
   ],
   "category": "other",
   "regex_check": ""
@@ -5216,10 +5216,10 @@
   "name": "XVideos",
   "url": "https://www.xvideos.com/profiles/{}/feed/",
   "not_found": [
-   "\"result\":true"
+   "\"message\":\"Unknown user\""
   ],
   "must_contain": [
-   "\"message\":\"Unknown user\""
+   "\"result\":true"
   ],
   "category": "adult",
   "regex_check": ""
@@ -5272,10 +5272,10 @@
   "name": "AllMyLinks",
   "url": "https://allmylinks.com/{}",
   "not_found": [
-   "class=\"site-profile guest\""
+   "class=\"site-error\""
   ],
   "must_contain": [
-   "class=\"site-error\""
+   "class=\"site-profile guest\""
   ],
   "category": "other",
   "regex_check": ""
@@ -5284,10 +5284,10 @@
   "name": "Carbonmade",
   "url": "https://{}.carbonmade.com/",
   "not_found": [
-   "s online portfolio"
+   "site not found"
   ],
   "must_contain": [
-   "site not found"
+   "s online portfolio"
   ],
   "category": "other",
   "regex_check": ""
@@ -5296,10 +5296,10 @@
   "name": "Audiojungle",
   "url": "https://audiojungle.net/user/{}",
   "not_found": [
-   "s profile on AudioJungle"
+   "404 - Nothing to see here"
   ],
   "must_contain": [
-   "404 - Nothing to see here"
+   "s profile on AudioJungle"
   ],
   "category": "other",
   "regex_check": ""
@@ -5308,10 +5308,10 @@
   "name": "Untappd",
   "url": "https://untappd.com/user/{}/",
   "not_found": [
-   "class=\"cont user_profile\""
+   "class=\"search_404\""
   ],
   "must_contain": [
-   "class=\"search_404\""
+   "class=\"cont user_profile\""
   ],
   "category": "other",
   "regex_check": ""
@@ -5580,10 +5580,10 @@
   "name": "Kick",
   "url": "https://kick.com/api/v2/channels/{}",
   "not_found": [
-   "\"id\""
+   "<title>Not Found</title>"
   ],
   "must_contain": [
-   "<title>Not Found</title>"
+   "\"id\""
   ],
   "category": "other",
   "regex_check": ""
@@ -5762,10 +5762,10 @@
   "name": "cHEEZburger",
   "url": "https://profile.cheezburger.com/{}",
   "not_found": [
-   "profile-header"
+   "<title>Home - "
   ],
   "must_contain": [
-   "<title>Home - "
+   "profile-header"
   ],
   "category": "other",
   "regex_check": ""
@@ -6094,10 +6094,10 @@
   "name": "mssg.me",
   "url": "https://{}.mssg.me/",
   "not_found": [
-   "property=\"og:title\""
+   "id=\"page_404\""
   ],
   "must_contain": [
-   "id=\"page_404\""
+   "property=\"og:title\""
   ],
   "category": "other",
   "regex_check": ""
@@ -6106,10 +6106,10 @@
   "name": "Kwork",
   "url": "https://kwork.ru/user_kworks/{}",
   "not_found": [
-   "\"success\":true"
+   "\"success\":false"
   ],
   "must_contain": [
-   "\"success\":false"
+   "\"success\":true"
   ],
   "category": "other",
   "regex_check": ""
@@ -6578,10 +6578,10 @@
   "name": "Wowhead",
   "url": "https://www.wowhead.com/user={}",
   "not_found": [
-   " Profile - Wowhead"
+   "Error - Wowhead"
   ],
   "must_contain": [
-   "Error - Wowhead"
+   " Profile - Wowhead"
   ],
   "category": "other",
   "regex_check": ""
@@ -6600,10 +6600,10 @@
   "name": "Periscope",
   "url": "https://www.periscope.tv/{}",
   "not_found": [
-   "<label>Followers"
+   "Sorry, this page doesn’t exist"
   ],
   "must_contain": [
-   "Sorry, this page doesn’t exist"
+   "<label>Followers"
   ],
   "category": "other",
   "regex_check": ""
@@ -6848,10 +6848,10 @@
   "name": "ArmorGames",
   "url": "https://armorgames.com/user/{}",
   "not_found": [
-   "about"
+   "404: Oh Noes!"
   ],
   "must_contain": [
-   "404: Oh Noes!"
+   "about"
   ],
   "category": "other",
   "regex_check": ""
@@ -7063,10 +7063,10 @@
   "name": "Clubhouse",
   "url": "https://www.clubhouse.com/@{}",
   "not_found": [
-   "\"user\":"
+   "404"
   ],
   "must_contain": [
-   "404"
+   "\"user\":"
   ],
   "category": "other",
   "regex_check": ""
@@ -7272,10 +7272,10 @@
   "name": "championat",
   "url": "https://www.championat.com/user/{}/",
   "not_found": [
-   "Личный профил"
+   "Извините, запрашиваемая страница не найдена"
   ],
   "must_contain": [
-   "Извините, запрашиваемая страница не найдена"
+   "Личный профил"
   ],
   "category": "other",
   "regex_check": ""
@@ -7284,10 +7284,10 @@
   "name": "Wykop",
   "url": "https://wykop.pl/ludzie/{}",
   "not_found": [
-   "<title>Profil:"
+   "Wystąpił błąd 404."
   ],
   "must_contain": [
-   "Wystąpił błąd 404."
+   "<title>Profil:"
   ],
   "category": "other",
   "regex_check": ""
@@ -7352,10 +7352,10 @@
   "name": "sporcle",
   "url": "https://www.sporcle.com/user/{}/people/",
   "not_found": [
-   "'s Sporcle Friends"
+   "This Sporcle user cannot be found."
   ],
   "must_contain": [
-   "This Sporcle user cannot be found."
+   "'s Sporcle Friends"
   ],
   "category": "other",
   "regex_check": ""
@@ -7364,10 +7364,10 @@
   "name": "coroflot",
   "url": "https://www.coroflot.com/{}",
   "not_found": [
-   "portfolio"
+   "Looking for something?"
   ],
   "must_contain": [
-   "Looking for something?"
+   "portfolio"
   ],
   "category": "other",
   "regex_check": ""
@@ -7376,10 +7376,10 @@
   "name": "Booth",
   "url": "https://{}.booth.pm/",
   "not_found": [
-   "- BOOTH</title>"
+   "BOOTH - The International Indie Art Marketplace"
   ],
   "must_contain": [
-   "BOOTH - The International Indie Art Marketplace"
+   "- BOOTH</title>"
   ],
   "category": "other",
   "regex_check": ""
@@ -7464,10 +7464,10 @@
   "name": "vsco",
   "url": "https://vsco.co/{}/gallery",
   "not_found": [
-   "permaSubdomain"
+   "\"error\":\"site_not_found\"}"
   ],
   "must_contain": [
-   "\"error\":\"site_not_found\"}"
+   "permaSubdomain"
   ],
   "category": "spanish",
   "regex_check": ""
@@ -7551,10 +7551,10 @@
   "name": "Bookcrossing",
   "url": "https://www.bookcrossing.com/mybookshelf/{}",
   "not_found": [
-   "Recent Book Activity"
+   "Sorry, we were unable to locate the content that you requested."
   ],
   "must_contain": [
-   "Sorry, we were unable to locate the content that you requested."
+   "Recent Book Activity"
   ],
   "category": "other",
   "regex_check": ""
@@ -7771,10 +7771,10 @@
   "name": "Coderwall",
   "url": "https://coderwall.com/{}/",
   "not_found": [
-   "s profile |"
+   "404! Our feels when that url is used"
   ],
   "must_contain": [
-   "404! Our feels when that url is used"
+   "s profile |"
   ],
   "category": "other",
   "regex_check": ""
@@ -7911,10 +7911,10 @@
   "name": "pixelfed.social",
   "url": "https://pixelfed.social/{}",
   "not_found": [
-   "on pixelfed</title>"
+   "<title>pixelfed</title>"
   ],
   "must_contain": [
-   "<title>pixelfed</title>"
+   "on pixelfed</title>"
   ],
   "category": "other",
   "regex_check": ""
@@ -7923,10 +7923,10 @@
   "name": "Filmweb",
   "url": "https://www.filmweb.pl/user/{}",
   "not_found": [
-   "profil w Filmweb</title>"
+   "Varnish 404"
   ],
   "must_contain": [
-   "Varnish 404"
+   "profil w Filmweb</title>"
   ],
   "category": "other",
   "regex_check": ""
@@ -8024,10 +8024,10 @@
   "name": "PinkBike",
   "url": "https://www.pinkbike.com/u/{}/",
   "not_found": [
-   "on Pinkbike</title>"
+   "I couldn't find the page you were looking for"
   ],
   "must_contain": [
-   "I couldn't find the page you were looking for"
+   "on Pinkbike</title>"
   ],
   "category": "other",
   "regex_check": ""
@@ -8058,10 +8058,10 @@
   "name": "Vivino",
   "url": "https://www.vivino.com/users/{}",
   "not_found": [
-   "<!-- User details -->"
+   "Page not found"
   ],
   "must_contain": [
-   "Page not found"
+   "<!-- User details -->"
   ],
   "category": "other",
   "regex_check": ""
@@ -8146,10 +8146,10 @@
   "name": "akniga",
   "url": "https://akniga.org/profile/{}",
   "not_found": [
-   " - Аудиокниги Клуб</title"
+   "К сожалению, такой страницы не существует. Вероятно, она была удалена с сервера, либо ее здесь никогда не было."
   ],
   "must_contain": [
-   "К сожалению, такой страницы не существует. Вероятно, она была удалена с сервера, либо ее здесь никогда не было."
+   " - Аудиокниги Клуб</title"
   ],
   "category": "other",
   "regex_check": ""
@@ -8228,10 +8228,10 @@
   "name": "igromania",
   "url": "http://forum.igromania.ru/member.php?username={}",
   "not_found": [
-   "Форум Игромании - Просмотр профиля:"
+   "Пользователь не зарегистрирован и не имеет профиля для просмотра."
   ],
   "must_contain": [
-   "Пользователь не зарегистрирован и не имеет профиля для просмотра."
+   "Форум Игромании - Просмотр профиля:"
   ],
   "category": "forum",
   "regex_check": ""
@@ -8239,10 +8239,10 @@
  {
   "name": "CodeChef",
   "url": "https://www.codechef.com/users/{}",
-  "not_found": [
+  "not_found": [],
+  "must_contain": [
    "class=\"user-profile-container\""
   ],
-  "must_contain": [],
   "category": "code",
   "regex_check": ""
  },
@@ -8250,10 +8250,10 @@
   "name": "ifunny",
   "url": "https://ifunny.co/user/{}",
   "not_found": [
-   "subscribers"
+   "404 - page not found"
   ],
   "must_contain": [
-   "404 - page not found"
+   "subscribers"
   ],
   "category": "spanish",
   "regex_check": ""
@@ -8270,10 +8270,10 @@
   "name": "trakt",
   "url": "https://trakt.tv/users/{}",
   "not_found": [
-   "s profile - Trakt"
+   "The page you were looking for doesn't exist (404) - Trakt.tv"
   ],
   "must_contain": [
-   "The page you were looking for doesn't exist (404) - Trakt.tv"
+   "s profile - Trakt"
   ],
   "category": "other",
   "regex_check": ""
@@ -8338,10 +8338,10 @@
   "name": "Topcoder",
   "url": "https://api.topcoder.com/v5/members/{}",
   "not_found": [
-   "\"userId\":"
+   "\"message\":\"Member with handle:"
   ],
   "must_contain": [
-   "\"message\":\"Member with handle:"
+   "\"userId\":"
   ],
   "category": "code",
   "regex_check": ""
@@ -8452,10 +8452,10 @@
   "name": "Codewars",
   "url": "https://www.codewars.com/api/v1/users/{}",
   "not_found": [
-   "\"id\":"
+   "\"reason\":\"not found\""
   ],
   "must_contain": [
-   "\"reason\":\"not found\""
+   "\"id\":"
   ],
   "category": "code",
   "regex_check": ""
@@ -8532,10 +8532,10 @@
   "name": "StoryCorps",
   "url": "https://archive.storycorps.org/user/{}/",
   "not_found": [
-   "archive author"
+   "We're sorry, but the page"
   ],
   "must_contain": [
-   "We're sorry, but the page"
+   "archive author"
   ],
   "category": "other",
   "regex_check": ""
@@ -8560,10 +8560,10 @@
   "name": "asciinema",
   "url": "https://asciinema.org/~{}",
   "not_found": [
-   "class=\"profile-page\""
+   "<h1>404 Not Found</h1>"
   ],
   "must_contain": [
-   "<h1>404 Not Found</h1>"
+   "class=\"profile-page\""
   ],
   "category": "other",
   "regex_check": ""
@@ -8606,10 +8606,10 @@
   "name": "3dtoday",
   "url": "https://3dtoday.ru/blogs/{}",
   "not_found": [
-   "Блог владельца 3d-принтера"
+   "404 Not Found"
   ],
   "must_contain": [
-   "404 Not Found"
+   "Блог владельца 3d-принтера"
   ],
   "category": "writing",
   "regex_check": ""
@@ -8618,10 +8618,10 @@
   "name": "gloria.tv",
   "url": "https://gloria.tv/{}",
   "not_found": [
-   "Last online"
+   "Page unavailable"
   ],
   "must_contain": [
-   "Page unavailable"
+   "Last online"
   ],
   "category": "other",
   "regex_check": ""
@@ -8686,10 +8686,10 @@
   "name": "Wishlistr",
   "url": "https://www.wishlistr.com/sign-up/?rs=checkUserName&rsargs[]={}",
   "not_found": [
-   "+:var res = \""
+   "+:var res = parseInt(0);"
   ],
   "must_contain": [
-   "+:var res = parseInt(0);"
+   "+:var res = \""
   ],
   "category": "other",
   "regex_check": ""
@@ -8774,10 +8774,10 @@
   "name": "Xakep.ru",
   "url": "https://xakep.ru/author/{}/",
   "not_found": [
-   "authorBlock-avatar"
+   "Страница не найдена"
   ],
   "must_contain": [
-   "Страница не найдена"
+   "authorBlock-avatar"
   ],
   "category": "other",
   "regex_check": ""
@@ -8786,10 +8786,10 @@
   "name": "DOU",
   "url": "https://dou.ua/users/{}/",
   "not_found": [
-   "class=\"page-profile\""
+   "class=\"page-error\""
   ],
   "must_contain": [
-   "class=\"page-error\""
+   "class=\"page-profile\""
   ],
   "category": "other",
   "regex_check": ""
@@ -8821,10 +8821,10 @@
  {
   "name": "PatientsLikeMe",
   "url": "https://www.patientslikeme.com/members/{}",
-  "not_found": [
+  "not_found": [],
+  "must_contain": [
    "s profile | PatientsLikeMe</title>"
   ],
-  "must_contain": [],
   "category": "other",
   "regex_check": ""
  },
@@ -8842,10 +8842,10 @@
   "name": "Freelance.RU",
   "url": "https://freelance.ru/{}",
   "not_found": [
-   "class=\" user-top-container user-portfolio\""
+   "class=\"msg_error alert alert-danger\""
   ],
   "must_contain": [
-   "class=\"msg_error alert alert-danger\""
+   "class=\" user-top-container user-portfolio\""
   ],
   "category": "other",
   "regex_check": ""
@@ -8868,10 +8868,10 @@
   "name": "FatSecret",
   "url": "https://www.fatsecret.com/member/{}",
   "not_found": [
-   "- Member</title>"
+   "Your Key to Success"
   ],
   "must_contain": [
-   "Your Key to Success"
+   "- Member</title>"
   ],
   "category": "other",
   "regex_check": ""
@@ -8912,10 +8912,10 @@
  {
   "name": "osu!",
   "url": "https://osu.ppy.sh/users/{}",
-  "not_found": [],
-  "must_contain": [
+  "not_found": [
    "User not found! ;_;"
   ],
+  "must_contain": [],
   "category": "other",
   "regex_check": ""
  },
@@ -9133,10 +9133,10 @@
   "name": "Polarsteps",
   "url": "https://api.polarsteps.com/users/byusername/{}",
   "not_found": [
-   "\"id\":"
+   "<title>404 Not Found</title>"
   ],
   "must_contain": [
-   "<title>404 Not Found</title>"
+   "\"id\":"
   ],
   "category": "other",
   "regex_check": ""
@@ -9145,10 +9145,10 @@
   "name": "FL.ru",
   "url": "https://www.fl.ru/users/{}/portfolio/",
   "not_found": [
-   "class=\"page-profile\""
+   "content=\"404 Not Found\""
   ],
   "must_contain": [
-   "content=\"404 Not Found\""
+   "class=\"page-profile\""
   ],
   "category": "other",
   "regex_check": ""
@@ -9157,10 +9157,10 @@
   "name": "youpic",
   "url": "https://youpic.com/photographer/{}",
   "not_found": [
-   "<meta name=\"og:title\""
+   "<title>YouPic — Not Found</title>"
   ],
   "must_contain": [
-   "<title>YouPic — Not Found</title>"
+   "<meta name=\"og:title\""
   ],
   "category": "other",
   "regex_check": ""
@@ -9558,10 +9558,10 @@
   "name": "Weblancer",
   "url": "https://www.weblancer.net/users/{}/",
   "not_found": [
-   "\"user\":"
+   "\"page\":\"/404\""
   ],
   "must_contain": [
-   "\"page\":\"/404\""
+   "\"user\":"
   ],
   "category": "other",
   "regex_check": ""
@@ -9667,10 +9667,10 @@
   "name": "interpals",
   "url": "https://www.interpals.net/{}",
   "not_found": [
-   "Looking for"
+   "User not found"
   ],
   "must_contain": [
-   "User not found"
+   "Looking for"
   ],
   "category": "other",
   "regex_check": ""
@@ -10017,10 +10017,10 @@
   "name": "AtCoder",
   "url": "https://atcoder.jp/users/{}",
   "not_found": [
-   "<h3>Contest Status</h3>"
+   ">404 Page Not Found</h1>"
   ],
   "must_contain": [
-   ">404 Page Not Found</h1>"
+   "<h3>Contest Status</h3>"
   ],
   "category": "code",
   "regex_check": ""
@@ -10362,10 +10362,10 @@
   "name": "devRant",
   "url": "https://devrant.com/api/get-user-id?app=3&username={}",
   "not_found": [
-   "\"success\":true"
+   "\"success\":false"
   ],
   "must_contain": [
-   "\"success\":false"
+   "\"success\":true"
   ],
   "category": "other",
   "regex_check": ""
@@ -10548,10 +10548,10 @@
   "name": "omg.lol",
   "url": "https://api.omg.lol/address/{}/info",
   "not_found": [
-   "\"success\": true"
+   "\"success\": false"
   ],
   "must_contain": [
-   "\"success\": false"
+   "\"success\": true"
   ],
   "category": "other",
   "regex_check": ""
@@ -10680,10 +10680,10 @@
   "name": "Wakatime",
   "url": "https://wakatime.com/api/v1/users/{}",
   "not_found": [
-   "\"data\":"
+   "\"error\": \"Not found.\""
   ],
   "must_contain": [
-   "\"error\": \"Not found.\""
+   "\"data\":"
   ],
   "category": "other",
   "regex_check": ""
@@ -10848,10 +10848,10 @@
   "name": "crevado",
   "url": "https://{}.crevado.com/",
   "not_found": [
-   "Portfolio"
+   "Site not found :-("
   ],
   "must_contain": [
-   "Site not found :-("
+   "Portfolio"
   ],
   "category": "other",
   "regex_check": ""
@@ -10892,10 +10892,10 @@
   "name": "MyLot",
   "url": "https://www.mylot.com/{}",
   "not_found": [
-   "on myLot</title>"
+   " / Whoops!"
   ],
   "must_contain": [
-   " / Whoops!"
+   "on myLot</title>"
   ],
   "category": "other",
   "regex_check": ""
@@ -10914,10 +10914,10 @@
   "name": "SEOClerks",
   "url": "https://www.seoclerks.com/user/{}",
   "not_found": [
-   "<div class=\"user-info container\">"
+   "<title>SEO Marketplace"
   ],
   "must_contain": [
-   "<title>SEO Marketplace"
+   "<div class=\"user-info container\">"
   ],
   "category": "other",
   "regex_check": ""
@@ -10946,10 +10946,10 @@
   "name": "Monkeytype",
   "url": "https://api.monkeytype.com/users/{}/profile",
   "not_found": [
-   "\"message\":\"Profile retrieved\""
+   "\"message\":\"User not found\""
   ],
   "must_contain": [
-   "\"message\":\"User not found\""
+   "\"message\":\"Profile retrieved\""
   ],
   "category": "other",
   "regex_check": ""
@@ -11002,10 +11002,10 @@
   "name": "7dach",
   "url": "https://7dach.ru/profile/{}",
   "not_found": [
-   "Информация / Профиль"
+   "<title>Ошибка / 7dach.ru"
   ],
   "must_contain": [
-   "<title>Ошибка / 7dach.ru"
+   "Информация / Профиль"
   ],
   "category": "other",
   "regex_check": ""
@@ -11074,10 +11074,10 @@
   "name": "YouNow",
   "url": "https://api.younow.com/php/api/broadcast/info/user={}",
   "not_found": [
-   "\"userId\":"
+   "\"errorMsg\":\"No users found\""
   ],
   "must_contain": [
-   "\"errorMsg\":\"No users found\""
+   "\"userId\":"
   ],
   "category": "other",
   "regex_check": ""
@@ -11108,10 +11108,10 @@
   "name": "Weasyl",
   "url": "https://www.weasyl.com/~{}",
   "not_found": [
-   "profile — Weasyl</title>"
+   "This user doesn't seem to be in our database."
   ],
   "must_contain": [
-   "This user doesn't seem to be in our database."
+   "profile — Weasyl</title>"
   ],
   "category": "other",
   "regex_check": ""
@@ -11429,10 +11429,10 @@
   "name": "Pronouns.Page",
   "url": "https://pronouns.page/api/profile/get/{}?version=2",
   "not_found": [
-   "username"
+   "\"profiles\": {}"
   ],
   "must_contain": [
-   "\"profiles\": {}"
+   "username"
   ],
   "category": "other",
   "regex_check": ""
@@ -11466,10 +11466,10 @@
  {
   "name": "iMGSRC.RU",
   "url": "https://imgsrc.ru/main/user.php?lang=ru&user={}",
-  "not_found": [
+  "not_found": [],
+  "must_contain": [
    "Присоединился"
   ],
-  "must_contain": [],
   "category": "other",
   "regex_check": ""
  },
@@ -11827,10 +11827,10 @@
   "name": "Pr0gramm",
   "url": "https://pr0gramm.com/api/profile/info?name={}",
   "not_found": [
-   "\"user\":"
+   "\"code\":404"
   ],
   "must_contain": [
-   "\"code\":404"
+   "\"user\":"
   ],
   "category": "other",
   "regex_check": ""
@@ -12497,10 +12497,10 @@
   "name": "Nightbot",
   "url": "https://api.nightbot.tv/1/channels/t/{}",
   "not_found": [
-   "\"status\":200"
+   "\"status\":404"
   ],
   "must_contain": [
-   "\"status\":404"
+   "\"status\":200"
   ],
   "category": "other",
   "regex_check": ""
@@ -12767,10 +12767,10 @@
   "name": "Wireclub",
   "url": "https://www.wireclub.com/users/{}",
   "not_found": [
-   "Chat With"
+   "People - Wireclub"
   ],
   "must_contain": [
-   "People - Wireclub"
+   "Chat With"
   ],
   "category": "other",
   "regex_check": ""
@@ -12873,10 +12873,10 @@
   "name": "Dissenter",
   "url": "https://dissenter.com/user/{}",
   "not_found": [
-   "Dissenter | The Comment Section of the Internet"
+   "That user is not registered here."
   ],
   "must_contain": [
-   "That user is not registered here."
+   "Dissenter | The Comment Section of the Internet"
   ],
   "category": "other",
   "regex_check": ""
@@ -13702,10 +13702,10 @@
   "name": "Xbox Gamertag",
   "url": "https://www.xboxgamertag.com/search/{}",
   "not_found": [
-   "Games Played"
+   "Gamertag doesn't exist"
   ],
   "must_contain": [
-   "Gamertag doesn't exist"
+   "Games Played"
   ],
   "category": "gaming",
   "regex_check": ""
@@ -13714,10 +13714,10 @@
   "name": "Dating.ru",
   "url": "https://dating.ru/{}/",
   "not_found": [
-   "| dating.ru"
+   "Такой страницы не существует."
   ],
   "must_contain": [
-   "Такой страницы не существует."
+   "| dating.ru"
   ],
   "category": "other",
   "regex_check": ""
@@ -13868,10 +13868,10 @@
   "name": "donate.stream",
   "url": "https://donate.stream/api/v1/streamer.get?path={}&app=9f4e793cec820015d511dbc77b20c5c1",
   "not_found": [
-   "\"response\":"
+   "\"message\":\"Not found\""
   ],
   "must_contain": [
-   "\"message\":\"Not found\""
+   "\"response\":"
   ],
   "category": "other",
   "regex_check": ""
@@ -14841,10 +14841,10 @@
   "name": "Freelance.ua",
   "url": "https://freelance.ua/user/{}/",
   "not_found": [
-   "p-profile-avatar"
+   "Схоже, дана сторінка не знайдена"
   ],
   "must_contain": [
-   "Схоже, дана сторінка не знайдена"
+   "p-profile-avatar"
   ],
   "category": "other",
   "regex_check": ""
@@ -15749,10 +15749,10 @@
   "name": "Dojoverse",
   "url": "https://dojoverse.com/members/{}/",
   "not_found": [
-   "Joined"
+   "Looks like you got lost!."
   ],
   "must_contain": [
-   "Looks like you got lost!."
+   "Joined"
   ],
   "category": "other",
   "regex_check": ""
@@ -15835,10 +15835,10 @@
   "name": "Droners",
   "url": "https://droners.io/accounts/{}/",
   "not_found": [
-   "- Professional Drone Pilot"
+   "(404)</title>"
   ],
   "must_contain": [
-   "(404)</title>"
+   "- Professional Drone Pilot"
   ],
   "category": "other",
   "regex_check": ""
@@ -16449,10 +16449,10 @@
   "name": "HackerRank",
   "url": "https://www.hackerrank.com/rest/contests/master/hackers/{}/profile",
   "not_found": [
-   "\"model\":"
+   "\"error\":\"Not Found\""
   ],
   "must_contain": [
-   "\"error\":\"Not Found\""
+   "\"model\":"
   ],
   "category": "code",
   "regex_check": ""
@@ -17097,10 +17097,10 @@
   "name": "Mixlr",
   "url": "https://api.mixlr.com/users/{}",
   "not_found": [
-   "\"id\":"
+   "\"error\":\"Resource not found\""
   ],
   "must_contain": [
-   "\"error\":\"Resource not found\""
+   "\"id\":"
   ],
   "category": "other",
   "regex_check": ""
@@ -17893,10 +17893,10 @@
   "name": "SmashRun",
   "url": "https://smashrun.com/{}/",
   "not_found": [
-   "Miles run overall"
+   "no Smashrunner with the username"
   ],
   "must_contain": [
-   "no Smashrunner with the username"
+   "Miles run overall"
   ],
   "category": "other",
   "regex_check": ""
@@ -17913,10 +17913,10 @@
   "name": "SpiceWorks",
   "url": "https://community.spiceworks.com/people/{}",
   "not_found": [
-   "Portfolio of IT Projects - Spiceworks"
+   "Page Not Found"
   ],
   "must_contain": [
-   "Page Not Found"
+   "Portfolio of IT Projects - Spiceworks"
   ],
   "category": "forum",
   "regex_check": ""
@@ -18163,10 +18163,10 @@
   "name": "TRAKTRAIN",
   "url": "https://traktrain.com/{}",
   "not_found": [
-   "id=\"userId\""
+   "class=\"title-404\""
   ],
   "must_contain": [
-   "class=\"title-404\""
+   "id=\"userId\""
   ],
   "category": "other",
   "regex_check": ""
@@ -18185,10 +18185,10 @@
   "name": "TruckersMP.Ru",
   "url": "https://truckersmp.ru/{}",
   "not_found": [
-   "class=\"b-user-page\""
+   "class=\"b-handler-error-404\""
   ],
   "must_contain": [
-   "class=\"b-handler-error-404\""
+   "class=\"b-user-page\""
   ],
   "category": "other",
   "regex_check": ""
@@ -18707,10 +18707,10 @@
   "name": "easyen",
   "url": "https://easyen.ru/index/8-0-{}",
   "not_found": [
-   "День рождения"
+   "Пользователь не найден"
   ],
   "must_contain": [
-   "Пользователь не найден"
+   "День рождения"
   ],
   "category": "other",
   "regex_check": ""
@@ -24088,10 +24088,10 @@
   "name": "AdmireMe.VIP",
   "url": "https://admireme.vip/{}/",
   "not_found": [
-   "creator-stat subscriber"
+   "<title>Page Not Found |"
   ],
   "must_contain": [
-   "<title>Page Not Found |"
+   "creator-stat subscriber"
   ],
   "category": "adult",
   "regex_check": ""
@@ -24100,10 +24100,10 @@
   "name": "Airliners",
   "url": "https://www.airliners.net/user/{}/profile",
   "not_found": [
-   "'s Profile | Airliners Members | Airliners.net"
+   "An Error Occurred"
   ],
   "must_contain": [
-   "An Error Occurred"
+   "'s Profile | Airliners Members | Airliners.net"
   ],
   "category": "other",
   "regex_check": ""
@@ -24192,10 +24192,10 @@
   "name": "BoardGameGeek",
   "url": "https://api.geekdo.com/api/accounts/validate/username?username={}",
   "not_found": [
-   "\"message\":\"Sorry, this username is already taken.\""
+   "\"isValid\":true"
   ],
   "must_contain": [
-   "\"isValid\":true"
+   "\"message\":\"Sorry, this username is already taken.\""
   ],
   "category": "gaming",
   "regex_check": ""
@@ -24246,10 +24246,10 @@
   "name": "Career.habr",
   "url": "https://career.habr.com/{}",
   "not_found": [
-   "— Хабр Карьера</title>"
+   "Ошибка 404"
   ],
   "must_contain": [
-   "Ошибка 404"
+   "— Хабр Карьера</title>"
   ],
   "category": "forum",
   "regex_check": ""
@@ -24282,10 +24282,10 @@
   "name": "Codeberg",
   "url": "https://codeberg.org/api/v1/users/{}",
   "not_found": [
-   "\"id\":"
+   "user redirect does not exist"
   ],
   "must_contain": [
-   "user redirect does not exist"
+   "\"id\":"
   ],
   "category": "code",
   "regex_check": ""
@@ -24294,10 +24294,10 @@
   "name": "Codeforces",
   "url": "https://codeforces.com/api/user.info?handles={}",
   "not_found": [
-   "\"status\":\"OK\""
+   "\"status\":\"FAILED\""
   ],
   "must_contain": [
-   "\"status\":\"FAILED\""
+   "\"status\":\"OK\""
   ],
   "category": "code",
   "regex_check": ""
@@ -24306,10 +24306,10 @@
   "name": "CodeSandbox",
   "url": "https://codesandbox.io/api/v1/users/{}",
   "not_found": [
-   "\"data\":"
+   "Could not find user with username"
   ],
   "must_contain": [
-   "Could not find user with username"
+   "\"data\":"
   ],
   "category": "code",
   "regex_check": ""
@@ -24335,10 +24335,10 @@
  {
   "name": "Cracked",
   "url": "https://www.cracked.com/members/{}",
-  "not_found": [
+  "not_found": [],
+  "must_contain": [
    "Member Since"
   ],
-  "must_contain": [],
   "category": "other",
   "regex_check": ""
  },
@@ -24388,10 +24388,10 @@
   "name": "Digitalspy",
   "url": "https://forums.digitalspy.com/profile/discussions/{}",
   "not_found": [
-   "About"
+   "User not found"
   ],
   "must_contain": [
-   "User not found"
+   "About"
   ],
   "category": "forum",
   "regex_check": ""
@@ -24416,10 +24416,10 @@
   "name": "Eyeem",
   "url": "https://www.eyeem.com/u/{}",
   "not_found": [
-   "Marketplace</title>"
+   "Not Found (404) | EyeEm"
   ],
   "must_contain": [
-   "Not Found (404) | EyeEm"
+   "Marketplace</title>"
   ],
   "category": "other",
   "regex_check": ""
@@ -24427,10 +24427,10 @@
  {
   "name": "fanpop",
   "url": "https://www.fanpop.com/fans/{}",
-  "not_found": [
+  "not_found": [],
+  "must_contain": [
    "Fanpopping since"
   ],
-  "must_contain": [],
   "category": "other",
   "regex_check": ""
  },
@@ -24456,10 +24456,10 @@
   "name": "Freelancer",
   "url": "https://www.freelancer.com/api/users/0.1/users?usernames%5B%5D={}&compact=true",
   "not_found": [
-   "\"users\":{\""
+   "\"users\":{}"
   ],
   "must_contain": [
-   "\"users\":{}"
+   "\"users\":{\""
   ],
   "category": "other",
   "regex_check": ""
@@ -24476,10 +24476,10 @@
   "name": "GeeksForGeeks",
   "url": "https://authapi.geeksforgeeks.org/api-get/user-profile-info/?handle={}",
   "not_found": [
-   "\"message\":\"data retrieved successfully\""
+   "\"message\":\"User not found!\""
   ],
   "must_contain": [
-   "\"message\":\"User not found!\""
+   "\"message\":\"data retrieved successfully\""
   ],
   "category": "code",
   "regex_check": ""
@@ -24548,10 +24548,10 @@
   "name": "hackerearth",
   "url": "https://www.hackerearth.com/@{}",
   "not_found": [
-   "| Developer Profile on HackerEarth"
+   "404 | HackerEarth"
   ],
   "must_contain": [
-   "404 | HackerEarth"
+   "| Developer Profile on HackerEarth"
   ],
   "category": "code",
   "regex_check": ""
@@ -24586,10 +24586,10 @@
   "name": "Houzz",
   "url": "https://www.houzz.com/user/{}",
   "not_found": [
-   "Followers"
+   "Page Not Found"
   ],
   "must_contain": [
-   "Page Not Found"
+   "Followers"
   ],
   "category": "other",
   "regex_check": ""
@@ -24598,10 +24598,10 @@
   "name": "Hubski",
   "url": "https://hubski.com/user/{}",
   "not_found": [
-   "'s profile"
+   "No such user."
   ],
   "must_contain": [
-   "No such user."
+   "'s profile"
   ],
   "category": "other",
   "regex_check": ""
@@ -24610,10 +24610,10 @@
   "name": "HudsonRock",
   "url": "https://cavalier.hudsonrock.com/api/json/v2/osint-tools/search-by-username?username={}",
   "not_found": [
-   "This username is associated with a computer that was infected by an info-stealer"
+   "This username is not associated with a computer infected by an info-stealer"
   ],
   "must_contain": [
-   "This username is not associated with a computer infected by an info-stealer"
+   "This username is associated with a computer that was infected by an info-stealer"
   ],
   "category": "other",
   "regex_check": ""
@@ -24672,10 +24672,10 @@
   "name": "Kaggle",
   "url": "https://www.kaggle.com/{}",
   "not_found": [
-   "property=\"og:username\""
+   "<title>Kaggle: Your Home for Data Science</title>"
   ],
   "must_contain": [
-   "<title>Kaggle: Your Home for Data Science</title>"
+   "property=\"og:username\""
   ],
   "category": "code",
   "regex_check": ""
@@ -24692,10 +24692,10 @@
   "name": "kik",
   "url": "https://kik.me/{}",
   "not_found": [
-   "/thumb.jpg\"/>"
+   "<h1 class=\"display-name\"> </h1>"
   ],
   "must_contain": [
-   "<h1 class=\"display-name\"> </h1>"
+   "/thumb.jpg\"/>"
   ],
   "category": "other",
   "regex_check": ""
@@ -24714,10 +24714,10 @@
   "name": "Linktree",
   "url": "https://linktr.ee/{}",
   "not_found": [
-   "\"uuid\":"
+   "\"statusCode\":404"
   ],
   "must_contain": [
-   "\"statusCode\":404"
+   "\"uuid\":"
   ],
   "category": "other",
   "regex_check": ""
@@ -24826,10 +24826,10 @@
   "name": "Patreon",
   "url": "https://www.patreon.com/{}",
   "not_found": [
-   "full_name\":"
+   "errorCode\": 404,"
   ],
   "must_contain": [
-   "errorCode\": 404,"
+   "full_name\":"
   ],
   "category": "funding",
   "regex_check": ""
@@ -24896,10 +24896,10 @@
   "name": "pypi",
   "url": "https://pypi.org/user/{}/",
   "not_found": [
-   "Profile of"
+   "Page Not Found (404) · PyPI"
   ],
   "must_contain": [
-   "Page Not Found (404) · PyPI"
+   "Profile of"
   ],
   "category": "code",
   "regex_check": ""
@@ -24934,10 +24934,10 @@
   "name": "redbubble",
   "url": "https://www.redbubble.com/people/{}/shop",
   "not_found": [
-   "Shop | Redbubble"
+   "This is a lost cause."
   ],
   "must_contain": [
-   "This is a lost cause."
+   "Shop | Redbubble"
   ],
   "category": "art",
   "regex_check": ""
@@ -24946,10 +24946,10 @@
   "name": "Reddit",
   "url": "https://www.reddit.com/user/{}/about.json",
   "not_found": [
-   "\"id\":"
+   "\"error\":404"
   ],
   "must_contain": [
-   "\"error\":404"
+   "\"id\":"
   ],
   "category": "forum",
   "regex_check": ""
@@ -25002,10 +25002,10 @@
   "name": "slant",
   "url": "https://www.slant.co/users/{}",
   "not_found": [
-   "s Profile - Slant"
+   "404 - Page Not Found - Slant"
   ],
   "must_contain": [
-   "404 - Page Not Found - Slant"
+   "s Profile - Slant"
   ],
   "category": "spanish",
   "regex_check": ""
@@ -25050,10 +25050,10 @@
   "name": "Strava",
   "url": "https://www.strava.com/athletes/{}",
   "not_found": [
-   "/athletes/"
+   "\"page\":\"/404\""
   ],
   "must_contain": [
-   "\"page\":\"/404\""
+   "/athletes/"
   ],
   "category": "other",
   "regex_check": ""
@@ -25070,10 +25070,10 @@
   "name": "Tenor",
   "url": "https://tenor.com/users/{}",
   "not_found": [
-   "class=\"ProfilePage page\""
+   "class=\"error-page container page\""
   ],
   "must_contain": [
-   "class=\"error-page container page\""
+   "class=\"ProfilePage page\""
   ],
   "category": "other",
   "regex_check": ""
@@ -25108,10 +25108,10 @@
   "name": "unsplash",
   "url": "https://unsplash.com/@{}",
   "not_found": [
-   "| Unsplash Photo Community"
+   "Hm, the page you were looking for doesn't seem to exist anymore."
   ],
   "must_contain": [
-   "Hm, the page you were looking for doesn't seem to exist anymore."
+   "| Unsplash Photo Community"
   ],
   "category": "art",
   "regex_check": ""
@@ -25120,10 +25120,10 @@
   "name": "Vero",
   "url": "https://vero.co/{}",
   "not_found": [
-   "name=\"username"
+   "<h3>Not Found</h3>"
   ],
   "must_contain": [
-   "<h3>Not Found</h3>"
+   "name=\"username"
   ],
   "category": "spanish",
   "regex_check": ""
@@ -25132,10 +25132,10 @@
   "name": "VirusTotal",
   "url": "https://www.virustotal.com/ui/users/{}",
   "not_found": [
-   "\"data\""
+   "\"code\": \"NotFoundError\""
   ],
   "must_contain": [
-   "\"code\": \"NotFoundError\""
+   "\"data\""
   ],
   "category": "other",
   "regex_check": ""
@@ -25254,10 +25254,10 @@
   "name": "nnru",
   "url": "https://{}.www.nn.ru",
   "not_found": [
-   "<title> "
+   "<title>Ошибка 404 -"
   ],
   "must_contain": [
-   "<title>Ошибка 404 -"
+   "<title> "
   ],
   "category": "other",
   "regex_check": ""
@@ -25345,10 +25345,10 @@
   "name": "247CTF",
   "url": "https://247ctf.com/progress/{}",
   "not_found": [
-   "property=\"og:url\""
+   "<h1>Redirecting...</h1>"
   ],
   "must_contain": [
-   "<h1>Redirecting...</h1>"
+   "property=\"og:url\""
   ],
   "category": "other",
   "regex_check": ""
@@ -25357,10 +25357,10 @@
   "name": "247sports",
   "url": "https://247sports.com/User/{}/",
   "not_found": [
-   "<meta property="
+   "<title>247Sports</title>"
   ],
   "must_contain": [
-   "<title>247Sports</title>"
+   "<meta property="
   ],
   "category": "other",
   "regex_check": ""
@@ -25369,10 +25369,10 @@
   "name": "35photo",
   "url": "https://35photo.pro/@{}/",
   "not_found": [
-   "<span title=\"Total photos"
+   "Catalogs of professional author"
   ],
   "must_contain": [
-   "Catalogs of professional author"
+   "<span title=\"Total photos"
   ],
   "category": "other",
   "regex_check": ""
@@ -25381,10 +25381,10 @@
   "name": "3DNews",
   "url": "https://forum.3dnews.tech/member.php?username={}",
   "not_found": [
-   "Просмотр профиля:"
+   "Пользователь не зарегистрирован"
   ],
   "must_contain": [
-   "Пользователь не зарегистрирован"
+   "Просмотр профиля:"
   ],
   "category": "forum",
   "regex_check": ""
@@ -25393,10 +25393,10 @@
   "name": "7cup",
   "url": "https://www.7cups.com/@{}",
   "not_found": [
-   "Profile - 7 Cups"
+   "Oops! The content you're attempting to access could not be found."
   ],
   "must_contain": [
-   "Oops! The content you're attempting to access could not be found."
+   "Profile - 7 Cups"
   ],
   "category": "other",
   "regex_check": ""
@@ -25405,10 +25405,10 @@
   "name": "ACF",
   "url": "https://support.advancedcustomfields.com/forums/users/{}/",
   "not_found": [
-   "<title>ACF Support"
+   "Page Not Found"
   ],
   "must_contain": [
-   "Page Not Found"
+   "<title>ACF Support"
   ],
   "category": "forum",
   "regex_check": ""
@@ -25417,10 +25417,10 @@
   "name": "Adult_Forum",
   "url": "https://adultforum.gr/{}-glamour-escorts/",
   "not_found": [
-   "Glamour Escorts "
+   "Page not found - Adult Forum Gr"
   ],
   "must_contain": [
-   "Page not found - Adult Forum Gr"
+   "Glamour Escorts "
   ],
   "category": "adult",
   "regex_check": ""
@@ -25429,10 +25429,10 @@
   "name": "adultism",
   "url": "https://www.adultism.com/profile/{}",
   "not_found": [
-   "Last login:"
+   "<title> Not Found"
   ],
   "must_contain": [
-   "<title> Not Found"
+   "Last login:"
   ],
   "category": "adult",
   "regex_check": ""
@@ -25441,10 +25441,10 @@
   "name": "ADVFN",
   "url": "https://uk.advfn.com/forum/profile/{}",
   "not_found": [
-   "Profile | ADVFN"
+   "ADVFN ERROR - Page Not Found"
   ],
   "must_contain": [
-   "ADVFN ERROR - Page Not Found"
+   "Profile | ADVFN"
   ],
   "category": "forum",
   "regex_check": ""
@@ -25453,10 +25453,10 @@
   "name": "Airline_Pilot_Life",
   "url": "https://airlinepilot.life/u/{}.json",
   "not_found": [
-   "primary_group_name"
+   "he requested URL or resource could not be found."
   ],
   "must_contain": [
-   "he requested URL or resource could not be found."
+   "primary_group_name"
   ],
   "category": "other",
   "regex_check": ""
@@ -25465,10 +25465,10 @@
   "name": "Albicla",
   "url": "https://albicla.com/{}/post/1",
   "not_found": [
-   "500 Post tymczasowo niedostępny"
+   "404 Nie znaleziono użytkownika"
   ],
   "must_contain": [
-   "404 Nie znaleziono użytkownika"
+   "500 Post tymczasowo niedostępny"
   ],
   "category": "other",
   "regex_check": ""
@@ -25477,10 +25477,10 @@
   "name": "alik",
   "url": "https://www.alik.cz/u/{}",
   "not_found": [
-   "Vizitka – Alík.cz</title>"
+   "<title>Vizitka nenalezena"
   ],
   "must_contain": [
-   "<title>Vizitka nenalezena"
+   "Vizitka – Alík.cz</title>"
   ],
   "category": "other",
   "regex_check": ""
@@ -25489,10 +25489,10 @@
   "name": "Alura",
   "url": "https://cursos.alura.com.br/user/{}",
   "not_found": [
-   "Perfil de"
+   "\"error\":\"Not Found\""
   ],
   "must_contain": [
-   "\"error\":\"Not Found\""
+   "Perfil de"
   ],
   "category": "spanish",
   "regex_check": ""
@@ -25501,10 +25501,10 @@
   "name": "Apex Legends",
   "url": "https://api.tracker.gg/api/v2/apex/standard/profile/origin/{}",
   "not_found": [
-   "platformInfo"
+   "CollectorResultStatus::NotFound"
   ],
   "must_contain": [
-   "CollectorResultStatus::NotFound"
+   "platformInfo"
   ],
   "category": "gaming",
   "regex_check": ""
@@ -25513,10 +25513,10 @@
   "name": "Arch Linux GitLab",
   "url": "https://gitlab.archlinux.org/api/v4/users?username={}",
   "not_found": [
-   "\"id\":"
+   "[]"
   ],
   "must_contain": [
-   "[]"
+   "\"id\":"
   ],
   "category": "code",
   "regex_check": ""
@@ -25525,10 +25525,10 @@
   "name": "Archive Of Our Own Account",
   "url": "https://archiveofourown.org/users/{}",
   "not_found": [
-   "class=\"user home\""
+   "class=\"system errors error-404 region\""
   ],
   "must_contain": [
-   "class=\"system errors error-404 region\""
+   "class=\"user home\""
   ],
   "category": "writing",
   "regex_check": ""
@@ -25537,10 +25537,10 @@
   "name": "ArchWiki",
   "url": "https://wiki.archlinux.org/api.php?action=query&format=json&list=users&ususers={}&usprop=cancreate&formatversion=2&errorformat=html&errorsuselocal=true&uselang=en",
   "not_found": [
-   "\"userid\":"
+   "\"missing\":true"
   ],
   "must_contain": [
-   "\"missing\":true"
+   "\"userid\":"
   ],
   "category": "other",
   "regex_check": ""
@@ -25549,10 +25549,10 @@
   "name": "Arduino (Forum)",
   "url": "https://forum.arduino.cc/u/{}.json",
   "not_found": [
-   "\"id\":"
+   "\"error_type\":\"not_found\""
   ],
   "must_contain": [
-   "\"error_type\":\"not_found\""
+   "\"id\":"
   ],
   "category": "forum",
   "regex_check": ""
@@ -25561,10 +25561,10 @@
   "name": "Arduino (Project Hub)",
   "url": "https://projecthub.arduino.cc/{}",
   "not_found": [
-   "\"userInfo\":{"
+   "\"userInfo\":null"
   ],
   "must_contain": [
-   "\"userInfo\":null"
+   "\"userInfo\":{"
   ],
   "category": "other",
   "regex_check": ""
@@ -25573,10 +25573,10 @@
   "name": "Arsmate",
   "url": "https://arsmate.com/{}",
   "not_found": [
-   "far fa-user-circle mr-1"
+   "error-link mt-5"
   ],
   "must_contain": [
-   "error-link mt-5"
+   "far fa-user-circle mr-1"
   ],
   "category": "other",
   "regex_check": ""
@@ -25585,10 +25585,10 @@
   "name": "ArtBreeder",
   "url": "https://www.artbreeder.com/{}",
   "not_found": [
-   "<title>"
+   "Not found:"
   ],
   "must_contain": [
-   "Not found:"
+   "<title>"
   ],
   "category": "other",
   "regex_check": ""
@@ -25597,10 +25597,10 @@
   "name": "Artists & Clients",
   "url": "https://artistsnclients.com/people/{}",
   "not_found": [
-   "Member Since"
+   "The page you requested wasn't there when we tried to get it for you. What a bother!"
   ],
   "must_contain": [
-   "The page you requested wasn't there when we tried to get it for you. What a bother!"
+   "Member Since"
   ],
   "category": "other",
   "regex_check": ""
@@ -25609,10 +25609,10 @@
   "name": "au.ru",
   "url": "https://au.ru/user/{}/",
   "not_found": [
-   "Лоты пользователя "
+   "Пользователь не найден"
   ],
   "must_contain": [
-   "Пользователь не найден"
+   "Лоты пользователя "
   ],
   "category": "other",
   "regex_check": ""
@@ -25621,10 +25621,10 @@
   "name": "Avid Community",
   "url": "https://community.avid.com/members/{}/default.aspx",
   "not_found": [
-   "My Activity"
+   "The user you requested cannot be found."
   ],
   "must_contain": [
-   "The user you requested cannot be found."
+   "My Activity"
   ],
   "category": "forum",
   "regex_check": ""
@@ -25633,10 +25633,10 @@
   "name": "babepedia",
   "url": "https://www.babepedia.com/user/{}",
   "not_found": [
-   "'s Page</title>"
+   "Profile not found"
   ],
   "must_contain": [
-   "Profile not found"
+   "'s Page</title>"
   ],
   "category": "other",
   "regex_check": ""
@@ -25645,10 +25645,10 @@
   "name": "BabyPips",
   "url": "https://forums.babypips.com/u/{}.json",
   "not_found": [
-   "user_badges"
+   "The requested URL or resource could not be found"
   ],
   "must_contain": [
-   "The requested URL or resource could not be found"
+   "user_badges"
   ],
   "category": "forum",
   "regex_check": ""
@@ -25657,10 +25657,10 @@
   "name": "bblog_ru",
   "url": "https://www.babyblog.ru/user/{}",
   "not_found": [
-   ") — дневник на Babyblog.ru"
+   "БэбиБлог - беременность, календарь беременности, дневники"
   ],
   "must_contain": [
-   "БэбиБлог - беременность, календарь беременности, дневники"
+   ") — дневник на Babyblog.ru"
   ],
   "category": "writing",
   "regex_check": ""
@@ -25669,10 +25669,10 @@
   "name": "BDSMLR",
   "url": "https://{}.bdsmlr.com",
   "not_found": [
-   "login"
+   "This blog doesn't exist."
   ],
   "must_contain": [
-   "This blog doesn't exist."
+   "login"
   ],
   "category": "other",
   "regex_check": ""
@@ -25681,10 +25681,10 @@
   "name": "bdsmsingles",
   "url": "https://www.bdsmsingles.com/members/{}/",
   "not_found": [
-   "<title>Profile"
+   "BDSM Singles"
   ],
   "must_contain": [
-   "BDSM Singles"
+   "<title>Profile"
   ],
   "category": "other",
   "regex_check": ""
@@ -25693,10 +25693,10 @@
   "name": "Beacons",
   "url": "https://beacons.ai/{}",
   "not_found": [
-   " - Link in Bio &amp; Creator Tools | Beacons</title>"
+   "The page you are looking for does not seem to exist anymore"
   ],
   "must_contain": [
-   "The page you are looking for does not seem to exist anymore"
+   " - Link in Bio &amp; Creator Tools | Beacons</title>"
   ],
   "category": "other",
   "regex_check": ""
@@ -25705,10 +25705,10 @@
   "name": "Bento",
   "url": "https://bento.me/{}",
   "not_found": [
-   "href=\"https://bento.me/explore\""
+   ">Available!</div>"
   ],
   "must_contain": [
-   ">Available!</div>"
+   "href=\"https://bento.me/explore\""
   ],
   "category": "other",
   "regex_check": ""
@@ -25717,10 +25717,10 @@
   "name": "BIGO Live",
   "url": "https://www.bigo.tv/user/{}",
   "not_found": [
-   "userInfo:{nickName"
+   "userInfo:{}"
   ],
   "must_contain": [
-   "userInfo:{}"
+   "userInfo:{nickName"
   ],
   "category": "other",
   "regex_check": ""
@@ -25729,10 +25729,10 @@
   "name": "Bikemap",
   "url": "https://www.bikemap.net/en/u/{}/routes/created/",
   "not_found": [
-   "- 🚲 Bikemap</title>"
+   "<title>Page not found - Error 404 "
   ],
   "must_contain": [
-   "<title>Page not found - Error 404 "
+   "- 🚲 Bikemap</title>"
   ],
   "category": "other",
   "regex_check": ""
@@ -25741,10 +25741,10 @@
   "name": "Bimpos",
   "url": "https://ask.bimpos.com/user/{}",
   "not_found": [
-   "<title>User "
+   "Page not found"
   ],
   "must_contain": [
-   "Page not found"
+   "<title>User "
   ],
   "category": "other",
   "regex_check": ""
@@ -25753,10 +25753,10 @@
   "name": "Bio Sites",
   "url": "https://bio.site/{}",
   "not_found": [
-   "section\":{\"handles"
+   "This site no longer exists"
   ],
   "must_contain": [
-   "This site no longer exists"
+   "section\":{\"handles"
   ],
   "category": "other",
   "regex_check": ""
@@ -25765,10 +25765,10 @@
   "name": "biolink",
   "url": "https://bio.link/{}",
   "not_found": [
-   "profile:username"
+   "The page you’re looking for doesn’t exist"
   ],
   "must_contain": [
-   "The page you’re looking for doesn’t exist"
+   "profile:username"
   ],
   "category": "other",
   "regex_check": ""
@@ -25776,10 +25776,10 @@
  {
   "name": "Blogmarks",
   "url": "http://blogmarks.net/user/{}",
-  "not_found": [
+  "not_found": [],
+  "must_contain": [
    "class=\"mark\""
   ],
-  "must_contain": [],
   "category": "writing",
   "regex_check": ""
  },
@@ -25787,10 +25787,10 @@
   "name": "Blogspot",
   "url": "http://{}.blogspot.com",
   "not_found": [
-   "Blogger Template Style"
+   "Blog not found"
   ],
   "must_contain": [
-   "Blog not found"
+   "Blogger Template Style"
   ],
   "category": "writing",
   "regex_check": ""
@@ -25799,10 +25799,10 @@
   "name": "Bluesky 1",
   "url": "https://bsky.app/profile/{}",
   "not_found": [
-   "on Bluesky"
+   "<p id=\"bsky_did\"></p>"
   ],
   "must_contain": [
-   "<p id=\"bsky_did\"></p>"
+   "on Bluesky"
   ],
   "category": "social",
   "regex_check": ""
@@ -25811,10 +25811,10 @@
   "name": "Bluesky 2",
   "url": "https://public.api.bsky.app/xrpc/app.bsky.actor.getProfile?actor={}.bsky.social",
   "not_found": [
-   "\"handle\":\""
+   "\"message\":\"Profile not found\""
   ],
   "must_contain": [
-   "\"message\":\"Profile not found\""
+   "\"handle\":\""
   ],
   "category": "social",
   "regex_check": ""
@@ -25823,10 +25823,10 @@
   "name": "BodyBuilding.com",
   "url": "http://api.bodybuilding.com/api-proxy/bbc/get?slug={}",
   "not_found": [
-   "username"
+   "data\" :\"\""
   ],
   "must_contain": [
-   "data\" :\"\""
+   "username"
   ],
   "category": "other",
   "regex_check": ""
@@ -25835,10 +25835,10 @@
   "name": "bonga_cams",
   "url": "https://pt.bongacams.com/{}",
   "not_found": [
-   "Chat público ao vivo de"
+   "Câmaras de sexo free: chat pornô ao vivo"
   ],
   "must_contain": [
-   "Câmaras de sexo free: chat pornô ao vivo"
+   "Chat público ao vivo de"
   ],
   "category": "adult",
   "regex_check": ""
@@ -25847,10 +25847,10 @@
   "name": "Booknode",
   "url": "https://booknode.com/profil/{}",
   "not_found": [
-   "<title>Profil de"
+   "<title>Page non trouvée"
   ],
   "must_contain": [
-   "<title>Page non trouvée"
+   "<title>Profil de"
   ],
   "category": "other",
   "regex_check": ""
@@ -25859,10 +25859,10 @@
   "name": "Brickset",
   "url": "https://brickset.com/profile/{}",
   "not_found": [
-   "Member since:</dt>"
+   "{name}</h1>"
   ],
   "must_contain": [
-   "{name}</h1>"
+   "Member since:</dt>"
   ],
   "category": "other",
   "regex_check": ""
@@ -25871,10 +25871,10 @@
   "name": "Bunpro",
   "url": "https://community.bunpro.jp/u/{}.json",
   "not_found": [
-   "username"
+   "The requested URL or resource could not be found."
   ],
   "must_contain": [
-   "The requested URL or resource could not be found."
+   "username"
   ],
   "category": "forum",
   "regex_check": ""
@@ -25883,10 +25883,10 @@
   "name": "cafecito",
   "url": "https://cafecito.app/{}",
   "not_found": [
-   " | Cafecito</title>"
+   "Es posible que el enlace que seleccionaste esté roto o que se haya eliminado la página"
   ],
   "must_contain": [
-   "Es posible que el enlace que seleccionaste esté roto o que se haya eliminado la página"
+   " | Cafecito</title>"
   ],
   "category": "other",
   "regex_check": ""
@@ -25895,10 +25895,10 @@
   "name": "Calendy",
   "url": "https://calendly.com/{}",
   "not_found": [
-   "og:author"
+   "Sorry, but the page you were looking for could not be found."
   ],
   "must_contain": [
-   "Sorry, but the page you were looking for could not be found."
+   "og:author"
   ],
   "category": "other",
   "regex_check": ""
@@ -25906,10 +25906,10 @@
  {
   "name": "Cameo",
   "url": "https://www.cameo.com/{}",
-  "not_found": [
+  "not_found": [],
+  "must_contain": [
    "aggregateRating"
   ],
-  "must_contain": [],
   "category": "other",
   "regex_check": ""
  },
@@ -25917,10 +25917,10 @@
   "name": "cfx.re",
   "url": "https://forum.cfx.re/u/{}.json",
   "not_found": [
-   "created_at"
+   "The requested URL or resource could not be found."
   ],
   "must_contain": [
-   "The requested URL or resource could not be found."
+   "created_at"
   ],
   "category": "forum",
   "regex_check": ""
@@ -25929,10 +25929,10 @@
   "name": "Chamsko",
   "url": "https://www.chamsko.pl/profil/{}",
   "not_found": [
-   "W serwisie od"
+   "Strona nie istnieje."
   ],
   "must_contain": [
-   "Strona nie istnieje."
+   "W serwisie od"
   ],
   "category": "other",
   "regex_check": ""
@@ -25941,10 +25941,10 @@
   "name": "chatango.com",
   "url": "https://{}.chatango.com",
   "not_found": [
-   "<title>Chatango!"
+   "<title>Unknown User!"
   ],
   "must_contain": [
-   "<title>Unknown User!"
+   "<title>Chatango!"
   ],
   "category": "other",
   "regex_check": ""
@@ -25953,10 +25953,10 @@
   "name": "Chess.com",
   "url": "https://api.chess.com/pub/player/{}",
   "not_found": [
-   "\"player_id\":"
+   "\"code\":0"
   ],
   "must_contain": [
-   "\"code\":0"
+   "\"player_id\":"
   ],
   "category": "gaming",
   "regex_check": ""
@@ -25965,10 +25965,10 @@
   "name": "Chyoa",
   "url": "https://chyoa.com/user/{}",
   "not_found": [
-   "When I'm not reading erotica I like to read"
+   "Sorry, I got distracted..."
   ],
   "must_contain": [
-   "Sorry, I got distracted..."
+   "When I'm not reading erotica I like to read"
   ],
   "category": "other",
   "regex_check": ""
@@ -25977,10 +25977,10 @@
   "name": "Cloudflare",
   "url": "https://community.cloudflare.com/u/{}/card.json",
   "not_found": [
-   "user_avatar"
+   "The requested URL or resource could not be found"
   ],
   "must_contain": [
-   "The requested URL or resource could not be found"
+   "user_avatar"
   ],
   "category": "forum",
   "regex_check": ""
@@ -25989,10 +25989,10 @@
   "name": "Coda",
   "url": "https://coda.io/@{}/",
   "not_found": [
-   "- Coda Profile</title>"
+   "<title>Coda | Page not found - Coda</title>"
   ],
   "must_contain": [
-   "<title>Coda | Page not found - Coda</title>"
+   "- Coda Profile</title>"
   ],
   "category": "other",
   "regex_check": ""
@@ -26001,10 +26001,10 @@
   "name": "Code Project",
   "url": "https://www.codeproject.com/Members/{}",
   "not_found": [
-   "Member since"
+   "Unable to load the requested member's information"
   ],
   "must_contain": [
-   "Unable to load the requested member's information"
+   "Member since"
   ],
   "category": "other",
   "regex_check": ""
@@ -26013,10 +26013,10 @@
   "name": "Community Adobe",
   "url": "https://community.adobe.com/t5/forums/searchpage/tab/user?q={}",
   "not_found": [
-   "UserSearchItemContainer"
+   "No search results found."
   ],
   "must_contain": [
-   "No search results found."
+   "UserSearchItemContainer"
   ],
   "category": "forum",
   "regex_check": ""
@@ -26025,10 +26025,10 @@
   "name": "cowboys4angels",
   "url": "https://cowboys4angels.com/cowboy/{}/",
   "not_found": [
-   " - Cowboys 4 Angels</title>"
+   "Error Page not found"
   ],
   "must_contain": [
-   "Error Page not found"
+   " - Cowboys 4 Angels</title>"
   ],
   "category": "other",
   "regex_check": ""
@@ -26037,10 +26037,10 @@
   "name": "Cropty",
   "url": "https://api.cropty.io/v1/auth/{}",
   "not_found": [
-   "\"name\":"
+   "\"errors\":"
   ],
   "must_contain": [
-   "\"errors\":"
+   "\"name\":"
   ],
   "category": "other",
   "regex_check": ""
@@ -26049,10 +26049,10 @@
   "name": "Cytoid",
   "url": "https://cytoid.io/profile/{}",
   "not_found": [
-   "Joined"
+   "Profile not found"
   ],
   "must_contain": [
-   "Profile not found"
+   "Joined"
   ],
   "category": "other",
   "regex_check": ""
@@ -26061,10 +26061,10 @@
   "name": "Daily Kos",
   "url": "https://www.dailykos.com/user/{}",
   "not_found": [
-   "id=\"userData\""
+   "Page not found! (404)"
   ],
   "must_contain": [
-   "Page not found! (404)"
+   "id=\"userData\""
   ],
   "category": "other",
   "regex_check": ""
@@ -26073,10 +26073,10 @@
   "name": "darudar",
   "url": "https://darudar.org/users/{}/",
   "not_found": [
-   ". Дарудар"
+   "404. Дару~дар: миру~мир!"
   ],
   "must_contain": [
-   "404. Дару~дар: миру~мир!"
+   ". Дарудар"
   ],
   "category": "other",
   "regex_check": ""
@@ -26085,10 +26085,10 @@
   "name": "dateinasia",
   "url": "https://www.dateinasia.com/{}",
   "not_found": [
-   "About me"
+   "The page you are looking for does not exist"
   ],
   "must_contain": [
-   "The page you are looking for does not exist"
+   "About me"
   ],
   "category": "other",
   "regex_check": ""
@@ -26097,10 +26097,10 @@
   "name": "datezone",
   "url": "https://www.datezone.com/users/{}/",
   "not_found": [
-   "profile_status"
+   "404: page not found"
   ],
   "must_contain": [
-   "404: page not found"
+   "profile_status"
   ],
   "category": "other",
   "regex_check": ""
@@ -26109,10 +26109,10 @@
   "name": "DDoSecrets",
   "url": "https://search.ddosecrets.com/search?q={}",
   "not_found": [
-   "aria-label=\"Search result pages\""
+   "<p>No results</p>"
   ],
   "must_contain": [
-   "<p>No results</p>"
+   "aria-label=\"Search result pages\""
   ],
   "category": "other",
   "regex_check": ""
@@ -26121,10 +26121,10 @@
   "name": "Designspriation",
   "url": "https://www.designspiration.com/{}/",
   "not_found": [
-   "has discovered on Designspiration"
+   "Content Not Found"
   ],
   "must_contain": [
-   "Content Not Found"
+   "has discovered on Designspiration"
   ],
   "category": "other",
   "regex_check": ""
@@ -26133,10 +26133,10 @@
   "name": "destream",
   "url": "https://api.destream.net/siteapi/v2/live/details/{}",
   "not_found": [
-   "\"userName\":"
+   "\"errorMessage\":\"Error happened.\""
   ],
   "must_contain": [
-   "\"errorMessage\":\"Error happened.\""
+   "\"userName\":"
   ],
   "category": "other",
   "regex_check": ""
@@ -26145,10 +26145,10 @@
   "name": "Destructoid",
   "url": "https://www.destructoid.com/?name={}",
   "not_found": [
-   "Follow"
+   "Error in query"
   ],
   "must_contain": [
-   "Error in query"
+   "Follow"
   ],
   "category": "other",
   "regex_check": ""
@@ -26157,10 +26157,10 @@
   "name": "dev.to",
   "url": "https://dev.to/api/users/by_username?url={}",
   "not_found": [
-   "\"id\":"
+   "\"status\":404"
   ],
   "must_contain": [
-   "\"status\":404"
+   "\"id\":"
   ],
   "category": "code",
   "regex_check": ""
@@ -26169,10 +26169,10 @@
   "name": "dfgames",
   "url": "https://www.dfgames.com.br/user/{}",
   "not_found": [
-   "Reputa"
+   "404 Not Found"
   ],
   "must_contain": [
-   "404 Not Found"
+   "Reputa"
   ],
   "category": "spanish",
   "regex_check": ""
@@ -26181,10 +26181,10 @@
   "name": "Diablo",
   "url": "https://diablo2.io/member/{}/",
   "not_found": [
-   "Viewing profile - "
+   "The requested user does not exist"
   ],
   "must_contain": [
-   "The requested user does not exist"
+   "Viewing profile - "
   ],
   "category": "other",
   "regex_check": ""
@@ -26193,10 +26193,10 @@
   "name": "DIBIZ",
   "url": "https://www.dibiz.com/{}",
   "not_found": [
-   "Add to contacts</span>"
+   "An Error Has Occurred"
   ],
   "must_contain": [
-   "An Error Has Occurred"
+   "Add to contacts</span>"
   ],
   "category": "other",
   "regex_check": ""
@@ -26205,10 +26205,10 @@
   "name": "Discord (Invite)",
   "url": "https://discord.com/api/v9/invites/{}?with_counts=true&with_expiration=true",
   "not_found": [
-   "\"channel\":"
+   "\"message\": \"Unknown Invite\""
   ],
   "must_contain": [
-   "\"message\": \"Unknown Invite\""
+   "\"channel\":"
   ],
   "category": "other",
   "regex_check": ""
@@ -26217,10 +26217,10 @@
   "name": "Discourse",
   "url": "https://meta.discourse.org/u/{}/summary.json",
   "not_found": [
-   "topics"
+   "The requested URL or resource could not be found."
   ],
   "must_contain": [
-   "The requested URL or resource could not be found."
+   "topics"
   ],
   "category": "other",
   "regex_check": ""
@@ -26229,10 +26229,10 @@
   "name": "Docker Hub (Organization)",
   "url": "https://hub.docker.com/v2/orgs/{}/",
   "not_found": [
-   "\"uuid\":"
+   "\"orgname\":[\""
   ],
   "must_contain": [
-   "\"orgname\":[\""
+   "\"uuid\":"
   ],
   "category": "code",
   "regex_check": ""
@@ -26241,10 +26241,10 @@
   "name": "Docker Hub (User)",
   "url": "https://hub.docker.com/v2/users/{}/",
   "not_found": [
-   "\"uuid\":"
+   "\"message\":\"User not found\""
   ],
   "must_contain": [
-   "\"message\":\"User not found\""
+   "\"uuid\":"
   ],
   "category": "code",
   "regex_check": ""
@@ -26253,10 +26253,10 @@
   "name": "Donatello",
   "url": "https://donatello.to/{}",
   "not_found": [
-   "UserPage.init"
+   "<title>Сторінку не знайдено (404) - Donatello</title>"
   ],
   "must_contain": [
-   "<title>Сторінку не знайдено (404) - Donatello</title>"
+   "UserPage.init"
   ],
   "category": "social",
   "regex_check": ""
@@ -26265,10 +26265,10 @@
   "name": "Donatik",
   "url": "https://{}.donatik.io/en",
   "not_found": [
-   "\\\"__typename\\\":\\\"User\\\""
+   "id=\"__next_error__\""
   ],
   "must_contain": [
-   "id=\"__next_error__\""
+   "\\\"__typename\\\":\\\"User\\\""
   ],
   "category": "other",
   "regex_check": ""
@@ -26277,10 +26277,10 @@
   "name": "Donation Alerts",
   "url": "https://www.donationalerts.com/api/v1/user/{}/donationpagesettings",
   "not_found": [
-   "\"data\":"
+   "\"success\":false"
   ],
   "must_contain": [
-   "\"success\":false"
+   "\"data\":"
   ],
   "category": "other",
   "regex_check": ""
@@ -26289,10 +26289,10 @@
   "name": "Donatty",
   "url": "https://api.donatty.com/users/find/{}",
   "not_found": [
-   "\"response\":"
+   "\"error\":\"internal error\""
   ],
   "must_contain": [
-   "\"error\":\"internal error\""
+   "\"response\":"
   ],
   "category": "other",
   "regex_check": ""
@@ -26301,10 +26301,10 @@
   "name": "dot.cards",
   "url": "https://dot.cards/{}",
   "not_found": [
-   "status\": \"success"
+   "status\": \"username_not_found"
   ],
   "must_contain": [
-   "status\": \"username_not_found"
+   "status\": \"success"
   ],
   "category": "other",
   "regex_check": ""
@@ -26313,10 +26313,10 @@
   "name": "Dota2.ru",
   "url": "https://dota2.ru/forum/search/?type=user&keywords={}&sort_by=username",
   "not_found": [
-   "class=\"forum-section__item forum-section__item--first\""
+   "id=\"no-activity-posts\""
   ],
   "must_contain": [
-   "id=\"no-activity-posts\""
+   "class=\"forum-section__item forum-section__item--first\""
   ],
   "category": "forum",
   "regex_check": ""
@@ -26325,10 +26325,10 @@
   "name": "DOTAFire",
   "url": "https://www.dotafire.com/ajax/searchSite?text={}&search=members",
   "not_found": [
-   "href=\"/profile/"
+   ">No results found</span>"
   ],
   "must_contain": [
-   ">No results found</span>"
+   "href=\"/profile/"
   ],
   "category": "other",
   "regex_check": ""
@@ -26337,10 +26337,10 @@
   "name": "DRIVE2.RU",
   "url": "https://www.drive2.ru/users/{}/",
   "not_found": [
-   "itemprop=\"name\""
+   "<title>404 — Страница не найдена</title>"
   ],
   "must_contain": [
-   "<title>404 — Страница не найдена</title>"
+   "itemprop=\"name\""
   ],
   "category": "other",
   "regex_check": ""
@@ -26349,10 +26349,10 @@
   "name": "ebay_stores",
   "url": "https://www.ebay.com/str/{}",
   "not_found": [
-   "| eBay Stores</title>"
+   "Sorry, this store was not found."
   ],
   "must_contain": [
-   "Sorry, this store was not found."
+   "| eBay Stores</title>"
   ],
   "category": "other",
   "regex_check": ""
@@ -26361,10 +26361,10 @@
   "name": "Etoro",
   "url": "https://www.etoro.com/api/logininfo/v1.1/users/{}",
   "not_found": [
-   "\"gcid\":"
+   "\"ErrorCode\":\"NotFound\""
   ],
   "must_contain": [
-   "\"ErrorCode\":\"NotFound\""
+   "\"gcid\":"
   ],
   "category": "other",
   "regex_check": ""
@@ -26373,10 +26373,10 @@
   "name": "Etsy",
   "url": "https://www.etsy.com/people/{}",
   "not_found": [
-   " favorite items - Etsy</title>"
+   "Sorry, the member you are looking for does not exist"
   ],
   "must_contain": [
-   "Sorry, the member you are looking for does not exist"
+   " favorite items - Etsy</title>"
   ],
   "category": "art",
   "regex_check": ""
@@ -26384,10 +26384,10 @@
  {
   "name": "Evolution CMS",
   "url": "https://community.evocms.ru/users/?search={}",
-  "not_found": [
+  "not_found": [],
+  "must_contain": [
    "id=\"user-search\""
   ],
-  "must_contain": [],
   "category": "forum",
   "regex_check": ""
  },
@@ -26395,10 +26395,10 @@
   "name": "Expressional.social (Mastodon Instance)",
   "url": "https://expressional.social/api/v1/accounts/lookup?acct={}",
   "not_found": [
-   "display_name"
+   "Record not found"
   ],
   "must_contain": [
-   "Record not found"
+   "display_name"
   ],
   "category": "social",
   "regex_check": ""
@@ -26407,10 +26407,10 @@
   "name": "FACEIT",
   "url": "https://www.faceit.com/api/users/v1/nicknames/{}",
   "not_found": [
-   "\"result\":\"OK\""
+   "\"message\":\"user not found\""
   ],
   "must_contain": [
-   "\"message\":\"user not found\""
+   "\"result\":\"OK\""
   ],
   "category": "other",
   "regex_check": ""
@@ -26419,10 +26419,10 @@
   "name": "Fanslist (OnlyFans)",
   "url": "https://fanslist.com/search?q={}",
   "not_found": [
-   "data-username="
+   "No results found for query"
   ],
   "must_contain": [
-   "No results found for query"
+   "data-username="
   ],
   "category": "adult",
   "regex_check": ""
@@ -26431,10 +26431,10 @@
   "name": "Fark",
   "url": "https://www.fark.com/users/{}",
   "not_found": [
-   "Fark account number"
+   "Tastes like chicken."
   ],
   "must_contain": [
-   "Tastes like chicken."
+   "Fark account number"
   ],
   "category": "other",
   "regex_check": ""
@@ -26443,10 +26443,10 @@
   "name": "Federated.press (Mastodon Instance)",
   "url": "https://federated.press/api/v1/accounts/lookup?acct={}",
   "not_found": [
-   "display_name"
+   "Record not found"
   ],
   "must_contain": [
-   "Record not found"
+   "display_name"
   ],
   "category": "social",
   "regex_check": ""
@@ -26455,10 +26455,10 @@
   "name": "Filmot Channel Search",
   "url": "https://filmot.com/channelsearch/{}",
   "not_found": [
-   "Subscribers"
+   "No channels found"
   ],
   "must_contain": [
-   "No channels found"
+   "Subscribers"
   ],
   "category": "other",
   "regex_check": ""
@@ -26467,10 +26467,10 @@
   "name": "Filmot Unlisted Videos",
   "url": "https://filmot.com/unlistedSearch?channelQuery={}&sortField=uploaddate&sortOrder=desc&",
   "not_found": [
-   "clips found"
+   "No results"
   ],
   "must_contain": [
-   "No results"
+   "clips found"
   ],
   "category": "other",
   "regex_check": ""
@@ -26479,10 +26479,10 @@
   "name": "fine_art_america",
   "url": "https://fineartamerica.com/profiles/{}",
   "not_found": [
-   "Shop for artwork by"
+   "Browse through millions of independent artists in our extensive"
   ],
   "must_contain": [
-   "Browse through millions of independent artists in our extensive"
+   "Shop for artwork by"
   ],
   "category": "other",
   "regex_check": ""
@@ -26491,10 +26491,10 @@
   "name": "flowcode",
   "url": "https://www.flowcode.com/page/{}",
   "not_found": [
-   ";s Flowpage"
+   "Nobody's reserved this Flowpage yet."
   ],
   "must_contain": [
-   "Nobody's reserved this Flowpage yet."
+   ";s Flowpage"
   ],
   "category": "other",
   "regex_check": ""
@@ -26503,10 +26503,10 @@
   "name": "Fodors Forum",
   "url": "https://www.fodors.com/community/profile/{}/forum-activity",
   "not_found": [
-   "User Profile | Fodor’s Travel</title>"
+   "Plan Your Trip Online</title>"
   ],
   "must_contain": [
-   "Plan Your Trip Online</title>"
+   "User Profile | Fodor’s Travel</title>"
   ],
   "category": "forum",
   "regex_check": ""
@@ -26515,10 +26515,10 @@
   "name": "Folkd",
   "url": "https://www.folkd.com/?app=core&module=system&controller=ajax&do=usernameExists&input={}",
   "not_found": [
-   "\"message\":\"That display name is in use by another member.\""
+   "\"result\":\"ok\""
   ],
   "must_contain": [
-   "\"result\":\"ok\""
+   "\"message\":\"That display name is in use by another member.\""
   ],
   "category": "other",
   "regex_check": ""
@@ -26527,10 +26527,10 @@
   "name": "Fortnite Tracker",
   "url": "https://fortnitetracker.com/profile/all/{}",
   "not_found": [
-   "s Fortnite Stats - Fortnite Tracker"
+   "Fortnite Player Stats -"
   ],
   "must_contain": [
-   "Fortnite Player Stats -"
+   "s Fortnite Stats - Fortnite Tracker"
   ],
   "category": "other",
   "regex_check": ""
@@ -26538,10 +26538,10 @@
  {
   "name": "forumprawne.org",
   "url": "https://forumprawne.org/members/{}.html",
-  "not_found": [
+  "not_found": [],
+  "must_contain": [
    "Wiadomość"
   ],
-  "must_contain": [],
   "category": "forum",
   "regex_check": ""
  },
@@ -26549,10 +26549,10 @@
   "name": "Fosstodon.org (Mastodon Instance)",
   "url": "https://fosstodon.org/api/v1/accounts/lookup?acct={}",
   "not_found": [
-   "display_name"
+   "Record not found"
   ],
   "must_contain": [
-   "Record not found"
+   "display_name"
   ],
   "category": "social",
   "regex_check": ""
@@ -26561,10 +26561,10 @@
   "name": "Fotolog Archived Profile",
   "url": "https://archive.org/wayback/available?url=https://www.fotolog.com/{}",
   "not_found": [
-   "\"archived_snapshots\": {\"closest\""
+   "\"archived_snapshots\": {}"
   ],
   "must_contain": [
-   "\"archived_snapshots\": {}"
+   "\"archived_snapshots\": {\"closest\""
   ],
   "category": "art",
   "regex_check": ""
@@ -26573,10 +26573,10 @@
   "name": "Freelancehunt (Employer)",
   "url": "https://freelancehunt.com/en/employer/{}.html",
   "not_found": [
-   "\"@id\":\"https://freelancehunt.com/en/employers\""
+   "User not found."
   ],
   "must_contain": [
-   "User not found."
+   "\"@id\":\"https://freelancehunt.com/en/employers\""
   ],
   "category": "other",
   "regex_check": ""
@@ -26585,10 +26585,10 @@
   "name": "Freelancehunt (Freelancer)",
   "url": "https://freelancehunt.com/en/freelancer/{}.html",
   "not_found": [
-   "\"@id\":\"https://freelancehunt.com/en/freelancers\""
+   "User not found."
   ],
   "must_contain": [
-   "User not found."
+   "\"@id\":\"https://freelancehunt.com/en/freelancers\""
   ],
   "category": "other",
   "regex_check": ""
@@ -26597,10 +26597,10 @@
   "name": "FreeSteamKeys",
   "url": "https://www.freesteamkeys.com/members/{}/",
   "not_found": [
-   "item-header-avatar"
+   "error404"
   ],
   "must_contain": [
-   "error404"
+   "item-header-avatar"
   ],
   "category": "gaming",
   "regex_check": ""
@@ -26609,10 +26609,10 @@
   "name": "FriendFinder",
   "url": "https://friendfinder.com/profile/{}",
   "not_found": [
-   "Last Visit:"
+   "302 Found"
   ],
   "must_contain": [
-   "302 Found"
+   "Last Visit:"
   ],
   "category": "other",
   "regex_check": ""
@@ -26621,10 +26621,10 @@
   "name": "Gab",
   "url": "https://gab.com/api/v1/account_by_username/{}",
   "not_found": [
-   "\"id\":"
+   "\"error\":\"Record not found\""
   ],
   "must_contain": [
-   "\"error\":\"Record not found\""
+   "\"id\":"
   ],
   "category": "social",
   "regex_check": ""
@@ -26633,10 +26633,10 @@
   "name": "Game Jolt",
   "url": "https://gamejolt.com/site-api/web/profile/@{}/",
   "not_found": [
-   "created_on"
+   "null,"
   ],
   "must_contain": [
-   "null,"
+   "created_on"
   ],
   "category": "other",
   "regex_check": ""
@@ -26645,10 +26645,10 @@
   "name": "game_debate",
   "url": "https://www.game-debate.com/profile/{}",
   "not_found": [
-   "| , , GB pc game performance"
+   "Not Found"
   ],
   "must_contain": [
-   "Not Found"
+   "| , , GB pc game performance"
   ],
   "category": "other",
   "regex_check": ""
@@ -26657,10 +26657,10 @@
   "name": "Gamer DVR",
   "url": "https://gamerdvr.com/gamer/{}",
   "not_found": [
-   "class=\"gamerpic\""
+   "<body>You are being <"
   ],
   "must_contain": [
-   "<body>You are being <"
+   "class=\"gamerpic\""
   ],
   "category": "other",
   "regex_check": ""
@@ -26669,10 +26669,10 @@
   "name": "Garmin connect",
   "url": "https://connect.garmin.com/modern/profile/{}",
   "not_found": [
-   "window.ERROR_VIEW = null"
+   "resourceNotFoundRoute"
   ],
   "must_contain": [
-   "resourceNotFoundRoute"
+   "window.ERROR_VIEW = null"
   ],
   "category": "other",
   "regex_check": ""
@@ -26681,10 +26681,10 @@
   "name": "GDBrowser",
   "url": "https://gdbrowser.com/api/profile/{}",
   "not_found": [
-   "\"accountID\":"
+   "-1"
   ],
   "must_contain": [
-   "-1"
+   "\"accountID\":"
   ],
   "category": "other",
   "regex_check": ""
@@ -26693,10 +26693,10 @@
   "name": "Genius (Artist)",
   "url": "https://genius.com/artists/{}",
   "not_found": [
-   "class=\"profile_header\""
+   "class=\"render_404\""
   ],
   "must_contain": [
-   "class=\"render_404\""
+   "class=\"profile_header\""
   ],
   "category": "other",
   "regex_check": ""
@@ -26705,10 +26705,10 @@
   "name": "Genius (User)",
   "url": "https://genius.com/{}",
   "not_found": [
-   "class=\"profile_header\""
+   "class=\"render_404\""
   ],
   "must_contain": [
-   "class=\"render_404\""
+   "class=\"profile_header\""
   ],
   "category": "other",
   "regex_check": ""
@@ -26717,10 +26717,10 @@
   "name": "getmonero",
   "url": "https://forum.getmonero.org/user/{}",
   "not_found": [
-   "Monero | User"
+   "Monero | Page not found. Error: 404"
   ],
   "must_contain": [
-   "Monero | Page not found. Error: 404"
+   "Monero | User"
   ],
   "category": "forum",
   "regex_check": ""
@@ -26729,10 +26729,10 @@
   "name": "Gettr",
   "url": "https://gettr.com/api/s/uinf/{}",
   "not_found": [
-   "\"rc\":\"OK\""
+   "\"rc\":\"ERR\""
   ],
   "must_contain": [
-   "\"rc\":\"ERR\""
+   "\"rc\":\"OK\""
   ],
   "category": "social",
   "regex_check": ""
@@ -26741,10 +26741,10 @@
   "name": "Gigapan",
   "url": "https://www.gigapan.com/profiles/{}",
   "not_found": [
-   "width=\"100\""
+   "<a href=\"/gigapans\">View Gigapans</a>"
   ],
   "must_contain": [
-   "<a href=\"/gigapans\">View Gigapans</a>"
+   "width=\"100\""
   ],
   "category": "other",
   "regex_check": ""
@@ -26753,10 +26753,10 @@
   "name": "Giphy (Channel)",
   "url": "https://giphy.com/channel/{}",
   "not_found": [
-   "\\\"user_id\\\""
+   "404 Not Found"
   ],
   "must_contain": [
-   "404 Not Found"
+   "\\\"user_id\\\""
   ],
   "category": "other",
   "regex_check": ""
@@ -26765,10 +26765,10 @@
   "name": "GitHub (Gists)",
   "url": "https://api.github.com/users/{}/gists",
   "not_found": [
-   "\"id\":"
+   "\"status\": \"404\""
   ],
   "must_contain": [
-   "\"status\": \"404\""
+   "\"id\":"
   ],
   "category": "code",
   "regex_check": ""
@@ -26777,10 +26777,10 @@
   "name": "GitHub (User)",
   "url": "https://api.github.com/users/{}",
   "not_found": [
-   "\"id\":"
+   "\"status\": \"404\""
   ],
   "must_contain": [
-   "\"status\": \"404\""
+   "\"id\":"
   ],
   "category": "code",
   "regex_check": ""
@@ -26789,10 +26789,10 @@
   "name": "GNOME (GitLab)",
   "url": "https://gitlab.gnome.org/api/v4/users?username={}",
   "not_found": [
-   "\"username\":"
+   "[]"
   ],
   "must_contain": [
-   "[]"
+   "\"username\":"
   ],
   "category": "code",
   "regex_check": ""
@@ -26801,10 +26801,10 @@
   "name": "GNOME (Shell Extensions)",
   "url": "https://extensions.gnome.org/accounts/profile/{}",
   "not_found": [
-   "class=\"user-details\""
+   "<h3>404 - Page not Found</h3>"
   ],
   "must_contain": [
-   "<h3>404 - Page not Found</h3>"
+   "class=\"user-details\""
   ],
   "category": "other",
   "regex_check": ""
@@ -26813,10 +26813,10 @@
   "name": "Goodgame_Russia",
   "url": "https://goodgame.ru/channel/{}/",
   "not_found": [
-   "channel_id"
+   "Такой страницы не существует"
   ],
   "must_contain": [
-   "Такой страницы не существует"
+   "channel_id"
   ],
   "category": "other",
   "regex_check": ""
@@ -26825,10 +26825,10 @@
   "name": "gpodder.net",
   "url": "https://gpodder.net/user/{}/",
   "not_found": [
-   "mdash; gpodder.net"
+   "404 - Not found"
   ],
   "must_contain": [
-   "404 - Not found"
+   "mdash; gpodder.net"
   ],
   "category": "other",
   "regex_check": ""
@@ -26837,10 +26837,10 @@
   "name": "grandprof",
   "url": "https://grandprof.org/communaute/{}",
   "not_found": [
-   "s Profile"
+   "Mauvaise pioche"
   ],
   "must_contain": [
-   "Mauvaise pioche"
+   "s Profile"
   ],
   "category": "other",
   "regex_check": ""
@@ -26849,10 +26849,10 @@
   "name": "Graphics.social (Mastodon Instance)",
   "url": "https://graphics.social/api/v1/accounts/lookup?acct={}",
   "not_found": [
-   "display_name"
+   "Record not found"
   ],
   "must_contain": [
-   "Record not found"
+   "display_name"
   ],
   "category": "social",
   "regex_check": ""
@@ -26861,10 +26861,10 @@
   "name": "Greasy Fork",
   "url": "https://greasyfork.org/en/users?q={}",
   "not_found": [
-   "class=\"user-list\""
+   "<p>No users!</p>"
   ],
   "must_contain": [
-   "<p>No users!</p>"
+   "class=\"user-list\""
   ],
   "category": "other",
   "regex_check": ""
@@ -26873,10 +26873,10 @@
   "name": "GTAinside.com",
   "url": "https://www.gtainside.com/user/{}",
   "not_found": [
-   "userpage_user"
+   "<h1>404 Not Found"
   ],
   "must_contain": [
-   "<h1>404 Not Found"
+   "userpage_user"
   ],
   "category": "other",
   "regex_check": ""
@@ -26885,10 +26885,10 @@
   "name": "Habbo.com",
   "url": "https://www.habbo.com/api/public/users?name={}",
   "not_found": [
-   "uniqueId\":"
+   "error\": \"not-found"
   ],
   "must_contain": [
-   "error\": \"not-found"
+   "uniqueId\":"
   ],
   "category": "other",
   "regex_check": ""
@@ -26897,10 +26897,10 @@
   "name": "Habbo.com.br",
   "url": "https://www.habbo.com.br/api/public/users?name={}",
   "not_found": [
-   "uniqueId\":"
+   "error\": \"not-found"
   ],
   "must_contain": [
-   "error\": \"not-found"
+   "uniqueId\":"
   ],
   "category": "spanish",
   "regex_check": ""
@@ -26909,10 +26909,10 @@
   "name": "Habbo.com.tr",
   "url": "https://www.habbo.com.tr/api/public/users?name={}",
   "not_found": [
-   "uniqueId\":"
+   "error\": \"not-found"
   ],
   "must_contain": [
-   "error\": \"not-found"
+   "uniqueId\":"
   ],
   "category": "other",
   "regex_check": ""
@@ -26921,10 +26921,10 @@
   "name": "Habbo.de",
   "url": "https://www.habbo.de/api/public/users?name={}",
   "not_found": [
-   "uniqueId\":"
+   "error\": \"not-found"
   ],
   "must_contain": [
-   "error\": \"not-found"
+   "uniqueId\":"
   ],
   "category": "other",
   "regex_check": ""
@@ -26933,10 +26933,10 @@
   "name": "Habbo.es",
   "url": "https://www.habbo.es/api/public/users?name={}",
   "not_found": [
-   "uniqueId\":"
+   "not-found"
   ],
   "must_contain": [
-   "not-found"
+   "uniqueId\":"
   ],
   "category": "spanish",
   "regex_check": ""
@@ -26945,10 +26945,10 @@
   "name": "Habbo.fi",
   "url": "https://www.habbo.fi/api/public/users?name={}",
   "not_found": [
-   "uniqueId\":"
+   "error\": \"not-found"
   ],
   "must_contain": [
-   "error\": \"not-found"
+   "uniqueId\":"
   ],
   "category": "other",
   "regex_check": ""
@@ -26957,10 +26957,10 @@
   "name": "Habbo.fr",
   "url": "https://www.habbo.fr/api/public/users?name={}",
   "not_found": [
-   "uniqueId\":"
+   "error\": \"not-found"
   ],
   "must_contain": [
-   "error\": \"not-found"
+   "uniqueId\":"
   ],
   "category": "other",
   "regex_check": ""
@@ -26969,10 +26969,10 @@
   "name": "Habbo.it",
   "url": "https://www.habbo.it/api/public/users?name={}",
   "not_found": [
-   "uniqueId\":"
+   "error\": \"not-found"
   ],
   "must_contain": [
-   "error\": \"not-found"
+   "uniqueId\":"
   ],
   "category": "other",
   "regex_check": ""
@@ -26981,10 +26981,10 @@
   "name": "Habbo.nl",
   "url": "https://www.habbo.nl/api/public/users?name={}",
   "not_found": [
-   "uniqueId\":"
+   "error\": \"not-found"
   ],
   "must_contain": [
-   "error\": \"not-found"
+   "uniqueId\":"
   ],
   "category": "other",
   "regex_check": ""
@@ -26993,10 +26993,10 @@
   "name": "Habr (Q&A)",
   "url": "https://qna.habr.com/user/{}",
   "not_found": [
-   "class=\"page-header__info\""
+   "icon_error_404"
   ],
   "must_contain": [
-   "icon_error_404"
+   "class=\"page-header__info\""
   ],
   "category": "forum",
   "regex_check": ""
@@ -27005,10 +27005,10 @@
   "name": "Habr (User)",
   "url": "https://habr.com/ru/users/{}/",
   "not_found": [
-   "tm-page tm-user"
+   "tm-error-message"
   ],
   "must_contain": [
-   "tm-error-message"
+   "tm-page tm-user"
   ],
   "category": "forum",
   "regex_check": ""
@@ -27017,10 +27017,10 @@
   "name": "Habtium",
   "url": "https://habtium.es/{}",
   "not_found": [
-   "<div class=\"profile-info"
+   "<h1 class=\"section red\">Oops!"
   ],
   "must_contain": [
-   "<h1 class=\"section red\">Oops!"
+   "<div class=\"profile-info"
   ],
   "category": "spanish",
   "regex_check": ""
@@ -27029,10 +27029,10 @@
   "name": "Hackaday.io",
   "url": "https://hackaday.io/{}",
   "not_found": [
-   "class=\"following-container \""
+   "class=\"error-nav\""
   ],
   "must_contain": [
-   "class=\"error-nav\""
+   "class=\"following-container \""
   ],
   "category": "other",
   "regex_check": ""
@@ -27041,10 +27041,10 @@
   "name": "Hackadvisor",
   "url": "https://hackadvisor.io/api/v2/profile/{}/",
   "not_found": [
-   "\"username\":"
+   "{\"detail\":\"Username not found\"}"
   ],
   "must_contain": [
-   "{\"detail\":\"Username not found\"}"
+   "\"username\":"
   ],
   "category": "other",
   "regex_check": ""
@@ -27053,10 +27053,10 @@
   "name": "Hacker News",
   "url": "https://news.ycombinator.com/user?id={}",
   "not_found": [
-   "created:"
+   "No such user."
   ],
   "must_contain": [
-   "No such user."
+   "created:"
   ],
   "category": "other",
   "regex_check": ""
@@ -27065,10 +27065,10 @@
   "name": "hamaha",
   "url": "https://hamaha.net/{}",
   "not_found": [
-   "id=\"profile\""
+   "content=\"HAMAHA  Биткоин форум. Торговля на бирже - ➨ Обучение Криптовалютам, Биткоин и NYSE \""
   ],
   "must_contain": [
-   "content=\"HAMAHA  Биткоин форум. Торговля на бирже - ➨ Обучение Криптовалютам, Биткоин и NYSE \""
+   "id=\"profile\""
   ],
   "category": "other",
   "regex_check": ""
@@ -27077,10 +27077,10 @@
   "name": "Hanime",
   "url": "https://hanime.tv/channels/{}",
   "not_found": [
-   "Channel Views"
+   "DYNAMIC"
   ],
   "must_contain": [
-   "DYNAMIC"
+   "Channel Views"
   ],
   "category": "other",
   "regex_check": ""
@@ -27089,10 +27089,10 @@
   "name": "Hcommons.social (Mastodon Instance)",
   "url": "https://hcommons.social/api/v1/accounts/lookup?acct={}",
   "not_found": [
-   "display_name"
+   "Record not found"
   ],
   "must_contain": [
-   "Record not found"
+   "display_name"
   ],
   "category": "social",
   "regex_check": ""
@@ -27101,10 +27101,10 @@
   "name": "Heylink",
   "url": "https://heylink.me/{}/",
   "not_found": [
-   "HeyLink.me |"
+   "We can't find the page that you're looking for :("
   ],
   "must_contain": [
-   "We can't find the page that you're looking for :("
+   "HeyLink.me |"
   ],
   "category": "other",
   "regex_check": ""
@@ -27113,10 +27113,10 @@
   "name": "hiberworld",
   "url": "https://hiberworld.com/user/{}",
   "not_found": [
-   "Member since "
+   "Looks like you got lost "
   ],
   "must_contain": [
-   "Looks like you got lost "
+   "Member since "
   ],
   "category": "other",
   "regex_check": ""
@@ -27125,10 +27125,10 @@
   "name": "HiHello",
   "url": "https://www.hihello.me/author/{}",
   "not_found": [
-   "<title>HiHello Blog Author: "
+   "Well, this is awkward"
   ],
   "must_contain": [
-   "Well, this is awkward"
+   "<title>HiHello Blog Author: "
   ],
   "category": "social",
   "regex_check": ""
@@ -27137,10 +27137,10 @@
   "name": "HomeDesign3D",
   "url": "https://en.homedesign3d.net/user/{}",
   "not_found": [
-   "userspace"
+   "An Error Occurred: Internal Server Error"
   ],
   "must_contain": [
-   "An Error Occurred: Internal Server Error"
+   "userspace"
   ],
   "category": "other",
   "regex_check": ""
@@ -27149,10 +27149,10 @@
   "name": "Hometech.social (Mastodon Instance)",
   "url": "https://hometech.social/api/v1/accounts/lookup?acct={}",
   "not_found": [
-   "display_name"
+   "Record not found"
   ],
   "must_contain": [
-   "Record not found"
+   "display_name"
   ],
   "category": "social",
   "regex_check": ""
@@ -27161,10 +27161,10 @@
   "name": "hoo.be",
   "url": "https://hoo.be/{}",
   "not_found": [
-   "--profile-name-color"
+   "Page Not Found</h3>"
   ],
   "must_contain": [
-   "Page Not Found</h3>"
+   "--profile-name-color"
   ],
   "category": "other",
   "regex_check": ""
@@ -27173,10 +27173,10 @@
   "name": "Hostux.social (Mastodon Instance)",
   "url": "https://hostux.social/api/v1/accounts/lookup?acct={}",
   "not_found": [
-   "display_name"
+   "Record not found"
   ],
   "must_contain": [
-   "Record not found"
+   "display_name"
   ],
   "category": "social",
   "regex_check": ""
@@ -27185,10 +27185,10 @@
   "name": "HulkShare",
   "url": "https://www.hulkshare.com/{}",
   "not_found": [
-   "id=\"profile_image\""
+   "Invalid user."
   ],
   "must_contain": [
-   "Invalid user."
+   "id=\"profile_image\""
   ],
   "category": "other",
   "regex_check": ""
@@ -27197,10 +27197,10 @@
   "name": "Iconfinder",
   "url": "https://www.iconfinder.com/{}",
   "not_found": [
-   "data-to-user-id="
+   "We couldn't find the page you are looking for."
   ],
   "must_contain": [
-   "We couldn't find the page you are looking for."
+   "data-to-user-id="
   ],
   "category": "other",
   "regex_check": ""
@@ -27209,10 +27209,10 @@
   "name": "icq-chat",
   "url": "https://icq.icqchat.co/members/{}/",
   "not_found": [
-   "Last seen"
+   "Oops! We ran into some problems"
   ],
   "must_contain": [
-   "Oops! We ran into some problems"
+   "Last seen"
   ],
   "category": "spanish",
   "regex_check": ""
@@ -27221,10 +27221,10 @@
   "name": "ilovegrowingmarijuana",
   "url": "https://support.ilovegrowingmarijuana.com/u/{}",
   "not_found": [
-   "<title>  Profile - "
+   "Oops! That page doesn’t exist or is private"
   ],
   "must_contain": [
-   "Oops! That page doesn’t exist or is private"
+   "<title>  Profile - "
   ],
   "category": "other",
   "regex_check": ""
@@ -27233,10 +27233,10 @@
   "name": "imagefap",
   "url": "https://www.imagefap.com/profile/{}",
   "not_found": [
-   "s Profile"
+   "Invalid uid"
   ],
   "must_contain": [
-   "Invalid uid"
+   "s Profile"
   ],
   "category": "other",
   "regex_check": ""
@@ -27245,10 +27245,10 @@
   "name": "Independent academia",
   "url": "https://independent.academia.edu/{}",
   "not_found": [
-   "- Academia.edu"
+   "Academia.edu"
   ],
   "must_contain": [
-   "Academia.edu"
+   "- Academia.edu"
   ],
   "category": "other",
   "regex_check": ""
@@ -27257,10 +27257,10 @@
   "name": "Instagram (Imginn)",
   "url": "https://imginn.com/{}/",
   "not_found": [
-   "class=\"userinfo\""
+   "class=\"page-error notfound\""
   ],
   "must_contain": [
-   "class=\"page-error notfound\""
+   "class=\"userinfo\""
   ],
   "category": "social",
   "regex_check": ""
@@ -27269,10 +27269,10 @@
   "name": "Instagram_archives",
   "url": "https://archive.org/wayback/available?url=https://instagram.com/{}/",
   "not_found": [
-   "\"archived_snapshots\": {\"closest\""
+   "\"archived_snapshots\": {}}"
   ],
   "must_contain": [
-   "\"archived_snapshots\": {}}"
+   "\"archived_snapshots\": {\"closest\""
   ],
   "category": "social",
   "regex_check": ""
@@ -27281,10 +27281,10 @@
   "name": "Internet Archive User Search",
   "url": "https://archive.org/advancedsearch.php?q={}&output=json",
   "not_found": [
-   "backup_location"
+   "numFound\":0"
   ],
   "must_contain": [
-   "numFound\":0"
+   "backup_location"
   ],
   "category": "other",
   "regex_check": ""
@@ -27293,10 +27293,10 @@
   "name": "iXBT Forum",
   "url": "https://forum.ixbt.com/users.cgi?id=info:{}",
   "not_found": [
-   "Информация об участнике:"
+   "Проверьте регистр написания."
   ],
   "must_contain": [
-   "Проверьте регистр написания."
+   "Информация об участнике:"
   ],
   "category": "forum",
   "regex_check": ""
@@ -27305,10 +27305,10 @@
   "name": "Japandict",
   "url": "https://forum.japandict.com/u/{}",
   "not_found": [
-   "modern browser"
+   "The page you requested could not be found."
   ],
   "must_contain": [
-   "The page you requested could not be found."
+   "modern browser"
   ],
   "category": "forum",
   "regex_check": ""
@@ -27317,10 +27317,10 @@
   "name": "Joe Monster",
   "url": "https://joemonster.org/bojownik/{}",
   "not_found": [
-   "jest prywatny"
+   "Nie wiem jak ci to powiedzieć"
   ],
   "must_contain": [
-   "Nie wiem jak ci to powiedzieć"
+   "jest prywatny"
   ],
   "category": "other",
   "regex_check": ""
@@ -27329,10 +27329,10 @@
   "name": "kipin",
   "url": "https://kipin.app/{}",
   "not_found": [
-   "kipin.app/data/photos/resized2/"
+   "Page not found. Link expired, broken or wrong."
   ],
   "must_contain": [
-   "Page not found. Link expired, broken or wrong."
+   "kipin.app/data/photos/resized2/"
   ],
   "category": "other",
   "regex_check": ""
@@ -27341,10 +27341,10 @@
   "name": "KnowYourMeme",
   "url": "https://knowyourmeme.com/users/{}",
   "not_found": [
-   "Contributions"
+   "404, File Not Found!"
   ],
   "must_contain": [
-   "404, File Not Found!"
+   "Contributions"
   ],
   "category": "other",
   "regex_check": ""
@@ -27353,10 +27353,10 @@
   "name": "Ko-Fi",
   "url": "https://ko-fi.com/{}",
   "not_found": [
-   "id=\"profile-header\""
+   "<title>Object moved</title>"
   ],
   "must_contain": [
-   "<title>Object moved</title>"
+   "id=\"profile-header\""
   ],
   "category": "funding",
   "regex_check": ""
@@ -27365,10 +27365,10 @@
   "name": "komi",
   "url": "https://api.komi.io/api/talent/usernames/{}",
   "not_found": [
-   "accountStatus\":\"active"
+   "The talent profile was not found"
   ],
   "must_contain": [
-   "The talent profile was not found"
+   "accountStatus\":\"active"
   ],
   "category": "other",
   "regex_check": ""
@@ -27377,10 +27377,10 @@
   "name": "Kwai",
   "url": "https://www.kwai.com/@{}",
   "not_found": [
-   "name=\"title\""
+   "<title>Kwai</title>"
   ],
   "must_contain": [
-   "<title>Kwai</title>"
+   "name=\"title\""
   ],
   "category": "other",
   "regex_check": ""
@@ -27389,10 +27389,10 @@
   "name": "kwejk.pl",
   "url": "https://kwejk.pl/uzytkownik/{}#/tablica/",
   "not_found": [
-   "Kwejki użytkownika"
+   "404 - strona nie została znaleziona - KWEJK.pl"
   ],
   "must_contain": [
-   "404 - strona nie została znaleziona - KWEJK.pl"
+   "Kwejki użytkownika"
   ],
   "category": "other",
   "regex_check": ""
@@ -27401,10 +27401,10 @@
   "name": "LeakIX",
   "url": "https://leakix.net/u/{}",
   "not_found": [
-   ">Joined "
+   "<title>LeakIX - Server error</title>"
   ],
   "must_contain": [
-   "<title>LeakIX - Server error</title>"
+   ">Joined "
   ],
   "category": "other",
   "regex_check": ""
@@ -27413,10 +27413,10 @@
   "name": "Lemon8",
   "url": "https://www.lemon8-app.com/{}?region=us",
   "not_found": [
-   "class=\"user-desc-main-info"
+   "unavailableReason\": \"not_found"
   ],
   "must_contain": [
-   "unavailableReason\": \"not_found"
+   "class=\"user-desc-main-info"
   ],
   "category": "other",
   "regex_check": ""
@@ -27425,10 +27425,10 @@
   "name": "LevelBlue",
   "url": "https://otx.alienvault.com/otxapi/auth/validate?username={}",
   "not_found": [
-   "\"username\": [\"This username is already taken\"]"
+   "{}"
   ],
   "must_contain": [
-   "{}"
+   "\"username\": [\"This username is already taken\"]"
   ],
   "category": "other",
   "regex_check": ""
@@ -27437,10 +27437,10 @@
   "name": "Liberapay",
   "url": "https://liberapay.com/{}",
   "not_found": [
-   "class=\"profile-header\""
+   "Response code: 404"
   ],
   "must_contain": [
-   "Response code: 404"
+   "class=\"profile-header\""
   ],
   "category": "funding",
   "regex_check": ""
@@ -27449,10 +27449,10 @@
   "name": "Libretooth.gr (Mastodon Instance)",
   "url": "https://libretooth.gr/api/v1/accounts/lookup?acct={}",
   "not_found": [
-   "display_name"
+   "Record not found"
   ],
   "must_contain": [
-   "Record not found"
+   "display_name"
   ],
   "category": "social",
   "regex_check": ""
@@ -27461,10 +27461,10 @@
   "name": "lichess.org",
   "url": "https://lichess.org/api/player/autocomplete?term={}&exists=1",
   "not_found": [
-   "true"
+   "false"
   ],
   "must_contain": [
-   "false"
+   "true"
   ],
   "category": "gaming",
   "regex_check": ""
@@ -27473,10 +27473,10 @@
   "name": "LINE",
   "url": "https://line.me/R/ti/p/@{}?from=page",
   "not_found": [
-   "Add LINE Friends via QR Code"
+   "404 Not Found"
   ],
   "must_contain": [
-   "404 Not Found"
+   "Add LINE Friends via QR Code"
   ],
   "category": "other",
   "regex_check": ""
@@ -27485,10 +27485,10 @@
   "name": "linux.org.ru",
   "url": "https://www.linux.org.ru/people/{}/profile",
   "not_found": [
-   "Дата регистрации"
+   "Пользователя не существует"
   ],
   "must_contain": [
-   "Пользователя не существует"
+   "Дата регистрации"
   ],
   "category": "other",
   "regex_check": ""
@@ -27497,10 +27497,10 @@
   "name": "livemaster.ru",
   "url": "https://www.livemaster.ru/{}",
   "not_found": [
-   "<title>Магазин мастера"
+   "<title>Вы попали на несуществующую страницу"
   ],
   "must_contain": [
-   "<title>Вы попали на несуществующую страницу"
+   "<title>Магазин мастера"
   ],
   "category": "other",
   "regex_check": ""
@@ -27509,10 +27509,10 @@
   "name": "lobste.rs",
   "url": "https://lobste.rs/u/{}",
   "not_found": [
-   "Joined"
+   "The resource you requested was not found, or the story has been deleted."
   ],
   "must_contain": [
-   "The resource you requested was not found, or the story has been deleted."
+   "Joined"
   ],
   "category": "code",
   "regex_check": ""
@@ -27521,10 +27521,10 @@
   "name": "LoLProfile",
   "url": "https://lolprofile.net/search/world/{}-world",
   "not_found": [
-   "class=\"content sw\">"
+   "We could not find any results, please try again later or check your input."
   ],
   "must_contain": [
-   "We could not find any results, please try again later or check your input."
+   "class=\"content sw\">"
   ],
   "category": "other",
   "regex_check": ""
@@ -27533,10 +27533,10 @@
   "name": "Lor.sh (Mastodon Instance)",
   "url": "https://lor.sh/api/v1/accounts/lookup?acct={}",
   "not_found": [
-   "display_name"
+   "Record not found"
   ],
   "must_contain": [
-   "Record not found"
+   "display_name"
   ],
   "category": "social",
   "regex_check": ""
@@ -27545,10 +27545,10 @@
   "name": "Magix",
   "url": "https://www.magix.info/us/users/profile/{}/",
   "not_found": [
-   "About me"
+   "Page not found"
   ],
   "must_contain": [
-   "Page not found"
+   "About me"
   ],
   "category": "other",
   "regex_check": ""
@@ -27557,10 +27557,10 @@
   "name": "Malpedia Actors",
   "url": "https://malpedia.caad.fkie.fraunhofer.de/actor/{}",
   "not_found": [
-   "href=\"/actors\""
+   "Page not Found."
   ],
   "must_contain": [
-   "Page not Found."
+   "href=\"/actors\""
   ],
   "category": "other",
   "regex_check": ""
@@ -27569,10 +27569,10 @@
   "name": "Mapstodon.space (Mastodon Instance)",
   "url": "https://mapstodon.space/api/v1/accounts/lookup?acct={}",
   "not_found": [
-   "display_name"
+   "Record not found"
   ],
   "must_contain": [
-   "Record not found"
+   "display_name"
   ],
   "category": "social",
   "regex_check": ""
@@ -27581,10 +27581,10 @@
   "name": "Maroc_nl",
   "url": "https://www.maroc.nl/forums/members/{}.html",
   "not_found": [
-   "Bekijk Profiel:"
+   "Deze gebruiker is niet geregistreerd"
   ],
   "must_contain": [
-   "Deze gebruiker is niet geregistreerd"
+   "Bekijk Profiel:"
   ],
   "category": "forum",
   "regex_check": ""
@@ -27593,10 +27593,10 @@
   "name": "Massage Anywhere",
   "url": "https://www.massageanywhere.com/profile/{}",
   "not_found": [
-   "<title>MassageAnywhere.com Profile for "
+   "<title>MassageAnywhere.com: Search Results</title>"
   ],
   "must_contain": [
-   "<title>MassageAnywhere.com: Search Results</title>"
+   "<title>MassageAnywhere.com Profile for "
   ],
   "category": "other",
   "regex_check": ""
@@ -27605,10 +27605,10 @@
   "name": "masto.ai",
   "url": "https://masto.ai/@{}",
   "not_found": [
-   "@masto.ai) - Mastodon</title>"
+   "The page you are looking for isn&#39;t here."
   ],
   "must_contain": [
-   "The page you are looking for isn&#39;t here."
+   "@masto.ai) - Mastodon</title>"
   ],
   "category": "other",
   "regex_check": ""
@@ -27617,10 +27617,10 @@
   "name": "Masto.nyc (Mastodon Instance)",
   "url": "https://masto.nyc/api/v1/accounts/lookup?acct={}",
   "not_found": [
-   "display_name"
+   "Record not found"
   ],
   "must_contain": [
-   "Record not found"
+   "display_name"
   ],
   "category": "social",
   "regex_check": ""
@@ -27629,10 +27629,10 @@
   "name": "Mastodon API",
   "url": "https://mastodon.social/api/v2/search?q={}&limit=1&type=accounts",
   "not_found": [
-   "display_name"
+   "\"accounts\":[]"
   ],
   "must_contain": [
-   "\"accounts\":[]"
+   "display_name"
   ],
   "category": "social",
   "regex_check": ""
@@ -27641,10 +27641,10 @@
   "name": "Mastodon-101010.pl",
   "url": "https://101010.pl/@{}",
   "not_found": [
-   "@101010.pl"
+   "The page you are looking for isn&#39;t here."
   ],
   "must_contain": [
-   "The page you are looking for isn&#39;t here."
+   "@101010.pl"
   ],
   "category": "social",
   "regex_check": ""
@@ -27653,10 +27653,10 @@
   "name": "Mastodon-C.IM",
   "url": "https://c.im/@{}",
   "not_found": [
-   "@c.im) - C.IM</title>"
+   "<title>The page you are looking for isn&#39;t here"
   ],
   "must_contain": [
-   "<title>The page you are looking for isn&#39;t here"
+   "@c.im) - C.IM</title>"
   ],
   "category": "social",
   "regex_check": ""
@@ -27665,10 +27665,10 @@
   "name": "Mastodon-Chaos.social",
   "url": "https://chaos.social/@{}",
   "not_found": [
-   "@chaos.social) - chaos.social</title>"
+   "The page you are looking for isn&#39;t here."
   ],
   "must_contain": [
-   "The page you are looking for isn&#39;t here."
+   "@chaos.social) - chaos.social</title>"
   ],
   "category": "social",
   "regex_check": ""
@@ -27677,10 +27677,10 @@
   "name": "Mastodon-climatejustice.rocks",
   "url": "https://climatejustice.rocks/api/v1/accounts/lookup?acct={}",
   "not_found": [
-   "username\":"
+   "Record not found"
   ],
   "must_contain": [
-   "Record not found"
+   "username\":"
   ],
   "category": "social",
   "regex_check": ""
@@ -27689,10 +27689,10 @@
   "name": "Mastodon-Defcon",
   "url": "https://defcon.social/@{}",
   "not_found": [
-   "- DEF CON Social</title>"
+   "The page you are looking for isn&#39;t here."
   ],
   "must_contain": [
-   "The page you are looking for isn&#39;t here."
+   "- DEF CON Social</title>"
   ],
   "category": "social",
   "regex_check": ""
@@ -27701,10 +27701,10 @@
   "name": "Mastodon-mastodon",
   "url": "https://mastodon.social/@{}",
   "not_found": [
-   "profile:username"
+   "The page you are looking for isn't here."
   ],
   "must_contain": [
-   "The page you are looking for isn't here."
+   "profile:username"
   ],
   "category": "social",
   "regex_check": ""
@@ -27713,10 +27713,10 @@
   "name": "Mastodon-meow.social",
   "url": "https://meow.social/@{}",
   "not_found": [
-   "- the mastodon instance for creatures fluffy, scaly and otherwise</title>"
+   "The page you are looking for isn&#39;t here."
   ],
   "must_contain": [
-   "The page you are looking for isn&#39;t here."
+   "- the mastodon instance for creatures fluffy, scaly and otherwise</title>"
   ],
   "category": "social",
   "regex_check": ""
@@ -27725,10 +27725,10 @@
   "name": "Mastodon-mstdn.io",
   "url": "https://mstdn.io/@{}",
   "not_found": [
-   "@mstdn.io) - Mastodon"
+   "The page you are looking for isn&#39;t here."
   ],
   "must_contain": [
-   "The page you are looking for isn&#39;t here."
+   "@mstdn.io) - Mastodon"
   ],
   "category": "social",
   "regex_check": ""
@@ -27737,10 +27737,10 @@
   "name": "Mastodon-rigcz.club",
   "url": "https://rigcz.club/@{}",
   "not_found": [
-   "@rigcz.club"
+   "The page you are looking for isn't here."
   ],
   "must_contain": [
-   "The page you are looking for isn't here."
+   "@rigcz.club"
   ],
   "category": "social",
   "regex_check": ""
@@ -27749,10 +27749,10 @@
   "name": "Mastodon-social_tchncs",
   "url": "https://social.tchncs.de/@{}",
   "not_found": [
-   "profile:username"
+   "The page you are looking for isn&#39;t here"
   ],
   "must_contain": [
-   "The page you are looking for isn&#39;t here"
+   "profile:username"
   ],
   "category": "social",
   "regex_check": ""
@@ -27761,10 +27761,10 @@
   "name": "Mastodon-Toot.Community",
   "url": "https://toot.community/@{}",
   "not_found": [
-   "@toot.community) - toot.community</title>"
+   "The page you are looking for isn&#39;t here."
   ],
   "must_contain": [
-   "The page you are looking for isn&#39;t here."
+   "@toot.community) - toot.community</title>"
   ],
   "category": "social",
   "regex_check": ""
@@ -27773,10 +27773,10 @@
   "name": "Mastodon.online",
   "url": "https://mastodon.online/@{}",
   "not_found": [
-   "@mastodon.online) - Mastodon</title>"
+   "<title>The page you are looking for isn&#39;t here."
   ],
   "must_contain": [
-   "<title>The page you are looking for isn&#39;t here."
+   "@mastodon.online) - Mastodon</title>"
   ],
   "category": "social",
   "regex_check": ""
@@ -27785,10 +27785,10 @@
   "name": "Mastodonbooks.net (Mastodon Instance)",
   "url": "https://mastodonbooks.net/api/v1/accounts/lookup?acct={}",
   "not_found": [
-   "display_name"
+   "Record not found"
   ],
   "must_contain": [
-   "Record not found"
+   "display_name"
   ],
   "category": "social",
   "regex_check": ""
@@ -27797,10 +27797,10 @@
   "name": "MCName (Minecraft)",
   "url": "https://mcname.info/en/search?q={}",
   "not_found": [
-   "card mb-3 text-monospace"
+   "alert alert-success px-0 py-1"
   ],
   "must_contain": [
-   "alert alert-success px-0 py-1"
+   "card mb-3 text-monospace"
   ],
   "category": "gaming",
   "regex_check": ""
@@ -27809,10 +27809,10 @@
   "name": "MCUUID (Minecraft)",
   "url": "https://playerdb.co/api/player/minecraft/{}",
   "not_found": [
-   "Successfully found player by given ID."
+   "minecraft.api_failure"
   ],
   "must_contain": [
-   "minecraft.api_failure"
+   "Successfully found player by given ID."
   ],
   "category": "spanish",
   "regex_check": ""
@@ -27821,10 +27821,10 @@
   "name": "meet me",
   "url": "https://www.meetme.com/{}",
   "not_found": [
-   "<title>Meet people like "
+   "<title>MeetMe - Chat and Meet New People</title"
   ],
   "must_contain": [
-   "<title>MeetMe - Chat and Meet New People</title"
+   "<title>Meet people like "
   ],
   "category": "adult",
   "regex_check": ""
@@ -27833,10 +27833,10 @@
   "name": "Meta-Wiki (Wikimedia)",
   "url": "https://meta.wikimedia.org/wiki/Special:CentralAuth?target={}",
   "not_found": [
-   "id='mw-centralauth-info'"
+   "There is no global account for"
   ],
   "must_contain": [
-   "There is no global account for"
+   "id='mw-centralauth-info'"
   ],
   "category": "other",
   "regex_check": ""
@@ -27845,10 +27845,10 @@
   "name": "Metacritic",
   "url": "https://www.metacritic.com/user/{}/",
   "not_found": [
-   "class=\"c-pageProfile-wrapper\""
+   "class=\"c-error404\""
   ],
   "must_contain": [
-   "class=\"c-error404\""
+   "class=\"c-pageProfile-wrapper\""
   ],
   "category": "other",
   "regex_check": ""
@@ -27857,10 +27857,10 @@
   "name": "Minecraft List",
   "url": "https://minecraftlist.com/players/{}",
   "not_found": [
-   "-->was seen on<!--"
+   "0 Minecraft servers recently"
   ],
   "must_contain": [
-   "0 Minecraft servers recently"
+   "-->was seen on<!--"
   ],
   "category": "gaming",
   "regex_check": ""
@@ -27869,10 +27869,10 @@
   "name": "mintme",
   "url": "https://www.mintme.com/token/{}",
   "not_found": [
-   "token | mintMe"
+   "Page not found"
   ],
   "must_contain": [
-   "Page not found"
+   "token | mintMe"
   ],
   "category": "other",
   "regex_check": ""
@@ -27881,10 +27881,10 @@
   "name": "Mixi",
   "url": "https://mixi.jp/view_community.pl?id={}",
   "not_found": [
-   "| mixiコミュニティ</title>"
+   "データがありません"
   ],
   "must_contain": [
-   "データがありません"
+   "| mixiコミュニティ</title>"
   ],
   "category": "social",
   "regex_check": ""
@@ -27893,10 +27893,10 @@
   "name": "Mmorpg",
   "url": "https://forums.mmorpg.com/profile/{}",
   "not_found": [
-   "MMORPG.com Forums"
+   "404 Not Not_Found"
   ],
   "must_contain": [
-   "404 Not Not_Found"
+   "MMORPG.com Forums"
   ],
   "category": "forum",
   "regex_check": ""
@@ -27905,10 +27905,10 @@
   "name": "MobileGTA.net",
   "url": "https://www.mobilegta.net/en/user/{}",
   "not_found": [
-   "userpage_user"
+   "<h1>404 Not Found"
   ],
   "must_contain": [
-   "<h1>404 Not Found"
+   "userpage_user"
   ],
   "category": "other",
   "regex_check": ""
@@ -27917,10 +27917,10 @@
   "name": "Mod DB",
   "url": "https://www.moddb.com/html/scripts/autocomplete.php?a=username&q={}",
   "not_found": [
-   "\"available\":false"
+   "\"available\":true"
   ],
   "must_contain": [
-   "\"available\":true"
+   "\"available\":false"
   ],
   "category": "other",
   "regex_check": ""
@@ -27929,10 +27929,10 @@
   "name": "MODX.im",
   "url": "https://modx.evo.im/profile/{}/",
   "not_found": [
-   "class=\"profile\""
+   "class=\"content-error\""
   ],
   "must_contain": [
-   "class=\"content-error\""
+   "class=\"profile\""
   ],
   "category": "other",
   "regex_check": ""
@@ -27941,10 +27941,10 @@
   "name": "Moto Trip",
   "url": "https://moto-trip.com/profil/{}",
   "not_found": [
-   "<h1 class=\"h2\">Profil de "
+   "<h1>Page introuvable</h1>"
   ],
   "must_contain": [
-   "<h1>Page introuvable</h1>"
+   "<h1 class=\"h2\">Profil de "
   ],
   "category": "other",
   "regex_check": ""
@@ -27953,10 +27953,10 @@
   "name": "Moxfield",
   "url": "https://api2.moxfield.com/v1/users/{}",
   "not_found": [
-   "\"userName\":"
+   "\"status\":404"
   ],
   "must_contain": [
-   "\"status\":404"
+   "\"userName\":"
   ],
   "category": "other",
   "regex_check": ""
@@ -27965,10 +27965,10 @@
   "name": "Muck Rack",
   "url": "https://muckrack.com/{}",
   "not_found": [
-   "on Muck Rack"
+   "Oh no! Page not found."
   ],
   "must_contain": [
-   "Oh no! Page not found."
+   "on Muck Rack"
   ],
   "category": "other",
   "regex_check": ""
@@ -27977,10 +27977,10 @@
   "name": "Musician.social (Mastodon Instance)",
   "url": "https://musician.social/api/v1/accounts/lookup?acct={}",
   "not_found": [
-   "display_name"
+   "Record not found"
   ],
   "must_contain": [
-   "Record not found"
+   "display_name"
   ],
   "category": "social",
   "regex_check": ""
@@ -27989,10 +27989,10 @@
   "name": "musictraveler",
   "url": "https://www.musictraveler.com/en/users/{}/",
   "not_found": [
-   "on Music Traveler</title>"
+   "<title>Page Not found</title>"
   ],
   "must_contain": [
-   "<title>Page Not found</title>"
+   "on Music Traveler</title>"
   ],
   "category": "other",
   "regex_check": ""
@@ -28001,10 +28001,10 @@
   "name": "MUYZORRAS",
   "url": "https://www.muyzorras.com/usuarios/{}",
   "not_found": [
-   "og:title"
+   "<title>Error 404"
   ],
   "must_contain": [
-   "<title>Error 404"
+   "og:title"
   ],
   "category": "other",
   "regex_check": ""
@@ -28013,10 +28013,10 @@
   "name": "my_instants",
   "url": "https://www.myinstants.com/en/profile/{}/",
   "not_found": [
-   " | Myinstants</title>"
+   "Page not found"
   ],
   "must_contain": [
-   "Page not found"
+   " | Myinstants</title>"
   ],
   "category": "other",
   "regex_check": ""
@@ -28025,10 +28025,10 @@
   "name": "MyBuilder.com",
   "url": "https://www.mybuilder.com/profile/view/{}",
   "not_found": [
-   "feedback"
+   "Whoops! You broke our site!"
   ],
   "must_contain": [
-   "Whoops! You broke our site!"
+   "feedback"
   ],
   "category": "other",
   "regex_check": ""
@@ -28037,10 +28037,10 @@
   "name": "MyFitnessPal Author",
   "url": "https://blog.myfitnesspal.com/author/{}/",
   "not_found": [
-   "About the Author"
+   "<title>Page not found "
   ],
   "must_contain": [
-   "<title>Page not found "
+   "About the Author"
   ],
   "category": "writing",
   "regex_check": ""
@@ -28049,10 +28049,10 @@
   "name": "MyFitnessPal Community",
   "url": "https://community.myfitnesspal.com/en/profile/{}",
   "not_found": [
-   ">Last Active<"
+   "User Not Found"
   ],
   "must_contain": [
-   "User Not Found"
+   ">Last Active<"
   ],
   "category": "forum",
   "regex_check": ""
@@ -28061,10 +28061,10 @@
   "name": "MYM",
   "url": "https://mym.fans/{}",
   "not_found": [
-   "class=\"page profile\""
+   "class=\"page page-404\""
   ],
   "must_contain": [
-   "class=\"page page-404\""
+   "class=\"page profile\""
   ],
   "category": "other",
   "regex_check": ""
@@ -28073,10 +28073,10 @@
   "name": "MyNickname",
   "url": "https://mynickname.com/en/search?q={}",
   "not_found": [
-   "nickname found:</h2>"
+   "<h2>Nickname not found. Try searching for similar nicknames.</h2>"
   ],
   "must_contain": [
-   "<h2>Nickname not found. Try searching for similar nicknames.</h2>"
+   "nickname found:</h2>"
   ],
   "category": "other",
   "regex_check": ""
@@ -28085,10 +28085,10 @@
   "name": "myportfolio",
   "url": "https://{}.myportfolio.com/work",
   "not_found": [
-   "class=\"page-title"
+   "<title>Adobe Portfolio | Build your own personalized website</title>"
   ],
   "must_contain": [
-   "<title>Adobe Portfolio | Build your own personalized website</title>"
+   "class=\"page-title"
   ],
   "category": "other",
   "regex_check": ""
@@ -28097,10 +28097,10 @@
   "name": "Myspreadshop",
   "url": "https://myspreadshop.de/{}/shopData/list",
   "not_found": [
-   "siteName"
+   "not found"
   ],
   "must_contain": [
-   "not found"
+   "siteName"
   ],
   "category": "other",
   "regex_check": ""
@@ -28109,10 +28109,10 @@
   "name": "myWishBoard",
   "url": "https://mywishboard.com/@{}",
   "not_found": [
-   "class=\"MwbUserHeader\""
+   "class=\"MwbError\""
   ],
   "must_contain": [
-   "class=\"MwbError\""
+   "class=\"MwbUserHeader\""
   ],
   "category": "other",
   "regex_check": ""
@@ -28121,10 +28121,10 @@
   "name": "naija_planet",
   "url": "https://naijaplanet.com/{}",
   "not_found": [
-   "dating Profile, "
+   "- NaijaPlanet!"
   ],
   "must_contain": [
-   "- NaijaPlanet!"
+   "dating Profile, "
   ],
   "category": "other",
   "regex_check": ""
@@ -28133,10 +28133,10 @@
   "name": "nairaland",
   "url": "https://www.nairaland.com/{}",
   "not_found": [
-   "s Profile"
+   "404: Page Not Found"
   ],
   "must_contain": [
-   "404: Page Not Found"
+   "s Profile"
   ],
   "category": "other",
   "regex_check": ""
@@ -28145,10 +28145,10 @@
   "name": "Neocities",
   "url": "https://neocities.org/site/{}",
   "not_found": [
-   "noindex, follow"
+   "- Not Found</title>"
   ],
   "must_contain": [
-   "- Not Found</title>"
+   "noindex, follow"
   ],
   "category": "other",
   "regex_check": ""
@@ -28157,10 +28157,10 @@
   "name": "netvibes",
   "url": "https://www.netvibes.com/{}",
   "not_found": [
-   "userId"
+   "Page not found"
   ],
   "must_contain": [
-   "Page not found"
+   "userId"
   ],
   "category": "other",
   "regex_check": ""
@@ -28169,10 +28169,10 @@
   "name": "newmeet",
   "url": "https://www.newmeet.com/en/profile/{}/",
   "not_found": [
-   "<h2>The profile of"
+   "Chat with , , ,  - "
   ],
   "must_contain": [
-   "Chat with , , ,  - "
+   "<h2>The profile of"
   ],
   "category": "other",
   "regex_check": ""
@@ -28181,10 +28181,10 @@
   "name": "Nifty Gateway",
   "url": "https://api.niftygateway.com/user/profile-and-offchain-nifties-by-url/?profile_url={}",
   "not_found": [
-   "&quot;didSucceed&quot;: true"
+   "&quot;didSucceed&quot;: false"
   ],
   "must_contain": [
-   "&quot;didSucceed&quot;: false"
+   "&quot;didSucceed&quot;: true"
   ],
   "category": "other",
   "regex_check": ""
@@ -28193,10 +28193,10 @@
   "name": "nihbuatjajan",
   "url": "https://www.nihbuatjajan.com/{}",
   "not_found": [
-   ") | Nih buat jajan</title>"
+   "<title>Nih Buat Jajan</title>"
   ],
   "must_contain": [
-   "<title>Nih Buat Jajan</title>"
+   ") | Nih buat jajan</title>"
   ],
   "category": "other",
   "regex_check": ""
@@ -28205,10 +28205,10 @@
   "name": "Nitecrew (Mastodon Instance)",
   "url": "https://nitecrew.rip/api/v1/accounts/lookup?acct={}",
   "not_found": [
-   "display_name"
+   "Record not found"
   ],
   "must_contain": [
-   "Record not found"
+   "display_name"
   ],
   "category": "social",
   "regex_check": ""
@@ -28217,10 +28217,10 @@
   "name": "NotABug",
   "url": "https://notabug.org/{}",
   "not_found": [
-   "class=\"user profile\""
+   "alt=\"404\""
   ],
   "must_contain": [
-   "alt=\"404\""
+   "class=\"user profile\""
   ],
   "category": "other",
   "regex_check": ""
@@ -28229,10 +28229,10 @@
   "name": "oglaszamy24h.pl",
   "url": "https://oglaszamy24h.pl/profil,{}",
   "not_found": [
-   "Profil użytkownika:"
+   "Nieprawidłowy link, w bazie danych nie istnieje użytkownik o podanym loginie"
   ],
   "must_contain": [
-   "Nieprawidłowy link, w bazie danych nie istnieje użytkownik o podanym loginie"
+   "Profil użytkownika:"
   ],
   "category": "other",
   "regex_check": ""
@@ -28241,10 +28241,10 @@
   "name": "ok.ru",
   "url": "https://ok.ru/{}",
   "not_found": [
-   "| OK"
+   "class=\"p404_t"
   ],
   "must_contain": [
-   "class=\"p404_t"
+   "| OK"
   ],
   "category": "social",
   "regex_check": ""
@@ -28253,10 +28253,10 @@
   "name": "okidoki",
   "url": "https://m.okidoki.ee/ru/users/{}/",
   "not_found": [
-   "Пользователь"
+   "Страница не найдена"
   ],
   "must_contain": [
-   "Страница не найдена"
+   "Пользователь"
   ],
   "category": "other",
   "regex_check": ""
@@ -28265,10 +28265,10 @@
   "name": "OpenStreetMap Wiki",
   "url": "https://wiki.openstreetmap.org/w/api.php?action=query&format=json&list=users&ususers={}",
   "not_found": [
-   "\"userid\":"
+   "\"missing\":\"\""
   ],
   "must_contain": [
-   "\"missing\":\"\""
+   "\"userid\":"
   ],
   "category": "other",
   "regex_check": ""
@@ -28277,10 +28277,10 @@
   "name": "Oper.ru",
   "url": "https://oper.ru/visitors/info.php?t={}",
   "not_found": [
-   "Информация о пользователе"
+   "Нет такого пользователя"
   ],
   "must_contain": [
-   "Нет такого пользователя"
+   "Информация о пользователе"
   ],
   "category": "other",
   "regex_check": ""
@@ -28289,10 +28289,10 @@
   "name": "OPGG",
   "url": "https://eune.op.gg/summoners/eune/{}",
   "not_found": [
-   "- Summoner Stats - League of Legends"
+   "Guide - OP.GG"
   ],
   "must_contain": [
-   "Guide - OP.GG"
+   "- Summoner Stats - League of Legends"
   ],
   "category": "other",
   "regex_check": ""
@@ -28301,10 +28301,10 @@
   "name": "Origins.Habbo.com",
   "url": "https://origins.habbo.com/api/public/users?name={}",
   "not_found": [
-   "uniqueId"
+   "not-found"
   ],
   "must_contain": [
-   "not-found"
+   "uniqueId"
   ],
   "category": "gaming",
   "regex_check": ""
@@ -28313,10 +28313,10 @@
   "name": "Origins.Habbo.com.br",
   "url": "https://origins.habbo.com.br/api/public/users?name={}",
   "not_found": [
-   "uniqueId"
+   "not-found"
   ],
   "must_contain": [
-   "not-found"
+   "uniqueId"
   ],
   "category": "spanish",
   "regex_check": ""
@@ -28325,10 +28325,10 @@
   "name": "Origins.Habbo.es",
   "url": "https://origins.habbo.es/api/public/users?name={}",
   "not_found": [
-   "uniqueId"
+   "not-found"
   ],
   "must_contain": [
-   "not-found"
+   "uniqueId"
   ],
   "category": "spanish",
   "regex_check": ""
@@ -28337,10 +28337,10 @@
   "name": "Our Freedom Book",
   "url": "https://www.ourfreedombook.com/{}",
   "not_found": [
-   "meta property=\"og:"
+   "Sorry, page not found"
   ],
   "must_contain": [
-   "Sorry, page not found"
+   "meta property=\"og:"
   ],
   "category": "other",
   "regex_check": ""
@@ -28349,10 +28349,10 @@
   "name": "palnet",
   "url": "https://www.palnet.io/@{}/",
   "not_found": [
-   "class=\"profile-cover\""
+   "Unknown user account!"
   ],
   "must_contain": [
-   "Unknown user account!"
+   "class=\"profile-cover\""
   ],
   "category": "other",
   "regex_check": ""
@@ -28361,10 +28361,10 @@
   "name": "Parler",
   "url": "https://parler.com/user/{}",
   "not_found": [
-   "People to Follow"
+   "join Parler today"
   ],
   "must_contain": [
-   "join Parler today"
+   "People to Follow"
   ],
   "category": "social",
   "regex_check": ""
@@ -28373,10 +28373,10 @@
   "name": "Parler archived posts",
   "url": "http://archive.org/wayback/available?url=https://parler.com/profile/{}/posts",
   "not_found": [
-   "\"archived_snapshots\": {\"closest\""
+   "\"archived_snapshots\": {}"
   ],
   "must_contain": [
-   "\"archived_snapshots\": {}"
+   "\"archived_snapshots\": {\"closest\""
   ],
   "category": "social",
   "regex_check": ""
@@ -28385,10 +28385,10 @@
   "name": "Parler archived profile",
   "url": "http://archive.org/wayback/available?url=https://parler.com/profile/{}",
   "not_found": [
-   "\"archived_snapshots\": {\"closest\""
+   "\"archived_snapshots\": {}"
   ],
   "must_contain": [
-   "\"archived_snapshots\": {}"
+   "\"archived_snapshots\": {\"closest\""
   ],
   "category": "social",
   "regex_check": ""
@@ -28397,10 +28397,10 @@
   "name": "patch",
   "url": "https://patch.com/users/{}",
   "not_found": [
-   "<title>Patch User Profile"
+   "<title>Page not found</title>"
   ],
   "must_contain": [
-   "<title>Page not found</title>"
+   "<title>Patch User Profile"
   ],
   "category": "other",
   "regex_check": ""
@@ -28409,10 +28409,10 @@
   "name": "Patriots Win",
   "url": "https://patriots.win/u/{}/",
   "not_found": [
-   "nav-user active register"
+   "An error occurred"
   ],
   "must_contain": [
-   "An error occurred"
+   "nav-user active register"
   ],
   "category": "gaming",
   "regex_check": ""
@@ -28421,10 +28421,10 @@
   "name": "PCPartPicker",
   "url": "https://pcpartpicker.com/user/{}/",
   "not_found": [
-   "class=\"active\""
+   "The page you requested could not be found."
   ],
   "must_contain": [
-   "The page you requested could not be found."
+   "class=\"active\""
   ],
   "category": "other",
   "regex_check": ""
@@ -28433,10 +28433,10 @@
   "name": "Peerlist",
   "url": "https://peerlist.io/api/v1/users/profile/tldr?handle={}",
   "not_found": [
-   "\"tldr\":"
+   "\"message\":\"User Not found\""
   ],
   "must_contain": [
-   "\"message\":\"User Not found\""
+   "\"tldr\":"
   ],
   "category": "other",
   "regex_check": ""
@@ -28445,10 +28445,10 @@
   "name": "Pewex",
   "url": "https://retro.pewex.pl/user/{}",
   "not_found": [
-   "Zamieszcza eksponaty od:"
+   "Nie znaleziono użytkownika o podanym loginie."
   ],
   "must_contain": [
-   "Nie znaleziono użytkownika o podanym loginie."
+   "Zamieszcza eksponaty od:"
   ],
   "category": "other",
   "regex_check": ""
@@ -28457,10 +28457,10 @@
   "name": "Pillowfort",
   "url": "https://www.pillowfort.social/{}/json/?p=1",
   "not_found": [
-   "\"posts\":"
+   "<title>(404)</title>"
   ],
   "must_contain": [
-   "<title>(404)</title>"
+   "\"posts\":"
   ],
   "category": "other",
   "regex_check": ""
@@ -28469,10 +28469,10 @@
   "name": "Playstation Network",
   "url": "https://psnprofiles.com/xhr/search/users?q={}",
   "not_found": [
-   "<div class=\"progress-bar small level\">"
+   "We couldn't find anything "
   ],
   "must_contain": [
-   "We couldn't find anything "
+   "<div class=\"progress-bar small level\">"
   ],
   "category": "gaming",
   "regex_check": ""
@@ -28481,10 +28481,10 @@
   "name": "Plink",
   "url": "https://plink.gg/user/{}",
   "not_found": [
-   "class=\"user-page\""
+   "<title>PLINK - 404 Page not found</title>"
   ],
   "must_contain": [
-   "<title>PLINK - 404 Page not found</title>"
+   "class=\"user-page\""
   ],
   "category": "other",
   "regex_check": ""
@@ -28493,10 +28493,10 @@
   "name": "Poe.com",
   "url": "https://poe.com/profile/{}",
   "not_found": [
-   "\"__isNode\":\"PoeUser\""
+   "\"user\":null"
   ],
   "must_contain": [
-   "\"user\":null"
+   "\"__isNode\":\"PoeUser\""
   ],
   "category": "other",
   "regex_check": ""
@@ -28505,10 +28505,10 @@
   "name": "Pokec",
   "url": "https://pokec.azet.sk/{}",
   "not_found": [
-   "idReportedUser"
+   "Neexistujúci používateľ"
   ],
   "must_contain": [
-   "Neexistujúci používateľ"
+   "idReportedUser"
   ],
   "category": "other",
   "regex_check": ""
@@ -28517,10 +28517,10 @@
   "name": "pokemonshowdown",
   "url": "https://pokemonshowdown.com/users/{}",
   "not_found": [
-   "Official ladder"
+   " (Unregistered)"
   ],
   "must_contain": [
-   " (Unregistered)"
+   "Official ladder"
   ],
   "category": "other",
   "regex_check": ""
@@ -28529,10 +28529,10 @@
   "name": "Polchat.pl",
   "url": "https://polczat.pl/forum/profile/{}/",
   "not_found": [
-   "Historia wpisów"
+   "Wybrany użytkownik nie istnieje."
   ],
   "must_contain": [
-   "Wybrany użytkownik nie istnieje."
+   "Historia wpisów"
   ],
   "category": "forum",
   "regex_check": ""
@@ -28541,10 +28541,10 @@
   "name": "Poll Everywhere",
   "url": "https://pollev.com/proxy/api/users/{}",
   "not_found": [
-   "name"
+   "ResourceNotFound"
   ],
   "must_contain": [
-   "ResourceNotFound"
+   "name"
   ],
   "category": "other",
   "regex_check": ""
@@ -28553,10 +28553,10 @@
   "name": "popl",
   "url": "https://poplme.co/{}",
   "not_found": [
-   "MuiTypography-root MuiTypography-body1 css-kj7pvm"
+   "Profile not found"
   ],
   "must_contain": [
-   "Profile not found"
+   "MuiTypography-root MuiTypography-body1 css-kj7pvm"
   ],
   "category": "spanish",
   "regex_check": ""
@@ -28564,20 +28564,20 @@
  {
   "name": "Pornhub (Model)",
   "url": "https://www.pornhub.com/model/{}",
-  "not_found": [
+  "not_found": [],
+  "must_contain": [
    "class=\"topProfileHeader\""
   ],
-  "must_contain": [],
   "category": "adult",
   "regex_check": ""
  },
  {
   "name": "Pornhub (Pornstar)",
   "url": "https://www.pornhub.com/pornstar/{}",
-  "not_found": [
+  "not_found": [],
+  "must_contain": [
    "class=\"topProfileHeader\""
   ],
-  "must_contain": [],
   "category": "adult",
   "regex_check": ""
  },
@@ -28585,10 +28585,10 @@
   "name": "Pornhub (User)",
   "url": "https://www.pornhub.com/users/{}",
   "not_found": [
-   "id=\"topProfileHeader\""
+   "<title>Page Not Found</title>"
   ],
   "must_contain": [
-   "<title>Page Not Found</title>"
+   "id=\"topProfileHeader\""
   ],
   "category": "adult",
   "regex_check": ""
@@ -28597,10 +28597,10 @@
   "name": "postcrossing",
   "url": "https://www.postcrossing.com/user/{}",
   "not_found": [
-   ", from"
+   "- Postcrossing"
   ],
   "must_contain": [
-   "- Postcrossing"
+   ", from"
   ],
   "category": "other",
   "regex_check": ""
@@ -28609,10 +28609,10 @@
   "name": "Poweredbygay.social (Mastodon Instance)",
   "url": "https://poweredbygay.social/api/v1/accounts/lookup?acct={}",
   "not_found": [
-   "display_name"
+   "Record not found"
   ],
   "must_contain": [
-   "Record not found"
+   "display_name"
   ],
   "category": "social",
   "regex_check": ""
@@ -28621,10 +28621,10 @@
   "name": "Pravda.me",
   "url": "https://pravda.me/@{}",
   "not_found": [
-   "Российская социальная сеть (by mastodon)</title>"
+   "<title>The page you are looking for isn&#39;t here."
   ],
   "must_contain": [
-   "<title>The page you are looking for isn&#39;t here."
+   "Российская социальная сеть (by mastodon)</title>"
   ],
   "category": "other",
   "regex_check": ""
@@ -28633,10 +28633,10 @@
   "name": "Privacy Guides",
   "url": "https://discuss.privacyguides.net/u/{}.json",
   "not_found": [
-   "assign_path"
+   "The requested URL or resource could not be found."
   ],
   "must_contain": [
-   "The requested URL or resource could not be found."
+   "assign_path"
   ],
   "category": "forum",
   "regex_check": ""
@@ -28645,10 +28645,10 @@
   "name": "Pronouny",
   "url": "https://pronouny.xyz/api/users/profile/username/{}",
   "not_found": [
-   "\"username\":"
+   "That user doesn't exist"
   ],
   "must_contain": [
-   "That user doesn't exist"
+   "\"username\":"
   ],
   "category": "other",
   "regex_check": ""
@@ -28657,10 +28657,10 @@
   "name": "Prose",
   "url": "https://prose.astral.camp/{}/",
   "not_found": [
-   "blog-title"
+   "Are you sure it was ever here?"
   ],
   "must_contain": [
-   "Are you sure it was ever here?"
+   "blog-title"
   ],
   "category": "other",
   "regex_check": ""
@@ -28669,10 +28669,10 @@
   "name": "Public.com",
   "url": "https://public.com/@{}",
   "not_found": [
-   "\"publicId\":"
+   "<title>404 - Page Not Found</title>"
   ],
   "must_contain": [
-   "<title>404 - Page Not Found</title>"
+   "\"publicId\":"
   ],
   "category": "other",
   "regex_check": ""
@@ -28681,10 +28681,10 @@
   "name": "QUEER PL",
   "url": "https://queer.pl/user/{}",
   "not_found": [
-   "Ostatnio on-line"
+   "Strona nie została znaleziona"
   ],
   "must_contain": [
-   "Strona nie została znaleziona"
+   "Ostatnio on-line"
   ],
   "category": "other",
   "regex_check": ""
@@ -28693,10 +28693,10 @@
   "name": "Raddle.me",
   "url": "https://raddle.me/user/{}",
   "not_found": [
-   "sidebar__title"
+   "404 Not Found"
   ],
   "must_contain": [
-   "404 Not Found"
+   "sidebar__title"
   ],
   "category": "other",
   "regex_check": ""
@@ -28705,10 +28705,10 @@
   "name": "Rant.li",
   "url": "https://rant.li/{}/",
   "not_found": [
-   "blog-title"
+   "Are you sure it was ever here?"
   ],
   "must_contain": [
-   "Are you sure it was ever here?"
+   "blog-title"
   ],
   "category": "other",
   "regex_check": ""
@@ -28717,10 +28717,10 @@
   "name": "RedGIFs",
   "url": "https://api.redgifs.com/v1/users/{}",
   "not_found": [
-   "\"name\":"
+   "\"status\":404"
   ],
   "must_contain": [
-   "\"status\":404"
+   "\"name\":"
   ],
   "category": "other",
   "regex_check": ""
@@ -28729,10 +28729,10 @@
   "name": "Refsheet",
   "url": "https://refsheet.net/{}",
   "not_found": [
-   "og:title"
+   "That's unfortunate. Where did it go?"
   ],
   "must_contain": [
-   "That's unfortunate. Where did it go?"
+   "og:title"
   ],
   "category": "other",
   "regex_check": ""
@@ -28741,10 +28741,10 @@
   "name": "resumes_actorsaccess",
   "url": "https://resumes.actorsaccess.com/{}",
   "not_found": [
-   "- Resume | Actors Access</title>"
+   "File was not found on this SERVER"
   ],
   "must_contain": [
-   "File was not found on this SERVER"
+   "- Resume | Actors Access</title>"
   ],
   "category": "other",
   "regex_check": ""
@@ -28753,10 +28753,10 @@
   "name": "Revolut",
   "url": "https://revolut.me/api/web-profile/{}",
   "not_found": [
-   "\"firstName\""
+   "\"User not found\""
   ],
   "must_contain": [
-   "\"User not found\""
+   "\"firstName\""
   ],
   "category": "other",
   "regex_check": ""
@@ -28765,10 +28765,10 @@
   "name": "risk.ru",
   "url": "https://risk.ru/people/{}",
   "not_found": [
-   "— Люди — Risk.ru"
+   "404 — Risk.ru"
   ],
   "must_contain": [
-   "404 — Risk.ru"
+   "— Люди — Risk.ru"
   ],
   "category": "other",
   "regex_check": ""
@@ -28777,10 +28777,10 @@
   "name": "RoutineHub",
   "url": "https://routinehub.co/user/{}",
   "not_found": [
-   "Downloads: "
+   "A community for Apple Shortcuts</title>"
   ],
   "must_contain": [
-   "A community for Apple Shortcuts</title>"
+   "Downloads: "
   ],
   "category": "spanish",
   "regex_check": ""
@@ -28789,10 +28789,10 @@
   "name": "rsi",
   "url": "https://robertsspaceindustries.com/citizens/{}",
   "not_found": [
-   "CITIZEN DOSSIER"
+   "404 NAVIGATING UNCHARTED TERRITORY"
   ],
   "must_contain": [
-   "404 NAVIGATING UNCHARTED TERRITORY"
+   "CITIZEN DOSSIER"
   ],
   "category": "other",
   "regex_check": ""
@@ -28801,10 +28801,10 @@
   "name": "ru_123rf",
   "url": "https://ru.123rf.com/profile_{}",
   "not_found": [
-   "userID"
+   "<title>Фотобанк 123RF - Стоковые Фото, Векторы, Видеоролики. Подписка на Фото. Royalty Free контент<"
   ],
   "must_contain": [
-   "<title>Фотобанк 123RF - Стоковые Фото, Векторы, Видеоролики. Подписка на Фото. Royalty Free контент<"
+   "userID"
   ],
   "category": "other",
   "regex_check": ""
@@ -28813,10 +28813,10 @@
   "name": "RubyGems.org",
   "url": "https://rubygems.org/api/v1/profiles/{}.json",
   "not_found": [
-   "\"id\":"
+   "\"error\":\"Not Found\""
   ],
   "must_contain": [
-   "\"error\":\"Not Found\""
+   "\"id\":"
   ],
   "category": "code",
   "regex_check": ""
@@ -28825,10 +28825,10 @@
   "name": "RuTracker.org",
   "url": "https://rutracker.org/forum/profile.php?mode=viewprofile&u={}",
   "not_found": [
-   "Профиль пользователя"
+   "Пользователь не найден"
   ],
   "must_contain": [
-   "Пользователь не найден"
+   "Профиль пользователя"
   ],
   "category": "forum",
   "regex_check": ""
@@ -28837,10 +28837,10 @@
   "name": "ruVoIP.net",
   "url": "https://ruvoip.net/members/{}/",
   "not_found": [
-   "id=\"user-xprofile\""
+   "Error 404 - Not Found"
   ],
   "must_contain": [
-   "Error 404 - Not Found"
+   "id=\"user-xprofile\""
   ],
   "category": "other",
   "regex_check": ""
@@ -28849,10 +28849,10 @@
   "name": "Salon24",
   "url": "https://www.salon24.pl/u/{}/",
   "not_found": [
-   "<span>Obserwujących</span>"
+   "<title>Salon24 - Blogi, wiadomości, opinie i komentarze"
   ],
   "must_contain": [
-   "<title>Salon24 - Blogi, wiadomości, opinie i komentarze"
+   "<span>Obserwujących</span>"
   ],
   "category": "other",
   "regex_check": ""
@@ -28861,10 +28861,10 @@
   "name": "Scammer.info",
   "url": "https://scammer.info/u/{}.json",
   "not_found": [
-   "avatar_template"
+   "The requested URL or resource could not be found"
   ],
   "must_contain": [
-   "The requested URL or resource could not be found"
+   "avatar_template"
   ],
   "category": "other",
   "regex_check": ""
@@ -28873,10 +28873,10 @@
   "name": "Scored",
   "url": "https://scored.co/api/v2/user/about.json?user={}",
   "not_found": [
-   "\"status\":true"
+   "\"status\":false"
   ],
   "must_contain": [
-   "\"status\":false"
+   "\"status\":true"
   ],
   "category": "spanish",
   "regex_check": ""
@@ -28885,10 +28885,10 @@
   "name": "Scribd (Document)",
   "url": "https://www.scribd.com/search/query?query={}&verbatim=true",
   "not_found": [
-   "\"compilationId\":\""
+   "\"compilationId\":null"
   ],
   "must_contain": [
-   "\"compilationId\":null"
+   "\"compilationId\":\""
   ],
   "category": "other",
   "regex_check": ""
@@ -28897,10 +28897,10 @@
   "name": "Searchengines",
   "url": "https://searchengines.guru/ru/search?keyword=&author={}&sortByDate=true",
   "not_found": [
-   "class=\"search-result__item\""
+   "class=\"nothing-found\""
   ],
   "must_contain": [
-   "class=\"nothing-found\""
+   "class=\"search-result__item\""
   ],
   "category": "other",
   "regex_check": ""
@@ -28909,10 +28909,10 @@
   "name": "secure_donation",
   "url": "https://secure.donationpay.org/{}/",
   "not_found": [
-   "| DonationPay</title>"
+   "<title>secure.donationpay.org</title>"
   ],
   "must_contain": [
-   "<title>secure.donationpay.org</title>"
+   "| DonationPay</title>"
   ],
   "category": "other",
   "regex_check": ""
@@ -28921,10 +28921,10 @@
   "name": "sedisp@ce",
   "url": "https://sedispace.com/@{}",
   "not_found": [
-   "Membre depuis -"
+   "- Page non trouvée!"
   ],
   "must_contain": [
-   "- Page non trouvée!"
+   "Membre depuis -"
   ],
   "category": "other",
   "regex_check": ""
@@ -28933,10 +28933,10 @@
   "name": "sentimente",
   "url": "https://www.sentimente.com/amp/{}.html",
   "not_found": [
-   "Chat online with"
+   "HTTP Error code: 404. Resource not found"
   ],
   "must_contain": [
-   "HTTP Error code: 404. Resource not found"
+   "Chat online with"
   ],
   "category": "other",
   "regex_check": ""
@@ -28945,10 +28945,10 @@
   "name": "setlist.fm",
   "url": "https://www.setlist.fm/user/{}",
   "not_found": [
-   "s setlist.fm | setlist.fm</title>"
+   "Sorry, the page you requested doesn't exist"
   ],
   "must_contain": [
-   "Sorry, the page you requested doesn't exist"
+   "s setlist.fm | setlist.fm</title>"
   ],
   "category": "other",
   "regex_check": ""
@@ -28957,10 +28957,10 @@
   "name": "SFD",
   "url": "https://www.sfd.pl/profile/{}",
   "not_found": [
-   "Tematy użytkownika"
+   "Brak aktywnego profilu na forum"
   ],
   "must_contain": [
-   "Brak aktywnego profilu na forum"
+   "Tematy użytkownika"
   ],
   "category": "other",
   "regex_check": ""
@@ -28968,10 +28968,10 @@
  {
   "name": "Shesfreaky",
   "url": "https://www.shesfreaky.com/profile/{}/",
-  "not_found": [
+  "not_found": [],
+  "must_contain": [
    "s Profile - ShesFreaky</title>"
   ],
-  "must_contain": [],
   "category": "other",
   "regex_check": ""
  },
@@ -28979,10 +28979,10 @@
   "name": "shopify",
   "url": "https://{}.myshopify.com",
   "not_found": [
-   "home"
+   "Sorry, this shop is currently unavailable."
   ],
   "must_contain": [
-   "Sorry, this shop is currently unavailable."
+   "home"
   ],
   "category": "other",
   "regex_check": ""
@@ -28991,10 +28991,10 @@
   "name": "Showup.tv",
   "url": "https://showup.tv/profile/{}",
   "not_found": [
-   "O mnie"
+   "<title>Darmowe"
   ],
   "must_contain": [
-   "<title>Darmowe"
+   "O mnie"
   ],
   "category": "other",
   "regex_check": ""
@@ -29003,10 +29003,10 @@
   "name": "shutterstock",
   "url": "https://www.shutterstock.com/g/{}",
   "not_found": [
-   "| Shutterstock"
+   "Well, this is unexpected..."
   ],
   "must_contain": [
-   "Well, this is unexpected..."
+   "| Shutterstock"
   ],
   "category": "other",
   "regex_check": ""
@@ -29015,10 +29015,10 @@
   "name": "SimplePlanes",
   "url": "https://www.simpleplanes.com/u/{}",
   "not_found": [
-   "<h5>joined"
+   "<title>SimplePlanes Airplanes</title>"
   ],
   "must_contain": [
-   "<title>SimplePlanes Airplanes</title>"
+   "<h5>joined"
   ],
   "category": "other",
   "regex_check": ""
@@ -29027,10 +29027,10 @@
   "name": "skeb",
   "url": "https://skeb.jp/@{}",
   "not_found": [
-   ") | Skeb"
+   "Skeb - Request Box"
   ],
   "must_contain": [
-   "Skeb - Request Box"
+   ") | Skeb"
   ],
   "category": "other",
   "regex_check": ""
@@ -29039,10 +29039,10 @@
   "name": "SlackHoles",
   "url": "https://slackholes.com/actor/{}/",
   "not_found": [
-   "Pussy and Ass Sizes"
+   "It looks like nothing was found at this location"
   ],
   "must_contain": [
-   "It looks like nothing was found at this location"
+   "Pussy and Ass Sizes"
   ],
   "category": "other",
   "regex_check": ""
@@ -29051,10 +29051,10 @@
   "name": "smelsy",
   "url": "https://www.smelsy.com/profile/{}",
   "not_found": [
-   "Smelsy -"
+   "Server Error"
   ],
   "must_contain": [
-   "Server Error"
+   "Smelsy -"
   ],
   "category": "other",
   "regex_check": ""
@@ -29063,10 +29063,10 @@
   "name": "Snipfeed",
   "url": "https://snipfeed.co/{}",
   "not_found": [
-   "creatorLink"
+   "Oops, you hit a dead end!"
   ],
   "must_contain": [
-   "Oops, you hit a dead end!"
+   "creatorLink"
   ],
   "category": "spanish",
   "regex_check": ""
@@ -29075,10 +29075,10 @@
   "name": "soc.citizen4.eu",
   "url": "https://soc.citizen4.eu/profile/{}/profile",
   "not_found": [
-   "@soc.citizen4.eu"
+   "Nie znaleziono"
   ],
   "must_contain": [
-   "Nie znaleziono"
+   "@soc.citizen4.eu"
   ],
   "category": "other",
   "regex_check": ""
@@ -29087,10 +29087,10 @@
   "name": "social.bund.de",
   "url": "https://social.bund.de/@{}",
   "not_found": [
-   "@social.bund.de) - social.bund.de</title>"
+   "<title>The page you are looking for isn&#39;t here."
   ],
   "must_contain": [
-   "<title>The page you are looking for isn&#39;t here."
+   "@social.bund.de) - social.bund.de</title>"
   ],
   "category": "other",
   "regex_check": ""
@@ -29099,10 +29099,10 @@
   "name": "social_msdn",
   "url": "https://social.msdn.microsoft.com/profile/{}",
   "not_found": [
-   "Member Since"
+   "The resource you are looking for has been removed, had its name changed, or is temporarily unavailable."
   ],
   "must_contain": [
-   "The resource you are looking for has been removed, had its name changed, or is temporarily unavailable."
+   "Member Since"
   ],
   "category": "other",
   "regex_check": ""
@@ -29111,10 +29111,10 @@
   "name": "sofurry",
   "url": "https://{}.sofurry.com",
   "not_found": [
-   "'s Profile | SoFurry"
+   "SoFurry - Error | SoFurry"
   ],
   "must_contain": [
-   "SoFurry - Error | SoFurry"
+   "'s Profile | SoFurry"
   ],
   "category": "other",
   "regex_check": ""
@@ -29123,10 +29123,10 @@
   "name": "solo.to",
   "url": "https://solo.to/{}",
   "not_found": [
-   "create your own page"
+   "The page you're looking for isn't here."
   ],
   "must_contain": [
-   "The page you're looking for isn't here."
+   "create your own page"
   ],
   "category": "other",
   "regex_check": ""
@@ -29135,10 +29135,10 @@
   "name": "Speaker Deck",
   "url": "https://speakerdeck.com/{}/",
   "not_found": [
-   ") on Speaker Deck</title>"
+   "User Not Found - Speaker Deck"
   ],
   "must_contain": [
-   "User Not Found - Speaker Deck"
+   ") on Speaker Deck</title>"
   ],
   "category": "other",
   "regex_check": ""
@@ -29147,10 +29147,10 @@
   "name": "speedrun",
   "url": "https://www.speedrun.com/user/{}/",
   "not_found": [
-   "Runs - "
+   "<title>speedrun.com"
   ],
   "must_contain": [
-   "<title>speedrun.com"
+   "Runs - "
   ],
   "category": "gaming",
   "regex_check": ""
@@ -29159,10 +29159,10 @@
   "name": "SPOJ",
   "url": "https://www.spoj.com/users/{}/",
   "not_found": [
-   "<h3>Activity over the last year</h3>"
+   "<strong>Innopolis Open 2018</strong>"
   ],
   "must_contain": [
-   "<strong>Innopolis Open 2018</strong>"
+   "<h3>Activity over the last year</h3>"
   ],
   "category": "code",
   "regex_check": ""
@@ -29171,10 +29171,10 @@
   "name": "Sports Tracker",
   "url": "https://api.sports-tracker.com/apiserver/v1/user/name/{}",
   "not_found": [
-   "\"uuid\":"
+   "\"code\":\"404\""
   ],
   "must_contain": [
-   "\"code\":\"404\""
+   "\"uuid\":"
   ],
   "category": "other",
   "regex_check": ""
@@ -29183,10 +29183,10 @@
   "name": "StackShare",
   "url": "https://stackshare.io/{}",
   "not_found": [
-   "class='user-container'"
+   "Sorry, we couldn't find that page :("
   ],
   "must_contain": [
-   "Sorry, we couldn't find that page :("
+   "class='user-container'"
   ],
   "category": "other",
   "regex_check": ""
@@ -29195,10 +29195,10 @@
   "name": "Statuspage",
   "url": "https://{}.statuspage.io/api/v2/status.json",
   "not_found": [
-   "updated_at"
+   "<html><body>You are being <a href=\"https://www.statuspage.io\">redirected</a>.</body></html>"
   ],
   "must_contain": [
-   "<html><body>You are being <a href=\"https://www.statuspage.io\">redirected</a>.</body></html>"
+   "updated_at"
   ],
   "category": "other",
   "regex_check": ""
@@ -29206,10 +29206,10 @@
  {
   "name": "SteamGifts",
   "url": "https://www.steamgifts.com/user/{}",
-  "not_found": [
+  "not_found": [],
+  "must_contain": [
    "\"identifier\":"
   ],
-  "must_contain": [],
   "category": "gaming",
   "regex_check": ""
  },
@@ -29217,10 +29217,10 @@
   "name": "steller",
   "url": "https://steller.co/{}",
   "not_found": [
-   " on Steller</title>"
+   "<title></title>"
   ],
   "must_contain": [
-   "<title></title>"
+   " on Steller</title>"
   ],
   "category": "spanish",
   "regex_check": ""
@@ -29229,10 +29229,10 @@
   "name": "StreamElements",
   "url": "https://api.streamelements.com/kappa/v2/channels/{}",
   "not_found": [
-   "\"providerId\""
+   "error"
   ],
   "must_contain": [
-   "error"
+   "\"providerId\""
   ],
   "category": "other",
   "regex_check": ""
@@ -29241,10 +29241,10 @@
   "name": "StreamLabs",
   "url": "https://streamlabs.com/api/v6/user/{}",
   "not_found": [
-   "\"id\":"
+   "<title>Unauthorized</title>"
   ],
   "must_contain": [
-   "<title>Unauthorized</title>"
+   "\"id\":"
   ],
   "category": "other",
   "regex_check": ""
@@ -29253,10 +29253,10 @@
   "name": "Stripchat",
   "url": "https://stripchat.com/api/front/users/checkUsername?username={}",
   "not_found": [
-   "\"error\":\"This username already exists\""
+   "[]"
   ],
   "must_contain": [
-   "[]"
+   "\"error\":\"This username already exists\""
   ],
   "category": "adult",
   "regex_check": ""
@@ -29265,10 +29265,10 @@
   "name": "Subscribestar",
   "url": "https://subscribestar.adult/{}",
   "not_found": [
-   "CREATOR STATS"
+   "WE ARE SORRY, THE PAGE YOU REQUESTED CANNOT BE FOUND"
   ],
   "must_contain": [
-   "WE ARE SORRY, THE PAGE YOU REQUESTED CANNOT BE FOUND"
+   "CREATOR STATS"
   ],
   "category": "adult",
   "regex_check": ""
@@ -29277,10 +29277,10 @@
   "name": "sukebei.nyaa.si",
   "url": "https://sukebei.nyaa.si/user/{}",
   "not_found": [
-   "'s torrents"
+   "404 Not Found"
   ],
   "must_contain": [
-   "404 Not Found"
+   "'s torrents"
   ],
   "category": "other",
   "regex_check": ""
@@ -29289,10 +29289,10 @@
   "name": "Suzuri",
   "url": "https://suzuri.jp/{}",
   "not_found": [
-   "Items"
+   "Push Space-key"
   ],
   "must_contain": [
-   "Push Space-key"
+   "Items"
   ],
   "category": "other",
   "regex_check": ""
@@ -29301,10 +29301,10 @@
   "name": "tabletoptournament",
   "url": "https://www.tabletoptournaments.net/eu/player/{}",
   "not_found": [
-   "- Player Profile | T³ - TableTop Tournaments"
+   "No player with the nickname"
   ],
   "must_contain": [
-   "No player with the nickname"
+   "- Player Profile | T³ - TableTop Tournaments"
   ],
   "category": "other",
   "regex_check": ""
@@ -29313,10 +29313,10 @@
   "name": "TAPiTAG",
   "url": "https://account.tapitag.co/tapitag/api/v1/{}",
   "not_found": [
-   "User details are Showing"
+   "The rf number is not valid"
   ],
   "must_contain": [
-   "The rf number is not valid"
+   "User details are Showing"
   ],
   "category": "spanish",
   "regex_check": ""
@@ -29325,10 +29325,10 @@
   "name": "Tappy",
   "url": "https://api.tappy.tech/api/profile/username/{}",
   "not_found": [
-   "user_id"
+   "Profile of username Not Found"
   ],
   "must_contain": [
-   "Profile of username Not Found"
+   "user_id"
   ],
   "category": "other",
   "regex_check": ""
@@ -29337,10 +29337,10 @@
   "name": "Taringa",
   "url": "https://www.taringa.net/{}",
   "not_found": [
-   " en Taringa!</title>"
+   "Colectiva en Taringa!</title>"
   ],
   "must_contain": [
-   "Colectiva en Taringa!</title>"
+   " en Taringa!</title>"
   ],
   "category": "spanish",
   "regex_check": ""
@@ -29349,10 +29349,10 @@
   "name": "Taringa Archived Profile",
   "url": "https://archive.org/wayback/available?url=https://www.taringa.net/{}",
   "not_found": [
-   "\"archived_snapshots\": {\"closest\""
+   "\"archived_snapshots\": {}"
   ],
   "must_contain": [
-   "\"archived_snapshots\": {}"
+   "\"archived_snapshots\": {\"closest\""
   ],
   "category": "spanish",
   "regex_check": ""
@@ -29361,10 +29361,10 @@
   "name": "Teamtreehouse",
   "url": "https://teamtreehouse.com/{}",
   "not_found": [
-   "Member Since"
+   "Oops, Something went missing"
   ],
   "must_contain": [
-   "Oops, Something went missing"
+   "Member Since"
   ],
   "category": "other",
   "regex_check": ""
@@ -29373,10 +29373,10 @@
   "name": "Teespring",
   "url": "https://commerce.teespring.com/v1/stores?slug={}",
   "not_found": [
-   "sellerToken"
+   "{\"errors\":{\"store\":[\"not found\"]}}"
   ],
   "must_contain": [
-   "{\"errors\":{\"store\":[\"not found\"]}}"
+   "sellerToken"
   ],
   "category": "other",
   "regex_check": ""
@@ -29385,10 +29385,10 @@
   "name": "Tellonym",
   "url": "https://api.tellonym.me/profiles/name/{}",
   "not_found": [
-   "\"id\":"
+   "\"code\":\"NOT_FOUND\""
   ],
   "must_contain": [
-   "\"code\":\"NOT_FOUND\""
+   "\"id\":"
   ],
   "category": "social",
   "regex_check": ""
@@ -29396,10 +29396,10 @@
  {
   "name": "TF2 Backpack Examiner",
   "url": "http://www.tf2items.com/id/{}/",
-  "not_found": [
+  "not_found": [],
+  "must_contain": [
    "<title>TF2 Backpack -"
   ],
-  "must_contain": [],
   "category": "other",
   "regex_check": ""
  },
@@ -29407,10 +29407,10 @@
   "name": "theguardian",
   "url": "https://www.theguardian.com/profile/{}",
   "not_found": [
-   "<h2 class=\"dcr-1ln6kec\">"
+   "<title>Page Not Found | The Guardian</title>"
   ],
   "must_contain": [
-   "<title>Page Not Found | The Guardian</title>"
+   "<h2 class=\"dcr-1ln6kec\">"
   ],
   "category": "other",
   "regex_check": ""
@@ -29419,10 +29419,10 @@
   "name": "thoughts",
   "url": "https://thoughts.com/members/{}/",
   "not_found": [
-   "<span class=\"activity"
+   "<title>Page not found"
   ],
   "must_contain": [
-   "<title>Page not found"
+   "<span class=\"activity"
   ],
   "category": "other",
   "regex_check": ""
@@ -29431,10 +29431,10 @@
   "name": "Tilde.zone (Mastodon Instance)",
   "url": "https://tilde.zone/api/v1/accounts/lookup?acct={}",
   "not_found": [
-   "display_name"
+   "Record not found"
   ],
   "must_contain": [
-   "Record not found"
+   "display_name"
   ],
   "category": "social",
   "regex_check": ""
@@ -29443,10 +29443,10 @@
   "name": "TipeeeStream",
   "url": "https://www.tipeeestream.com/v3.0/pages/{}",
   "not_found": [
-   "\"id\":"
+   "\"message\":\"Not found\""
   ],
   "must_contain": [
-   "\"message\":\"Not found\""
+   "\"id\":"
   ],
   "category": "other",
   "regex_check": ""
@@ -29455,10 +29455,10 @@
   "name": "Tooting.ch (Mastodon Instance)",
   "url": "https://tooting.ch/api/v1/accounts/lookup?acct={}",
   "not_found": [
-   "display_name"
+   "Record not found"
   ],
   "must_contain": [
-   "Record not found"
+   "display_name"
   ],
   "category": "social",
   "regex_check": ""
@@ -29467,10 +29467,10 @@
   "name": "toyhou.se",
   "url": "https://toyhou.se/{}",
   "not_found": [
-   "display-user"
+   "We can't find that page!"
   ],
   "must_contain": [
-   "We can't find that page!"
+   "display-user"
   ],
   "category": "other",
   "regex_check": ""
@@ -29479,10 +29479,10 @@
   "name": "TruckersMP",
   "url": "https://truckersmp.com/user/search?search={}",
   "not_found": [
-   "class=\"team-v2\""
+   "<h4>Could not find any member using these credentials</h4>"
   ],
   "must_contain": [
-   "<h4>Could not find any member using these credentials</h4>"
+   "class=\"team-v2\""
   ],
   "category": "other",
   "regex_check": ""
@@ -29491,10 +29491,10 @@
   "name": "Truth Social",
   "url": "https://truthsocial.com/api/v1/accounts/lookup?acct={}",
   "not_found": [
-   "\"id\":"
+   "\"error\":\"Record not found\""
   ],
   "must_contain": [
-   "\"error\":\"Record not found\""
+   "\"id\":"
   ],
   "category": "social",
   "regex_check": ""
@@ -29503,10 +29503,10 @@
   "name": "Tryst",
   "url": "https://tryst.link/escort/{}",
   "not_found": [
-   "Caters to</div>"
+   "<title>Page not found"
   ],
   "must_contain": [
-   "<title>Page not found"
+   "Caters to</div>"
   ],
   "category": "adult",
   "regex_check": ""
@@ -29515,10 +29515,10 @@
   "name": "Twitter archived profile",
   "url": "http://archive.org/wayback/available?url=https://twitter.com/{}",
   "not_found": [
-   "\"archived_snapshots\": {\"closest\""
+   "\"archived_snapshots\": {}"
   ],
   "must_contain": [
-   "\"archived_snapshots\": {}"
+   "\"archived_snapshots\": {\"closest\""
   ],
   "category": "social",
   "regex_check": ""
@@ -29527,10 +29527,10 @@
   "name": "Twitter archived tweets",
   "url": "http://archive.org/wayback/available?url=https://twitter.com/{}/status/*",
   "not_found": [
-   "\"archived_snapshots\": {\"closest\""
+   "\"archived_snapshots\": {}"
   ],
   "must_contain": [
-   "\"archived_snapshots\": {}"
+   "\"archived_snapshots\": {\"closest\""
   ],
   "category": "social",
   "regex_check": ""
@@ -29539,10 +29539,10 @@
   "name": "twpro",
   "url": "https://twpro.jp/{}",
   "not_found": [
-   "おとなりさん"
+   "をご確認ください。"
   ],
   "must_contain": [
-   "をご確認ください。"
+   "おとなりさん"
   ],
   "category": "other",
   "regex_check": ""
@@ -29551,10 +29551,10 @@
   "name": "Ubisoft",
   "url": "https://discussions.ubisoft.com/user/{}",
   "not_found": [
-   "| Ubisoft Discussion Forums"
+   "You seem to have stumbled upon a page that does not exist."
   ],
   "must_contain": [
-   "You seem to have stumbled upon a page that does not exist."
+   "| Ubisoft Discussion Forums"
   ],
   "category": "forum",
   "regex_check": ""
@@ -29563,10 +29563,10 @@
   "name": "Udemy",
   "url": "https://www.udemy.com/user/{}/",
   "not_found": [
-   "| Udemy</title>"
+   "<title>Online Courses - Learn Anything, On Your Schedule | Udemy</title>"
   ],
   "must_contain": [
-   "<title>Online Courses - Learn Anything, On Your Schedule | Udemy</title>"
+   "| Udemy</title>"
   ],
   "category": "other",
   "regex_check": ""
@@ -29575,10 +29575,10 @@
   "name": "UEF CONNECT",
   "url": "https://uefconnect.uef.fi/en/{}/",
   "not_found": [
-   "profile-page-header__info"
+   "<title>Page not found - UEFConnect</title>"
   ],
   "must_contain": [
-   "<title>Page not found - UEFConnect</title>"
+   "profile-page-header__info"
   ],
   "category": "other",
   "regex_check": ""
@@ -29587,10 +29587,10 @@
   "name": "Ultimate Guitar",
   "url": "https://www.ultimate-guitar.com/u/{}",
   "not_found": [
-   " | Ultimate-Guitar.Com</title>"
+   "Oops! We couldn't find that page."
   ],
   "must_contain": [
-   "Oops! We couldn't find that page."
+   " | Ultimate-Guitar.Com</title>"
   ],
   "category": "other",
   "regex_check": ""
@@ -29599,10 +29599,10 @@
   "name": "Ultras Diary",
   "url": "http://ultrasdiary.pl/u/{}/",
   "not_found": [
-   "Mecze wyjazdowe:"
+   "Ile masz wyjazdów?"
   ],
   "must_contain": [
-   "Ile masz wyjazdów?"
+   "Mecze wyjazdowe:"
   ],
   "category": "other",
   "regex_check": ""
@@ -29611,10 +29611,10 @@
   "name": "Unlisted Videos",
   "url": "https://unlistedvideos.com/search.php?user={}",
   "not_found": [
-   "Date submitted"
+   "content=\"\"/>"
   ],
   "must_contain": [
-   "content=\"\"/>"
+   "Date submitted"
   ],
   "category": "other",
   "regex_check": ""
@@ -29623,10 +29623,10 @@
   "name": "USA Life",
   "url": "https://usa.life/{}",
   "not_found": [
-   "Please log in to like, share and comment"
+   "Sorry, page not found"
   ],
   "must_contain": [
-   "Sorry, page not found"
+   "Please log in to like, share and comment"
   ],
   "category": "other",
   "regex_check": ""
@@ -29635,10 +29635,10 @@
   "name": "utip.io",
   "url": "https://utip.io/creator/profile/{}",
   "not_found": [
-   "\"userName\""
+   "Not a valid web service key"
   ],
   "must_contain": [
-   "Not a valid web service key"
+   "\"userName\""
   ],
   "category": "other",
   "regex_check": ""
@@ -29647,10 +29647,10 @@
   "name": "uwu.ai",
   "url": "https://{}.uwu.ai/",
   "not_found": [
-   "property=\"twitter:card\""
+   "Sorry, the requested page could not be found."
   ],
   "must_contain": [
-   "Sorry, the requested page could not be found."
+   "property=\"twitter:card\""
   ],
   "category": "other",
   "regex_check": ""
@@ -29659,10 +29659,10 @@
   "name": "Uwumarket",
   "url": "https://uwumarket.us/collections/{}",
   "not_found": [
-   "collection-hero__text-wrapper"
+   "Page not found"
   ],
   "must_contain": [
-   "Page not found"
+   "collection-hero__text-wrapper"
   ],
   "category": "other",
   "regex_check": ""
@@ -29671,10 +29671,10 @@
   "name": "vibilagare",
   "url": "https://www.vibilagare.se/users/{}",
   "not_found": [
-   "Profil på vibilagare.se"
+   "Sidan hittades inte |"
   ],
   "must_contain": [
-   "Sidan hittades inte |"
+   "Profil på vibilagare.se"
   ],
   "category": "other",
   "regex_check": ""
@@ -29683,10 +29683,10 @@
   "name": "VIP-blog",
   "url": "http://{}.vip-blog.com",
   "not_found": [
-   "blog : "
+   "Blog inexistant"
   ],
   "must_contain": [
-   "Blog inexistant"
+   "blog : "
   ],
   "category": "writing",
   "regex_check": ""
@@ -29695,10 +29695,10 @@
   "name": "visnesscard",
   "url": "https://my.visnesscard.com/Home/GetCard/{}",
   "not_found": [
-   "end_point"
+   "card_id\": 0"
   ],
   "must_contain": [
-   "card_id\": 0"
+   "end_point"
   ],
   "category": "other",
   "regex_check": ""
@@ -29707,10 +29707,10 @@
   "name": "Vkl.world (Mastodon Instance)",
   "url": "https://vkl.world/api/v1/accounts/lookup?acct={}",
   "not_found": [
-   "display_name"
+   "Record not found"
   ],
   "must_contain": [
-   "Record not found"
+   "display_name"
   ],
   "category": "social",
   "regex_check": ""
@@ -29719,10 +29719,10 @@
   "name": "Vmst.io (Mastodon Instance)",
   "url": "https://vmst.io/api/v1/accounts/lookup?acct={}",
   "not_found": [
-   "display_name"
+   "Record not found"
   ],
   "must_contain": [
-   "Record not found"
+   "display_name"
   ],
   "category": "social",
   "regex_check": ""
@@ -29731,10 +29731,10 @@
   "name": "Voices.com",
   "url": "https://www.voices.com/profile/{}/",
   "not_found": [
-   "Last Online</h3>"
+   "Try going back to the previous page or see below for more options"
   ],
   "must_contain": [
-   "Try going back to the previous page or see below for more options"
+   "Last Online</h3>"
   ],
   "category": "other",
   "regex_check": ""
@@ -29743,10 +29743,10 @@
   "name": "Warmerise",
   "url": "https://warmerise.com/profile/{}",
   "not_found": [
-   "<div id='profile_photo"
+   "<h2>Page Not Found"
   ],
   "must_contain": [
-   "<h2>Page Not Found"
+   "<div id='profile_photo"
   ],
   "category": "other",
   "regex_check": ""
@@ -29755,10 +29755,10 @@
   "name": "warriorforum",
   "url": "https://www.warriorforum.com/members/{}.html",
   "not_found": [
-   "Last Activity:"
+   "Oops | Warrior Forum -"
   ],
   "must_contain": [
-   "Oops | Warrior Forum -"
+   "Last Activity:"
   ],
   "category": "forum",
   "regex_check": ""
@@ -29766,10 +29766,10 @@
  {
   "name": "Watchmyfeed",
   "url": "https://watchmyfeed.com/{}",
-  "not_found": [
+  "not_found": [],
+  "must_contain": [
    "SEND ME A TIP"
   ],
-  "must_contain": [],
   "category": "other",
   "regex_check": ""
  },
@@ -29777,10 +29777,10 @@
   "name": "waytohey",
   "url": "https://waytohey.com/{}",
   "not_found": [
-   "Send message</span>"
+   "Unfortunately, this page doesn&#039;t exist."
   ],
   "must_contain": [
-   "Unfortunately, this page doesn&#039;t exist."
+   "Send message</span>"
   ],
   "category": "other",
   "regex_check": ""
@@ -29789,10 +29789,10 @@
   "name": "wego",
   "url": "https://wego.social/{}",
   "not_found": [
-   "Following</span>"
+   "Sorry, page not found!"
   ],
   "must_contain": [
-   "Sorry, page not found!"
+   "Following</span>"
   ],
   "category": "other",
   "regex_check": ""
@@ -29801,10 +29801,10 @@
   "name": "weheartit",
   "url": "https://weheartit.com/{}",
   "not_found": [
-   " on We Heart It</title>"
+   " (404)</title>"
   ],
   "must_contain": [
-   " (404)</title>"
+   " on We Heart It</title>"
   ],
   "category": "other",
   "regex_check": ""
@@ -29812,10 +29812,10 @@
  {
   "name": "WeTransfer",
   "url": "https://{}.wetransfer.com",
-  "not_found": [
+  "not_found": [],
+  "must_contain": [
    "workspaceName"
   ],
-  "must_contain": [],
   "category": "other",
   "regex_check": ""
  },
@@ -29823,10 +29823,10 @@
   "name": "Wikimapia",
   "url": "https://wikimapia.org/user/register/?check=username&value={}",
   "not_found": [
-   "\"ok\":false"
+   "\"ok\":true"
   ],
   "must_contain": [
-   "\"ok\":true"
+   "\"ok\":false"
   ],
   "category": "code",
   "regex_check": ""
@@ -29835,10 +29835,10 @@
   "name": "Wimkin-PublicProfile",
   "url": "https://wimkin.com/{}",
   "not_found": [
-   "is on WIMKIN"
+   " The page you are looking for cannot be found."
   ],
   "must_contain": [
-   " The page you are looking for cannot be found."
+   "is on WIMKIN"
   ],
   "category": "other",
   "regex_check": ""
@@ -29847,10 +29847,10 @@
   "name": "WordPress.com (Deleted)",
   "url": "https://public-api.wordpress.com/rest/v1.1/sites/{}.wordpress.com",
   "not_found": [
-   "\"message\":\"API calls to this endpoint have been disabled.\""
+   "\"error\":\"unknown_blog\""
   ],
   "must_contain": [
-   "\"error\":\"unknown_blog\""
+   "\"message\":\"API calls to this endpoint have been disabled.\""
   ],
   "category": "writing",
   "regex_check": ""
@@ -29859,10 +29859,10 @@
   "name": "WordPress.com (Private)",
   "url": "https://public-api.wordpress.com/rest/v1.1/sites/{}.wordpress.com",
   "not_found": [
-   "\"message\":\"User cannot access this private blog.\""
+   "\"error\":\"unknown_blog\""
   ],
   "must_contain": [
-   "\"error\":\"unknown_blog\""
+   "\"message\":\"User cannot access this private blog.\""
   ],
   "category": "writing",
   "regex_check": ""
@@ -29871,10 +29871,10 @@
   "name": "WordPress.com (Public)",
   "url": "https://public-api.wordpress.com/rest/v1.1/sites/{}.wordpress.com",
   "not_found": [
-   "\"ID\":"
+   "\"error\":\"unknown_blog\""
   ],
   "must_contain": [
-   "\"error\":\"unknown_blog\""
+   "\"ID\":"
   ],
   "category": "writing",
   "regex_check": ""
@@ -29883,10 +29883,10 @@
   "name": "WordPress.org (Forums)",
   "url": "https://login.wordpress.org/wp-json/wporg/v1/username-available/{}",
   "not_found": [
-   "\"error\":\"That username is already in use."
+   "\"available\":true"
   ],
   "must_contain": [
-   "\"available\":true"
+   "\"error\":\"That username is already in use."
   ],
   "category": "forum",
   "regex_check": ""
@@ -29895,10 +29895,10 @@
   "name": "WordPress.org (Profiles)",
   "url": "https://login.wordpress.org/wp-json/wporg/v1/username-available/{}",
   "not_found": [
-   "\"error\":\"That username is already in use."
+   "\"available\":true"
   ],
   "must_contain": [
-   "\"available\":true"
+   "\"error\":\"That username is already in use."
   ],
   "category": "writing",
   "regex_check": ""
@@ -29907,10 +29907,10 @@
   "name": "X",
   "url": "https://api.x.com/i/users/username_available.json?username={}",
   "not_found": [
-   "\"reason\":\"taken\""
+   "\"reason\":\"available\""
   ],
   "must_contain": [
-   "\"reason\":\"available\""
+   "\"reason\":\"taken\""
   ],
   "category": "other",
   "regex_check": ""
@@ -29919,10 +29919,10 @@
   "name": "XNXX",
   "url": "https://www.xnxx.com/mobile/profile/{}",
   "not_found": [
-   "<table id=\"profile\">"
+   "<title>Bad request"
   ],
   "must_contain": [
-   "<title>Bad request"
+   "<table id=\"profile\">"
   ],
   "category": "adult",
   "regex_check": ""
@@ -29931,10 +29931,10 @@
   "name": "Yahoo! JAPAN Auction",
   "url": "https://auctions.yahoo.co.jp/follow/list/{}",
   "not_found": [
-   "出品者"
+   "Yahoo! JAPAN IDが無効です。"
   ],
   "must_contain": [
-   "Yahoo! JAPAN IDが無効です。"
+   "出品者"
   ],
   "category": "other",
   "regex_check": ""
@@ -29943,10 +29943,10 @@
   "name": "yapishu",
   "url": "https://yapishu.net/user/{}",
   "not_found": [
-   "for_profile"
+   "Not Found (#404)"
   ],
   "must_contain": [
-   "Not Found (#404)"
+   "for_profile"
   ],
   "category": "other",
   "regex_check": ""
@@ -29955,10 +29955,10 @@
   "name": "Yazawaj",
   "url": "https://www.yazawaj.com/profile/{}",
   "not_found": [
-   "profile-description"
+   "<title>nodata"
   ],
   "must_contain": [
-   "<title>nodata"
+   "profile-description"
   ],
   "category": "other",
   "regex_check": ""
@@ -29967,10 +29967,10 @@
   "name": "YesWeHack",
   "url": "https://api.yeswehack.com/hunters/{}",
   "not_found": [
-   "\"username\":"
+   "\"code\":404"
   ],
   "must_contain": [
-   "\"code\":404"
+   "\"username\":"
   ],
   "category": "other",
   "regex_check": ""
@@ -29979,10 +29979,10 @@
   "name": "YouTube Channel",
   "url": "https://www.youtube.com/c/{}/about",
   "not_found": [
-   "joinedDateText"
+   "<title>404 Not Found"
   ],
   "must_contain": [
-   "<title>404 Not Found"
+   "joinedDateText"
   ],
   "category": "video",
   "regex_check": ""
@@ -29991,10 +29991,10 @@
   "name": "YouTube User2",
   "url": "https://www.youtube.com/@{}",
   "not_found": [
-   "canonicalBaseUrl"
+   "<title>404 Not Found</title>"
   ],
   "must_contain": [
-   "<title>404 Not Found</title>"
+   "canonicalBaseUrl"
   ],
   "category": "video",
   "regex_check": ""
@@ -30002,10 +30002,10 @@
  {
   "name": "Zbiornik",
   "url": "https://mini.zbiornik.com/{}",
-  "not_found": [
+  "not_found": [],
+  "must_contain": [
    "INFO"
   ],
-  "must_contain": [],
   "category": "other",
   "regex_check": ""
  },
@@ -30013,10 +30013,10 @@
   "name": "Zenn",
   "url": "https://zenn.dev/{}",
   "not_found": [
-   "<div class=\"UserHeader_profileMain__6Itxi\">"
+   "<div class=\"ErrorContent_status__2Ykoq\">404</div>"
   ],
   "must_contain": [
-   "<div class=\"ErrorContent_status__2Ykoq\">404</div>"
+   "<div class=\"UserHeader_profileMain__6Itxi\">"
   ],
   "category": "other",
   "regex_check": ""
@@ -30025,10 +30025,10 @@
   "name": "Zepeto",
   "url": "https://gw-napi.zepeto.io/profiles/{}",
   "not_found": [
-   "zepetoId\":"
+   "errorCode\":"
   ],
   "must_contain": [
-   "errorCode\":"
+   "zepetoId\":"
   ],
   "category": "other",
   "regex_check": ""
@@ -30037,10 +30037,10 @@
   "name": "zhihu",
   "url": "https://api.zhihu.com/books/people/{}/publications?offset=0&limit=5",
   "not_found": [
-   "\"is_start\": true"
+   "\"name\": \"NotFoundException\""
   ],
   "must_contain": [
-   "\"name\": \"NotFoundException\""
+   "\"is_start\": true"
   ],
   "category": "chinese",
   "regex_check": ""
@@ -30048,10 +30048,10 @@
  {
   "name": "Zillow",
   "url": "https://www.zillow.com/profile/{}/",
-  "not_found": [
+  "not_found": [],
+  "must_contain": [
    "- Real Estate Agent"
   ],
-  "must_contain": [],
   "category": "other",
   "regex_check": ""
  },
@@ -30059,10 +30059,10 @@
   "name": "Znanija",
   "url": "https://znanija.com/graphql/ru?operationName=NickAvailability&query=query%20NickAvailability%28%24nick%3AString%21%29%7BnickAvailability%28nick%3A%24nick%29%7BisAvailable%7D%7D&variables=%7B%22nick%22%3A%22{}%22%7D",
   "not_found": [
-   "\"isAvailable\":false"
+   "\"isAvailable\":true"
   ],
   "must_contain": [
-   "\"isAvailable\":true"
+   "\"isAvailable\":false"
   ],
   "category": "other",
   "regex_check": ""
@@ -30071,10 +30071,10 @@
   "name": "Zomato",
   "url": "https://www.zomato.com/{}/reviews",
   "not_found": [
-   "Activity</h4>"
+   "This is a 404 page and we think it's fairly clear"
   ],
   "must_contain": [
-   "This is a 404 page and we think it's fairly clear"
+   "Activity</h4>"
   ],
   "category": "other",
   "regex_check": ""
@@ -30082,10 +30082,10 @@
  {
   "name": "zoomitir",
   "url": "https://www.zoomit.ir/user/{}/",
-  "not_found": [],
-  "must_contain": [
+  "not_found": [
    "<title>خطای ۴۰۴ - صفحه یافت نشد</title>"
   ],
+  "must_contain": [],
   "category": "other",
   "regex_check": ""
  },
@@ -30093,10 +30093,10 @@
   "name": "Военное обозрение",
   "url": "https://topwar.ru/user/{}/",
   "not_found": [
-   "class=\"puser-info\""
+   "class=\"error-container\""
   ],
   "must_contain": [
-   "class=\"error-container\""
+   "class=\"puser-info\""
   ],
   "category": "other",
   "regex_check": ""
@@ -30105,10 +30105,10 @@
   "name": "Чатовка.net",
   "url": "https://chatovka.net/search?user_nick=+{}&user_sex_m=on&user_sex_f=on",
   "not_found": [
-   "href=\"/user/"
+   "По Вашему запросу люди не найдены."
   ],
   "must_contain": [
-   "По Вашему запросу люди не найдены."
+   "href=\"/user/"
   ],
   "category": "other",
   "regex_check": ""

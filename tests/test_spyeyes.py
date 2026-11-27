@@ -640,6 +640,237 @@ class TestWAFDetection:
             assert cat in gt.CATEGORY_ORDER
 
 
+class _FakeRaw:
+    """最小的 urllib3 响应体替身：支持 read(n, decode_content=...) 和 close()。"""
+
+    def __init__(self, body: bytes):
+        import io
+        self._buf = io.BytesIO(body)
+
+    def read(self, amt=-1, decode_content=False):
+        return self._buf.read(amt)
+
+    def close(self):
+        pass
+
+
+def _real_response(status: int, body: bytes = b'', headers=None):
+    """真实的 requests.Response（MagicMock 响应恒为真值、属性任取，测不出状态码语义）。"""
+    import requests
+    resp = requests.Response()
+    resp.status_code = status
+    resp.raw = _FakeRaw(body)
+    resp.headers.update(headers or {})
+    return resp
+
+
+_CF_CHALLENGE = b'<html><title>Just a moment...</title><script src="/cdn-cgi/challenge-platform/h/g"></script>'
+
+
+class TestBlockedResponseIsNotNotFound:
+    """回归：非 200 的拦截页曾一律被报成「未找到」。
+    拦截页恰恰很少是 200（Cloudflare 质询 403/503、限流 429），旧实现在读响应体之前就
+    返回 STATUS_NOT_FOUND，WAF 识别等于从不生效 —— 用户分不清「没有账号」和「被挡了」。"""
+
+    BODY_PLATFORM = gt.Platform('Body', 'https://x.test/{}', 'code', not_found=(b'no such user',))
+    HEAD_PLATFORM = gt.Platform('Head', 'https://y.test/{}', 'code')
+
+    @pytest.mark.parametrize('status', [403, 503])
+    def test_body_platform_challenge_page_is_waf(self, status):
+        resp = _real_response(status, _CF_CHALLENGE)
+        with patch.object(gt, 'safe_get', return_value=resp):
+            _, url, st = gt._check_username(self.BODY_PLATFORM, 'alice', 5)
+        assert st == gt.STATUS_WAF
+        assert url is None
+
+    @pytest.mark.parametrize('status', [429, 999])
+    def test_hard_block_status_is_waf_even_without_fingerprint(self, status):
+        """429 限流 / 999（LinkedIn 反自动化）：状态码本身就说明对方拒绝回答。"""
+        for platform in (self.BODY_PLATFORM, self.HEAD_PLATFORM):
+            with patch.object(gt, 'safe_get', return_value=_real_response(status, b'slow down')):
+                _, url, st = gt._check_username(platform, 'alice', 5)
+            assert st == gt.STATUS_WAF, platform.name
+            assert url is None
+
+    @pytest.mark.parametrize('status', [403, 503])
+    def test_plain_403_503_without_evidence_stays_not_found(self, status):
+        """没有拦截证据的 403/503 仍算「未找到」—— 不少站点用它表示用户不存在 / 无权查看。"""
+        resp = _real_response(status, b'<html>Forbidden</html>')
+        with patch.object(gt, 'safe_get', return_value=resp):
+            _, url, st = gt._check_username(self.BODY_PLATFORM, 'alice', 5)
+        assert st == gt.STATUS_NOT_FOUND
+
+    def test_404_is_not_found_and_body_not_read(self):
+        resp = _real_response(404, _CF_CHALLENGE)
+        resp.raw.read = MagicMock(side_effect=AssertionError('404 不该读响应体'))
+        with patch.object(gt, 'safe_get', return_value=resp):
+            _, url, st = gt._check_username(self.BODY_PLATFORM, 'alice', 5)
+        assert st == gt.STATUS_NOT_FOUND
+
+    def test_head_403_with_challenge_header_is_waf_without_retry(self):
+        """HEAD 没有响应体，靠响应头认 Cloudflare 质询；已能确认就不再多发一次 GET。"""
+        resp = _real_response(403, headers={'cf-mitigated': 'challenge'})
+        with patch.object(gt, 'safe_get', return_value=resp) as mock_get:
+            _, url, st = gt._check_username(self.HEAD_PLATFORM, 'alice', 5)
+        assert st == gt.STATUS_WAF
+        assert mock_get.call_count == 1
+
+    def test_head_403_retries_with_get_and_finds_profile(self):
+        """有些站点对 HEAD 一律 403 而 GET 正常 —— 旧实现直接报「未找到」（假阴性）。"""
+        calls = []
+
+        def fake_get(url, **kw):
+            calls.append(kw.get('method', 'GET'))
+            if kw.get('method') == 'HEAD':
+                return _real_response(403)
+            return _real_response(200, b'<html>profile of alice</html>')
+
+        with patch.object(gt, 'safe_get', side_effect=fake_get):
+            _, url, st = gt._check_username(self.HEAD_PLATFORM, 'alice', 5)
+        assert calls == ['HEAD', 'GET']
+        assert st == gt.STATUS_FOUND
+        assert url == 'https://y.test/alice'
+
+    def test_head_503_retry_sees_challenge_body(self):
+        def fake_get(url, **kw):
+            if kw.get('method') == 'HEAD':
+                return _real_response(503)
+            return _real_response(503, _CF_CHALLENGE)
+
+        with patch.object(gt, 'safe_get', side_effect=fake_get):
+            _, url, st = gt._check_username(self.HEAD_PLATFORM, 'alice', 5)
+        assert st == gt.STATUS_WAF
+
+    def test_get_fallback_200_challenge_page_is_waf(self):
+        """HEAD 不支持（405）→ GET 回退拿到 200 的拦截页，不能当成「找到」。"""
+        def fake_get(url, **kw):
+            if kw.get('method') == 'HEAD':
+                return _real_response(405)
+            return _real_response(200, _CF_CHALLENGE)
+
+        with patch.object(gt, 'safe_get', side_effect=fake_get):
+            _, url, st = gt._check_username(self.HEAD_PLATFORM, 'alice', 5)
+        assert st == gt.STATUS_WAF
+        assert url is None
+
+    def test_waf_header_detection_ignores_unrelated_values(self):
+        assert gt._has_waf_headers(_real_response(403, headers={'x-amzn-waf-action': 'captcha'}))
+        assert not gt._has_waf_headers(_real_response(403, headers={'cf-mitigated': 'none'}))
+        assert not gt._has_waf_headers(_real_response(403, headers={'server': 'cloudflare'}))
+
+    def test_blocked_counted_in_scan_statuses(self, monkeypatch):
+        """端到端：track_username 的 _statuses 里拦截要记成 waf，供终端的提示行统计。"""
+        monkeypatch.setattr(gt, '_PLATFORMS_CACHE', [self.BODY_PLATFORM])
+        with patch.object(gt, 'safe_get', return_value=_real_response(403, _CF_CHALLENGE)):
+            result = gt.track_username('alice', max_workers=1, show_progress=False)
+        assert result['Body'] is None
+        assert result['_statuses'] == {'Body': gt.STATUS_WAF}
+
+
+class TestHitVerification:
+    """回归：命中要用乱码用户名复查。
+    近半数平台只看 HTTP 200；对「任何用户名都回 200」的站点（登录墙 / 软 404 / DNS 劫持），
+    旧实现把每一次扫描都报成命中 —— 实测扫一个不存在的用户名，全库有数百个平台报「找到」。"""
+
+    PLATFORM = gt.Platform('Site', 'https://site.test/{}', 'code')
+    CONTROL = 'zqcontrol0001'
+
+    def _scan(self, monkeypatch, fake_get, **kw):
+        monkeypatch.setattr(gt, '_PLATFORMS_CACHE', [self.PLATFORM])
+        monkeypatch.setattr(gt, '_make_control_username', lambda: self.CONTROL)
+        with patch.object(gt, 'safe_get', side_effect=fake_get):
+            return gt.track_username('alice', max_workers=1, show_progress=False, **kw)
+
+    def test_site_that_says_yes_to_everything_is_unverifiable(self, monkeypatch):
+        result = self._scan(monkeypatch, lambda url, **kw: _real_response(200))
+        assert result['Site'] is None
+        assert result['_statuses'] == {'Site': gt.STATUS_UNVERIFIABLE}
+
+    def test_real_hit_survives_when_control_is_not_found(self, monkeypatch):
+        def fake_get(url, **kw):
+            return _real_response(200 if url.endswith('/alice') else 404)
+
+        result = self._scan(monkeypatch, fake_get)
+        assert result['Site'] == 'https://site.test/alice'
+        assert result['_statuses'] == {'Site': gt.STATUS_FOUND}
+
+    def test_inconclusive_control_keeps_the_hit(self, monkeypatch):
+        """复查被拦 / 网络出错时下不了结论，不能因此丢掉真实命中。"""
+        for control_resp in (None, _real_response(429)):
+            def fake_get(url, _r=control_resp, **kw):
+                return _real_response(200) if url.endswith('/alice') else _r
+
+            result = self._scan(monkeypatch, fake_get)
+            assert result['Site'] == 'https://site.test/alice'
+
+    def test_miss_costs_no_extra_request(self, monkeypatch):
+        calls = []
+
+        def fake_get(url, **kw):
+            calls.append(url)
+            return _real_response(404)
+
+        result = self._scan(monkeypatch, fake_get)
+        assert result['Site'] is None
+        assert calls == ['https://site.test/alice']
+
+    def test_verify_hits_false_keeps_raw_verdict(self, monkeypatch):
+        calls = []
+
+        def fake_get(url, **kw):
+            calls.append(url)
+            return _real_response(200)
+
+        result = self._scan(monkeypatch, fake_get, verify_hits=False)
+        assert result['Site'] == 'https://site.test/alice'
+        assert calls == ['https://site.test/alice']
+
+    def test_control_username_is_valid_and_random(self):
+        a, b = gt._make_control_username(), gt._make_control_username()
+        assert a != b
+        assert len(a) == 12 and a.isalnum() and a[0].isalpha()
+        assert not gt._is_invalid_username(a)
+
+    @pytest.mark.parametrize('lang, expected', [('zh', '无法确认'), ('en', 'unverifiable')])
+    def test_unverifiable_shown_in_summary_note(self, monkeypatch, capsys, lang, expected):
+        gt.set_lang(lang)
+        result = self._scan(monkeypatch, lambda url, **kw: _real_response(200))
+        gt.print_username_results(result, show_all=True)
+        out = capsys.readouterr().out
+        assert out.count(expected) == 2  # 摘要提示行 + --all 明细里的标签
+
+
+class TestWmnRulesNotInverted:
+    """回归：WhatsMyName 的 e_string 是「存在标志」、m_string 是「不存在标志」。
+    v1.1.0 ~ v1.8.6 的构建脚本把两者接反，platforms.json 里 587 个平台对真实账号恒报
+    「未找到」，对「不存在也回 200」的站点反而以最高可信度报「找到」。"""
+
+    def test_known_wmn_entries_have_correct_direction(self):
+        ext = {p.name: p for p in gt._load_platforms_json(gt._PLATFORMS_JSON)}
+        chess = ext['Chess.com']
+        assert chess.must_contain == (b'"player_id":',)   # 账号存在时接口返回的字段
+        assert chess.not_found == (b'"code":0',)          # 账号不存在时的错误体
+        assert ext['AtCoder'].not_found == (b'>404 page not found</h1>',)
+
+    def test_must_contain_never_looks_like_a_not_found_message(self):
+        """方向接反时最显眼的症状：「必须包含」里出现大量 'not found' 字样（修复前 200+ 条）。"""
+        import re
+        miss = re.compile(rb"not found|doesn.?t exist|does not exist|no such", re.I)
+        suspicious = [p.name for p in gt._load_platforms_json(gt._PLATFORMS_JSON)
+                      if any(miss.search(pat) for pat in p.must_contain)]
+        assert len(suspicious) <= 10, f'{len(suspicious)} 条规则疑似接反: {suspicious[:20]}'
+
+    def test_existing_account_is_found_end_to_end(self):
+        """用修复后的 Chess.com 规则走一遍真实判定：存在 → 找到，不存在 → 未找到。"""
+        chess = next(p for p in gt._load_platforms_json(gt._PLATFORMS_JSON) if p.name == 'Chess.com')
+        exists = _real_response(200, b'{"player_id":1,"username":"alice"}')
+        missing = _real_response(200, b'{"code":0,"message":"User \\"zz\\" not found."}')
+        with patch.object(gt, 'safe_get', return_value=exists):
+            assert gt._check_username(chess, 'alice', 5)[2] == gt.STATUS_FOUND
+        with patch.object(gt, 'safe_get', return_value=missing):
+            assert gt._check_username(chess, 'zz', 5)[2] == gt.STATUS_NOT_FOUND
+
+
 # ------------------------------------------------------------------
 # email_validate
 # ------------------------------------------------------------------
