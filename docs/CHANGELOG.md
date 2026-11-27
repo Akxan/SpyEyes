@@ -26,6 +26,21 @@ This project adheres to [Keep a Changelog](https://keepachangelog.com/en/1.1.0/)
   只看状态码的平台遇到 403 / 503 会改用 GET 再看一次(不少站点只是拒绝 HEAD)。
   提示文案相应从「被 WAF 拦截」改为「被拦截(WAF / 限流)」。
 
+### 📝 文档与项目页面
+
+- **GitHub 项目页改为英文为主、中文为辅**:英文 README 升为 `README.md`,中文版改名 `README.zh-CN.md`
+  (旧的 `README.en.md` 不再存在)。英文 README 开头重写为「What is SpyEyes?」定义 + 功能清单 + 事实表,
+  新增 FAQ;Pages 首页同步改为英文为主,并加入结构化数据(`SoftwareApplication` + `FAQPage`)和站点地图。
+- **中文 README 补齐**:环境变量表、界面语言优先级、退出码、安全报告入口(此前只有英文版有)。
+- **致谢与归属**:README 与 `NOTICE` 写明用户名平台库派生自 Maigret(MIT)、Sherlock(MIT)、
+  WhatsMyName(CC BY-SA 4.0),相应部分仍适用各自的许可证。
+- **SECURITY.md 更正**:报告渠道统一为 GitHub Security Advisory(原"邮件"渠道没有地址);
+  如实列出 `~/.spyeyes/` 下的全部本地文件;说明 HTML / 关系图报告打开时会加载外部字体和 D3.js。
+- **教程更正**:Linux 安装改用 venv(新版 Debian / Ubuntu 的系统 Python 禁止直接 `pip install`);
+  子域名被动源数量写对(5 个公开源 + 1 个可选);补充 `phone --region`。
+- `domain-emails --no-crawl` 的帮助文本改正(被动源是 6 个,不是"只有 crt.sh + WHOIS")。
+- CI 与文档里的 bandit 命令加 `-c pyproject.toml`:此前 pyproject 里的 skips 配置实际没有被读取。
+
 ### Planned
 - 代理支持 (`--proxy http://...` / SOCKS5 / Tor / I2P，借鉴 Maigret)
 - IP / 用户名批量输入(`--batch ips.txt`;子域名已在 v1.5.0 支持 `--batch`)

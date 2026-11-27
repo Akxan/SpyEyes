@@ -9394,7 +9394,8 @@ def build_parser() -> argparse.ArgumentParser:
                         help='Enumerate emails for a domain / 域名邮箱枚举 (v1.4.0)')
     sp.add_argument('domain', help='Target domain (e.g. example.com)')
     sp.add_argument('--no-crawl', action='store_true', dest='no_crawl',
-                    help='Skip deep crawl, only use crt.sh + WHOIS')
+                    help='Skip the site crawl; passive sources only'
+                         ' (crt.sh / WHOIS / Bing / DuckDuckGo / Wayback / GitHub)')
     sp.add_argument('--no-include-subdomains', action='store_true',
                     dest='no_include_subdomains',
                     help='Skip alive subdomains in crawl (main domain only, faster)')

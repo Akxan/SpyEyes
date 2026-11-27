@@ -31,7 +31,7 @@ jobs:
       - name: mypy
         run: mypy spyeyes tools/build_platforms.py --ignore-missing-imports
       - name: bandit
-        run: bandit -r spyeyes/ tools/ -ll
+        run: bandit -c pyproject.toml -r spyeyes/ tools/ -ll
 
   test:
     name: Test (Python ${{ matrix.python-version }} on ${{ matrix.os }})

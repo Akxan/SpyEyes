@@ -109,10 +109,11 @@ python3 -m spyeyes
 
 ```bash
 sudo apt-get update
-sudo apt-get install git python3 python3-pip
+sudo apt-get install git python3 python3-pip python3-venv
 git clone https://github.com/Akxan/SpyEyes.git
 cd SpyEyes
-pip3 install -r requirements.txt   # 较新发行版可能也需要 venv，参考上面的 macOS 方案
+python3 -m venv .venv && source .venv/bin/activate   # 新版 Debian / Ubuntu 的系统 Python 禁止直接 pip install(PEP 668)
+pip install -r requirements.txt
 python3 -m spyeyes
 ```
 
@@ -432,7 +433,7 @@ python3 -m spyeyes --lang zh user torvalds  # 强制中文输出
 | `+12025550100` | ✅ 可行 | 美国号码，`+1` 国际区号 |
 | `138 0013 8000` | ✅ 可行 | 库会自动忽略空格 |
 | `138-0013-8000` | ✅ 可行 | 横线也会被忽略 |
-| `2025550100`（无 `+1` 也无国家上下文） | ❌ 不行 | 默认区域 `CN`，会被误判 |
+| `2025550100`（无 `+1` 也无国家上下文） | ❌ 不行 | 默认区域 `CN`，会被误判;命令行可加 `--region US` 指定默认区域 |
 
 **说明**：
 - 该功能完全**离线运行**，不会向任何远程服务器发送号码
@@ -653,7 +654,7 @@ python3 -m spyeyes --lang zh user torvalds  # 强制中文输出
 
 **工作流程(三阶段)**：
 
-1. **被动汇总(6 个公开数据源 + 1 个可选)**:
+1. **被动汇总(5 个公开数据源 + 1 个可选,共 6 源)**:
    - [crt.sh](https://crt.sh) —— Certificate Transparency 日志(免费、无 API key、覆盖率最高)
    - [CertSpotter](https://sslmate.com/certspotter/api/) —— SSLMate CT 监控(免费匿名 100/h;`SPYEYES_CERTSPOTTER_API_KEY` 解锁高 quota)
    - [HackerTarget hostsearch](https://api.hackertarget.com/hostsearch/) —— 匿名每日 quota ~50,触发限速优雅降级

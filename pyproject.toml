@@ -24,15 +24,18 @@ build-backend = "setuptools.build_meta"
 [project]
 name = "spyeyes"
 version = "1.8.6"  # 同步：spyeyes/__init__.py __version__ + docs/CHANGELOG.md + git tag
-description = "All-in-One OSINT toolkit (bilingual zh/en) — 14 commands: IP / Phone / Username (3164 platforms) / WHOIS / MX / Email / Subdomain enumeration / Domain email harvest / Investigate dossier / Diff + Batch, 8 report formats (HTML / PDF / XMind / Graph ...)"
+description = "All-in-one OSINT toolkit: username search across 3,164 sites, subdomain enumeration, domain email harvesting, IP geolocation, phone lookup, WHOIS / MX, investigate dossier — one CLI, 8 report formats, no API keys, bilingual (English / Chinese)"
 readme = "README.md"
 requires-python = ">=3.10"
 # PEP 639 SPDX 表达式（替代弃用的 license = { text = ... } 和 license classifier）
 license = "Apache-2.0"
 license-files = ["LICENSE", "NOTICE"]
 authors = [{ name = "Akxan" }]
-keywords = ["osint", "ip-tracker", "phone-tracker", "username-search",
-            "whois-lookup", "dns-lookup", "email-verification", "cybersecurity"]
+keywords = ["osint", "osint-tool", "reconnaissance", "information-gathering",
+            "username-search", "username-checker", "subdomain-enumeration",
+            "email-harvester", "email-osint", "whois", "ip-geolocation",
+            "phone-number-lookup", "pentesting", "bugbounty", "cybersecurity",
+            "security-tools", "cli"]
 classifiers = [
     "Development Status :: 5 - Production/Stable",
     "Environment :: Console",
@@ -77,6 +80,7 @@ dev = [
 
 [project.urls]
 Homepage = "https://github.com/Akxan/SpyEyes"
+Documentation = "https://akxan.github.io/SpyEyes/"
 Repository = "https://github.com/Akxan/SpyEyes"
 "Bug Tracker" = "https://github.com/Akxan/SpyEyes/issues"
 Changelog = "https://github.com/Akxan/SpyEyes/blob/main/docs/CHANGELOG.md"

@@ -1,10 +1,21 @@
 # GitHub Pages 配置（Jekyll）
 # 启用方式：Settings → Pages → Source: Deploy from a branch → main / docs/
-# 启用后访问: https://akxan.github.io/SpyEyes/
+# 访问地址: https://akxan.github.io/SpyEyes/
+#
+# title / description 会被 jekyll-seo-tag 写进 <title>、meta description 和 Open Graph 标签。
+# 英文为主;不要写版本号、测试数这类每次发版都会变的数字。
 
-title: SpyEyes
-description: All-in-One OSINT Toolkit · 14 commands · 3164 platforms · Subdomain (7 dim) + Email (6 free sources) + Diff + Batch + Investigate + one-click Upgrade · 8 Editorial reports · zh+en bilingual · v1.8.6
+title: SpyEyes — All-in-One OSINT Toolkit
+description: >-
+  Free, open-source OSINT command-line toolkit in Python: username search across 3,164 sites,
+  subdomain enumeration, domain email harvesting, IP geolocation, phone lookup, WHOIS and MX.
+  No API keys required. English / 简体中文.
+lang: en
 theme: jekyll-theme-hacker
+
+plugins:
+  - jekyll-seo-tag
+  - jekyll-sitemap
 
 # 仓库信息
 repository: Akxan/SpyEyes

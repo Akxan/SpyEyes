@@ -1,58 +1,76 @@
-# 🔒 安全策略 / Security Policy
+# 🔒 Security Policy / 安全策略
 
-## 受支持的版本 / Supported Versions
+## Supported Versions / 受支持的版本
 
-| Version | Supported          |
-| ------- | ------------------ |
-| 1.x     | ✅                 |
-| < 1.0   | ❌                 |
+| Version | Supported |
+| ------- | --------- |
+| 1.x     | ✅        |
+| < 1.0   | ❌        |
 
-## 报告漏洞 / Reporting a Vulnerability
+Fixes land on the latest release. Run `spyeyes upgrade` to get them.
 
-如果你发现安全漏洞，**请不要**在公开 issue 里讨论。
-If you discover a security vulnerability, **do NOT** open a public issue.
+## Reporting a Vulnerability / 报告漏洞
 
-请通过以下方式之一私下联系：
+**Please do not discuss security vulnerabilities in public issues.**
 
-- 📧 **邮件 / Email**: 通过 GitHub profile 找联系方式
-- 🔐 **GitHub Security Advisory**: [开私密 advisory](https://github.com/Akxan/SpyEyes/security/advisories/new)（推荐）
+Report privately through **[GitHub Security Advisories](https://github.com/Akxan/SpyEyes/security/advisories/new)** — this is the only reporting channel, and it keeps the report visible to the maintainer only until a fix is released.
 
-报告时请尽量包含：
+Please include:
 
-1. 漏洞类型与影响范围
-2. 受影响的代码位置（文件 + 行号）
-3. 复现步骤
-4. 可能的修复建议（如有）
+1. The type of vulnerability and its impact
+2. The affected code (file and line)
+3. Steps to reproduce
+4. A suggested fix, if you have one
 
-## 响应时效 / Response Time
+### Response time
 
-- **致命漏洞**（RCE / 凭证泄露 / 数据破坏）：48 小时内响应
-- **高危**（信息泄露 / DoS）：7 天内响应
-- **一般**：14 天内响应
+- **Critical** (remote code execution, credential leak, data destruction): within 48 hours
+- **High** (information disclosure, denial of service): within 7 days
+- **Other**: within 14 days
 
-## 安全设计原则 / Security Principles
+## What SpyEyes Stores and Sends / 本地数据与外发请求
 
-SpyEyes 在设计上遵循以下原则：
+**Stored locally** (all under `~/.spyeyes/`, nothing is uploaded):
 
-1. **本地优先存储**：查询结果仅在内存中处理；唯一的本地落盘是
-   `~/.spyeyes/history.jsonl`（仅记录元数据：时间戳/命令/查询/摘要，**不存全量结果**）。
-   要完全禁用历史，设环境变量 `SPYEYES_NO_HISTORY=1`，或定期 `rm ~/.spyeyes/history.jsonl`
-2. **不发送未授权请求**：所有 API 调用目标域名公开透明（`ipwho.is` / `ipify.org` 等）
-3. **不绕过任何访问控制**：仅查询公开信息
-4. **不内嵌追踪代码**：本工具无任何遥测、统计、第三方 SDK
+| File | Contents |
+|---|---|
+| `history.jsonl` | Metadata of each query — time, command, query string, summary. Never the full results. Disable with `SPYEYES_NO_HISTORY=1`. |
+| `config.json` | Saved interface language |
+| `.update_check.json` | Cached result of the release check |
+| `env` | Optional API keys **you** put there (`chmod 600` recommended) |
 
-## 用户安全提醒 / User Safety Notice
+Reports are written only where you ask (`--save`), or to the default report directory in interactive mode.
 
-- 工具查询的电话号码、邮箱、域名等可能涉及隐私，请仅用于**自查或授权场景**
-- **历史记录默认开启** —— `~/.spyeyes/history.jsonl` 会累积所有 CLI 查询的元数据。
-  敏感场景请：
-  - 设 `SPYEYES_NO_HISTORY=1` 完全禁用
-  - 或定期 `rm ~/.spyeyes/history.jsonl` 清理
-- 使用 `--save` 时输出的 JSON 包含查询输入，请妥善保管
-- 在共享/公共终端使用时建议通过 `--no-color` 避免 ANSI 转义符落入截屏
+**Network requests**:
+
+- Queries go to the public sources each command needs (for example `ipwho.is`, `crt.sh`, the sites checked by a username scan). The sources are listed in the [README](https://github.com/Akxan/SpyEyes#readme).
+- A release check asks `api.github.com` at most once every 24 hours. Disable it with `SPYEYES_NO_UPDATE_CHECK=1` or `--no-update-check`.
+- No telemetry, analytics or third-party SDKs.
+- **HTML and graph reports load web fonts from Google Fonts, and graph reports load D3.js from `d3js.org`, when you open them in a browser.** Opening a report offline shows fallback fonts; the graph needs network access to render.
+
+## Security Design / 安全设计
+
+- User input is validated before use: usernames, domains and IP addresses are checked against strict rules, so they cannot inject URLs, paths or report markup.
+- Reports escape all untrusted content (HTML, Markdown, CSV formula injection, XMind, PDF).
+- The domain email crawler only requests URLs inside the target domain, obeys `robots.txt` by default and rate-limits itself.
+- SMTP verification is opt-in (`--verify-smtp`) because it connects to the target's mail servers.
+- SpyEyes does not bypass access controls; it only reads publicly available information.
+
+## User Safety Notice / 用户安全提醒
+
+- Phone numbers, emails and domains may be personal data. Use SpyEyes only for self-audits or authorized work.
+- History is on by default; set `SPYEYES_NO_HISTORY=1` for sensitive work, or delete `~/.spyeyes/history.jsonl`.
+- Saved reports contain your query and its results — store them accordingly.
 
 ---
 
-感谢你帮助让 SpyEyes 更安全 🙏
+## 中文摘要
 
-Thank you for helping keep SpyEyes secure!
+- **报告漏洞**:请不要开公开 issue,通过 [GitHub Security Advisory](https://github.com/Akxan/SpyEyes/security/advisories/new) 私下报告(唯一渠道)。请附上漏洞类型与影响、受影响的代码位置、复现步骤和修复建议。
+- **响应时效**:致命漏洞 48 小时内,高危 7 天内,其余 14 天内。
+- **本地数据**:`~/.spyeyes/` 下有四个文件 —— `history.jsonl`(只记查询元数据,`SPYEYES_NO_HISTORY=1` 可关闭)、`config.json`(界面语言)、`.update_check.json`(版本检查缓存)、`env`(你自己填的可选 API key)。查询结果不会上传。
+- **外发请求**:只访问各命令所需的公开数据源;每 24 小时最多向 `api.github.com` 查一次新版本(`SPYEYES_NO_UPDATE_CHECK=1` 可关闭);没有任何遥测。
+- **注意**:HTML 和关系图报告在浏览器里打开时会从 Google Fonts 加载字体,关系图还会从 `d3js.org` 加载 D3.js;离线打开时关系图无法显示。
+- **使用提醒**:电话、邮箱、域名可能涉及个人信息,请仅用于自查或已获授权的场景;保存的报告包含查询内容,请妥善保管。
+
+Thank you for helping keep SpyEyes secure. 感谢你帮助让 SpyEyes 更安全 🙏

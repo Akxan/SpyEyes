@@ -1,105 +1,117 @@
 ---
 layout: default
-title: SpyEyes
+title: "SpyEyes — All-in-One OSINT Toolkit"
+description: "SpyEyes is a free, open-source OSINT command-line toolkit in Python: username search across 3,164 sites, subdomain enumeration, domain email harvesting, IP geolocation, phone lookup, WHOIS and MX — no API keys required."
+lang: en
 ---
 
-# 🔍 SpyEyes
+# 🔍 SpyEyes — All-in-One OSINT Toolkit
 
-**OSINT 信息查询工具中文增强版** · One-shot toolkit · **14 commands** · IP · Phone · Username · WHOIS · MX · Email · Subdomain · Domain Emails · **Diff** · **Batch** · **Investigate** · **Upgrade**
+**SpyEyes is a free, open-source OSINT (open-source intelligence) toolkit for the command line, written in Python.** One install gives you 14 commands: username search across 3,164 websites, subdomain enumeration, domain email harvesting, IP geolocation, phone number lookup, WHOIS, MX and email validation — with 8 report formats, no API keys required, and a fully bilingual interface (English / 简体中文).
 
-> 一站式 OSINT:IP / 电话 / 用户名(3164 平台)/ WHOIS / MX / 邮箱 / **子域名枚举(7 维度)** / **域名邮箱挖掘(6 源全免费)** / **Diff 监控** / **批量扫描** / **综合调查** / **一键升级** · 8 种 Editorial 风报告
-
-[**📖 详细教程 / Tutorial**](TUTORIAL.html) · [**📝 更新日志 / Changelog**](CHANGELOG.html) · [**🤝 贡献指南 / Contributing**](CONTRIBUTING.html) · [**🔒 安全策略 / Security**](SECURITY.html)
-
-[**⭐ Star on GitHub**](https://github.com/Akxan/SpyEyes) · [**🐛 Report Bug**](https://github.com/Akxan/SpyEyes/issues) · [**📦 Latest Release**](https://github.com/Akxan/SpyEyes/releases/latest)
+[**⭐ GitHub**](https://github.com/Akxan/SpyEyes) · [**📖 Tutorial (中文)**](TUTORIAL.html) · [**📝 Changelog**](CHANGELOG.html) · [**🤝 Contributing**](CONTRIBUTING.html) · [**🔒 Security**](SECURITY.html) · [**🇨🇳 中文说明**](https://github.com/Akxan/SpyEyes/blob/main/README.zh-CN.md)
 
 ---
 
-## ✨ 核心特性 / Key Features
-
-- **🌐 IP 追踪** — IPv4/IPv6 + 180+ 国家中文映射
-- **📡 本机 IP 查询**
-- **📱 电话号码追踪** — 中文归属地 + 中文运营商
-- **👤 用户名扫描** — **3164 个平台**(Maigret + Sherlock + WhatsMyName 合并)
-  - 48 中文圈 + 58 西语圈 + 91 成人/约会 + 733 论坛
-  - 150 线程并发,~20 秒扫完
-  - Maigret-style permute(全排列 × 4 种分隔符 + `--method strict|all`)
-  - 递归扫描挖关联账号(深度 ≤ 2,完整进度反馈)
-- **🔍 WHOIS / 📨 MX / ✉️ 邮箱验证** — IDN 支持
-- **🌐 子域名枚举 (v1.3.0 → v1.6.8)** — 6 被动源(crt.sh + CertSpotter + HackerTarget + OTX + **Wayback Machine**)+ **🚀 可选 subfinder 30+ 源** + **DNS 字典爆破** + **JS/HTML host 提取(支持 4xx/5xx title + CNAME 完整 chain)** + DNS + HTTP probe + Wildcard 检测 + **wildcard 严格模式**(v1.6.5 防 DNS 劫持 fake "活")
-- **📧 域名邮箱挖掘 (v1.4.0 → v1.6.6)** — **6 源全并发,完全免费无需注册**:Bing SERP + DuckDuckGo + Wayback + GitHub commits + crt.sh + WHOIS;**HTTP 过滤 + 多 target 并行 BFS 爬虫(3-4× 提速,v1.6.6)**;深度爬虫 + 模式生成 + 可选 SMTP 验证
-- **📊 Diff 模式 + 批量(v1.5.0)** — `spyeyes diff old.json new.json` OSINT 持续监控;`--batch domains.txt` 批量扫描每个域独立报告
-- **🕵 综合调查(v1.7.0)** — `spyeyes investigate example.com`:WHOIS + MX + 子域名 + 域名邮箱 4 路并发,再单向接力(活跃子域 IP → IP 情报;像真人的邮箱 → 用户名扫描),出一份整合档案;`--depth` / `--budget` / `--max-pivot-*` 控规模
-- **⬆️ 一键升级(v1.8.2)** — `spyeyes upgrade [--yes] [--check]` / 菜单 `[12]` / 菜单启动时有新版自动问 `[Y/n]`;pip 安装升级到公告的 release tag,pipx 跑 `pipx upgrade spyeyes`,源码安装只提示 `git pull && pip install -e .`;启动时 24h 缓存的版本检查可用 `--no-update-check` / `SPYEYES_NO_UPDATE_CHECK=1` 关闭
-- **🔑 API key 配置(v1.6.8)** — `~/.spyeyes/env` 跨平台自动加载;OTX / CertSpotter / PDCP / GitHub PAT 等都支持;shell export 优先
-- **📊 8 种 Editorial 风报告** — `JSON / Markdown / HTML / PDF / TXT / CSV / XMind / Graph`,Cormorant Garamond + JetBrains Mono 三件套;**报告显示完整 6 源状态 ✅/⊘/❌**(v1.6.8)
-- **🌍 完整中英双语** UI **+ 报告内容**
-- **📈 100% 进度反馈(v1.6.1)** — 所有 > 2 秒操作均有阶段反馈,告别"看着卡死"
-- **📁 智能报告目录(v1.8.0)** — 交互保存默认:源码运行 → `<项目根>/Downloads/`,pip/pipx 安装 → `~/Downloads/spyeyes/`;`SPYEYES_REPORTS_DIR` 始终优先
-
-## 🔒 安全防护
-
-经多轮独立 fresh-eyes 盲审收敛到「无真 bug」状态:
-
-- SSRF / ReDoS / Domain 注入 / Username 注入 / Markdown 注入 / HTML XSS / CSV 公式注入防护
-- WAF 高精度指纹检测(Cloudflare / AWS WAF / PerimeterX / DataDome / Akamai)
-- 子域名爬虫 robots.txt 默认遵守 + 单域 500ms 速率限制
-- SMTP 验证 opt-in + 强 disclaimer
-- 隐私选项:`SPYEYES_NO_HISTORY=1` 完全禁用历史
-- **684 个 pytest 测试**,0 红 / **ruff 0 / mypy 0 / bandit 0** 全清,CI:Linux × Python 3.10–3.14,macOS / Windows × Python 3.10 与 3.14
-
-## 🚀 快速开始
+## Quick start
 
 ```bash
-git clone https://github.com/Akxan/SpyEyes.git
-cd SpyEyes
-python3 -m venv .venv && source .venv/bin/activate
-pip install -r requirements.txt
-python3 -m spyeyes --version    # spyeyes 1.8.6
+pipx install git+https://github.com/Akxan/SpyEyes.git
+
+spyeyes user torvalds                  # username search across 3,164 sites
+spyeyes subdomain example.com          # subdomain enumeration
+spyeyes domain-emails example.com      # harvest a domain's email addresses
+spyeyes investigate example.com --save dossier.html
+spyeyes                                # interactive menu
 ```
 
-立即体验:
+Requires Python 3.10+. Runs on macOS, Linux, Windows and Termux. Prefer a source checkout? See the [README](https://github.com/Akxan/SpyEyes#-installation).
 
-```bash
-python3 -m spyeyes ip 8.8.8.8                          # IP 追踪
-python3 -m spyeyes phone +8613800138000                # 电话解析
-python3 -m spyeyes user torvalds                       # 3164 平台扫描
-python3 -m spyeyes whois example.com                   # WHOIS
-python3 -m spyeyes mx 中国.cn                          # IDN 域名 MX
+## What SpyEyes does
 
-# 子域名枚举
-python3 -m spyeyes subdomain example.com --alive-only --save report.html
-python3 -m spyeyes subdomain example.com --bruteforce  # 加 220 词字典
+| Command | What it does |
+|---|---|
+| `user` | Check one username across **3,164 websites** (merged from Maigret, Sherlock and WhatsMyName), 150 threads, with hit verification against false positives |
+| `permute` | Generate username variations from a real name, optionally scan each one |
+| `subdomain` | Enumerate subdomains from 6 passive sources (crt.sh, CertSpotter, HackerTarget, AlienVault OTX, Wayback Machine, optional subfinder) + DNS bruteforce + HTTP probe |
+| `diff` | Compare two subdomain scans — added, removed and changed hosts |
+| `domain-emails` | Harvest a domain's email addresses from 6 free sources plus an in-domain crawler |
+| `investigate` | One domain in → WHOIS + MX + subdomains + emails, automatic pivots, one consolidated dossier and relationship graph |
+| `ip` / `myip` | IP geolocation, ASN and ISP lookup (IPv4 / IPv6); show your public IP |
+| `phone` | Parse a phone number: region, carrier, timezone, number type |
+| `whois` / `mx` / `email` | Domain WHOIS, MX records, email syntax + MX validation |
+| `history` / `upgrade` | Local query history; one-command self-upgrade |
 
-# 批量域名扫描
-python3 -m spyeyes subdomain --batch domains.txt --batch-save-dir reports/ --alive-only
+Every command supports `--json` for scripting and `--save` with 8 report formats: **JSON, Markdown, HTML, PDF, TXT, CSV, XMind** and an **interactive D3 graph**.
 
-# Diff 模式 — OSINT 监控
-python3 -m spyeyes subdomain example.com --json > snap1.json
-python3 -m spyeyes subdomain example.com --json > snap2.json   # 几天后
-python3 -m spyeyes diff snap1.json snap2.json --save diff.html
+## FAQ
 
-# 域名邮箱(6 源全免费并发)
-python3 -m spyeyes domain-emails example.com           # crt.sh + WHOIS + Bing + DDG + Wayback + GitHub
-python3 -m spyeyes domain-emails example.com --guess "John Doe"
+### Is SpyEyes free? Do I need API keys?
 
-# 综合调查(一个域名 → 多源整合档案)
-python3 -m spyeyes investigate example.com --save dossier.html
+Yes. It is open source under the Apache-2.0 license and every command works without any API key. Optional free keys only raise rate limits.
 
-# 检查 / 一键升级
-python3 -m spyeyes upgrade --check
+### How is SpyEyes different from Sherlock or Maigret?
 
-# 8 种报告格式(全 Editorial 风,中英双语)
-python3 -m spyeyes user torvalds --save report.html       # HTML(sticky thead + 颜色编码)
-python3 -m spyeyes user torvalds --save report.pdf        # PDF(封面页 + 罗马数字章节)
-python3 -m spyeyes user torvalds --save report.xmind      # XMind 思维导图
-python3 -m spyeyes user torvalds --save report.graph.html # D3.js 力导向图
+Sherlock and Maigret are username-search tools. SpyEyes reuses their site lists and adds subdomain enumeration, domain email harvesting, IP / phone / WHOIS / MX lookups, an `investigate` workflow and 8 report formats in the same CLI.
 
-SPYEYES_NO_HISTORY=1 python3 -m spyeyes ...   # 禁用历史(隐私模式)
-```
+### How accurate is the username search?
 
-完整文档见 [详细教程](TUTORIAL.html)。
+Every hit is re-checked with a random gibberish username; sites that say "exists" for anything are reported as *unverifiable* and not counted. WAF challenges and rate limits are reported as *blocked*, not as "not found".
+
+### Is it legal?
+
+SpyEyes only queries publicly available sources. Use it on your own assets, in authorized security tests, and for research or education.
 
 ---
 
-**License**: Apache 2.0 · **Author**: [Akxan](https://github.com/Akxan) · **社区**: [LINUX DO](https://linux.do)
+## 中文简介
+
+**SpyEyes 是一款免费开源的 OSINT(开源情报)命令行工具,用 Python 编写。** 一次安装包含 14 个命令:用户名扫描(3164 个平台)、子域名枚举、域名邮箱挖掘、IP 归属地、电话号码解析、WHOIS、MX、邮箱验证,以及一条命令出整合档案的 `investigate`。支持 8 种报告格式,无需任何 API key,界面与报告内容中英双语。
+
+- 中文说明:[README.zh-CN.md](https://github.com/Akxan/SpyEyes/blob/main/README.zh-CN.md)
+- 详细教程:[TUTORIAL](TUTORIAL.html)
+- 更新日志:[CHANGELOG](CHANGELOG.html)
+
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@graph": [
+    {
+      "@type": "SoftwareApplication",
+      "name": "SpyEyes",
+      "description": "Free, open-source OSINT command-line toolkit written in Python: username search across 3,164 websites, subdomain enumeration, domain email harvesting, IP geolocation, phone number lookup, WHOIS, MX and email validation, with 8 report formats.",
+      "applicationCategory": "SecurityApplication",
+      "operatingSystem": "macOS, Linux, Windows, Android (Termux)",
+      "programmingLanguage": "Python",
+      "license": "https://www.apache.org/licenses/LICENSE-2.0",
+      "isAccessibleForFree": true,
+      "inLanguage": ["en", "zh-CN"],
+      "url": "https://akxan.github.io/SpyEyes/",
+      "codeRepository": "https://github.com/Akxan/SpyEyes",
+      "downloadUrl": "https://github.com/Akxan/SpyEyes/releases/latest",
+      "offers": {"@type": "Offer", "price": "0", "priceCurrency": "USD"},
+      "keywords": "OSINT, username search, subdomain enumeration, email harvesting, IP geolocation, phone lookup, WHOIS, reconnaissance, information gathering"
+    },
+    {
+      "@type": "FAQPage",
+      "mainEntity": [
+        {
+          "@type": "Question",
+          "name": "Is SpyEyes free? Do I need API keys?",
+          "acceptedAnswer": {"@type": "Answer", "text": "Yes. SpyEyes is open source under the Apache-2.0 license and every command works without any API key. Optional free keys only raise rate limits."}
+        },
+        {
+          "@type": "Question",
+          "name": "How is SpyEyes different from Sherlock or Maigret?",
+          "acceptedAnswer": {"@type": "Answer", "text": "Sherlock and Maigret are username-search tools. SpyEyes reuses their site lists and adds subdomain enumeration, domain email harvesting, IP, phone, WHOIS and MX lookups, an investigate workflow and 8 report formats in the same command-line tool."}
+        },
+        {
+          "@type": "Question",
+          "name": "How accurate is the SpyEyes username search?",
+          "acceptedAnswer": {"@type": "Answer", "text": "Every hit is re-checked with a random gibberish username. Sites that say the gibberish name exists are reported as unverifiable and not counted. WAF challenges and rate limits are reported as blocked rather than not found."}
+        }
+      ]
+    }
+  ]
+}
+</script>

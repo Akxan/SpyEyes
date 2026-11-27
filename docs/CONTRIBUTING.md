@@ -36,7 +36,7 @@ pytest tests/ -k "subdomain"
 ```bash
 ruff check .
 mypy spyeyes tools/build_platforms.py --ignore-missing-imports
-bandit -r spyeyes/ tools/ -ll
+bandit -c pyproject.toml -r spyeyes/ tools/ -ll
 ```
 
 CI：lint job（ruff + mypy + bandit）通过后，才跑 Linux × Python 3.10–3.14、macOS / Windows × Python 3.10 与 3.14 的测试矩阵。

@@ -3,6 +3,7 @@
 本文件为 Claude Code (claude.ai/code) 在本仓库中工作时提供指引。
 
 > 约定:与用户对话、git 提交信息、本文件一律使用**中文**(代码标识符 / 命令 / 路径保持原样)。
+> 对外页面(GitHub 仓库描述、`README.md`、Pages 首页)**英文为主、中文为辅** —— 见「对外页面」一节。
 
 ## 项目概览
 
@@ -27,7 +28,7 @@ python -m spyeyes <subcommand> ...
 # 完整 lint(与 CI `lint` job 一致)
 ruff check .
 mypy spyeyes tools/build_platforms.py --ignore-missing-imports
-bandit -r spyeyes/ tools/ -ll      # -ll = 只报 MEDIUM 及以上
+bandit -c pyproject.toml -r spyeyes/ tools/ -ll   # -ll = 只报 MEDIUM 及以上;不带 -c 时 pyproject 里的 skips 不生效
 
 # 测试(CI 用 --timeout=15 --timeout-method=thread);全量约 2 秒,全部 mock 无真实网络
 pytest tests/ -v
@@ -248,7 +249,7 @@ MVP 只支持 domain。阶段 1 并发跑 whois / mx / subdomain / domain-emails
 5. 菜单:`MENU_KEYS` + `handle_choice` + 对应翻译 key。
 6. 每个可见字符串都要有 `t()` key —— `'zh'` 和 `'en'` 都要。
 7. 测试:正常路径 + 至少一条 mock 失败路径。
-8. 文档:README.md / README.en.md / docs/TUTORIAL.md。
+8. 文档:README.md(英文)/ README.zh-CN.md(中文)/ docs/TUTORIAL.md;命令表还出现在 docs/index.md。
 
 ## 发版流程
 
@@ -257,10 +258,25 @@ MVP 只支持 domain。阶段 1 并发跑 whois / mx / subdomain / domain-emails
 - `pyproject.toml` 的 `[project] version`
 - `docs/CHANGELOG.md`(Keep-a-Changelog 格式;把 `[Unreleased]` 的条目移进带日期的版本段;
   提交信息用中文 + conventional 前缀,如 `feat(vX.Y.Z): …`、`fix(vX.Y.Z): …`)
-- README.md / README.en.md 的版本与测试数徽章、`docs/index.md`、`docs/_config.yml`
+- README.md / README.zh-CN.md 的版本与测试数徽章(`docs/index.md`、`docs/_config.yml`、仓库描述里不写版本号和测试数)
   (README 的「项目亮点」按功能组织,不要再按版本追加「🆕 vX.Y.Z」条目 —— 版本变化只写 CHANGELOG)
 - git tag `vX.Y.Z` + GitHub Release(更新检查读的是 `releases/latest`,`spyeyes upgrade`
   安装的就是这个 tag)
 
-文档入口:`README.md`(中文)/ `README.en.md`(英文)/ `docs/TUTORIAL.md` /
+## 对外页面(GitHub 仓库页 / Pages)
+
+对外页面英文为主、中文为辅,要便于 GitHub 搜索、搜索引擎和 AI 检索找到并准确引用:
+- **仓库描述与 topics**(`gh repo edit`):描述以英文一句话说清"是什么 + 能做什么",末尾带一句中文;
+  不写版本号、测试数这类会过期的数字(曾经停在 v1.6.12 半年没人发现)。topics 上限 20 个,
+  大类词(`osint`、`reconnaissance`、`pentesting` …)与功能词(`username-search`、
+  `subdomain-enumeration` …)搭配;换 topic 前先用
+  `gh api "search/repositories?q=topic:<名字>&per_page=1" -q .total_count` 看有没有人用。
+- **`README.md`**:开头的「What is SpyEyes?」是一句能被单独引用的定义 + 功能清单 + 事实表;
+  「FAQ」的小标题直接写成用户会问的问题。新增或删减功能时这两处要同步,说法必须与代码一致。
+- **`docs/index.md`**:Pages 首页,含命令表和 JSON-LD(`SoftwareApplication` + `FAQPage`);
+  FAQ 的问答要与 README 的保持一致。`docs/_config.yml` 的 title / description 会进 `<title>` 和 meta。
+- 中文内容放 `README.zh-CN.md`,两份 README 的章节要对等(曾经中文版缺环境变量表、退出码、安全入口)。
+- 社交预览图只能在仓库 Settings 里手动上传,API 改不了。
+
+文档入口:`README.md`(英文,主入口)/ `README.zh-CN.md`(中文)/ `docs/TUTORIAL.md`(中文)/
 `docs/CHANGELOG.md` / `docs/CONTRIBUTING.md` / `docs/SECURITY.md`;设计文档在 `docs/design/`。

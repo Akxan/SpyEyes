@@ -6,3 +6,23 @@ This product includes software developed by Akxan
 
 Licensed under the Apache License, Version 2.0.
 See LICENSE file for details.
+
+-------------------------------------------------------------------------------
+Third-party data
+
+The username site database shipped in spyeyes/data/platforms.json is generated
+by tools/build_platforms.py from the following projects. The portions derived
+from each project remain under that project's own license:
+
+  * Maigret — https://github.com/soxoj/maigret
+    Copyright (c) Soxoj. MIT License.
+
+  * Sherlock — https://github.com/sherlock-project/sherlock
+    Copyright (c) Sherlock Project. MIT License.
+
+  * WhatsMyName — https://github.com/WebBreacher/WhatsMyName
+    Copyright (C) Micah Hoffman.
+    Creative Commons Attribution-ShareAlike 4.0 International (CC BY-SA 4.0)
+    https://creativecommons.org/licenses/by-sa/4.0/
+    Changes: entries were converted to SpyEyes' format, deduplicated against
+    the other two sources and assigned categories.
