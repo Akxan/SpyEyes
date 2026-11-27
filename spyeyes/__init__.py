@@ -645,10 +645,10 @@ TRANSLATIONS: dict = {
         'msg.found':            'found',
         'msg.no_history':       '(no history yet — run a query first)',
         'mode.title':           'Scan mode:',
-        'mode.quick':           'Quick   (~1411 platforms, ~14s)  [recommended]',
+        'mode.quick':           'Quick   (~1390 platforms, ~14s)  [recommended]',
         'mode.full':            'Full    (~3164 platforms, ~30s)',
-        'mode.cn_es':           'Chinese + Spanish only (~106 platforms, ~6s)',
-        'mode.code':            'Code platforms only (~115 platforms, ~3s)',
+        'mode.cn_es':           'Chinese + Spanish only (~81 platforms, ~6s)',
+        'mode.code':            'Code platforms only (~116 platforms, ~3s)',
         'mode.prompt':          'Choose [1/2/3/4, default 1]: ',
         # v1.1.0 — Permutation / Recursive / PDF
         'permute.title':        'Username permutations:',
@@ -1016,10 +1016,10 @@ TRANSLATIONS: dict = {
         'msg.found':            '已命中',
         'msg.no_history':       '（暂无历史 —— 先跑一次查询试试）',
         'mode.title':           '扫描模式:',
-        'mode.quick':           '快速   (约 1411 平台, ~14 秒)  [推荐]',
+        'mode.quick':           '快速   (约 1390 平台, ~14 秒)  [推荐]',
         'mode.full':            '完整   (全部 3164 平台, ~30 秒)',
-        'mode.cn_es':           '仅中文 + 西语圈 (约 106 平台, ~6 秒)',
-        'mode.code':            '仅代码平台 (约 115 平台, ~3 秒)',
+        'mode.cn_es':           '仅中文 + 西语圈 (约 81 平台, ~6 秒)',
+        'mode.code':            '仅代码平台 (约 116 平台, ~3 秒)',
         'mode.prompt':          '请选择 [1/2/3/4, 默认 1]: ',
         # v1.1.0 —— 用户名变形 / 递归扫描 / PDF
         'permute.title':        '用户名变形：',
@@ -9387,7 +9387,7 @@ def build_parser() -> argparse.ArgumentParser:
     sp.add_argument('--all', action='store_true', dest='show_all',
                     help='Show all platforms incl. misses / 显示所有平台（含未命中）')
     sp.add_argument('--quick', action='store_true',
-                    help='Skip "other" long-tail (~1411 vs 3164 platforms, ~2x faster) / 跳过 other 长尾')
+                    help='Skip "other" long-tail (~1390 vs 3164 platforms, ~2x faster) / 跳过 other 长尾')
     sp.add_argument('--category', dest='category_filter',
                     help='Comma-separated categories: code,social,chinese,spanish,... / 用逗号分隔的类别')
     # v1.1.0

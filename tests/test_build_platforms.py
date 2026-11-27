@@ -105,7 +105,7 @@ class TestParseMaigret:
         raw = {'sites': {
             'Many': {
                 'url': 'https://x.com/{username}',
-                'absenceStrs': ['a', 'b', 'c', 'd', 'e', 'f'],
+                'absenceStrs': [f'p{i}' for i in range(bp.MAX_PATTERNS_PER_PLATFORM + 4)],
             },
         }}
         result = bp.parse_maigret(raw)
@@ -290,3 +290,133 @@ class TestNoFetchRequiresCacheDir:
     def test_main_rejects_no_fetch_without_cache(self):
         rc = bp.main(['--no-fetch'])
         assert rc == 2
+
+
+class TestMaigretEngineRules:
+    """回归:引擎站点的检测规则在 `engine.site` 里。engine 顶层的 presenseStrs 是「识别论坛软件」的指纹,
+    该论坛每个页面都有。v1.1.0 ~ v1.8.7 把指纹当成 must_contain、又漏掉 engine.site 的规则,
+    1110 个论坛条目因此要么只看状态码,要么带着一条永远成立的「必须包含」。"""
+
+    ENGINES = {'XenForo': {
+        'presenseStrs': ['XenForo'],
+        'site': {'checkType': 'message',
+                 'absenceStrs': ['The requested page could not be found.',
+                                 'The specified member cannot be found'],
+                 'presenseStrs': ['memberHeader'],
+                 'url': '{urlMain}{urlSubpath}/members/?username={username}'}}}
+
+    def _parse(self, site):
+        return bp.parse_maigret({'engines': self.ENGINES, 'sites': {'SomeForum': site}})[0]
+
+    def test_engine_site_rules_are_used(self):
+        item = self._parse({'engine': 'XenForo', 'urlMain': 'https://forum.example.com/',
+                            'urlSubpath': '/community'})
+        assert item['url'] == 'https://forum.example.com/community/members/?username={}'
+        assert item['not_found'] == ['The requested page could not be found.',
+                                     'The specified member cannot be found']
+        assert item['must_contain'] == ['memberHeader']
+
+    def test_engine_fingerprint_is_not_a_detection_rule(self):
+        item = self._parse({'engine': 'XenForo', 'urlMain': 'https://forum.example.com'})
+        assert 'XenForo' not in item['must_contain']
+
+    def test_site_rules_come_first_and_duplicates_collapse(self):
+        item = self._parse({'engine': 'XenForo', 'urlMain': 'https://forum.example.com',
+                            'absenceStrs': ['Usuario no encontrado', 'The requested page could not be found.'],
+                            'presenseStrs': ['perfil']})
+        assert item['not_found'] == ['Usuario no encontrado', 'The requested page could not be found.',
+                                     'The specified member cannot be found']
+        assert item['must_contain'] == ['perfil', 'memberHeader']
+
+    def test_site_without_engine_is_unaffected(self):
+        item = self._parse({'url': 'https://x.example.com/{username}', 'absenceStrs': ['nope']})
+        assert (item['not_found'], item['must_contain']) == (['nope'], [])
+
+
+class TestUnusableUrlTemplates:
+    """回归:写出过 `{}.com`(Maigret 的 DNS 查询条目)和 `{urlMain}forum/...`(占位符没展开)
+    这样的地址,运行时永远请求失败。"""
+
+    @pytest.mark.parametrize('protocol', ['dns', 'tor', 'i2p'])
+    def test_non_http_protocols_are_skipped(self, protocol):
+        raw = {'sites': {'X': {'protocol': protocol, 'url': 'http://example.onion/u/{username}'}}}
+        assert bp.parse_maigret(raw) == []
+
+    def test_url_main_placeholder_expanded_for_plain_sites(self):
+        raw = {'sites': {'Rutracker': {
+            'urlMain': 'https://rutracker.org/',
+            'url': '{urlMain}forum/profile.php?mode=viewprofile&u={username}'}}}
+        assert bp.parse_maigret(raw)[0]['url'] == 'https://rutracker.org/forum/profile.php?mode=viewprofile&u={}'
+
+    def test_template_without_scheme_is_dropped(self):
+        assert bp.parse_maigret({'sites': {'{username}.com': {'url': '{username}.com'}}}) == []
+
+    @pytest.mark.parametrize('url, ok', [
+        ('https://x.com/{}', True),
+        ('http://x.com/u?name={}', True),
+        ('{}.com', False),
+        ('https://x.com/profile', False),
+        ('{urlMain}forum/{}', False),
+        ('https://x.com/{}/{urlSubpath}', False),
+        ('ftp://x.com/{}', False),
+    ])
+    def test_is_probeable_url(self, url, ok):
+        assert bp.is_probeable_url(url) is ok
+
+
+class TestBareCoIsNotSpanish:
+    """回归:`.co` 被当成西语圈域名,HuggingFace、VSCO 等 27 个平台被归进「西语圈」。"""
+
+    def test_bare_co_domains(self):
+        assert bp.categorize('SomeSite', 'https://somesite.co/{}') != 'spanish'
+        assert bp.get_tld('https://somesite.co/{}') not in bp.TLD_CATEGORY
+
+    def test_com_co_is_still_spanish(self):
+        assert bp.categorize('Tienda', 'https://tienda.com.co/{}') == 'spanish'
+
+
+class TestBuildSanityChecks:
+    """回归:上游改了数据格式时,解析结果会骤减甚至为空 —— 以前会照样写出一份残缺的 platforms.json。"""
+
+    def _sites(self, n, prefix):
+        return {f'{prefix}{i}': {'url': f'https://{prefix}{i}.example.com/{{username}}'} for i in range(n)}
+
+    def _run(self, monkeypatch, tmp_path, raw, mins=None, total=None):
+        out = tmp_path / 'platforms.json'
+        out.write_text('"existing"')
+        monkeypatch.setattr(bp, 'OUT_PATH', str(out))
+        monkeypatch.setattr(bp, 'fetch_all', lambda **kw: raw)
+        if mins is not None:
+            monkeypatch.setattr(bp, 'MIN_PLATFORMS_PER_SOURCE', mins)
+        if total is not None:
+            monkeypatch.setattr(bp, 'MIN_PLATFORMS_TOTAL', total)
+        return out
+
+    def test_collapsed_source_aborts_and_keeps_existing_file(self, monkeypatch, tmp_path):
+        raw = {'maigret': {'sites': self._sites(5, 'm')}, 'sherlock': {}, 'whatsmyname': {'sites': []}}
+        out = self._run(monkeypatch, tmp_path, raw)
+        with pytest.raises(RuntimeError, match='maigret'):
+            bp.build()
+        assert out.read_text() == '"existing"'
+        assert bp.main([]) == 1
+
+    def test_healthy_build_writes_file_without_unusable_urls(self, monkeypatch, tmp_path):
+        sherlock = {f's{i}': {'url': f'https://s{i}.example.com/{{}}'} for i in range(3)}
+        sherlock['Broken'] = {'url': '{urlMain}x/{}'}
+        raw = {'maigret': {'sites': self._sites(4, 'm')}, 'sherlock': sherlock,
+               'whatsmyname': {'sites': [{'name': 'W', 'uri_check': 'https://w.example.com/{account}'}]}}
+        out = self._run(monkeypatch, tmp_path, raw,
+                        mins={'maigret': 1, 'sherlock': 1, 'whatsmyname': 1}, total=5)
+        assert bp.build() == 8
+        import json
+        names = {item['name'] for item in json.loads(out.read_text())}
+        assert 'Broken' not in names and len(names) == 8
+
+    def test_too_few_after_merge_aborts(self, monkeypatch, tmp_path):
+        raw = {'maigret': {'sites': self._sites(2, 'm')}, 'sherlock': {'s': {'url': 'https://s.example.com/{}'}},
+               'whatsmyname': {'sites': [{'name': 'W', 'uri_check': 'https://w.example.com/{account}'}]}}
+        out = self._run(monkeypatch, tmp_path, raw,
+                        mins={'maigret': 1, 'sherlock': 1, 'whatsmyname': 1}, total=50)
+        with pytest.raises(RuntimeError):
+            bp.build()
+        assert out.read_text() == '"existing"'

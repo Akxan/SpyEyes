@@ -6247,3 +6247,61 @@ class TestPdfAngleBracketsInUserText:
         out = tmp_path / 'r.pdf'
         assert gt._to_pdf(prefix, data, str(out)) is None
         assert out.read_bytes().startswith(b'%PDF')
+
+
+class TestShippedPlatformData:
+    """发布的 platforms.json 的回归检查(对应构建脚本里修掉的几类问题)。"""
+
+    @pytest.fixture
+    def ext(self):
+        return gt._load_platforms_json(gt._PLATFORMS_JSON)
+
+    def test_xenforo_forums_carry_the_engine_absence_rules(self, ext):
+        """XenForo 论坛的地址形如 .../members/?username={}。以前这些条目的「必须包含」是
+        引擎指纹 xenforo(每页都有),「未找到标志」为空。"""
+        forums = [p for p in ext if p.url.endswith('/members/?username={}')]
+        assert len(forums) > 100
+        for p in forums:
+            assert p.not_found, p.name
+            assert p.must_contain != (b'xenforo',), p.name
+        # 绝大多数用的是引擎模板的标准提示(少数条目来自别的上游,带自己的规则)
+        standard = [p for p in forums if b'the requested page could not be found.' in p.not_found]
+        assert len(standard) > 150
+
+    def test_ucoz_sites_are_no_longer_status_code_only(self, ext):
+        """uCoz 站点(.../index/8-0-{})以前一条规则都没有。"""
+        sites = [p for p in ext if p.url.endswith('/index/8-0-{}')]
+        assert len(sites) > 500
+        assert all(p.not_found and p.must_contain for p in sites)
+
+    def test_bare_co_domains_are_not_spanish(self, ext):
+        import urllib.parse
+        wrong = [p.name for p in ext if p.category == 'spanish'
+                 and (urllib.parse.urlsplit(p.url.replace('{}', 'u')).hostname or '').endswith('.co')]
+        assert wrong == []
+        assert next(p for p in ext if p.name == 'HuggingFace').category == 'code'
+
+    def test_rutracker_url_has_no_leftover_placeholder(self, ext):
+        assert next(p for p in ext if p.name == 'Rutracker').url == \
+            'https://rutracker.org/forum/profile.php?mode=viewprofile&u={}'
+
+    @pytest.mark.parametrize('lang', ['zh', 'en'])
+    def test_counts_shown_in_menu_match_the_data(self, lang):
+        """扫描模式菜单和 --quick 帮助里写着平台数量。数据变了这些数字要跟着变 ——
+        分类修正后它们曾经停在旧值。"""
+        import re
+        from collections import Counter
+        gt.set_lang(lang)
+        platforms = gt.PLATFORMS
+        by_cat = Counter(p.category for p in platforms)
+
+        def shown(key):
+            return int(re.search(r'\d{2,5}', gt.t(key)).group())
+
+        assert shown('mode.full') == len(platforms)
+        assert shown('mode.quick') == len(platforms) - by_cat['other']
+        assert shown('mode.cn_es') == by_cat['chinese'] + by_cat['spanish']
+        assert shown('mode.code') == by_cat['code']
+        help_text = gt.build_parser().format_help() + ''.join(
+            a.format_help() for a in gt.build_parser()._subparsers._group_actions[0].choices.values())
+        assert f'~{len(platforms) - by_cat["other"]} vs {len(platforms)} platforms' in help_text

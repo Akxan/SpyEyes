@@ -461,7 +461,7 @@ python3 -m spyeyes --lang zh user torvalds  # 强制中文输出
  共扫描 3164 个平台，命中 317 个：
  （仅显示命中；用 --all 查看未命中）
 
- ┌─ 代码与开发 (26/115) ─
+ ┌─ 代码与开发 (26/116) ─
  [ + ] GitHub                         https://github.com/torvalds
  [ + ] GitLab                         https://gitlab.com/torvalds
  [ + ] Bitbucket                      https://bitbucket.org/torvalds
@@ -473,7 +473,7 @@ python3 -m spyeyes --lang zh user torvalds  # 强制中文输出
  [ + ] Dcard 狄卡                     https://www.dcard.tw/@torvalds
  ...
 
- ┌─ 西语圈（西班牙/拉美） (8/58) ─
+ ┌─ 西语圈（西班牙/拉美） (8/33) ─
  [ + ] MercadoLibre AR                https://perfil.mercadolibre.com.ar/torvalds
  [ + ] Wallapop                       https://es.wallapop.com/user/torvalds
  ...
@@ -483,19 +483,19 @@ python3 -m spyeyes --lang zh user torvalds  # 强制中文输出
 
 | 类别 | 数量 | 典型平台 |
 |---|---:|---|
-| `code` | 115 | GitHub / GitLab / LeetCode / CodePen ... |
+| `code` | 116 | GitHub / GitLab / LeetCode / CodePen ... |
 | `social` | 99 | Twitter / Facebook / Mastodon / Bluesky ... |
-| `forum` | 733 | Reddit / Quora / Disqus + 各国论坛 |
+| `forum` | 734 | Reddit / Quora / Disqus + 各国论坛 |
 | `video` | 25 | YouTube / TikTok / Twitch / Vimeo ... |
 | `music` | 22 | SoundCloud / Bandcamp / Last.fm ... |
 | `writing` | 51 | Medium / Substack / 简书 ... |
 | `art` | 59 | DeviantArt / ArtStation / Behance ... |
-| `gaming` | 97 | Steam / Itch.io / Lichess ... |
+| `gaming` | 99 | Steam / Itch.io / Lichess ... |
 | `funding` | 13 | Patreon / Ko-fi / OpenCollective ... |
 | **`chinese`** | **48** | 微博 · 知乎 · CSDN · V2EX · 简书 · Dcard · Mobile01 · 巴哈姆特 · PIXNET · LIHKG · Shopee TW/SG/MY · ... |
-| **`spanish`** | **58** | Wallapop · MercadoLibre AR/MX/BR · Menéame · Taringa · Forocoches · Hispachan · Forosperu · Xataka · ... |
+| **`spanish`** | **33** | Wallapop · MercadoLibre AR/MX/BR · Menéame · Taringa · Forocoches · Hispachan · Forosperu · Xataka · ... |
 | **`adult`** | **91** | OnlyFans · Fansly · Chaturbate · Pornhub · XVideos · 等成人/约会/CAM 平台（OSINT 用途独立分类） |
-| `other` | 1753 | Maigret 长尾（小众/地区性）；`--quick` 跳过这一类，只扫其余 ~1411 个 |
+| `other` | 1774 | Maigret 长尾（小众/地区性）；`--quick` 跳过这一类，只扫其余 ~1390 个 |
 
 **性能 / 调优**：
 
@@ -510,7 +510,7 @@ python3 -m spyeyes --lang zh user torvalds  # 强制中文输出
 
 **重要说明**：
 
-> ⚠️ **3164 平台中约 1753 个为 `other` 长尾（主要来自 Maigret）**，许多是小众/地区性站点。命中率因平台而异：
+> ⚠️ **3164 平台中约 1774 个为 `other` 长尾（主要来自 Maigret）**，许多是小众/地区性站点。命中率因平台而异：
 > - 主流平台（GitHub / Twitter / Reddit）：精度 95%+
 > - 中文/西语精选区域：精度 85%+（手工 curate 过）
 > - Maigret 长尾：精度 70-80%（部分有 must_contain 验证）
@@ -1126,7 +1126,7 @@ python3 -m spyeyes upgrade --check
 | `--workers N` | 并发线程数，默认 **150**（已优化到 Sherlock 级速度），范围 1-200 |
 | `--timeout T` | 单平台 HTTP 超时秒数，默认 5 |
 | `--all` | 显示所有平台（含未命中），默认仅显示命中 |
-| `--quick` | 跳过 "other" 长尾，仅扫主流 ~1411 个（v1.1.0 重新校准） |
+| `--quick` | 跳过 "other" 长尾，仅扫主流 ~1390 个 |
 | `--category CAT,CAT,...` | 只扫指定类别：`code` / `social` / `chinese` / `spanish` / `forum` / 等 |
 | `--recursive` | **v1.1.0**：递归扫描——抓取命中页面提取次级用户名继续扫 |
 | `--depth N` | **v1.1.0**：递归深度（0-2，默认 2，仅与 `--recursive` 配合） |
@@ -1388,7 +1388,7 @@ python3 tools/build_platforms.py
 ## 已知限制
 
 1. **数据语言**：`ipwho.is` 返回的城市/地区名仍为英文（国家名已通过本地映射表译成中文）
-2. **用户名扫描准确率有限**：约 1753 个 `other` 长尾平台（主要来自 Maigret）仅做基本检测;命中复查能滤掉"对谁都说存在"的平台,但规则过时造成的漏判仍然存在
+2. **用户名扫描准确率有限**：约 1774 个 `other` 长尾平台（主要来自 Maigret）仅做基本检测;命中复查能滤掉"对谁都说存在"的平台,但规则过时造成的漏判仍然存在
 3. **登录墙平台**：LinkedIn / Instagram / TikTok 强反爬，命中率较低
 4. **WHOIS 速度**：跨地区查询某些 TLD 时较慢（10-15 秒）
 5. **无代理支持**：默认走系统直连，无内置 HTTP/SOCKS 代理选项

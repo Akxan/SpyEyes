@@ -19,6 +19,7 @@ Usage:
 import argparse
 import json
 import os
+import re
 import sys
 import tempfile
 import time
@@ -37,8 +38,19 @@ SOURCES = {
 # Maigret > WhatsMyName > Sherlock —— Maigret 维护最积极、规则最完整
 SOURCE_PRIORITY = {"maigret": 3, "whatsmyname": 2, "sherlock": 1}
 
-# 每平台保留的检测模式数（节省 platforms.json 体积；多余模式精度收益边际递减）
-MAX_PATTERNS_PER_PLATFORM = 3
+# 每平台每类检测模式最多保留几条。
+# 曾经是 3:论坛引擎的「用户不存在」提示是按语言列的(XenForo 5 条、vBulletin 6 条),
+# 截到 3 条会把非英语论坛的提示截掉。
+MAX_PATTERNS_PER_PLATFORM = 8
+
+# Maigret 里 protocol 不是 http(s) 的站点:dns = 查「<用户名>.com」这类域名是否存在,
+# tor / i2p = 暗网地址。SpyEyes 只发普通 HTTP 请求,这些条目永远请求不成功。
+UNREACHABLE_PROTOCOLS = frozenset({"dns", "tor", "i2p"})
+
+# 产物校验的下限:上游改了数据格式时,解析结果会骤减甚至为空 ——
+# 宁可构建失败,也不要悄悄写出一份残缺的 platforms.json 把现有数据覆盖掉。
+MIN_PLATFORMS_PER_SOURCE = {"maigret": 1500, "sherlock": 250, "whatsmyname": 400}
+MIN_PLATFORMS_TOTAL = 2500
 
 # fetch 重试参数
 FETCH_RETRIES = 3
@@ -65,7 +77,7 @@ TLD_CATEGORY = {
     "ar": "spanish", "com.ar": "spanish", "net.ar": "spanish", "org.ar": "spanish",
     "mx": "spanish", "com.mx": "spanish", "org.mx": "spanish",
     "cl": "spanish", "com.cl": "spanish",
-    "co": "spanish", "com.co": "spanish",
+    "com.co": "spanish",  # 不含裸 .co:它基本被当通用域名用(huggingface.co / vsco.co),不代表西语站
     "pe": "spanish", "com.pe": "spanish",
     "ve": "spanish", "com.ve": "spanish",
     "uy": "spanish", "com.uy": "spanish",
@@ -247,6 +259,35 @@ def normalize_url(url: str) -> str:
     return url.replace("{username}", "{}").replace("{account}", "{}")
 
 
+def is_probeable_url(url: str) -> bool:
+    """这个地址模板能不能直接发 HTTP 请求:http(s) 开头、含 {} 占位符、没有其它未展开的占位符。
+    (曾经写出过 `{}.com` 和 `{urlMain}forum/profile.php?...` 这样的条目,运行时永远请求失败。)"""
+    if not re.match(r"^https?://", url) or "{}" not in url:
+        return False
+    return re.search(r"\{[^}]+\}", url) is None
+
+
+def expand_site_placeholders(url: str, info: dict) -> str:
+    """展开 Maigret 地址模板里的 {urlMain} / {urlSubpath}(引擎模板和少数普通站点都会用)。"""
+    if "{urlMain}" not in url and "{urlSubpath}" not in url:
+        return url
+    url_main = info.get("urlMain", "") or ""
+    if "{urlMain}/" in url or "{urlMain}{urlSubpath}" in url:
+        url_main = url_main.rstrip("/")
+    elif url_main and not url_main.endswith("/"):
+        url_main += "/"
+    return url.replace("{urlMain}", url_main).replace("{urlSubpath}", info.get("urlSubpath", "") or "")
+
+
+def _str_list(value) -> list:
+    return [s for s in (value or []) if isinstance(s, str) and s]
+
+
+def _merge_patterns(*lists) -> list:
+    """按顺序合并、去重、截到上限。"""
+    return list(dict.fromkeys(s for lst in lists for s in lst))[:MAX_PATTERNS_PER_PLATFORM]
+
+
 def fetch(url: str, retries: int = FETCH_RETRIES) -> dict:
     """带重试 + 指数退避的 GET。任意上游 5xx/超时不再让整个构建挂掉。"""
     print(f"  fetching {url} ...")
@@ -294,6 +335,12 @@ def parse_maigret(raw: dict) -> list:
     关键升级 (v1.1.0): 解析 engine 模板。Maigret 用 Discourse/XenForo/phpBB 等 engine 把
     1097 个论坛站点折叠成共享配置 —— 站点本身的 url 字段为空但 engine 给出 {urlMain}{urlSubpath}/...
     模板。展开后 Maigret 站点数从 1422 → ~2500+。
+
+    引擎的检测规则在 `engine.site` 里(absenceStrs / presenseStrs),与站点自己的规则合并使用。
+    `engine.presenseStrs`(顶层)是另一回事:它是「识别某个网站是不是这种论坛软件」的指纹
+    (如 `XenForo`、`content="Discourse"`),该论坛的每个页面都有,**不能**当成 must_contain。
+    v1.1.0 ~ v1.8.7 正是把指纹当成了 must_contain、又漏掉了 engine.site 的规则:
+    1110 个论坛条目要么只看状态码,要么带着一条永远成立的「必须包含」。
     """
     sites = raw.get("sites")
     engines = raw.get("engines", {})
@@ -307,38 +354,31 @@ def parse_maigret(raw: dict) -> list:
         # 不再过滤 NSFW —— 这些会被 categorize() 归到 'adult' 类别
         if info.get("disabled"):
             continue
+        if info.get("protocol") in UNREACHABLE_PROTOCOLS:
+            continue
         url = info.get("url", "") or ""
         engine_name = info.get("engine")
-        engine_extra_must: list = []
-        # 站点自身没 url 模板 → 尝试从 engine 解析
-        if "{username}" not in url and "{}" not in url and engine_name:
-            engine = engines.get(engine_name) if isinstance(engines, dict) else None
-            if isinstance(engine, dict):
-                eng_site = engine.get("site", {}) if isinstance(engine.get("site"), dict) else {}
-                eng_url = eng_site.get("url", "") or ""
-                if "{username}" in eng_url:
-                    url_main = info.get("urlMain", "") or ""
-                    url_subpath = info.get("urlSubpath", "") or ""
-                    # 替换 engine 模板的 {urlMain} / {urlSubpath} placeholders
-                    url = (eng_url
-                           .replace("{urlMain}", url_main.rstrip("/"))
-                           .replace("{urlSubpath}", url_subpath))
-                    # engine 提供的 presenseStrs 也要并入（forum 检测才能工作）
-                    eng_must = engine.get("presenseStrs") or []
-                    if isinstance(eng_must, list):
-                        engine_extra_must = [s for s in eng_must if isinstance(s, str)]
+        engine = engines.get(engine_name) if engine_name and isinstance(engines, dict) else None
+        eng_site = engine.get("site") if isinstance(engine, dict) and isinstance(engine.get("site"), dict) else {}
+        # 站点自身没 url 模板 → 用 engine 的
+        if "{username}" not in url and "{}" not in url and "{username}" in (eng_site.get("url") or ""):
+            url = eng_site["url"]
         if "{username}" not in url and "{}" not in url:
             continue
+        url = normalize_url(expand_site_placeholders(url, info))
+        if not is_probeable_url(url):
+            continue
         regex = info.get("regexCheck") or ""
-        site_must = [s for s in (info.get("presenseStrs") or []) if isinstance(s, str)]
-        merged_must = (site_must + engine_extra_must)[:MAX_PATTERNS_PER_PLATFORM]
+        # 检测规则 = 站点自己的 + 引擎模板的(engine.site.*)。不要用 engine 顶层的 presenseStrs(那是指纹)
+        merged_must = _merge_patterns(_str_list(info.get("presenseStrs")), _str_list(eng_site.get("presenseStrs")))
+        merged_absent = _merge_patterns(_str_list(info.get("absenceStrs")), _str_list(eng_site.get("absenceStrs")))
         # 收集 Maigret 自带 tags（用于更精确分类）
         tags = info.get("tags") or []
         tags = [t for t in tags if isinstance(t, str)] if isinstance(tags, list) else []
         out.append({
             "name": name,
-            "url": normalize_url(url),
-            "not_found": [s for s in (info.get("absenceStrs") or []) if isinstance(s, str)][:MAX_PATTERNS_PER_PLATFORM],
+            "url": url,
+            "not_found": merged_absent,
             "must_contain": merged_must,
             "regex_check": regex if isinstance(regex, str) else "",
             "_tags": tags,  # 临时字段，categorize 用完后剥离
@@ -494,6 +534,12 @@ def build(cache_dir: str | None = None, no_fetch: bool = False) -> int:
     wmn = parse_wmn(raw["whatsmyname"])
     print(f"  whatsmyname:  {len(wmn)}")
 
+    for src_name, parsed in (("maigret", maigret), ("sherlock", sherlock), ("whatsmyname", wmn)):
+        if len(parsed) < MIN_PLATFORMS_PER_SOURCE[src_name]:
+            raise RuntimeError(
+                f"{src_name} 只解析出 {len(parsed)} 个平台(下限 {MIN_PLATFORMS_PER_SOURCE[src_name]})"
+                " —— 上游数据格式可能变了,已中止,platforms.json 未改动")
+
     print("\n=== Merging + dedup ===")
     merged = merge_dedup(
         ("maigret",     maigret),
@@ -501,6 +547,13 @@ def build(cache_dir: str | None = None, no_fetch: bool = False) -> int:
         ("whatsmyname", wmn),
     )
     print(f"  total unique: {len(merged)}")
+    unprobeable = [item["name"] for item in merged if not is_probeable_url(item["url"])]
+    if unprobeable:
+        print(f"  dropped {len(unprobeable)} entries with unusable URL templates: {unprobeable[:10]}")
+        merged = [item for item in merged if is_probeable_url(item["url"])]
+    if len(merged) < MIN_PLATFORMS_TOTAL:
+        raise RuntimeError(
+            f"合并后只有 {len(merged)} 个平台(下限 {MIN_PLATFORMS_TOTAL}) —— 已中止,platforms.json 未改动")
 
     print("\n=== Categorizing ===")
     for item in merged:
