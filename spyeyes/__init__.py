@@ -198,9 +198,12 @@ def read_history(limit: int = 50, search: Optional[str] = None) -> list:
                 if not line:
                     continue
                 try:
-                    entries.append(json.loads(line))
+                    entry = json.loads(line)
                 except json.JSONDecodeError:
                     continue
+                # 合法 JSON 但不是对象(`123` / `"x"` / `[]`)的行同样丢弃 —— 下游都按 dict 用
+                if isinstance(entry, dict):
+                    entries.append(entry)
     except (OSError, UnicodeDecodeError):
         return []
     if search:
@@ -219,9 +222,16 @@ def load_config() -> dict:
     _migrate_legacy_config()
     try:
         with open(CONFIG_FILE, encoding='utf-8') as f:
-            return json.load(f)
+            cfg = json.load(f)
     except (FileNotFoundError, json.JSONDecodeError, OSError, UnicodeDecodeError):
         return {}
+    # 合法 JSON 但不是对象(`[]` / `null` / `"zh"`),或 lang 不是字符串:调用方都按
+    # `cfg.get('lang') in TRANSLATIONS` 用,不拦住的话每个子命令一启动就崩
+    if not isinstance(cfg, dict):
+        return {}
+    if not isinstance(cfg.get('lang'), str):
+        cfg.pop('lang', None)
+    return cfg
 
 
 def save_config(cfg: dict) -> None:
@@ -780,6 +790,7 @@ TRANSLATIONS: dict = {
         'username.note_unverifiable': '{n} unverifiable (site says "exists" for any name)',
         'username.tag_unverifiable':  '[ unverifiable ]',
         'username.tag_skipped':       '[ skipped ]',
+        'username.tag_neterr':        '[ network error ]',
         'warn.quick_ignored':         '--quick ignored when --category is set',
         'report.variations_scanned':  '{n} variations scanned',
         'subdomain.source_error_tag': 'error',
@@ -1150,6 +1161,7 @@ TRANSLATIONS: dict = {
         'username.note_unverifiable': '{n} 个无法确认(该站对任何用户名都显示存在)',
         'username.tag_unverifiable':  '[ 无法确认 ]',
         'username.tag_skipped':       '[ 已跳过 ]',
+        'username.tag_neterr':        '[ 网络错误 ]',
         'warn.quick_ignored':         '已指定 --category,--quick 被忽略',
         'report.variations_scanned':  '共扫描 {n} 个变形',
         'subdomain.source_error_tag': '错误',
@@ -5293,6 +5305,8 @@ def print_username_results(results: dict, show_all: bool = False) -> None:
                     note = f"{Color.Ye}{t('username.tag_unverifiable')}{Color.Reset}"
                 elif p_status == STATUS_INVALID_USERNAME:
                     note = f"{Color.Bl}{t('username.tag_skipped')}{Color.Reset}"
+                elif p_status == STATUS_NETWORK_ERROR:
+                    note = f"{Color.Re}{t('username.tag_neterr')}{Color.Reset}"
                 else:
                     note = f"{Color.Ye}{t('msg.not_found')}"
                 print(f" {Color.Wh}[ {Color.Re}- {Color.Wh}] {Color.Bl}{badge}{Color.Wh} {p.name:28} {note}{Color.Reset}")
@@ -5821,6 +5835,13 @@ def _interactive_save_prompt(prefix: str, data: Any, save_dir: Optional[str]) ->
             return
         if not target:
             target = default_name
+        elif target.endswith(('/', os.sep)) or os.path.isdir(target):
+            # 给的是目录:按选好的格式在里面生成文件(_maybe_save 对目录一律写 JSON)
+            target = os.path.join(target, f'{safe_prefix}_{ts_str}.{ext}')
+        elif not target.lower().endswith(tuple(f'.{e}' for e, _ in formats)):
+            # 文件名没带报告后缀:补上选好的格式。_maybe_save 按后缀分发,
+            # 不补的话选了 Markdown、输入 `myreport`,写出来的是 JSON
+            target = f'{target}.{ext}'
         _maybe_save(target, prefix, data)
 
         # 是否继续保存其他格式
@@ -9960,11 +9981,12 @@ def print_history(entries: list) -> None:
         print(f" {Color.Ye}{t('msg.no_history')}{Color.Reset}")
         return
     # 命令列宽按实际最长命令名对齐(domain-emails / investigate 超过旧的固定宽度 7)
-    cmd_width = max((len(str(e.get('cmd', '?'))) for e in entries), default=7)
+    # 字段值可能是 null(手工编辑 / 第三方写入):`or` 兜底,否则 None 带宽度格式化会抛 TypeError
+    cmd_width = max((len(str(e.get('cmd') or '?')) for e in entries), default=7)
     for e in entries:
-        ts = e.get('ts', '?')
-        cmd = e.get('cmd', '?')
-        query = e.get('query', '')
+        ts = e.get('ts') or '?'
+        cmd = str(e.get('cmd') or '?')
+        query = e.get('query') or ''
         extras = []
         if 'found' in e:
             extras.append(f"{e['found']}/{e.get('scanned', '?')}")

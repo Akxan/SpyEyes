@@ -6306,3 +6306,30 @@ class TestShippedPlatformData:
         help_text = gt.build_parser().format_help() + ''.join(
             a.format_help() for a in gt.build_parser()._subparsers._group_actions[0].choices.values())
         assert f'~{len(platforms) - by_cat["other"]} vs {len(platforms)} platforms' in help_text
+
+
+class TestInteractiveSaveHonoursChosenFormat:
+    """回归:交互保存里选好的格式只用来拼默认文件名;自己输入文件名或目录时被忽略,
+    选了 Markdown 写出来的却是 JSON。"""
+
+    def _save(self, monkeypatch, tmp_path, typed):
+        answers = iter(['1', '2', typed, '2'])       # 保存 → Markdown → 路径 → 不再存别的格式
+        monkeypatch.setattr('builtins.input', lambda prompt='': next(answers))
+        monkeypatch.setattr(gt, '_default_report_dir', lambda: str(tmp_path / 'default'))
+        gt._interactive_save_prompt('ip_8.8.8.8', {'country': 'US'}, None)
+        return sorted(p for p in tmp_path.rglob('*') if p.is_file())
+
+    def test_directory_target_gets_a_file_in_the_chosen_format(self, monkeypatch, tmp_path):
+        (written,) = self._save(monkeypatch, tmp_path, str(tmp_path / 'out') + '/')
+        assert written.parent.name == 'out' and written.suffix == '.md'
+        assert written.read_text(encoding='utf-8').startswith('---')      # Markdown 的 frontmatter
+
+    def test_name_without_extension_gets_the_chosen_one(self, monkeypatch, tmp_path):
+        (written,) = self._save(monkeypatch, tmp_path, str(tmp_path / 'myreport'))
+        assert written.name == 'myreport.md'
+
+    def test_explicit_report_extension_is_respected(self, monkeypatch, tmp_path):
+        """用户自己写了别的报告后缀 → 以文件名为准。"""
+        (written,) = self._save(monkeypatch, tmp_path, str(tmp_path / 'r.txt'))
+        assert written.name == 'r.txt'
+        assert written.read_text(encoding='utf-8').startswith('╔')        # TXT 报告的边框
