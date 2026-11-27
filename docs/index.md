@@ -117,7 +117,7 @@ Requires Python 3.10+. Runs on macOS, Linux, Windows and Termux. Prefer a source
   <p>SpyEyes only queries publicly available sources. Use it on your own assets, in authorized security tests, and for research or education. You are responsible for complying with local law.</p>
 </details>
 
-<div class="zh" lang="zh-CN" markdown="1">
+<div class="zh" lang="zh-CN" translate="no" markdown="1">
 
 ## 中文简介
 

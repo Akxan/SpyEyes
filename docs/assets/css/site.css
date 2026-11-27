@@ -124,6 +124,7 @@ details p { margin: 0 0 14px; color: var(--muted); max-width: 72ch; }
 
 .zh { margin-top: 72px; padding: 28px 30px; background: var(--bg-soft); border: 1px solid var(--border); border-radius: var(--radius); }
 .zh h2 { margin-top: 0; }
+.zh h2 + p { color: inherit; max-width: none; }
 
 /* ---------- 文档页(教程 / 更新日志 / 安全策略 …)---------- */
 main.doc { max-width: 900px; padding-top: 36px; padding-bottom: 24px; }
