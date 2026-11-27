@@ -1773,8 +1773,8 @@ class TestUsernameC1ControlChars:
 
     def test_unicode_line_separator_rejected(self):
         """U+2028 / U+2029 / U+0085 在 markdown 中被视为换行 → 注入伪标题。"""
-        assert gt._is_invalid_username('foo bar') is True
-        assert gt._is_invalid_username('foo bar') is True
+        assert gt._is_invalid_username('foo\u2028bar') is True
+        assert gt._is_invalid_username('foo\u2029bar') is True
 
 
 class TestMdEscapeUnicodeLineSeparators:
@@ -1782,11 +1782,11 @@ class TestMdEscapeUnicodeLineSeparators:
     （str.splitlines() 视其为换行 → markdown 渲染注入伪标题）。"""
 
     def test_u2028_replaced(self):
-        result = gt._md_escape('foo # fake header')
-        assert ' ' not in result
+        result = gt._md_escape('foo\u2028# fake header')
+        assert '\u2028' not in result
 
     def test_u2029_replaced(self):
-        assert ' ' not in gt._md_escape('a b')
+        assert '\u2029' not in gt._md_escape('a\u2029b')
 
     def test_nel_replaced(self):
         assert '\x85' not in gt._md_escape('a\x85b')
@@ -2029,14 +2029,28 @@ class TestUsernameUrlInjection:
 class TestSymlinkInstall:
     """_PLATFORMS_JSON 用 realpath 而非 abspath：通过 symlink 部署时仍能找到 data。"""
 
-    def test_uses_realpath(self):
-        # realpath 解析符号链接，abspath 不解析
-        # 验证当前 _PLATFORMS_JSON 是 realpath 形式（不含 symlink）
-        path = gt._PLATFORMS_JSON
-        # _PLATFORMS_JSON 的目录应等于 spyeyes.py 真实目录的 realpath
-        spyeyes_real_dir = os.path.dirname(os.path.realpath(gt.__file__))
-        expected = os.path.join(spyeyes_real_dir, 'data', 'platforms.json')
-        assert path == expected
+    def test_uses_realpath(self, tmp_path):
+        """模拟 brew / pipx 的装法:包目录里的 __init__.py 是指向真实文件的符号链接,
+        旁边没有 data/。用 abspath 会去链接所在目录找 platforms.json → 找不到 →
+        静默只剩精选的 200 来个平台;realpath 才能找到真实目录里的数据。"""
+        import subprocess
+        real_init = os.path.realpath(gt.__file__)
+        pkg = tmp_path / 'site' / 'spyeyes'
+        pkg.mkdir(parents=True)
+        try:
+            os.symlink(real_init, pkg / '__init__.py')
+        except (OSError, NotImplementedError):
+            pytest.skip('当前环境不能创建符号链接')
+        code = ('import sys; sys.path.insert(0, sys.argv[1]); import spyeyes; '
+                'print(spyeyes.__file__); print(len(spyeyes.PLATFORMS))')
+        env = {**os.environ, 'HOME': str(tmp_path), 'USERPROFILE': str(tmp_path),
+               'SPYEYES_NO_UPDATE_CHECK': '1'}
+        proc = subprocess.run([sys.executable, '-c', code, str(tmp_path / 'site')],
+                              capture_output=True, text=True, env=env, cwd=str(tmp_path), timeout=60)
+        assert proc.returncode == 0, proc.stderr
+        loaded_from, count = proc.stdout.split()
+        assert os.path.dirname(loaded_from) == str(pkg)          # 确实是从链接那边导入的
+        assert int(count) > 3000, f'只加载到 {count} 个平台 —— data/ 没找到'
 
 
 class TestReadHistoryEdgeCases:
@@ -2699,11 +2713,24 @@ class TestRecursiveTrackUsername:
         assert result['_recursive']['depth_reached'] == 0
 
     def test_depth_clamped_to_max(self):
-        with patch.object(gt, 'track_username',
-                          return_value={'_statuses': {}}):
-            r = gt.recursive_track_username('x', max_depth=99, show_progress=False)
-        # max 被钳到 RECURSIVE_MAX_DEPTH
-        assert r['_recursive']['depth_reached'] <= gt.RECURSIVE_MAX_DEPTH
+        """每一层的命中页都能再挖出一个新用户名(alice → user1 → user2 → user3 …),
+        max_depth=99 也只能走到 RECURSIVE_MAX_DEPTH 层。"""
+        chain = ['alice'] + [f'user{i}' for i in range(1, 8)]
+        scanned = []
+
+        def fake_track(name, **kw):
+            scanned.append(name)
+            return {'Site': f'https://site.test/{name}', '_statuses': {'Site': 'found'}}
+
+        def fake_get(url, **kw):
+            nxt = chain[chain.index(url.rsplit('/', 1)[1]) + 1]
+            return MagicMock(text=f'<p>follow @{nxt}</p>')
+
+        with patch.object(gt, 'track_username', side_effect=fake_track), \
+             patch.object(gt, 'safe_get', side_effect=fake_get):
+            r = gt.recursive_track_username('alice', max_depth=99, show_progress=False)
+        assert scanned == chain[:gt.RECURSIVE_MAX_DEPTH + 1]
+        assert r['_recursive']['depth_reached'] == gt.RECURSIVE_MAX_DEPTH
 
     def test_error_in_initial_scan(self):
         with patch.object(gt, 'track_username',
@@ -3159,12 +3186,11 @@ class TestJsExtract:
         assert gt._extract_hosts_from_body(b'<html></html>', '') == set()
 
     def test_caps_at_5000_to_prevent_oom(self):
-        """大量重复 host 引用不会爆内存。"""
-        # 模拟一个有大量 hostname 的 body
-        body = (b'api.example.com ' * 6000)
+        """页面里塞了上万个不同的 host 引用时,只取前 5000 个左右就停。"""
+        body = b' '.join(b'h%d.example.com' % i for i in range(12000))
         out = gt._extract_hosts_from_body(body, 'example.com')
-        # 去重后只应有一个
-        assert out == {'api.example.com'}
+        assert 5000 <= len(out) <= 5001
+        assert 'h0.example.com' in out and 'h11999.example.com' not in out
 
     def test_certspotter_parses_dns_names(self):
         """v1.4.4: CertSpotter 替代 ThreatCrowd 死站。"""
@@ -3268,7 +3294,7 @@ class TestEnumerateSubdomains:
         })
         called = {'probe': 0}
 
-        def fake_probe(host, timeout=5.0):
+        def fake_probe(host, timeout=5.0, parent_domain=None):
             called['probe'] += 1
             return {}
         monkeypatch.setattr(gt, '_probe_one_subdomain', fake_probe)
@@ -3428,8 +3454,8 @@ class TestSubdomainProbe:
 
     def test_probe_extracts_title_for_4xx_v167(self):
         """v1.6.7:4xx/5xx title 也提取(用户反馈 CF 'Just a moment...' 是有用情报)。"""
-        fake = MagicMock(status_code=403)
-        fake.raw.read.return_value = b'<html><head><title>Just a moment...</title></head></html>'
+        # 真实 Response:4xx 的 Response 是 falsy,`if resp is None` 若被写成 `if not resp` 这里会红
+        fake = _real_response(403, b'<html><head><title>Just a moment...</title></head></html>')
         with patch.object(gt, 'safe_get', return_value=fake):
             out = gt._probe_one_subdomain('admin.example.com')
         assert out['http_status'] == 403
@@ -3437,8 +3463,7 @@ class TestSubdomainProbe:
 
     def test_probe_extracts_title_for_404(self):
         """v1.6.7:404 也提取 title(可能是真 404 vs CF 拦截 vs 默认页,信息价值大)。"""
-        fake = MagicMock(status_code=404)
-        fake.raw.read.return_value = b'<title>Page Not Found</title>'
+        fake = _real_response(404, b'<title>Page Not Found</title>')
         with patch.object(gt, 'safe_get', return_value=fake):
             out = gt._probe_one_subdomain('missing.example.com')
         assert out['http_status'] == 404
@@ -4170,8 +4195,8 @@ class TestSubdomainStageProgress:
                                 'host': h, 'alive': True, 'a': ['1.2.3.4'],
                                 'aaaa': [], 'cname': None})
         monkeypatch.setattr(gt, '_probe_one_subdomain',
-                            lambda h, timeout=5.0: {'http_status': 200,
-                                                     'title': 't', 'scheme': 'https'})
+                            lambda h, timeout=5.0, parent_domain=None: {
+                                'http_status': 200, 'title': 't', 'scheme': 'https'})
         gt.enumerate_subdomains('example.com', show_progress=True)
         err = capsys.readouterr().err
         # 4 个 stage header 关键词:'1/4'..'4/4'

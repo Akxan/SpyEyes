@@ -3,6 +3,7 @@
 每个测试自动重置全局状态（语言、Color、thread-local Session），避免测试间污染。
 """
 import os
+import socket
 import sys
 
 import pytest
@@ -34,6 +35,35 @@ _BEHAVIOR_ENV_VARS = (
 )
 
 
+class RealNetworkAttempt(OSError):
+    """测试里发起了真实网络访问。继承 OSError:被测代码会当成普通网络故障处理,
+    测试结束时再由 block_real_network 统一报出来(否则会被各处的容错逻辑悄悄吞掉)。"""
+
+
+@pytest.fixture(autouse=True)
+def block_real_network(monkeypatch):
+    """禁止任何测试发起真实的网络连接或 DNS 查询。
+
+    测试约定是「全部 mock、无真实网络」,但以前没有任何东西强制这一点:数据源是按名字逐个
+    替换的,新增一个源而忘了在测试里替换,整个套件就会悄悄联网(变慢、不稳定、给第三方发请求)。
+    这里从 socket 层拦住,并在测试结束时让发起过真实访问的测试失败。"""
+    attempts: list = []
+
+    def _blocked(kind):
+        def _fn(*args, **kwargs):
+            target = next((a for a in args if isinstance(a, (tuple, str, bytes))), '?')
+            attempts.append(f'{kind} {target!r}')
+            raise RealNetworkAttempt(f'测试里不允许真实网络访问: {kind} {target!r}')
+        return _fn
+
+    for name in ('connect', 'connect_ex', 'sendto'):
+        monkeypatch.setattr(socket.socket, name, _blocked(f'socket.{name}'))
+    monkeypatch.setattr(socket, 'getaddrinfo', _blocked('getaddrinfo'))
+    monkeypatch.setattr(socket, 'create_connection', _blocked('create_connection'))
+    yield
+    assert not attempts, f'测试发起了真实网络访问(请 mock 掉): {attempts[:5]}'
+
+
 @pytest.fixture(autouse=True)
 def reset_global_state(tmp_path, monkeypatch):
     """每个测试前后恢复 _lang、Color、thread-local session、PLATFORMS 缓存。
@@ -46,6 +76,9 @@ def reset_global_state(tmp_path, monkeypatch):
     saved_lang = gt._lang
     saved_color = {a: getattr(gt.Color, a) for a in _COLOR_ATTRS}
     saved_color['enabled'] = gt.Color.enabled
+    # 整体快照环境变量:_load_env_file() 直接写 os.environ(不经过 monkeypatch),
+    # 调用它的测试会把变量漏给后面的测试 —— 结束时整体还原
+    saved_env = dict(os.environ)
 
     # 把所有用户数据路径重定向到 tmp（每个测试一个独立目录）
     fake_config_dir = str(tmp_path / '.spyeyes')
@@ -54,6 +87,8 @@ def reset_global_state(tmp_path, monkeypatch):
     monkeypatch.setattr(gt, 'HISTORY_FILE', f'{fake_config_dir}/history.jsonl')
     monkeypatch.setattr(gt, 'UPDATE_CACHE_FILE', f'{fake_config_dir}/.update_check.json')
     monkeypatch.setattr(gt, 'ENV_FILE', f'{fake_config_dir}/env')
+    # 旧版配置目录也要隔离:load_config() 会把真实的 ~/.ghosttrack 迁移进来
+    monkeypatch.setattr(gt, '_LEGACY_CONFIG_DIR', str(tmp_path / '.ghosttrack'))
 
     for var in _BEHAVIOR_ENV_VARS:
         monkeypatch.delenv(var, raising=False)
@@ -71,6 +106,8 @@ def reset_global_state(tmp_path, monkeypatch):
     try:
         yield
     finally:
+        os.environ.clear()
+        os.environ.update(saved_env)
         gt._lang = saved_lang
         for k, v in saved_color.items():
             setattr(gt.Color, k, v)

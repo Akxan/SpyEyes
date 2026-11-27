@@ -286,9 +286,13 @@ class TestInvestigateReports:
     def test_csv_injection_safe(self, sample_data):
         # CSV injection — formula-prefixed registrar should be defanged with leading '
         sample_data['tasks']['whois']['registrar'] = '=cmd|"calc"'
-        csv = gt._to_csv('investigate_example.com', sample_data)
-        # _csv_safe prefixes a single quote to defang
-        assert "'=cmd" in csv or '"=cmd' in csv  # quoted by csv module is ok too
+        text = gt._to_csv('investigate_example.com', sample_data)
+        # 解析回来看单元格本身:必须以 ' 开头(csv 模块自己加的引号不算防护)
+        import csv as csv_mod
+        import io
+        cells = [row[3] for row in csv_mod.reader(io.StringIO(text))
+                 if row[:3] == ['whois', 'field', 'registrar']]
+        assert cells == ["'=cmd|\"calc\""]
 
     def test_error_data_renders(self):
         err = {'_error': 'something failed', 'target': 'example.com',

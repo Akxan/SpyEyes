@@ -2192,7 +2192,7 @@ def _is_invalid_username(username: str) -> bool:
     if any(ord(c) < 0x20 or 0x7f <= ord(c) <= 0x9f for c in username):
         return True
     # Unicode line/paragraph separator —— markdown 渲染按换行处理 → 注入伪标题
-    if any(c in '  ' for c in username):
+    if any(c in '\u2028\u2029' for c in username):  # 用转义写法:字面量不可见,编辑器规范化成空格后校验会悄悄失效
         return True
     if username in ('.', '..') or '..' in username:
         return True
@@ -6187,8 +6187,8 @@ def _md_escape(s: Any) -> str:
             .replace('\r', ' ')
             .replace('\n', ' ')
             .replace('\x85', ' ')
-            .replace(' ', ' ')
-            .replace(' ', ' ')
+            .replace('\u2028', ' ')
+            .replace('\u2029', ' ')
             .replace('`', '\\`')
             .strip())
 
