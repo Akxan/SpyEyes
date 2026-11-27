@@ -10,6 +10,7 @@ description: >-
   Free, open-source OSINT command-line toolkit in Python: username search across 3,164 sites,
   subdomain enumeration, domain email harvesting, IP geolocation, phone lookup, WHOIS and MX.
   No API keys required. English / 简体中文.
+tagline: Open-source OSINT CLI in Python
 lang: en
 theme: jekyll-theme-hacker
 

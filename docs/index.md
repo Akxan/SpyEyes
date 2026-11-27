@@ -5,8 +5,6 @@ description: "SpyEyes is a free, open-source OSINT command-line toolkit in Pytho
 lang: en
 ---
 
-# 🔍 SpyEyes — All-in-One OSINT Toolkit
-
 **SpyEyes is a free, open-source OSINT (open-source intelligence) toolkit for the command line, written in Python.** One install gives you 14 commands: username search across 3,164 websites, subdomain enumeration, domain email harvesting, IP geolocation, phone number lookup, WHOIS, MX and email validation — with 8 report formats, no API keys required, and a fully bilingual interface (English / 简体中文).
 
 [**⭐ GitHub**](https://github.com/Akxan/SpyEyes) · [**📖 Tutorial (中文)**](TUTORIAL.html) · [**📝 Changelog**](CHANGELOG.html) · [**🤝 Contributing**](CONTRIBUTING.html) · [**🔒 Security**](SECURITY.html) · [**🇨🇳 中文说明**](https://github.com/Akxan/SpyEyes/blob/main/README.zh-CN.md)
