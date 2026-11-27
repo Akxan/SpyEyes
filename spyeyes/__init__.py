@@ -787,6 +787,8 @@ TRANSLATIONS: dict = {
         'err.subdomain_need_domain':  'subdomain: a domain or --batch FILE is required',
         'demails.source_err':         '[{name:>8}] error: {err}',
         'demails.tag_verified':       '✓ verified',
+        'demails.targets_capped':     'Page budget reached: {skipped} more subdomain(s) not crawled (raise --max-pages to include them)',
+        'demails.robots_blocked':     'robots.txt disallows crawling this site, so no pages were fetched (--ignore-robots overrides)',
         'section.diff':               'Subdomain Diff',
         'diff.changed_fields':        'changed fields',
         'batch.header':               '== Batch scanning {n} domains ==',
@@ -1155,6 +1157,8 @@ TRANSLATIONS: dict = {
         'err.subdomain_need_domain':  'subdomain:需要提供域名或 --batch 文件',
         'demails.source_err':         '[{name:>8}] 错误:{err}',
         'demails.tag_verified':       '✓ 已验证',
+        'demails.targets_capped':     '页数预算已用完:另有 {skipped} 个子域未爬(调大 --max-pages 可纳入)',
+        'demails.robots_blocked':     '该站的 robots.txt 禁止爬取,所以一页都没抓(可加 --ignore-robots 忽略)',
         'section.diff':               '子域名 Diff',
         'diff.changed_fields':        '变更字段',
         'batch.header':               '== 批量扫描 {n} 个域名 ==',
@@ -2916,9 +2920,11 @@ def _src_hackertarget(domain: str) -> set[str]:
     if resp is None or resp.status_code != 200:
         return set()
     text = (resp.text or '').strip()
-    # quota 用尽时返回 "API count exceeded - rate limit reached" 而非 CSV
-    if 'error' in text.lower() or 'rate limit' in text.lower() or 'exceeded' in text.lower():
-        return set()
+    # 只认 `host,ip` 形式的行。quota 用尽 / 参数错误时返回的是一句不带逗号的英文
+    # ("API count exceeded - ..." / "error check your search parameter"),自然被滤掉;
+    # 即便错误文本里带逗号,逗号前也不是本域的合法主机名,过不了下面的清洗。
+    # 之前对整段文本搜 'error' / 'exceeded' 子串:只要有一个主机名带这些字样
+    # (errors.example.com),整个数据源的结果就全被丢弃。
     hosts = [line.split(',', 1)[0] for line in text.splitlines() if ',' in line]
     return _clean_subdomain_candidates(hosts, domain)
 
@@ -3781,6 +3787,7 @@ DOMAIN_EMAIL_DEFAULT_MAX_PAGES = 200      # v1.6.11:500→200(用户反馈"卡 5
                                           # 实践:典型企业域 contact/about/team 等高邮箱密度页 < 100 页
                                           # 更大 budget 长尾 page 邮箱密度急剧降到几乎 0,纯花时间
 DOMAIN_EMAIL_MAX_PAGES_LIMIT = 2000       # CLI --max-pages 上限(交互菜单「深度」档为 500)
+DOMAIN_EMAIL_MIN_PAGES_PER_TARGET = 10    # 一个爬取目标至少给这么多页,否则不值得爬;也决定了目标数上限
 DOMAIN_EMAIL_DEFAULT_DEPTH = 5
 DOMAIN_EMAIL_DEFAULT_WORKERS = 5
 DOMAIN_EMAIL_RATE_LIMIT_MS = 500          # 单域请求间最少 500ms 防被反爬墙拉黑
@@ -4091,7 +4098,11 @@ DOMAIN_EMAIL_SOURCES: dict = {
 
 def _fetch_robots_txt(scheme: str, host: str) -> tuple[set[str], list[str]]:
     """拉取 robots.txt,返回 (sitemap urls, disallow paths)。
-    失败时返回空,不影响主流程。"""
+    失败时返回空,不影响主流程。
+
+    Disallow 只收对所有爬虫生效的规则:`User-agent: *` 分组,以及出现在任何 User-agent
+    行之前的规则。之前不分组、见到 Disallow 就收 —— 站点只写一句针对 GPTBot 的
+    `Disallow: /`(现在很常见),整站就一页都不爬,而且没有任何提示。"""
     url = f'{scheme}://{host}/robots.txt'
     resp = safe_get(url, timeout=DOMAIN_EMAIL_PAGE_TIMEOUT)
     if resp is None or resp.status_code != 200:
@@ -4099,16 +4110,27 @@ def _fetch_robots_txt(scheme: str, host: str) -> tuple[set[str], list[str]]:
     text = (resp.text or '')[:DOMAIN_EMAIL_MAX_BODY]
     sitemaps: set[str] = set()
     disallows: list[str] = []
+    group_agents: list[str] = []  # 当前分组的 User-agent(连续多行 User-agent 共用一组规则)
+    group_has_rules = False       # 当前分组已出现规则行 → 再遇到 User-agent 就是新分组
+    seen_agent = False
     for line in text.splitlines():
-        line = line.strip()
-        if line.lower().startswith('sitemap:'):
-            sm = line[8:].strip()
-            if sm:
-                sitemaps.add(sm)
-        elif line.lower().startswith('disallow:'):
-            path = line[9:].strip()
-            if path:
-                disallows.append(path)
+        line = line.split('#', 1)[0].strip()  # 去掉行内注释
+        key, sep, value = line.partition(':')
+        if not sep:
+            continue
+        key, value = key.strip().lower(), value.strip()
+        if key == 'sitemap':
+            if value:
+                sitemaps.add(value)
+        elif key == 'user-agent':
+            if group_has_rules:
+                group_agents, group_has_rules = [], False
+            group_agents.append(value)
+            seen_agent = True
+        elif key in ('disallow', 'allow'):
+            group_has_rules = True
+            if key == 'disallow' and value and (not seen_agent or '*' in group_agents):
+                disallows.append(value)
     return sitemaps, disallows
 
 
@@ -4200,6 +4222,7 @@ def _crawl_domain_for_emails(domain: str, *,
     found_emails: set[str] = set()
     page_emails: dict = {}  # email → first 出现的 page url(用于 source 元数据)
     pages_crawled = 0
+    robots_skipped = 0  # 被 robots.txt 挡下、没去请求的 URL 数(用于向用户解释「为什么一页没爬」)
 
     # 1) robots.txt
     sitemaps, disallows = _fetch_robots_txt('https', target)
@@ -4271,6 +4294,7 @@ def _crawl_domain_for_emails(domain: str, *,
         url, depth = queue.popleft()
         # robots.txt 拒绝
         if _is_path_disallowed(url, disallows):
+            robots_skipped += 1
             continue
         # 仅 http(s) + 同主域(含子域)
         try:
@@ -4317,6 +4341,7 @@ def _crawl_domain_for_emails(domain: str, *,
         'pages_crawled': pages_crawled,
         'sitemap_found': sitemap_found,
         'robots_disallows': len(disallows),
+        'robots_skipped': robots_skipped,
     }
 
 
@@ -4428,7 +4453,10 @@ def enumerate_domain_emails(domain: str, *,
        'emails': [{'address': str, 'sources': [str], 'page': str|None,
                    'verified': None | True | False, 'verify_reason': str|None}, ...],
        '_stats': {'total': int, 'by_source': {...}, 'pages_crawled': int,
-                  'sitemap_found': bool, 'verified': int, 'errors': dict}}
+                  'sitemap_found': bool, 'verified': int,
+                  'targets_skipped': int,   # 页数预算不够、没爬的子域数
+                  'robots_skipped': int,    # 被 robots.txt 挡下的 URL 数
+                  'errors': {source: 异常类名}}}
     """
     normalized = _normalize_domain(domain)
     if normalized is None:
@@ -4472,6 +4500,8 @@ def enumerate_domain_emails(domain: str, *,
     # 阶段 2:深度爬取
     pages_crawled_total = 0
     sitemap_found_any = False
+    targets_skipped = 0
+    robots_skipped_total = 0
     if crawl:
         targets_to_crawl = [domain]
         if include_subdomains and HAS_DNS:
@@ -4495,13 +4525,21 @@ def enumerate_domain_emails(domain: str, *,
                 _stage_log(f"   {Color.Gr}{len(targets_to_crawl)} "
                            f"{t('demails.target_count')}{Color.Reset}")
 
+        # max_pages 是**总**页数预算,按 target 数均分。每个 target 至少要
+        # DOMAIN_EMAIL_MIN_PAGES_PER_TARGET 页才值得爬,所以目标数上限 = 预算 // 这个数,
+        # 超出的子域不爬(记入 _stats.targets_skipped 并提示)。
+        # 之前目标数不设上限、又给每个目标保底 10 页:60 个活跃子域 + `--max-pages 200`
+        # 实际上限变成 610 页,每个目标还各有 5 分钟超时,大域名能跑一个多小时。
+        # (v1.6.11 曾加固定上限 min(100, ...),把单 target 的 200 / 500 静默压成 100 页 —— 也不对。)
+        max_targets = max(1, max_pages // DOMAIN_EMAIL_MIN_PAGES_PER_TARGET)
+        targets_skipped = max(0, len(targets_to_crawl) - max_targets)
+        if targets_skipped:
+            targets_to_crawl = targets_to_crawl[:max_targets]  # 主域排在最前,始终保留
+            if show_progress:
+                _stage_log(f"   {Color.Ye}{t('demails.targets_capped', skipped=targets_skipped)}{Color.Reset}")
         if show_progress:
             _stage_log(f"\n {Color.Cy}{t('demails.stage_crawl', n=len(targets_to_crawl))}{Color.Reset}")
-        # max_pages 是**总**页数预算,按 target 数均分(每个至少 10 页)。
-        # v1.6.11 曾额外加固定上限 min(100, ...),结果单 target 时默认 200 / 菜单「深度 500」/
-        # `--max-pages 500` 全被静默压成 100 页,与文档承诺矛盾 —— 已移除该上限。
-        # 提速靠的是 v1.6.11 把默认值 500 → 200;单 target 内另有 DOMAIN_EMAIL_TOTAL_TIMEOUT 兜底。
-        per_target = max(10, max_pages // max(1, len(targets_to_crawl)))
+        per_target = max(1, max_pages // len(targets_to_crawl))
         total_targets = len(targets_to_crawl)
 
         # v1.6.6:多 target 并行爬(workers=3,平衡速度 vs 礼貌)
@@ -4535,6 +4573,7 @@ def enumerate_domain_emails(domain: str, *,
                     for em in crawl_result.get('emails', set()):
                         _add(em, 'crawl', crawl_result.get('page_map', {}).get(em))
                     pages_crawled_total += crawl_result.get('pages_crawled', 0)
+                    robots_skipped_total += crawl_result.get('robots_skipped', 0)
                     sitemap_found_any = sitemap_found_any or crawl_result.get('sitemap_found', False)
                     if show_progress:
                         n_pages = crawl_result.get('pages_crawled', 0)
@@ -4606,6 +4645,9 @@ def enumerate_domain_emails(domain: str, *,
             'pages_crawled': pages_crawled_total,
             'sitemap_found': sitemap_found_any,
             'verified': verified_count,
+            'targets_skipped': targets_skipped,
+            'robots_skipped': robots_skipped_total,
+            'errors': source_errors,
         },
     }
 
@@ -5342,6 +5384,10 @@ def print_domain_emails(data: dict) -> None:
     if by_src:
         breakdown = ', '.join(f"{k}={v}" for k, v in sorted(by_src.items()))
         print(f" {Color.Bl}{breakdown}{Color.Reset}")
+    if stats.get('targets_skipped'):
+        print(f" {Color.Bl}{t('demails.targets_capped', skipped=stats['targets_skipped'])}{Color.Reset}")
+    if not stats.get('pages_crawled') and stats.get('robots_skipped'):
+        print(f" {Color.Ye}{t('demails.robots_blocked')}{Color.Reset}")
     print()
     if not emails:
         print(f" {Color.Ye}{t('demails.no_results')}{Color.Reset}")
@@ -6559,6 +6605,19 @@ _PDF_MAX_TITLE_LEN = 50
 _PDF_LATIN_RUN_RE = re.compile(r'[\x20-\x7E -ÿ‐-―‘-”…]+')
 
 
+# 私用区占位符:标记「这是用户文本里的尖括号,不是内联标签」。
+# _pdf_story 的模板把开发者写的 <b> / <font> 标签和用户文本拼在一个字符串里,
+# _pdf_inline_html 靠正则 <...> 认标签 —— 用户文本里的 `<b>x` 会被当成没闭合的标签,
+# reportlab 直接解析失败,整份 PDF 生成不出来。
+_PDF_LT, _PDF_GT = '\ue000', '\ue001'
+
+
+def _pdf_esc(s: Any) -> str:
+    """要拼进 _pdf_story 模板的用户文本:单行化(同 _md_escape)+ 尖括号换成占位符,
+    交给 _pdf_para_text 还原成 `&lt;` / `&gt;`。表格单元格走 _pdf_para,不需要这个。"""
+    return _md_escape(s).replace('<', _PDF_LT).replace('>', _PDF_GT)
+
+
 def _pdf_para_text(raw: Any) -> str:
     """Paragraph 输入文本预处理:
     1) XML escape(防 reportlab 解析器把 `<` `>` `&` 当标签/实体起点)
@@ -6570,7 +6629,9 @@ def _pdf_para_text(raw: Any) -> str:
           .replace('<', '&lt;')
           .replace('>', '&gt;')
           .replace('\r', ' ')
-          .replace('\n', ' '))
+          .replace('\n', ' ')
+          .replace(_PDF_LT, '&lt;')
+          .replace(_PDF_GT, '&gt;'))
     return _PDF_LATIN_RUN_RE.sub(
         lambda m: f'<font name="Helvetica">{m.group(0)}</font>', s
     )
@@ -6674,8 +6735,8 @@ def _to_pdf(prefix: str, data: Any, out_path: str) -> Optional[str]:
         return t('err.no_pdf')
     try:
         cmd, _, query = prefix.partition('_')
-        cmd = _md_escape(cmd) or '?'
-        query = _md_escape(query)
+        cmd = _pdf_esc(cmd) or '?'
+        query = _pdf_esc(query)
         ts = time.strftime('%Y-%m-%d %H:%M:%S')
         # v1.3.1 修复:注册 CJK 字体让中文不显示成 □,并把所有 styles 字体改成它
         # (Helvetica/Times 不含 CJK glyph,reportlab 静默用 □ 替代)
@@ -6711,7 +6772,7 @@ def _to_pdf(prefix: str, data: Any, out_path: str) -> Optional[str]:
                           else 'Open-Source Intelligence Dossier')
         # CONFIDENTIAL 印章风(用 Table 给出红色边框 + center align)
         stamp_table = _rl_table(
-            [[_pdf_story(f'<font color="#c8102e"><b>{_md_escape(cover_classification)}</b></font>',
+            [[_pdf_story(f'<font color="#c8102e"><b>{_pdf_esc(cover_classification)}</b></font>',
                           styles['Normal'])]],
             colWidths=[260],
         )
@@ -6743,9 +6804,9 @@ def _to_pdf(prefix: str, data: Any, out_path: str) -> Optional[str]:
             spaceBefore=0, spaceAfter=24,
         )
         story.append(_pdf_story(
-            f'<b>{_md_escape(t("report.title"))}</b>', title_style))
+            f'<b>{_pdf_esc(t("report.title"))}</b>', title_style))
         story.append(_pdf_story(
-            _md_escape(cover_subtitle).upper(), subtitle_style))
+            _pdf_esc(cover_subtitle).upper(), subtitle_style))
         # 双线分隔
         story.append(_rl_hr(width='80%', thickness=2, color=_rl_colors.HexColor('#0a0a0c'),
                             hAlign='CENTER', spaceBefore=0, spaceAfter=4))
@@ -6754,14 +6815,14 @@ def _to_pdf(prefix: str, data: Any, out_path: str) -> Optional[str]:
         # 元数据表(三列):命令 / 查询 / 生成时间
         meta_table = _rl_table([
             [_pdf_story(f'<para alignment="center"><font size="7" color="#6b6657">'
-                        f'{_md_escape(t("report.command")).upper()}</font></para>', styles['Normal']),
+                        f'{_pdf_esc(t("report.command")).upper()}</font></para>', styles['Normal']),
              _pdf_story(f'<para alignment="center"><font size="7" color="#6b6657">'
-                        f'{_md_escape(t("report.query")).upper()}</font></para>', styles['Normal']),
+                        f'{_pdf_esc(t("report.query")).upper()}</font></para>', styles['Normal']),
              _pdf_story(f'<para alignment="center"><font size="7" color="#6b6657">'
-                        f'{_md_escape(t("report.generated")).upper()}</font></para>', styles['Normal'])],
-            [_pdf_story(f'<para alignment="center"><b>{_md_escape(cmd)}</b></para>', styles['Normal']),
-             _pdf_story(f'<para alignment="center"><b>{_md_escape(query)}</b></para>', styles['Normal']),
-             _pdf_story(f'<para alignment="center"><b>{_md_escape(ts)}</b></para>', styles['Normal'])],
+                        f'{_pdf_esc(t("report.generated")).upper()}</font></para>', styles['Normal'])],
+            [_pdf_story(f'<para alignment="center"><b>{_pdf_esc(cmd)}</b></para>', styles['Normal']),
+             _pdf_story(f'<para alignment="center"><b>{_pdf_esc(query)}</b></para>', styles['Normal']),
+             _pdf_story(f'<para alignment="center"><b>{_pdf_esc(ts)}</b></para>', styles['Normal'])],
         ], colWidths=[140, 200, 140])
         meta_table.setStyle(_rl_table_style([
             ('TOPPADDING', (0, 0), (-1, -1), 4),
@@ -6773,14 +6834,14 @@ def _to_pdf(prefix: str, data: Any, out_path: str) -> Optional[str]:
         story.append(_rl_pagebreak())
         if isinstance(data, dict) and '_error' in data:
             story.append(_pdf_story(
-                f"<b>{_md_escape(t('report.error'))}:</b> {_md_escape(data['_error'])}", styles['Normal']))
+                f"<b>{_pdf_esc(t('report.error'))}:</b> {_pdf_esc(data['_error'])}", styles['Normal']))
         elif cmd == 'username' and isinstance(data, dict):
             plat = _platform_only(data)
             found = sum(1 for v in plat.values() if v)
             story.append(_pdf_story(
-                f"<b>{_md_escape(t('report.username_scan'))}:</b> {query}", styles['Heading2']))
+                f"<b>{_pdf_esc(t('report.username_scan'))}:</b> {query}", styles['Heading2']))
             story.append(_pdf_story(
-                _md_escape(t('report.scan_summary', total=len(plat), found=found)),
+                _pdf_esc(t('report.scan_summary', total=len(plat), found=found)),
                 styles['Normal']))
             story.append(_rl_spacer(1, 12))
             for cat in CATEGORY_ORDER:
@@ -6788,7 +6849,7 @@ def _to_pdf(prefix: str, data: Any, out_path: str) -> Optional[str]:
                 cat_found = [(p, plat[p.name]) for p in cat_pl if plat[p.name]]
                 if not cat_found:
                     continue
-                cat_label = _md_escape(t(f'cat.{cat}'))
+                cat_label = _pdf_esc(t(f'cat.{cat}'))
                 story.append(_pdf_story(
                     f"<b>{cat_label}</b> ({len(cat_found)}/{len(cat_pl)})",
                     styles['Heading3']))
@@ -6809,32 +6870,32 @@ def _to_pdf(prefix: str, data: Any, out_path: str) -> Optional[str]:
         elif cmd == 'permute' and _is_permute_only(data):
             # v1.2.1 P1-2：仅生成变形（不扫描）
             story.append(_pdf_story(
-                f"<b>{_md_escape(t('permute.title'))}:</b> {_md_escape(data.get('name', query))}",
+                f"<b>{_pdf_esc(t('permute.title'))}:</b> {_pdf_esc(data.get('name', query))}",
                 styles['Heading2']))
             story.append(_rl_spacer(1, 8))
             for v in data.get('permutations', []):
-                story.append(_pdf_story(f"• {_md_escape(v)}", styles['Normal']))
+                story.append(_pdf_story(f"• {_pdf_esc(v)}", styles['Normal']))
         elif cmd == 'permute' and _is_permute_scan(data):
             # v1.2.1 P1-2：变形 + 批量扫描，每个变形一节
             story.append(_pdf_story(
-                f"<b>{_md_escape(t('permute.title'))}:</b> {query}", styles['Heading2']))
+                f"<b>{_pdf_esc(t('permute.title'))}:</b> {query}", styles['Heading2']))
             story.append(_pdf_story(
                 t('report.variations_scanned', n=len(data)), styles['Normal']))
             story.append(_rl_spacer(1, 12))
             for var, scan in data.items():
                 if not isinstance(scan, dict):
                     continue
-                story.append(_pdf_story(f"<b>{_md_escape(var)}</b>", styles['Heading3']))
+                story.append(_pdf_story(f"<b>{_pdf_esc(var)}</b>", styles['Heading3']))
                 if '_error' in scan:
                     story.append(_pdf_story(
-                        f"{_md_escape(t('report.error'))}: {_md_escape(scan['_error'])}",
+                        f"{_pdf_esc(t('report.error'))}: {_pdf_esc(scan['_error'])}",
                         styles['Normal']))
                     story.append(_rl_spacer(1, 6))
                     continue
                 plat = _platform_only(scan)
                 found = sum(1 for v in plat.values() if v)
                 story.append(_pdf_story(
-                    _md_escape(t('report.scan_summary', total=len(plat), found=found)),
+                    _pdf_esc(t('report.scan_summary', total=len(plat), found=found)),
                     styles['Normal']))
                 if found > 0:
                     p_table = [[
@@ -6853,9 +6914,9 @@ def _to_pdf(prefix: str, data: Any, out_path: str) -> Optional[str]:
                 story.append(_rl_spacer(1, 10))
         elif cmd == 'mx' and isinstance(data, dict) and 'records' in data:
             # MX 专用（v1.2.1 P0-3 修复，之前落到通用 dict 把 records list 压成 repr）
-            domain_lbl = _md_escape(data.get('domain', query))
+            domain_lbl = _pdf_esc(data.get('domain', query))
             story.append(_pdf_story(
-                f"<b>{_md_escape(t('report.mx_records'))}:</b> {domain_lbl}",
+                f"<b>{_pdf_esc(t('report.mx_records'))}:</b> {domain_lbl}",
                 styles['Heading2']))
             story.append(_rl_spacer(1, 8))
             mx_table = [[
@@ -6874,14 +6935,14 @@ def _to_pdf(prefix: str, data: Any, out_path: str) -> Optional[str]:
             story.append(tbl)
         elif cmd == 'domain-emails' and isinstance(data, dict) and 'emails' in data:
             # v1.4.0:域名邮箱 PDF 表格
-            domain_lbl = _md_escape(data.get('domain', query))
+            domain_lbl = _pdf_esc(data.get('domain', query))
             stats = data.get('_stats', {}) or {}
             sm_label = '✓' if stats.get('sitemap_found') else '✗'
             story.append(_pdf_story(
-                f"<b>{_md_escape(t('demails.title', domain=domain_lbl))}</b>",
+                f"<b>{_pdf_esc(t('demails.title', domain=domain_lbl))}</b>",
                 styles['Heading2']))
             story.append(_pdf_story(
-                _md_escape(t('demails.summary', total=stats.get('total', 0),
+                _pdf_esc(t('demails.summary', total=stats.get('total', 0),
                              pages=stats.get('pages_crawled', 0), sitemap=sm_label)),
                 styles['Normal']))
             story.append(_rl_spacer(1, 8))
@@ -6908,14 +6969,14 @@ def _to_pdf(prefix: str, data: Any, out_path: str) -> Optional[str]:
             story.append(tbl)
         elif cmd == 'subdomain' and isinstance(data, dict) and 'subdomains' in data:
             # v1.3.0:子域名枚举 PDF 表格
-            domain_lbl = _md_escape(data.get('domain', query))
+            domain_lbl = _pdf_esc(data.get('domain', query))
             stats = data.get('_stats', {}) or {}
             sources_active = sum(1 for v in (data.get('sources') or {}).values() if v > 0)
             story.append(_pdf_story(
-                f"<b>{_md_escape(t('subdomain.title', domain=domain_lbl))}</b>",
+                f"<b>{_pdf_esc(t('subdomain.title', domain=domain_lbl))}</b>",
                 styles['Heading2']))
             story.append(_pdf_story(
-                _md_escape(t('subdomain.summary',
+                _pdf_esc(t('subdomain.summary',
                              total=stats.get('total', 0), alive=stats.get('alive', 0),
                              sources=sources_active)),
                 styles['Normal']))
@@ -6923,11 +6984,11 @@ def _to_pdf(prefix: str, data: Any, out_path: str) -> Optional[str]:
             bd_pdf = _format_source_breakdown(data)
             if bd_pdf:
                 story.append(_pdf_story(
-                    f"<i>{_md_escape(t('subdomain.source_breakdown', breakdown=bd_pdf))}</i>",
+                    f"<i>{_pdf_esc(t('subdomain.source_breakdown', breakdown=bd_pdf))}</i>",
                     styles['Normal']))
             if data.get('wildcard_suspect'):
                 story.append(_pdf_story(
-                    f"<b>⚠ {_md_escape(t('subdomain.wildcard_warn'))}</b>", styles['Normal']))
+                    f"<b>⚠ {_pdf_esc(t('subdomain.wildcard_warn'))}</b>", styles['Normal']))
             story.append(_rl_spacer(1, 8))
             # v1.3.1:Paragraph 自动 XML escape + 中英字体回退;表头 bold;IP 列保留 <br/>
             header = [
@@ -6958,7 +7019,7 @@ def _to_pdf(prefix: str, data: Any, out_path: str) -> Optional[str]:
             story.append(tbl)
         elif isinstance(data, dict):
             story.append(_pdf_story(
-                f"<b>{cmd.upper()} {_md_escape(t('report.info_for'))}:</b> {query}", styles['Heading2']))
+                f"<b>{cmd.upper()} {_pdf_esc(t('report.info_for'))}:</b> {query}", styles['Heading2']))
             story.append(_rl_spacer(1, 8))
             items = data.items() if cmd != 'username' else _platform_only(data).items()
             table_data = [[
@@ -6978,7 +7039,7 @@ def _to_pdf(prefix: str, data: Any, out_path: str) -> Optional[str]:
             story.append(tbl)
         else:
             story.append(_pdf_story(
-                _md_escape(json.dumps(data, ensure_ascii=False, default=str)),
+                _pdf_esc(json.dumps(data, ensure_ascii=False, default=str)),
                 styles['Code']))
         # v1.3.1:用更小边距(36pt vs 默认 72pt)+ 字号统一,给宽表格更多空间
         # v1.4.2:topMargin 加大让封面页大标题有足够上空白
@@ -6990,7 +7051,7 @@ def _to_pdf(prefix: str, data: Any, out_path: str) -> Optional[str]:
         # 字符串保持英文,中英两版统一(brand 名字"SpyEyes"是品牌不翻译)
         # 加 query 作为页脚右侧"running header"风格,提升页面信息密度
         page_footer_text = 'SpyEyes  ·  OSINT Toolkit'
-        page_footer_query = f'{cmd}: {query}'[:60]
+        page_footer_query = f'{cmd}: {query}'.replace(_PDF_LT, '<').replace(_PDF_GT, '>')[:60]
 
         def _draw_footer(canvas, _doc):
             canvas.saveState()
@@ -9618,11 +9679,14 @@ def run_cli(args: argparse.Namespace) -> int:
             if getattr(args, 'quick', False):
                 cats = [c for c in CATEGORY_ORDER if c != 'other']
             scan_results: dict = {}
-            print(f" {Color.Cy}{t('permute.generated', name=args.name, n=len(names))}{Color.Reset}")
+            # --json 时标准输出只能有 JSON:之前这两行说明文字照打,`| jq` 直接报错
+            if not args.json:
+                print(f" {Color.Cy}{t('permute.generated', name=args.name, n=len(names))}{Color.Reset}")
             for n in names:
-                print(f"\n {Color.Bl}━━━ {n} ━━━{Color.Reset}")
+                if not args.json:
+                    print(f"\n {Color.Bl}━━━ {n} ━━━{Color.Reset}")
                 r = track_username(n, max_workers=args.workers, categories=cats,
-                                   show_progress=True)
+                                   show_progress=not args.json)
                 scan_results[n] = r
                 if not args.json:
                     print_username_results(r, show_all=False)

@@ -804,7 +804,7 @@ python3 -m spyeyes subdomain example.com --save report.graph.html   # D3.js 力�
    2 个模式邮箱生成
 ```
 
-> 阶段 1 实际是 **6 个被动源并发**(crt.sh / WHOIS / Bing / DuckDuckGo / Wayback / GitHub),总耗时约等于最慢的那个源。阶段 3 的 `pages=47/66`:`--max-pages` 是**总页数预算**,按爬取目标均分(默认 200 ÷ 3 个目标 ≈ 66 页/目标,每个至少 10 页)。
+> 阶段 1 实际是 **6 个被动源并发**(crt.sh / WHOIS / Bing / DuckDuckGo / Wayback / GitHub),总耗时约等于最慢的那个源。阶段 3 的 `pages=47/66`:`--max-pages` 是**总页数预算**,按爬取目标均分(默认 200 ÷ 3 个目标 ≈ 66 页/目标)。每个目标至少要 10 页才值得爬,所以最多爬 `--max-pages ÷ 10` 个目标(默认 20 个),活跃子域更多时其余的会跳过并提示,调大 `--max-pages` 即可纳入。
 
 **数据来源(6 个被动源并发 + 深度爬虫 + 可选项)**:
 

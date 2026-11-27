@@ -6038,3 +6038,187 @@ class TestLazyHeavyImports:
         out = tmp_path / 'r.pdf'
         assert gt._to_pdf('ip_x', {'a': 1}, str(out)) == gt.t('err.no_pdf')
         assert not out.exists()
+
+
+# ------------------------------------------------------------------
+# 体检发现的 5 个 bug 的回归测试
+# ------------------------------------------------------------------
+class TestRobotsOnlyObeysWildcardGroup:
+    """回归:robots.txt 里针对别家爬虫的 `Disallow: /` 曾被当成对所有人生效,
+    结果整站一页都不爬,而且没有任何提示。"""
+
+    def _robots(self, text):
+        with patch.object(gt, 'safe_get', return_value=MagicMock(status_code=200, text=text)):
+            return gt._fetch_robots_txt('https', 'example.com')[1]
+
+    def test_rule_for_another_bot_is_ignored(self):
+        assert self._robots('User-agent: GPTBot\nDisallow: /\n') == []
+
+    def test_only_wildcard_group_rules_are_kept(self):
+        text = 'User-agent: GPTBot\nDisallow: /\n\nUser-agent: *\nDisallow: /private\nAllow: /\n'
+        assert self._robots(text) == ['/private']
+
+    def test_agents_sharing_one_group(self):
+        assert self._robots('User-agent: GPTBot\nUser-agent: *\nDisallow: /x\n') == ['/x']
+
+    def test_group_ends_when_next_user_agent_follows_rules(self):
+        text = 'User-agent: *\nDisallow: /a\nUser-agent: Bingbot\nDisallow: /b\n'
+        assert self._robots(text) == ['/a']
+
+    def test_rules_before_any_user_agent_apply_to_everyone(self):
+        assert self._robots('Disallow: /admin\n') == ['/admin']
+
+    def test_inline_comments_are_stripped(self):
+        assert self._robots('User-agent: *   # everyone\nDisallow: /a  # note\n') == ['/a']
+
+    def _crawl(self, monkeypatch, robots_text):
+        monkeypatch.setattr(gt, 'DOMAIN_EMAIL_RATE_LIMIT_MS', 0)
+
+        def fake_get(url, **kw):
+            if url.endswith('/robots.txt'):
+                return MagicMock(status_code=200, text=robots_text)
+            if 'sitemap' in url:
+                return MagicMock(status_code=404)
+            return _real_response(200, b'<a href="mailto:bob@example.com">mail</a>',
+                                  {'Content-Type': 'text/html'})
+
+        with patch.object(gt, 'safe_get', side_effect=fake_get):
+            return gt._crawl_domain_for_emails('example.com', max_pages=3, show_progress=False)
+
+    def test_site_blocking_only_ai_bots_is_still_crawled(self, monkeypatch):
+        result = self._crawl(monkeypatch, 'User-agent: GPTBot\nDisallow: /\n\nUser-agent: *\nAllow: /\n')
+        assert result['pages_crawled'] == 3
+        assert result['emails'] == {'bob@example.com'}
+        assert result['robots_skipped'] == 0
+
+    def test_site_blocking_everyone_is_reported_not_silent(self, monkeypatch, capsys):
+        result = self._crawl(monkeypatch, 'User-agent: *\nDisallow: /\n')
+        assert result['pages_crawled'] == 0
+        assert result['robots_skipped'] > 0
+        gt.print_domain_emails({'domain': 'example.com', 'emails': [],
+                                '_stats': {'total': 0, 'pages_crawled': 0,
+                                           'robots_skipped': result['robots_skipped']}})
+        assert 'robots.txt' in capsys.readouterr().out
+
+
+class TestHackertargetKeepsHostsContainingErrorWords:
+    """回归:对整段响应搜 'error' / 'exceeded' 子串 —— 只要有一个主机名带这些字样,
+    整个数据源的结果就全被丢弃。"""
+
+    def _src(self, text):
+        with patch.object(gt, 'safe_get', return_value=MagicMock(status_code=200, text=text)):
+            return gt._src_hackertarget('example.com')
+
+    def test_hostnames_with_error_words_do_not_void_the_source(self):
+        text = ('www.example.com,1.1.1.1\nerrors.example.com,1.1.1.2\n'
+                'exceeded.example.com,1.1.1.3\nratelimit.example.com,1.1.1.4\n')
+        assert self._src(text) == {'www.example.com', 'errors.example.com',
+                                   'exceeded.example.com', 'ratelimit.example.com'}
+
+    @pytest.mark.parametrize('text', [
+        'API count exceeded - Increase Quota with Membership',
+        'error check your search parameter',
+        'error, invalid host',
+    ])
+    def test_error_messages_still_yield_nothing(self, text):
+        assert self._src(text) == set()
+
+
+class TestPermuteScanJsonIsCleanJson:
+    """回归:`permute --scan --json` 把说明文字也打到标准输出,`| jq` 直接报错。"""
+
+    def test_stdout_parses_as_json(self, monkeypatch, capsys):
+        seen_kwargs = []
+
+        def fake_track(name, **kw):
+            seen_kwargs.append(kw)
+            return {'GitHub': f'https://github.com/{name}', '_statuses': {'GitHub': 'found'}}
+
+        monkeypatch.setattr(gt, 'track_username', fake_track)
+        args = gt.build_parser().parse_args(['permute', 'John Doe', '--scan', '--json'])
+        assert gt.run_cli(args) == 0
+        data = json.loads(capsys.readouterr().out)
+        assert data['johndoe'] == {'GitHub': 'https://github.com/johndoe'}
+        assert all(kw['show_progress'] is False for kw in seen_kwargs)
+
+    def test_human_output_still_shows_headings(self, monkeypatch, capsys):
+        monkeypatch.setattr(gt, 'track_username',
+                            lambda name, **kw: {'GitHub': None, '_statuses': {'GitHub': 'not_found'}})
+        args = gt.build_parser().parse_args(['permute', 'John Doe', '--scan'])
+        gt.run_cli(args)
+        assert '━━━ johndoe ━━━' in capsys.readouterr().out
+
+
+class TestDomainEmailPageBudget:
+    """回归:抓取目标数不设上限,又给每个目标保底 10 页 —— 60 个活跃子域 + --max-pages 200
+    实际上限变成 610 页,「总页数预算」形同虚设。"""
+
+    def _run(self, monkeypatch, n_subdomains, max_pages):
+        for name in gt.DOMAIN_EMAIL_SOURCES:
+            monkeypatch.setitem(gt.DOMAIN_EMAIL_SOURCES, name, lambda d: set())
+        monkeypatch.setattr(gt, 'HAS_DNS', True)
+        monkeypatch.setattr(gt, 'enumerate_subdomains', lambda d, **kw: {'subdomains': [
+            {'host': f's{i:02d}.example.com', 'alive': True, 'http_status': 200}
+            for i in range(n_subdomains)]})
+        seen: dict = {}
+
+        def fake_crawl(target, **kw):
+            seen[target] = kw['max_pages']
+            return {'emails': set(), 'page_map': {}, 'pages_crawled': kw['max_pages'],
+                    'sitemap_found': False, 'robots_disallows': 0}
+
+        monkeypatch.setattr(gt, '_crawl_domain_for_emails', fake_crawl)
+        out = gt.enumerate_domain_emails('example.com', max_pages=max_pages, show_progress=False)
+        return seen, out['_stats']
+
+    def test_total_pages_never_exceed_budget(self, monkeypatch):
+        seen, stats = self._run(monkeypatch, n_subdomains=60, max_pages=200)
+        assert sum(seen.values()) <= 200
+        assert len(seen) == 20                       # 200 // 每目标至少 10 页
+        assert 'example.com' in seen                 # 主域始终保留
+        assert stats['targets_skipped'] == 41        # 61 个目标里没爬的
+        assert stats['pages_crawled'] <= 200
+
+    def test_few_targets_split_the_budget_evenly(self, monkeypatch):
+        seen, stats = self._run(monkeypatch, n_subdomains=3, max_pages=200)
+        assert seen == {'example.com': 50, 's00.example.com': 50,
+                        's01.example.com': 50, 's02.example.com': 50}
+        assert stats['targets_skipped'] == 0
+
+    def test_tiny_budget_goes_to_the_main_domain(self, monkeypatch):
+        seen, stats = self._run(monkeypatch, n_subdomains=5, max_pages=5)
+        assert seen == {'example.com': 5}
+        assert stats['targets_skipped'] == 5
+
+    def test_failed_sources_are_reported_in_stats(self, monkeypatch):
+        """顺带:记录了出错的数据源,却没写进返回结果(文档字符串里一直写着有)。"""
+        def boom(domain):
+            raise RuntimeError('source down')
+
+        for name in gt.DOMAIN_EMAIL_SOURCES:
+            monkeypatch.setitem(gt.DOMAIN_EMAIL_SOURCES, name, lambda d: set())
+        monkeypatch.setitem(gt.DOMAIN_EMAIL_SOURCES, 'crtsh', boom)
+        out = gt.enumerate_domain_emails('example.com', crawl=False, show_progress=False)
+        assert out['_stats']['errors'] == {'crtsh': 'RuntimeError'}
+
+
+class TestPdfAngleBracketsInUserText:
+    """回归:PDF 模板把内联标签和用户文本拼在一起,用户文本里的 `<b>x` 被当成没闭合的标签,
+    reportlab 解析失败,整份 PDF 生成不出来。"""
+
+    def test_user_text_is_escaped_while_template_tags_survive(self):
+        html = gt._pdf_inline_html(f"<b>E:</b> {gt._pdf_esc('<b>x & y')}")
+        assert html.count('<b>') == 1 and html.count('</b>') == 1   # 只有模板自己的标签
+        assert '&lt;b&gt;' in html and '&amp;' in html
+        assert gt._PDF_LT not in html and gt._PDF_GT not in html
+
+    @pytest.mark.skipif(not gt.HAS_REPORTLAB, reason="reportlab not installed")
+    @pytest.mark.parametrize('prefix, data', [
+        ('ip_1.2.3.4', {'_error': 'Invalid IP address: <b>x & y'}),
+        ('phone_<font size=99>', {'_error': 'bad'}),
+        ('username_alice', {'_error': 'upstream said </para> <unknown tag'}),
+    ])
+    def test_pdf_is_generated(self, tmp_path, prefix, data):
+        out = tmp_path / 'r.pdf'
+        assert gt._to_pdf(prefix, data, str(out)) is None
+        assert out.read_bytes().startswith(b'%PDF')

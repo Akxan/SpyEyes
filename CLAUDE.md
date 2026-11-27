@@ -91,7 +91,10 @@ WHOIS/MX/邮箱 → 子域名枚举 → diff → 域名邮箱枚举 → investig
 ### 域名邮箱爬虫
 `enumerate_domain_emails` → 被动源 → 可选:发现活跃子域(`enumerate_subdomains(probe=True)`,
 只保留有 HTTP 响应的 host)→ 最多 3 个 target 并行爬取 → 可选 `--guess` 模式邮箱 → 可选 SMTP 验证。
-`max_pages` 是**总**页数预算,按 target 数均分(每个至少 10 页);单个 target 内是串行 BFS
+`max_pages` 是**总**页数预算,按 target 数均分;每个 target 至少要 `DOMAIN_EMAIL_MIN_PAGES_PER_TARGET`(10)页,
+所以目标数上限 = `max_pages // 10`,超出的子域不爬并记入 `_stats.targets_skipped`(不要再给每个目标"保底"页数,
+那会让总量超出预算)。robots.txt 只认 `User-agent: *` 分组的 Disallow —— 针对别家爬虫的规则与我们无关;
+被 robots 挡下的 URL 数记入 `_stats.robots_skipped`,一页没爬时终端会提示原因。单个 target 内是串行 BFS
 (`deque` + `enqueued` 去重集合、500 ms 速率限制、`DOMAIN_EMAIL_TOTAL_TIMEOUT` 兜底)。
 任何要请求的地址 —— 页面、链接、robots.txt 里的 sitemap —— 都必须通过 `_url_in_domain`
 (基于 `.hostname`:带端口的站内链接放行,`user@evil.com` 这类绕过被拒)。新增爬取路径也要
@@ -119,7 +122,8 @@ MVP 只支持 domain。阶段 1 并发跑 whois / mx / subdomain / domain-emails
   dict 分支,它用 `_flatten_value`(能展开嵌套 dict/list)—— 复用它,别再自己写一份值展平。
 - 转义:HTML / Graph / XMind 用 `_html_escape` —— **只在最外层转义一次**(把原始值传给 `t()`,
   再转义结果);CSV 单元格用 `_csv_safe`(防公式注入);Markdown 用 `_md_escape`;
-  PDF 用 `_pdf_para` / `_pdf_story`。
+  PDF 用 `_pdf_para`(表格单元格,传原始文本)/ `_pdf_story`(带内联标签的模板,拼进去的用户文本
+  必须先过 `_pdf_esc` —— 否则文本里的 `<` 会被当成标签,整份 PDF 生成失败)。
 - 用户名结果:`_username_json_view` 是唯一的公开 JSON 视图(剥 `_statuses`,保留
   `_recursive`),`--json` 与 `--save x.json` 共用。
 - 所有生成器都遵循 `get_lang()`(标题、标签、CSV 表头)。

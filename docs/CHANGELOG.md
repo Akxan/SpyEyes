@@ -26,6 +26,21 @@ This project adheres to [Keep a Changelog](https://keepachangelog.com/en/1.1.0/)
   只看状态码的平台遇到 403 / 503 会改用 GET 再看一次(不少站点只是拒绝 HEAD)。
   提示文案相应从「被 WAF 拦截」改为「被拦截(WAF / 限流)」。
 
+### 🐛 修复(全量体检发现的 5 个问题)
+
+- **域名邮箱爬虫可能整站不爬**:`robots.txt` 里只要有一句 `Disallow: /`,哪怕只针对 GPTBot,
+  就被当成对所有爬虫生效,结果一页都不爬且没有提示。现在只遵守 `User-agent: *` 分组的规则;
+  真被全站禁止时,终端会说明原因并提示 `--ignore-robots`,JSON 里有 `_stats.robots_skipped`。
+- **`permute --scan --json` 输出不是合法 JSON**:说明文字也打到了标准输出,接 `jq` 会报错。
+- **HackerTarget 数据源整源作废**:返回的主机名里只要有一个带 `error` / `exceeded` 字样
+  (如 `errors.example.com`),该源的全部结果就被丢弃。
+- **域名邮箱的页数预算失效**:抓取目标数没有上限,每个目标又保底 10 页 —— 60 个活跃子域加
+  `--max-pages 200` 实际上限是 610 页,大域名可能跑一个多小时。现在最多爬 `--max-pages ÷ 10`
+  个目标(主域始终保留),总页数不超过预算;没爬的子域数会提示,并记入 `_stats.targets_skipped`。
+- **PDF 报告遇到 `<` 生成失败**:错误信息或查询内容里带尖括号时(如 `Invalid IP address: <b>x`),
+  整份 PDF 出不来。
+- 顺带:`domain-emails` 的结果里补上 `_stats.errors`(哪些数据源出错),此前只记录不输出。
+
 ### 📝 文档与项目页面
 
 - **GitHub 项目页改为英文为主、中文为辅**:英文 README 升为 `README.md`,中文版改名 `README.zh-CN.md`
