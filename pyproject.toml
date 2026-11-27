@@ -23,7 +23,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "spyeyes"
-version = "1.8.6"  # 同步：spyeyes/__init__.py __version__ + docs/CHANGELOG.md + git tag
+version = "1.8.7"  # 同步：spyeyes/__init__.py __version__ + docs/CHANGELOG.md + git tag
 description = "All-in-one OSINT toolkit: username search across 3,164 sites, subdomain enumeration, domain email harvesting, IP geolocation, phone lookup, WHOIS / MX, investigate dossier — one CLI, 8 report formats, no API keys, bilingual (English / Chinese)"
 readme = "README.md"
 requires-python = ">=3.10"

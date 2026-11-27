@@ -8,6 +8,33 @@ This project adheres to [Keep a Changelog](https://keepachangelog.com/en/1.1.0/)
 
 ## [Unreleased]
 
+### Planned
+- 代理支持 (`--proxy http://...` / SOCKS5 / Tor / I2P，借鉴 Maigret)
+- IP / 用户名批量输入(`--batch ips.txt`;子域名已在 v1.5.0 支持 `--batch`)
+- HIBP (Have I Been Pwned) 邮箱泄露集成
+- 首次 upload 到 PyPI（package 重构已完成，`pip install .` 已 work，剩 `twine upload`）
+- Docker 镜像
+- curl_cffi 浏览器指纹伪装可选（`spyeyes[stealth]`，绕过 Cloudflare）
+- `investigate` v2:扩到 email / ip / username 实体 + 双向 pivot(配合"已访问集合"防环)
+- `investigate` 报告:PDF / XMind 专用版式(目前走通用表格;D3 关系图已支持)
+- `investigate --budget` 真·硬超时(需要给阶段 1 原子任务加可取消的超时管道)
+
+---
+
+## [1.8.7] — 2026-11-27
+
+🎯 **用户名扫描准确度修复版** —— 修正 587 个平台"查不到真实账号"的数据错误,命中增加乱码复查以滤掉误报,另修全量体检发现的 5 个 bug;GitHub 项目页改为英文为主。
+
+### ⚠️ 行为变化(升级前请留意)
+
+- **用户名扫描的命中数会明显变少**:对任何用户名都显示"存在"的平台(Instagram、Reddit、PyPI、Telegram、
+  YouTube、Steam 等登录墙 / 软 404 站点)不再计入命中,改标为「无法确认」;被拦截的平台标为「被拦截」而不是「未找到」。
+  这些命中原本就不可信,数字变少是结果变准了。
+- **`domain-emails` 最多爬 `--max-pages ÷ 10` 个目标**(默认 20 个,主域始终保留)。活跃子域更多的域名,
+  其余子域会跳过并提示;想都爬就调大 `--max-pages`。
+- **`README.en.md` 不再存在**:英文说明现在是 `README.md`,中文说明是 `README.zh-CN.md`。
+  外部指向 `README.en.md` 的链接需要更新。
+
 ### 🐛 修复(用户名扫描准确度)
 
 - **WhatsMyName 规则接反,587 个平台查不到真实账号**:构建脚本把上游的 `m_string`(账号**不存在**时出现的字符串)
@@ -55,17 +82,6 @@ This project adheres to [Keep a Changelog](https://keepachangelog.com/en/1.1.0/)
   子域名被动源数量写对(5 个公开源 + 1 个可选);补充 `phone --region`。
 - `domain-emails --no-crawl` 的帮助文本改正(被动源是 6 个,不是"只有 crt.sh + WHOIS")。
 - CI 与文档里的 bandit 命令加 `-c pyproject.toml`:此前 pyproject 里的 skips 配置实际没有被读取。
-
-### Planned
-- 代理支持 (`--proxy http://...` / SOCKS5 / Tor / I2P，借鉴 Maigret)
-- IP / 用户名批量输入(`--batch ips.txt`;子域名已在 v1.5.0 支持 `--batch`)
-- HIBP (Have I Been Pwned) 邮箱泄露集成
-- 首次 upload 到 PyPI（package 重构已完成，`pip install .` 已 work，剩 `twine upload`）
-- Docker 镜像
-- curl_cffi 浏览器指纹伪装可选（`spyeyes[stealth]`，绕过 Cloudflare）
-- `investigate` v2:扩到 email / ip / username 实体 + 双向 pivot(配合"已访问集合"防环)
-- `investigate` 报告:PDF / XMind 专用版式(目前走通用表格;D3 关系图已支持)
-- `investigate --budget` 真·硬超时(需要给阶段 1 原子任务加可取消的超时管道)
 
 ---
 
@@ -2527,7 +2543,8 @@ export SPYEYES_PHONE_API_KEY="numverify:..." # 可选实时 HLR 电话运营商
 
 ---
 
-[Unreleased]: https://github.com/Akxan/SpyEyes/compare/v1.8.6...HEAD
+[Unreleased]: https://github.com/Akxan/SpyEyes/compare/v1.8.7...HEAD
+[1.8.7]: https://github.com/Akxan/SpyEyes/compare/v1.8.6...v1.8.7
 [1.8.6]: https://github.com/Akxan/SpyEyes/compare/v1.8.5...v1.8.6
 [1.8.5]: https://github.com/Akxan/SpyEyes/compare/v1.8.4...v1.8.5
 [1.8.4]: https://github.com/Akxan/SpyEyes/compare/v1.8.3...v1.8.4
