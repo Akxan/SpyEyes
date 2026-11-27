@@ -10,7 +10,7 @@
 [![codecov](https://codecov.io/gh/Akxan/SpyEyes/branch/main/graph/badge.svg)](https://codecov.io/gh/Akxan/SpyEyes)
 [![License: Apache 2.0](https://img.shields.io/badge/License-Apache_2.0-blue.svg)](https://opensource.org/licenses/Apache-2.0)
 [![Python](https://img.shields.io/badge/Python-3.10%2B-blue.svg?logo=python&logoColor=white)](https://www.python.org/)
-[![Tests](https://img.shields.io/badge/tests-731%20passed-success.svg)](tests/)
+[![Tests](https://img.shields.io/badge/tests-1472%20passed-success.svg)](tests/)
 [![Platforms](https://img.shields.io/badge/platforms-3164-orange.svg)](#-comparison-with-similar-tools)
 [![Reports](https://img.shields.io/badge/reports-8%20formats-9cf.svg)](#-report-formats-8-types)
 [![Commands](https://img.shields.io/badge/commands-14-blueviolet.svg)](docs/TUTORIAL.md)
@@ -69,7 +69,7 @@ Built for **security researchers, penetration testers, bug bounty hunters, SOC a
 - **Low-friction daily use**: one `~/.spyeyes/env` file for all API keys; live progress for every long-running step; interactive-mode reports default to `<project_root>/Downloads/` (source) or `~/Downloads/spyeyes/` (packaged install)
 - **Update check + one-click upgrade**: 24 h-cached check against GitHub Releases; `spyeyes upgrade` detects pip / pipx / source installs and only upgrades PEP 668 environments (e.g. Homebrew) after you confirm
 - **Calm colors**: body text in your terminal's own color, color only as accents — readable on dark / light backgrounds and on Windows; `SPYEYES_THEME=classic` restores the old bright green, `--no-color` / `NO_COLOR` turns color off
-- **731 pytest tests**: ruff / mypy / bandit clean, CI on Linux × Python 3.10–3.14 and macOS / Windows × Python 3.10 & 3.14
+- **1,472 pytest tests** (88% line coverage): ruff / mypy / bandit clean, CI on Linux × Python 3.10–3.14 and macOS / Windows × Python 3.10 & 3.14
 
 ---
 
@@ -504,7 +504,7 @@ mypy spyeyes tools/build_platforms.py --ignore-missing-imports
 bandit -c pyproject.toml -r spyeyes/ tools/ -ll
 ```
 
-- ✅ **731 tests**, all network access mocked (no real requests)
+- ✅ **1,472 tests**, all network access mocked (no real requests)
 - ✅ Pure functions + HTTP mocking + edge cases + SSRF/ReDoS defenses + 8 report formats × 2 languages + en/zh translation key parity
 - ✅ GitHub Actions: Linux × Python 3.10–3.14, macOS / **Windows** × Python 3.10 & 3.14
 - ✅ Dedicated lint job (ruff + mypy + bandit) gates the test matrix

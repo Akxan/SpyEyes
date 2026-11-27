@@ -10,7 +10,7 @@
 [![codecov](https://codecov.io/gh/Akxan/SpyEyes/branch/main/graph/badge.svg)](https://codecov.io/gh/Akxan/SpyEyes)
 [![License: Apache 2.0](https://img.shields.io/badge/License-Apache_2.0-blue.svg)](https://opensource.org/licenses/Apache-2.0)
 [![Python](https://img.shields.io/badge/Python-3.10%2B-blue.svg?logo=python&logoColor=white)](https://www.python.org/)
-[![Tests](https://img.shields.io/badge/tests-731%20passed-success.svg)](tests/)
+[![Tests](https://img.shields.io/badge/tests-1472%20passed-success.svg)](tests/)
 [![Platforms](https://img.shields.io/badge/platforms-3164-orange.svg)](#-与同类工具对比)
 [![Reports](https://img.shields.io/badge/reports-8%20formats-9cf.svg)](#-报告格式8-种)
 [![Commands](https://img.shields.io/badge/commands-14-blueviolet.svg)](docs/TUTORIAL.md)
@@ -51,7 +51,7 @@
 - **日常使用省心**:`~/.spyeyes/env` 一个文件配好全部 API key;所有耗时操作都有进度反馈;交互模式报告默认存到 `<项目根>/Downloads/`(源码)或 `~/Downloads/spyeyes/`(打包安装)
 - **自动检查更新 + 一键升级**:24 h 缓存比对 GitHub Release;`spyeyes upgrade` 自动识别 pip / pipx / 源码安装,Homebrew 等 PEP 668 环境经你确认后才升级
 - **柔和配色**:正文用终端本色,颜色只做点缀,深色 / 浅色背景与 Windows 都清晰;`SPYEYES_THEME=classic` 找回旧版亮绿,`--no-color` / `NO_COLOR` 关闭颜色
-- **731 个 pytest 测试**:ruff / mypy / bandit 全清,CI 覆盖 Linux × Python 3.10–3.14,macOS / Windows × Python 3.10 与 3.14
+- **1472 个 pytest 测试**(行覆盖率 88%):ruff / mypy / bandit 全清,CI 覆盖 Linux × Python 3.10–3.14,macOS / Windows × Python 3.10 与 3.14
 
 ---
 
@@ -546,7 +546,7 @@ bandit -c pyproject.toml -r spyeyes/ tools/ -ll
 ```
 
 当前测试覆盖：
-- ✅ **731 个测试**，全部 mock 网络（不发真实请求）
+- ✅ **1472 个测试**，全部 mock 网络（不发真实请求）
 - ✅ 覆盖纯函数 + HTTP mock + 边界条件 + SSRF/ReDoS 防御 + 8 种报告格式 × 2 种语言 + 中英翻译 key 一致性
 - ✅ GitHub Actions：Linux × Python 3.10–3.14，macOS / **Windows** × Python 3.10 与 3.14
 - ✅ 独立 lint job（ruff + mypy + bandit），通过后才跑测试矩阵

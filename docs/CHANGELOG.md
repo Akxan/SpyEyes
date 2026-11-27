@@ -22,7 +22,22 @@ This project adheres to [Keep a Changelog](https://keepachangelog.com/en/1.1.0/)
 - 构建脚本 `tools/build_platforms.py`:跳过 DNS / Tor / I2P 类条目和无法请求的地址;
   上游数据格式变化导致解析结果骤减时直接失败,不再写出残缺的平台库。
 
+### 🐛 修复(新增测试暴露的问题)
+
+- `config.json` 内容是合法 JSON 但不是对象(如 `[]`、`null`)时,**所有命令一启动就崩溃**;现在按无配置处理。
+- `history.jsonl` 里有异常行时 `spyeyes history` 崩溃;现在跳过这些行。
+- 交互菜单保存报告:选了 Markdown 等格式后自己输入不带后缀的文件名(或一个目录),写出来的却是 JSON;
+  现在按选好的格式保存。
+- Markdown 报告不转义 `<` `>`:WHOIS 注册组织、网页标题、平台名里的 HTML 会原样进入报告,
+  在会渲染 HTML 的 Markdown 查看器里被当成真标签。现在写成实体。
+- 关系图报告的"命中 N 个平台"算错:变形扫描把每个变形也数了进去,扫描失败时显示命中 1 个。
+- `permute "Name Smith" --scan` 这类会生成名为 `name` 的变形的输入,报告退化成通用字段表。
+- `user --all` 把网络错误的平台标成"未找到",现在标"网络错误"。
+
 ### 🧪 测试与工程
+
+- **测试从 731 个增加到 1472 个,行覆盖率从 66% 提高到 88%**:终端打印、交互菜单、语言解析、
+  HTTP 与 DNS 底层函数、SMTP 验证、各报告格式的用户名与变形分支此前基本没有被测试执行过。
 
 - **测试禁止真实联网**:从 socket 层拦截连接和 DNS 查询,发起真实网络访问的测试会失败。
   此前"全部 mock"只是约定,新增数据源而忘了在测试里替换就会悄悄联网。
@@ -33,6 +48,12 @@ This project adheres to [Keep a Changelog](https://keepachangelog.com/en/1.1.0/)
   原来的"冒烟测试"是可编辑安装,测不出 wheel 漏掉数据文件。
 - CI 权限收紧为只读,第三方 Action 固定到提交 SHA;Codecov 上传接上令牌(此前一直被拒且不报错)。
 - 新增 `MANIFEST.in`:sdist 以前不带 `tests/conftest.py` 和中文 README。
+
+### 📝 文档站点
+
+- 文档站点 https://akxan.github.io/SpyEyes/ 改版:自定义落地页替换默认主题 —— 首屏、功能卡片、
+  命令表、可折叠的 FAQ、中文简介;明暗配色跟随系统;不加载任何外部字体或脚本。
+- 修复站点上"Contributing"页面 404;新增社交分享预览图。
 
 ### Planned
 - 代理支持 (`--proxy http://...` / SOCKS5 / Tor / I2P，借鉴 Maigret)

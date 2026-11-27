@@ -299,10 +299,15 @@ MVP 只支持 domain。阶段 1 并发跑 whois / mx / subdomain / domain-emails
   `gh api "search/repositories?q=topic:<名字>&per_page=1" -q .total_count` 看有没有人用。
 - **`README.md`**:开头的「What is SpyEyes?」是一句能被单独引用的定义 + 功能清单 + 事实表;
   「FAQ」的小标题直接写成用户会问的问题。新增或删减功能时这两处要同步,说法必须与代码一致。
-- **`docs/index.md`**:Pages 首页,含命令表和 JSON-LD(`SoftwareApplication` + `FAQPage`);
-  FAQ 的问答要与 README 的保持一致。`docs/_config.yml` 的 title / description 会进 `<title>` 和 meta。
+- **`docs/index.md`**:Pages 首页(落地页),含首屏、功能卡片、命令表、FAQ 和 JSON-LD
+  (`SoftwareApplication` + `FAQPage`);FAQ 的问答要与 README 和 JSON-LD 三处保持一致。
+  站点用自己的版式 `docs/_layouts/default.html` + `docs/assets/css/site.css`(不用官方主题,不加载外部资源),
+  教程 / 更新日志等文档页共用它。`docs/_config.yml` 的 title / tagline / description 会进 `<title>` 和 meta。
+  Pages 不渲染 `CONTRIBUTING.md` / `README.md` 这类文件名,除非文件自带 front matter。
+  本机没有 Jekyll,改完推送后用浏览器看线上效果;平台数量等数字也写在这页和 `social-card.svg` 里。
 - 中文内容放 `README.zh-CN.md`,两份 README 的章节要对等(曾经中文版缺环境变量表、退出码、安全入口)。
-- 社交预览图只能在仓库 Settings 里手动上传,API 改不了。
+- 站点的社交预览图是 `docs/assets/social-card.jpg`(源文件 `social-card.svg`,用 `qlmanage -t -s 1200`
+  渲染后 `sips -c 630 1200` 裁切)。GitHub 仓库页自己的预览图只能在 Settings 里手动上传,API 改不了。
 
 文档入口:`README.md`(英文,主入口)/ `README.zh-CN.md`(中文)/ `docs/TUTORIAL.md`(中文)/
 `docs/CHANGELOG.md` / `docs/CONTRIBUTING.md` / `docs/SECURITY.md`;设计文档在 `docs/design/`。

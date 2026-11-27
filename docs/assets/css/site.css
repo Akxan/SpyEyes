@@ -145,7 +145,7 @@ pre {
 }
 pre code { background: none; padding: 0; font-size: inherit; }
 
-table { display: block; width: 100%; overflow-x: auto; border-collapse: collapse; margin: 1.2em 0; font-size: 0.96rem; }
+table { width: 100%; border-collapse: collapse; margin: 1.2em 0; font-size: 0.96rem; }
 th, td { padding: 10px 14px; border-bottom: 1px solid var(--border); text-align: left; vertical-align: top; }
 th { background: var(--bg-soft); font-weight: 600; white-space: nowrap; }
 td code { white-space: nowrap; }
@@ -155,6 +155,11 @@ td code { white-space: nowrap; }
 .site-footer p { margin: 0 0 6px; }
 .site-footer strong { color: var(--text); }
 .site-footer .fine { font-size: 0.86rem; }
+
+@media (max-width: 760px) {
+  /* 窄屏上表格自己横向滚动,不把整页撑宽 */
+  table { display: block; overflow-x: auto; }
+}
 
 @media (max-width: 640px) {
   body { font-size: 16px; }
