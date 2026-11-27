@@ -359,7 +359,9 @@ def parse_maigret(raw: dict) -> list:
         url = info.get("url", "") or ""
         engine_name = info.get("engine")
         engine = engines.get(engine_name) if engine_name and isinstance(engines, dict) else None
-        eng_site = engine.get("site") if isinstance(engine, dict) and isinstance(engine.get("site"), dict) else {}
+        eng_site: dict = {}
+        if isinstance(engine, dict) and isinstance(engine.get("site"), dict):
+            eng_site = engine["site"]
         # 站点自身没 url 模板 → 用 engine 的
         if "{username}" not in url and "{}" not in url and "{username}" in (eng_site.get("url") or ""):
             url = eng_site["url"]
