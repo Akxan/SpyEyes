@@ -41,8 +41,13 @@ python tools/build_platforms.py
 python tools/build_platforms.py --no-fetch --cache-dir .cache   # 离线复用缓存
 ```
 
-CI(`.github/workflows/ci.yml`):`lint`(Python 3.14)通过后才跑 `test`,矩阵为
-Linux × {3.10–3.14}、macOS × {3.10, 3.14}、Windows × {3.10, 3.14};Codecov 只从 Ubuntu × 3.14 上传。
+CI(`.github/workflows/ci.yml`):`lint`(Python 3.14)通过后才跑 `test` 和 `package`。`test` 的矩阵为
+Linux × {3.10–3.14}、macOS × {3.10, 3.14}、Windows × {3.10, 3.14};Codecov 只从 Ubuntu × 3.14 上传
+(需要仓库密钥 `CODECOV_TOKEN`,没有时上传被拒但不报错)。`package` 用 `python -m build` 打出 wheel,
+装进干净的虚拟环境、在检出目录之外运行,确认加载到 3000+ 平台 —— wheel 漏掉 `data/platforms.json` 时
+程序不报错、只会悄悄剩下精选的 200 来个平台,`pip install -e .` 测不出来。
+第三方 Action 固定到提交 SHA(行尾注释标版本,Dependabot 会更新);工作流权限是 `contents: read`。
+提交前把 ruff / mypy / bandit / pytest 用 `&&` 串起来跑,任何一步失败都不要提交。
 `requirements-dev.txt` **没有**给 ruff 设上限,所以规则集锁在 `pyproject.toml`
 (`[tool.ruff.lint] select = ["E4","E7","E9","F"]`)。不要删这一段 —— 新版 ruff 会扩大
 默认规则,CI 会无声变红(ruff 0.16 会多出约 170 条)。
@@ -177,8 +182,20 @@ MVP 只支持 domain。阶段 1 并发跑 whois / mx / subdomain / domain-emails
 - WhatsMyName 的字段别按首字母猜:`e_string` = 账号**存在**时出现的字符串(→ `must_contain`),
   `m_string` = **不存在**时出现的(→ `not_found`)。v1.1.0–v1.8.6 接反过,587 个平台因此查不到真实账号;
   `TestWmnRulesNotInverted` 守护发布的数据。
+- Maigret 的论坛引擎模板:检测规则在 `engine.site.absenceStrs / presenseStrs`,与站点自己的规则合并。
+  `engine.presenseStrs`(顶层)是"识别论坛软件"的指纹(`XenForo`、`content="Discourse"`),每个页面都有,
+  **不是**检测规则。v1.1.0–v1.8.7 把指纹当成了 must_contain 并漏掉 `engine.site`,1110 个论坛条目因此失效。
 - `tools/build_platforms.py` 负责重建 JSON。重名取舍:检测模式更多者胜,平手时
   `maigret > whatsmyname > sherlock`。wheel 通过 `[tool.setuptools.package-data]` 打包该 JSON。
+  它会跳过 `protocol` 为 dns / tor / i2p 的条目,丢弃非 http(s) 或带未展开占位符的地址;任一上游的解析结果
+  低于 `MIN_PLATFORMS_PER_SOURCE`、或合并后少于 `MIN_PLATFORMS_TOTAL` 时直接失败,不写文件。
+  每类规则上限 `MAX_PATTERNS_PER_PLATFORM = 8`(引擎的"用户不存在"提示按语言列,3 条不够)。
+- **改内置数据前先对照上游**:`platforms.json` 是 2026-05-02 生成的快照。修数据时取回当时的上游版本
+  (GitHub API `commits?path=…&until=…`)逐条核对,只改能精确对上的条目;改完再用修好的脚本对快照
+  在内存里重建一遍做比对,并抽样用真实网站验证(一个乱码名 + 一个常见名,看误报和命中的变化)。
+  不要凭印象判断上游字段的含义 —— 两次大错都是这么来的。
+- 扫描模式菜单和 `--quick` 帮助里写着各类平台数量(`mode.*`),`TestShippedPlatformData` 会拿它们和数据比对;
+  README / 教程里的"48 中文圈 + 33 西语圈 + 734 论坛"和类别表要手动同步。
 - 路径用 `os.path.realpath(__file__)`,**不要**用 `abspath` —— `abspath` 在 brew/pipx 软链
   安装下会找不到 data 目录,静默丢掉整份 JSON。不要改。
 
@@ -208,6 +225,11 @@ MVP 只支持 domain。阶段 1 并发跑 whois / mx / subdomain / domain-emails
   - 设置 `SPYEYES_NO_UPDATE_CHECK=1`,并强制 subfinder 视为"未安装";
   - 重置 `_lang`、`Color.*`、线程本地 session、`_PLATFORMS_CACHE`。新增模块级可变状态
     也要在这里重置。
+- `tests/conftest.py` 的 autouse fixture `block_real_network` 从 socket 层拦截连接和 DNS 查询:
+  测试里发起真实网络访问会在结束时判失败(即使被测代码把网络错误吞掉了)。新增数据源时记得在相关测试里替换它。
+  `reset_global_state` 还会在每个测试后整体还原 `os.environ`(`_load_env_file()` 直接写环境变量)。
+- 写完测试做一次变异检查:把被测的那行代码改坏,确认测试会失败。断言要针对具体的值;
+  只断言"没抛异常"、`<=` 上限、或条件里带 `or` 的断言,很容易变成改了代码也照过的空转测试。
 - 测试 mock `safe_get` / `requests` / `dns.resolver` / `whois.whois` / `subprocess.run` ——
   不要引入真实网络调用。`MagicMock()` 响应永远为真值,会掩盖上面的 `if resp:` bug;
   需要验证状态码语义时用真实的 `requests.Response()`。
