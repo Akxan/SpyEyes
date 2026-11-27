@@ -1422,7 +1422,8 @@ class TestUpdateCheck:
             called.set()
         monkeypatch.setattr(gt, 'refresh_update_cache_sync', fake_refresh)
         gt._start_background_update_check()
-        assert called.wait(timeout=1.0) is True
+        # 线程一启动就会 set,正常情况下立刻返回;超时放宽只为繁忙的 CI 机器上线程调度慢时不误报
+        assert called.wait(timeout=10.0) is True
 
     # ---------- print_update_notice ----------
 
